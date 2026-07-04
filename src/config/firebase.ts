@@ -1,6 +1,10 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { Platform } from 'react-native';
+// @ts-ignore — getReactNativePersistence só existe no bundle react-native do SDK
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDtlzzZfbbJ6tiYAz-DAsU0LXD6IzJhofU',
@@ -13,5 +17,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+// No nativo, persiste o login via AsyncStorage; no web o getAuth usa localStorage
+export const auth =
+  Platform.OS === 'web'
+    ? getAuth(app)
+    : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+
 export const db = getFirestore(app);
+export const functions = getFunctions(app, 'us-central1');

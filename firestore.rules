@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function authed() {
+      return request.auth != null;
+    }
+
+    // Perfil: criado uma única vez no registro, zerado. Toda mutação de jogo
+    // (gols, cooldowns, contadores) passa pelas Cloud Functions (Admin SDK).
+    match /users/{uid} {
+      allow read: if authed();
+      allow create: if authed()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.totalGoals == 0
+        && request.resource.data.nick is string
+        && request.resource.data.nick.size() >= 2
+        && request.resource.data.nick.size() <= 20;
+      allow update, delete: if false;
+
+      // Estado interno da trilha (layout das minas) — invisível ao cliente
+      match /private/{docId} {
+        allow read, write: if false;
+      }
+    }
+
+    // Rankings e feed: somente leitura; escrita só pelas Functions
+    match /rankings/{scope}/entries/{entryId} {
+      allow read: if authed();
+      allow write: if false;
+    }
+
+    match /activities/{activityId} {
+      allow read: if authed();
+      allow write: if false;
+    }
+
+    // Presença online: cada um escreve só o próprio heartbeat
+    match /presence/{uid} {
+      allow read: if authed();
+      allow write: if authed() && request.auth.uid == uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

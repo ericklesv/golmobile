@@ -7,49 +7,89 @@ import {
   Animated,
   Alert,
   ScrollView,
+  Modal,
 } from 'react-native';
+import PenaltyScreen from './PenaltyScreen';
+import TrailScreen from './TrailScreen';
 import {
   doc,
-  updateDoc,
-  increment,
+  setDoc,
   collection,
   query,
+  where,
   orderBy,
   limit,
   getDocs,
-  addDoc,
+  getCountFromServer,
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
-import { TEAMS, KICK_COOLDOWN_MS } from '../constants/teams';
+import { TEAMS, ACTION_COOLDOWNS, ACTION_LAST_TIME_FIELD } from '../constants/teams';
+import { kickAction, isCooldownError } from '../services/game';
 import {
-  rollKick,
   getTimeRemaining,
   formatCountdown,
   getCurrentHourKey,
   getCurrentRoundKey,
 } from '../utils/gameLogic';
 
+// Todos os tipos de ação incluindo AUTO
+const ALL_ACTION_IDS = ['auto', 'penalti', 'falta', 'trilha'] as const;
+type ActionId = typeof ALL_ACTION_IDS[number];
+
+type CooldownMap = Record<ActionId, { remaining: number; canAct: boolean; progress: number }>;
+
+function buildCooldownMap(profile: any): CooldownMap {
+  const result = {} as CooldownMap;
+  for (const id of ALL_ACTION_IDS) {
+    const field = ACTION_LAST_TIME_FIELD[id];
+    const lastTime = profile?.[field] ?? 0;
+    const cdMs = ACTION_COOLDOWNS[id];
+    const remaining = getTimeRemaining(lastTime, cdMs);
+    result[id] = {
+      remaining,
+      canAct: remaining === 0,
+      progress: remaining === 0 ? 1 : 1 - remaining / cdMs,
+    };
+  }
+  return result;
+}
+
 const KICK_TYPES = [
-  { id: 'penalti', label: '🥅 Pênalti' },
-  { id: 'falta', label: '🌀 Falta' },
+  { id: 'penalti' as ActionId, label: 'PÊNALTI', emoji: '⚽', color: '#FFD700', glow: '#FFD70066' },
+  { id: 'falta'   as ActionId, label: 'FALTA',   emoji: '🌀', color: '#00bcd4', glow: '#00bcd466' },
+  { id: 'trilha'  as ActionId, label: 'TRILHA',  emoji: '🟠', color: '#FF7043', glow: '#FF704366' },
 ];
 
 interface TopPlayer { nick: string; teamId: string; goals: number; }
 interface Activity { id: string; nick: string; teamId: string; goal: boolean; kickType: string; ts: number; }
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: any) {
   const { user, profile, refreshProfile } = useAuth();
-  const [countdown, setCountdown] = useState(0);
-  const [canKick, setCanKick] = useState(false);
+  const [cooldowns, setCooldowns] = useState<CooldownMap>(() => buildCooldownMap(null));
   const [lastResult, setLastResult] = useState<null | { goal: boolean; message: string }>(null);
   const [kicking, setKicking] = useState(false);
-  const [kickType, setKickType] = useState<'penalti' | 'falta'>('penalti');
+  const [kickType, setKickType] = useState<ActionId>('penalti');
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [onlineCount] = useState(Math.floor(Math.random() * 20) + 5);
-  const [progress, setProgress] = useState(1);
+  const [onlineCount, setOnlineCount] = useState(1);
+  const [showPenalty, setShowPenalty] = useState(false);
+  const [showTrail, setShowTrail] = useState(false);
+  const [trailKey, setTrailKey] = useState(0);
+
+  // Ao fechar os modais, re-lê o perfil para atualizar cooldowns
+  useEffect(() => {
+    if (!showPenalty && !showTrail) refreshProfile();
+  }, [showPenalty, showTrail]);
+
+  // Ticker único que atualiza todos os cooldowns de 500ms em 500ms
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setCooldowns(buildCooldownMap(profile));
+    }, 500);
+    return () => clearInterval(iv);
+  }, [profile]);
 
   const ballAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -58,27 +98,63 @@ export default function HomeScreen() {
 
   const team = TEAMS.find((t) => t.id === profile?.teamId);
 
+  // Auto-disparo quando a ação selecionada fica disponível
+  const autoKickRef = useRef(false);
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!profile) return;
-      const remaining = getTimeRemaining(profile.lastKickTime, KICK_COOLDOWN_MS);
-      setCountdown(remaining);
-      setCanKick(remaining === 0);
-      setProgress(remaining === 0 ? 1 : 1 - remaining / KICK_COOLDOWN_MS);
-    }, 500);
-    return () => clearInterval(interval);
-  }, [profile]);
+    const cd = cooldowns[kickType];
+    if (cd?.canAct && !kicking && !autoKickRef.current) {
+      autoKickRef.current = true;
+      const timer = setTimeout(() => {
+        if (kickType === 'penalti') {
+          setShowPenalty(true);
+        } else {
+          handleKick();
+        }
+        autoKickRef.current = false;
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+    if (!cd?.canAct) autoKickRef.current = false;
+  }, [cooldowns, kicking, kickType]);
 
   useEffect(() => {
     async function fetchTop() {
       try {
-        const q = query(collection(db, 'rankings', 'hour', 'entries'), orderBy('goals', 'desc'), limit(3));
+        const q = query(
+          collection(db, 'rankings', 'hour', 'entries'),
+          where('hourKey', '==', getCurrentHourKey()),
+          orderBy('goals', 'desc'),
+          limit(3)
+        );
         const snap = await getDocs(q);
         setTopPlayers(snap.docs.map((d) => d.data() as TopPlayer));
       } catch {}
     }
     fetchTop();
   }, [lastResult]);
+
+  // Presença online: heartbeat próprio + contagem de quem deu sinal nos últimos 2 min
+  useEffect(() => {
+    if (!user) return;
+    const beat = () =>
+      setDoc(doc(db, 'presence', user.uid), { lastSeen: Date.now(), nick: profile?.nick ?? '' }).catch(() => {});
+    beat();
+    const iv = setInterval(beat, 60_000);
+    return () => clearInterval(iv);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    async function countOnline() {
+      try {
+        const q = query(collection(db, 'presence'), where('lastSeen', '>', Date.now() - 120_000));
+        const snap = await getCountFromServer(q);
+        setOnlineCount(Math.max(1, snap.data().count));
+      } catch {}
+    }
+    countOnline();
+    const iv = setInterval(countOnline, 30_000);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'activities'), orderBy('ts', 'desc'), limit(8));
@@ -109,50 +185,23 @@ export default function HomeScreen() {
     Animated.timing(resultOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }
 
+  // O chute é decidido no servidor (Cloud Function `kick`) — aqui só animamos
   async function handleKick() {
-    if (!user || !profile || !canKick || kicking) return;
+    const cd = cooldowns[kickType];
+    if (!user || !profile || !cd?.canAct || kicking) return;
+    if (kickType === 'penalti' || kickType === 'trilha') return; // têm telas próprias
     setKicking(true);
-    const isGoal = rollKick();
-    animateBall(isGoal);
-    const hourKey = getCurrentHourKey();
-    const roundKey = getCurrentRoundKey();
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const updates: Record<string, any> = { lastKickTime: Date.now() };
-      if (isGoal) {
-        updates.totalGoals = increment(1);
-        const hourRef = doc(db, 'rankings', 'hour', 'entries', `${user.uid}_${hourKey}`);
-        await updateDoc(hourRef, { goals: increment(1) }).catch(() =>
-          import('firebase/firestore').then(({ setDoc }) =>
-            setDoc(hourRef, { uid: user.uid, nick: profile.nick, teamId: profile.teamId, goals: 1, hourKey })
-          )
-        );
-        const roundRef = doc(db, 'rankings', 'round', 'entries', `${user.uid}_${roundKey}`);
-        await updateDoc(roundRef, { goals: increment(1) }).catch(() =>
-          import('firebase/firestore').then(({ setDoc }) =>
-            setDoc(roundRef, { uid: user.uid, nick: profile.nick, teamId: profile.teamId, goals: 1, roundKey })
-          )
-        );
-        const seasonRef = doc(db, 'rankings', 'season', 'entries', user.uid);
-        await updateDoc(seasonRef, { goals: increment(1) }).catch(() =>
-          import('firebase/firestore').then(({ setDoc }) =>
-            setDoc(seasonRef, { uid: user.uid, nick: profile.nick, teamId: profile.teamId, goals: 1 })
-          )
-        );
-      }
-      await updateDoc(userRef, updates);
-      await addDoc(collection(db, 'activities'), {
-        uid: user.uid,
-        nick: profile.nick,
-        teamId: profile.teamId,
-        goal: isGoal,
-        kickType,
-        ts: Date.now(),
-      });
+      const res = await kickAction(kickType);
+      animateBall(res.goal);
+      setLastResult(res.goal ? { goal: true, message: '⚽ GOOOOOL!' } : { goal: false, message: '❌ Defendido!' });
       await refreshProfile();
-      setLastResult(isGoal ? { goal: true, message: '⚽ GOOOOOL!' } : { goal: false, message: '❌ Defendido!' });
-    } catch {
-      Alert.alert('Erro', 'Tente novamente.');
+    } catch (e) {
+      if (isCooldownError(e)) {
+        await refreshProfile(); // ressincroniza o countdown com o servidor
+      } else {
+        Alert.alert('Erro', 'Sem conexão com o servidor. Tente novamente.');
+      }
     } finally {
       setKicking(false);
     }
@@ -162,7 +211,8 @@ export default function HomeScreen() {
   const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
       {/* Card do jogador */}
       <View style={styles.playerCard}>
@@ -185,8 +235,8 @@ export default function HomeScreen() {
 
         <View style={styles.statsRow}>
           {[
-            { label: '🕐 Hora', value: profile?.totalGoals ?? 0 },
-            { label: '🎲 Rodada', value: profile?.totalGoals ?? 0 },
+            { label: '🕐 Hora', value: profile?.hourKey === getCurrentHourKey() ? profile?.hourGoals ?? 0 : 0 },
+            { label: '🎲 Rodada', value: profile?.roundKey === getCurrentRoundKey() ? profile?.roundGoals ?? 0 : 0 },
             { label: '🏆 Temp.', value: profile?.totalGoals ?? 0 },
           ].map((s) => (
             <View key={s.label} style={styles.statPill}>
@@ -215,34 +265,76 @@ export default function HomeScreen() {
         )}
 
         <View style={styles.kickTypeRow}>
-          {KICK_TYPES.map((kt) => (
-            <TouchableOpacity
-              key={kt.id}
-              style={[styles.kickTypeBtn, kickType === kt.id && styles.kickTypeBtnActive]}
-              onPress={() => setKickType(kt.id as any)}
-            >
-              <Text style={[styles.kickTypeText, kickType === kt.id && { color: '#0a1628' }]}>
-                {kt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {/* Botão AUTO */}
+          {(() => {
+            const cd = cooldowns['auto'];
+            return (
+              <TouchableOpacity
+                style={styles.kickTypeBtnWrap}
+                onPress={() => { setKickType('auto'); if (cd.canAct) handleKick(); }}
+                disabled={kickType === 'auto' && (!cd.canAct || kicking)}
+                activeOpacity={0.75}
+              >
+                <View style={[
+                  styles.kickTypeBall, styles.kickMainBall,
+                  cd.canAct
+                    ? { borderColor: '#00e676', shadowColor: '#00e67699', shadowOpacity: 1, shadowRadius: 16, elevation: 12 }
+                    : { borderColor: '#2a3a50' },
+                ]}>
+                  {cd.canAct
+                    ? <Text style={styles.kickTypeBallEmoji}>🦵</Text>
+                    : <Text style={styles.kickCountdownText}>{formatCountdown(cd.remaining)}</Text>
+                  }
+                </View>
+                <View style={styles.kickTypeLabelRow}>
+                  <View style={[styles.kickTypeDot, { backgroundColor: cd.canAct ? '#00e676' : '#ff9800' }]} />
+                  <Text style={[styles.kickTypeLabel, { color: cd.canAct ? '#00e676' : '#ff9800' }]}>AUTO</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })()}
+
+          {KICK_TYPES.map((kt) => {
+            const cd = cooldowns[kt.id];
+            const active = kickType === kt.id;
+            return (
+              <TouchableOpacity
+                key={kt.id}
+                style={styles.kickTypeBtnWrap}
+                onPress={() => {
+                  setKickType(kt.id);
+                  if (kt.id === 'penalti' && cd.canAct) setShowPenalty(true);
+                  else if (kt.id === 'trilha' && cd.canAct) { setTrailKey(k => k + 1); setShowTrail(true); }
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={[
+                  styles.kickTypeBall,
+                  active && { borderColor: kt.color, shadowColor: kt.glow, shadowOpacity: 1, shadowRadius: 12, elevation: 10 },
+                  !active && { borderColor: '#2a3a50' },
+                ]}>
+                  {cd.canAct
+                    ? <Text style={styles.kickTypeBallEmoji}>{kt.emoji}</Text>
+                    : <Text style={styles.kickCountdownText}>{formatCountdown(cd.remaining)}</Text>
+                  }
+                </View>
+                <View style={styles.kickTypeLabelRow}>
+                  <View style={[styles.kickTypeDot, { backgroundColor: cd.canAct ? kt.color : '#2a3a50' }]} />
+                  <Text style={[styles.kickTypeLabel, { color: cd.canAct ? kt.color : '#556' }]}>
+                    {kt.id === 'penalti' && cd.canAct ? '▶ JOGAR' : kt.label}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <TouchableOpacity
-          style={[styles.kickButton, !canKick && styles.kickButtonDisabled]}
-          onPress={handleKick}
-          disabled={!canKick || kicking}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.kickButtonText}>{canKick ? '🦵 CHUTAR' : '⏳ Recarregando'}</Text>
-        </TouchableOpacity>
-
-        {!canKick && (
+        {/* Barra de progresso da ação selecionada */}
+        {!cooldowns[kickType]?.canAct && (
           <View style={styles.progressContainer}>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressBar, { width: `${progress * 100}%` as any }]} />
+              <View style={[styles.progressBar, { width: `${cooldowns[kickType]?.progress * 100}%` as any }]} />
             </View>
-            <Text style={styles.countdown}>{formatCountdown(countdown)}</Text>
           </View>
         )}
       </View>
@@ -292,6 +384,23 @@ export default function HomeScreen() {
         )}
       </View>
     </ScrollView>
+
+    <Modal
+      visible={showPenalty}
+      animationType="slide"
+      onRequestClose={() => setShowPenalty(false)}
+    >
+      <PenaltyScreen navigation={{ goBack: () => setShowPenalty(false) }} />
+    </Modal>
+
+    <Modal
+      visible={showTrail}
+      animationType="slide"
+      onRequestClose={() => setShowTrail(false)}
+    >
+      <TrailScreen key={trailKey} navigation={{ goBack: () => setShowTrail(false) }} />
+    </Modal>
+  </>
   );
 }
 
@@ -329,29 +438,33 @@ const styles = StyleSheet.create({
   ball: { fontSize: 72, marginBottom: 8 },
   result: { fontSize: 26, fontWeight: 'bold', marginBottom: 12 },
 
-  kickTypeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  kickTypeBtn: {
-    paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1, borderColor: '#2a3a50', backgroundColor: '#1a2a40',
+  kickTypeRow: {
+    flexDirection: 'row', gap: 14, marginBottom: 20,
+    justifyContent: 'center',
   },
-  kickTypeBtnActive: { backgroundColor: '#00e676', borderColor: '#00e676' },
-  kickTypeText: { color: '#888', fontSize: 13, fontWeight: '600' },
-
-  kickButton: {
-    backgroundColor: '#00e676', paddingHorizontal: 48, paddingVertical: 18,
-    borderRadius: 50, shadowColor: '#00e676', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5, shadowRadius: 12, elevation: 8, marginBottom: 16,
+  kickTypeBtnWrap: { alignItems: 'center', gap: 6 },
+  kickTypeBall: {
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: '#0d1f35', borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center',
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0,
   },
-  kickButtonDisabled: { backgroundColor: '#1a3a28', shadowOpacity: 0, elevation: 0 },
-  kickButtonText: { fontSize: 22, fontWeight: 'bold', color: '#0a1628' },
+  kickMainBall: {
+    width: 68, height: 68, borderRadius: 34,
+    backgroundColor: '#0d2a1e',
+  },
+  kickTypeBallEmoji: { fontSize: 28 },
+  kickCountdownText: { color: '#ff9800', fontSize: 13, fontWeight: 'bold', letterSpacing: 0.5 },
+  kickTypeLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  kickTypeDot: { width: 6, height: 6, borderRadius: 3 },
+  kickTypeLabel: { color: '#667', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
 
-  progressContainer: { width: '80%', alignItems: 'center' },
+  progressContainer: { width: '80%', alignItems: 'center', marginTop: -10, marginBottom: 12 },
   progressTrack: {
     width: '100%', height: 6, backgroundColor: '#1a2a40',
     borderRadius: 3, marginBottom: 8, overflow: 'hidden',
   },
   progressBar: { height: '100%', backgroundColor: '#00e676', borderRadius: 3 },
-  countdown: { fontSize: 28, fontWeight: 'bold', color: '#ff9800', letterSpacing: 2 },
 
   section: {
     backgroundColor: '#1a2a40', borderRadius: 16, padding: 14,

@@ -1,0 +1,17 @@
+{
+  "name": "golmobile-functions",
+  "description": "Cloud Functions do GolMobile — toda a lógica de jogo roda aqui",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions,firestore",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.3.0"
+  },
+  "private": true
+}

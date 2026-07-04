@@ -14,9 +14,17 @@ interface UserProfile {
   nick: string;
   teamId: string;
   totalGoals: number;
+  totalKicks: number;
   hourGoals: number;
+  hourKey?: string;
   roundGoals: number;
+  roundKey?: string;
   lastKickTime: number;
+  lastAutoTime?: number;
+  lastPenaltiTime?: number;
+  lastFaltaTime?: number;
+  lastTrilhaTime?: number;
+  trailPosition?: number; // 0=início, 1=passou zaga, 2=passou meio, 3=passou ataque(gol)
 }
 
 interface AuthContextData {
@@ -67,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       nick,
       teamId,
       totalGoals: 0,
+      totalKicks: 0,
       hourGoals: 0,
       roundGoals: 0,
       lastKickTime: 0,

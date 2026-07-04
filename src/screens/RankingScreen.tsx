@@ -11,9 +11,11 @@ import {
 import {
   collection,
   query,
+  where,
   orderBy,
   limit,
   getDocs,
+  QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { TEAMS } from '../constants/teams';
@@ -37,12 +39,14 @@ export default function RankingScreen() {
   async function fetchRanking(currentTab: Tab) {
     setLoading(true);
     try {
-      let collectionPath = '';
-      if (currentTab === 'hour') collectionPath = `rankings/hour/entries`;
-      if (currentTab === 'round') collectionPath = `rankings/round/entries`;
-      if (currentTab === 'season') collectionPath = `rankings/season/entries`;
+      const collectionPath = `rankings/${currentTab}/entries`;
+      // Hora e rodada filtram pela janela ATUAL — sem isso o ranking mistura o histórico
+      const constraints: QueryConstraint[] = [];
+      if (currentTab === 'hour') constraints.push(where('hourKey', '==', getCurrentHourKey()));
+      if (currentTab === 'round') constraints.push(where('roundKey', '==', getCurrentRoundKey()));
+      constraints.push(orderBy('goals', 'desc'), limit(20));
 
-      const q = query(collection(db, collectionPath), orderBy('goals', 'desc'), limit(20));
+      const q = query(collection(db, collectionPath), ...constraints);
       const snap = await getDocs(q);
       const entries: RankEntry[] = snap.docs.map((d) => d.data() as RankEntry);
       setData(entries);

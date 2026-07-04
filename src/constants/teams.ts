@@ -16,6 +16,19 @@ export const TEAMS = [
   { id: 'fortaleza', name: 'Fortaleza', shield: '🔵🔴⚪', color: '#003E8F' },
 ];
 
-export const COOLDOWN_MINUTES = 3;
-export const GOAL_CHANCE = 0.65;
-export const KICK_COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+// Valores só para exibição de countdown na UI — a validação real é nas
+// Cloud Functions (functions/index.js). Manter em sincronia com o servidor.
+export const ACTION_COOLDOWNS: Record<string, number> = {
+  auto:    1  * 60 * 1000,  // 1 minuto
+  penalti: 10 * 60 * 1000,  // 10 minutos
+  falta:   5  * 60 * 1000,  // 5 minutos
+  trilha:  3  * 60 * 1000,  // 3 minutos
+};
+
+// Campo no Firestore para cada tipo
+export const ACTION_LAST_TIME_FIELD: Record<string, string> = {
+  auto:    'lastAutoTime',
+  penalti: 'lastPenaltiTime',
+  falta:   'lastFaltaTime',
+  trilha:  'lastTrilhaTime',
+};

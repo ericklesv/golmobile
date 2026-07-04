@@ -8,6 +8,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import RankingScreen from '../screens/RankingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import PenaltyScreen from '../screens/PenaltyScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -57,10 +58,23 @@ function AppTabs() {
   );
 }
 
+function AppStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={AppTabs} />
+      <Stack.Screen
+        name="Penalty"
+        component={PenaltyScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+    </Stack.Navigator>
+  );
+}
+
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
   if (loading) return null;
 
-  return user ? <AppTabs /> : <AuthStack />;
+  return user ? <AppStack /> : <AuthStack />;
 }

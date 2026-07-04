@@ -8,11 +8,15 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { TEAMS } from '../constants/teams';
+import { TEAMS, ACTION_COOLDOWNS } from '../constants/teams';
 
 export default function ProfileScreen() {
   const { profile, logout } = useAuth();
   const team = TEAMS.find((t) => t.id === profile?.teamId);
+  const totalGoals = profile?.totalGoals ?? 0;
+  const totalKicks = profile?.totalKicks ?? 0;
+  const conversion = totalKicks > 0 ? `${Math.round((totalGoals / totalKicks) * 100)}%` : '—';
+  const cdMin = (id: string) => `${ACTION_COOLDOWNS[id] / 60000} min`;
 
   function handleLogout() {
     Alert.alert('Sair', 'Tem certeza que quer sair?', [
@@ -44,16 +48,16 @@ export default function ProfileScreen() {
 
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{profile?.totalGoals ?? 0}</Text>
-            <Text style={styles.statLabel}>Gols Total</Text>
+            <Text style={styles.statValue}>{totalGoals}</Text>
+            <Text style={styles.statLabel}>Gols</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>3 min</Text>
-            <Text style={styles.statLabel}>Cooldown</Text>
+            <Text style={styles.statValue}>{totalKicks}</Text>
+            <Text style={styles.statLabel}>Chutes</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>65%</Text>
-            <Text style={styles.statLabel}>Taxa de Gol</Text>
+            <Text style={styles.statValue}>{conversion}</Text>
+            <Text style={styles.statLabel}>Aproveitamento</Text>
           </View>
         </View>
       </View>
@@ -62,11 +66,15 @@ export default function ProfileScreen() {
       <View style={styles.rulesCard}>
         <Text style={styles.rulesTitle}>📜 Como Jogar</Text>
         <Text style={styles.rulesText}>
-          1. Clique em <Text style={{ color: '#00e676', fontWeight: 'bold' }}>CHUTAR</Text> na tela inicial.{'\n'}
-          2. Cada chute tem <Text style={{ color: '#fff' }}>65% de chance</Text> de virar gol.{'\n'}
-          3. Aguarde o cooldown de <Text style={{ color: '#fff' }}>3 minutos</Text> para chutar de novo.{'\n'}
-          4. Seus gols somam no ranking de hora, rodada e temporada.{'\n'}
-          5. Seja o <Text style={{ color: '#FFD700' }}>#1 no ranking</Text> e conquiste o título!
+          1. Escolha um modo de chute na tela inicial.{'\n'}
+          2. Recargas: <Text style={{ color: '#fff' }}>AUTO {cdMin('auto')}</Text> ·{' '}
+          <Text style={{ color: '#fff' }}>Falta {cdMin('falta')}</Text> ·{' '}
+          <Text style={{ color: '#fff' }}>Trilha {cdMin('trilha')}</Text> ·{' '}
+          <Text style={{ color: '#fff' }}>Pênalti {cdMin('penalti')}</Text>{'\n'}
+          3. No pênalti, escolha o canto e engane o goleiro.{'\n'}
+          4. Na trilha, drible defesa, meio e ataque sem ser desarmado.{'\n'}
+          5. Seus gols somam no ranking de hora, rodada e temporada.{'\n'}
+          6. Seja o <Text style={{ color: '#FFD700' }}>#1 no ranking</Text> e conquiste o título!
         </Text>
       </View>
 

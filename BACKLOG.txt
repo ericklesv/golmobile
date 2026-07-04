@@ -1,0 +1,172 @@
+# BACKLOG — GolMobile (gamegol mobile + navegador)
+# Ordem: de cima para baixo = ordem de importância E de implementação.
+# Marcar com [x] quando concluído. Itens com (WEB) impactam a versão navegador.
+
+════════════════════════════════════════════════════════════
+FASE 0 — FUNDAÇÃO (fazer antes de qualquer feature nova)
+════════════════════════════════════════════════════════════
+
+[x] 0.1  Iniciar repositório git + .gitignore (node_modules, .expo) + primeiro commit
+[x] 0.2  Criar CLAUDE.md documentando stack, estrutura, regras do jogo e decisões
+[x] 0.3  Mover lógica de jogo para o servidor (Cloud Functions):
+         >> CÓDIGO PRONTO (functions/index.js: kick + trailPick). FALTA DEPLOY:
+         >> requer plano Blaze + `npx firebase-tools login` +
+         >> `npx firebase-tools deploy --only functions,firestore`
+         - função "chutar" (httpsCallable): valida cooldown pelo timestamp do servidor,
+           sorteia o gol, incrementa rankings e grava a atividade — tudo numa transação
+         - cliente passa a só chamar a função e exibir o resultado
+         * É O ITEM MAIS IMPORTANTE: hoje qualquer um burla cooldown mudando o relógio
+           ou escreve gols direto na API. Sem isso, ranking competitivo não vale nada.
+[x] 0.4  Firestore Security Rules: (escritas em firestore.rules — deploy junto com 0.3)
+         - users: só o dono edita, e NUNCA os campos de gols/cooldown pelo cliente
+         - rankings, activities, matches: somente leitura para clientes
+[x] 0.5  Corrigir rankings Hora/Rodada: filtrar pela chave atual
+         (where hourKey == getCurrentHourKey()) — hoje mistura histórico inteiro
+         (RankingScreen.tsx:45 e Top Hora da HomeScreen)
+[x] 0.6  Corrigir pills de stats do jogador (HomeScreen.tsx:239-241):
+         mostrar hourGoals / roundGoals / totalGoals reais (manter contadores por
+         janela no perfil, zerados pela function quando muda a chave)
+[x] 0.7  Substituir updateDoc().catch(setDoc) por setDoc(..., {merge:true}) com
+         increment() — e juntar tudo num writeBatch (HomeScreen e PenaltyScreen)
+[x] 0.8  Remover deps não usadas (async-storage, expo-device) OU passar a usá-las
+[x] 0.9  Contador "online" real (presença via heartbeat no Firestore/RTDB)
+         — hoje é Math.random() (HomeScreen.tsx:76)
+[x] 0.10 Stats do Perfil dinâmicas (cooldowns reais por modo, taxa de gol real
+         calculada dos chutes) — hoje "3 min"/"65%" estão fixos no código
+
+════════════════════════════════════════════════════════════
+FASE 1 — O CORAÇÃO DO GAMEGOL: TIME vs TIME
+════════════════════════════════════════════════════════════
+
+[ ] 1.1  Partidas de 24h entre times (coleção matches):
+         cada gol de torcedor soma no placar do time; vence quem somar mais
+[ ] 1.2  Regra do empate do BRGol: diferença de gols < 5% = empate (1 ponto);
+         vitória = 3 pontos
+[ ] 1.3  Placar AO VIVO da partida do seu time na HomeScreen (onSnapshot)
+         — "Flamengo 128 x 117 Palmeiras · termina em 6h32"
+[ ] 1.4  Tabela do Brasileirão: classificação dos 15 times (P, J, V, E, D, saldo)
+[ ] 1.5  Calendário de rodadas: geração automática dos confrontos (round-robin),
+         rodada vira a cada 24h (Cloud Function agendada / scheduler)
+[ ] 1.6  Temporada com início/fim + tela de campeão + reset de tabela
+[ ] 1.7  Tela do MEU TIME: elenco (torcedores), artilheiros do time, próximos jogos
+[ ] 1.8  Histórico de partidas e resultados das rodadas anteriores
+
+════════════════════════════════════════════════════════════
+FASE 2 — DESIGN: VISUAL 100% ATUAL (dar MUITA atenção)
+════════════════════════════════════════════════════════════
+Meta: sair do "app de tutorial" e parecer um jogo de 2026. Referências:
+FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
+
+[ ] 2.1  Design system central (src/theme/):
+         - tokens: cores, espaçamentos, radius, tipografia, sombras
+         - dark theme como identidade (já é), mas com paleta refinada:
+           fundo com gradiente profundo (#0a1628 → #060d1a), verde-gramado neon
+           (#00e676) como cor de ação única, dourado só para conquistas
+         - acabar com cores hardcoded espalhadas pelas telas
+[ ] 2.2  Tipografia própria (expo-font): display condensada e esportiva para
+         números/placares (ex.: Archivo Expanded/Black, Barlow Condensed) +
+         Inter para texto. Números de placar GRANDES são a alma de app de futebol.
+[ ] 2.3  Substituir TODOS os emojis de UI por ícones de verdade:
+         - lucide-react-native ou @expo/vector-icons nas tabs, botões e listas
+         - escudos dos times: SVGs próprios (genéricos por cor, sem violar marca)
+           em vez de 🔴⚫ — react-native-svg
+[ ] 2.4  Redesign da HomeScreen (tela mais importante):
+         - hero: campo/estádio estilizado de fundo (SVG ou imagem), placar da
+           partida do dia no topo
+         - botões de chute: anel de progresso circular ao redor (SVG) mostrando
+           o cooldown, em vez de texto mm:ss dentro da bolinha
+         - hierarquia clara: Partida > Chutes > Ranking > Feed
+[ ] 2.5  Animações e "game feel" (react-native-reanimated + moti):
+         - confete/explosão de partículas no GOL (lottie-react-native)
+         - shake + flash vermelho na defesa
+         - haptics no chute e no gol (expo-haptics; no-op no web)
+         - som: apito, torcida, "uhhh" na defesa (expo-audio, com mute)
+         - transições de tela suaves, botões com spring ao pressionar
+[ ] 2.6  Redesign do Pênalti: goleiro animado (sprite/Lottie em vez de 🧤),
+         rede com física visual, câmera "atrás da bola", replay do gol
+[ ] 2.7  Redesign da Trilha: manter o minigame, melhorar arte do campo
+         (ilustração própria consistente com o design system), avatares dos
+         adversários, trail da bola com motion blur
+[ ] 2.8  Skeleton loaders + estados vazios ilustrados (nada de tela branca/texto solto)
+[ ] 2.9  Onboarding bonito: 3 slides explicando o jogo + escolha de time em grid
+         com escudos grandes (a decisão mais emocional do jogo merece cerimônia)
+[ ] 2.10 Login/Registro redesenhados: logo do jogo, gradiente, inputs modernos,
+         validação inline (hoje são forms crus)
+[ ] 2.11 Ícone do app + splash screen profissionais (hoje são os defaults do Expo)
+[ ] 2.12 Microcopy com personalidade: narrador de futebol nos textos
+         ("É GOOOOL!", "Pra fora! Inacreditável!") — tom Cartola FC
+
+════════════════════════════════════════════════════════════
+FASE 3 — VERSÃO NAVEGADOR (WEB)
+════════════════════════════════════════════════════════════
+
+[ ] 3.1  (WEB) Substituir Alert.alert por componente próprio de toast/dialog
+         — Alert.alert NÃO renderiza no react-native-web (Home, Profile, forms)
+[ ] 3.2  (WEB) Testar e corrigir sombras/glows (shadow* → boxShadow via Platform)
+[ ] 3.3  (WEB) Layout responsivo desktop: container max-width ~480px centralizado
+         com fundo de estádio nas laterais (estilo app mobile no browser),
+         ou layout de 2 colunas em telas largas (jogo + rankings lado a lado)
+[ ] 3.4  (WEB) PWA: manifest no app.json (nome, ícones, tema), instalável,
+         favicon próprio
+[ ] 3.5  (WEB) Suporte a teclado: setas ←↑→ para escolher canto no pênalti, Enter
+[ ] 3.6  (WEB) Deploy: expo export --platform web + hospedar (Firebase Hosting
+         casa bem com o resto do stack) + domínio
+[ ] 3.7  (WEB) Cortar/adaptar expo-notifications no web (FCM web ou desabilitar)
+
+════════════════════════════════════════════════════════════
+FASE 4 — RETENÇÃO E PROGRESSÃO
+════════════════════════════════════════════════════════════
+
+[ ] 4.1  Push notifications (expo-notifications já instalado, sem uso):
+         "Seu chute recarregou ⚽", "Seu time está perdendo, faltam 2h!",
+         "Você caiu do top 3 da hora" — com opt-in e limites de frequência
+[ ] 4.2  Bola de Ouro da temporada (igual ao original): +7 pts recorde da hora,
+         +10 pts recorde da rodada, bônus por colocação; tela de premiação
+[ ] 4.3  Conquistas/medalhas: 1º gol, 100 gols, 10 gols numa hora, trilha perfeita,
+         X dias seguidos jogando (streak)
+[ ] 4.4  Níveis do jogador (XP por chute/gol) com recompensas visuais
+[ ] 4.5  Rankings extras: artilharia por tipo de chute (pênalti/falta/trilha),
+         ranking do meu time, minha posição destacada mesmo fora do top 20
+[ ] 4.6  Perfil público: tocar num nick em qualquer lista abre perfil com stats
+
+════════════════════════════════════════════════════════════
+FASE 5 — SOCIAL E COMPETITIVO
+════════════════════════════════════════════════════════════
+
+[ ] 5.1  Desafios 1v1 entre jogadores (X chutes cada, melhor placar vence) + ELO
+[ ] 5.2  Ligas privadas entre amigos (código de convite) com ranking próprio
+[ ] 5.3  Chat/mural da torcida do time (com moderação básica e rate limit)
+[ ] 5.4  Compartilhar resultado ("Marquei 12 gols hoje pelo Flamengo!") — imagem
+         gerada + share nativo/web
+[ ] 5.5  Copas mata-mata entre times (Copa do Brasil do jogo) além do Brasileirão
+
+════════════════════════════════════════════════════════════
+FASE 6 — MONETIZAÇÃO E OPERAÇÃO
+════════════════════════════════════════════════════════════
+
+[ ] 6.1  VIP (modelo validado pelo BRGol: cooldowns pela metade):
+         IAP/assinatura no mobile + Stripe/Mercado Pago no web,
+         badge VIP no nick, cosméticos
+[ ] 6.2  Cosméticos: skins de bola, molduras de avatar, celebrações de gol
+[ ] 6.3  Anti-abuso: rate limit nas functions, detecção de padrão de bot
+         (o BRGol original sofria com automação — banir "auto-pênalti" externo)
+[ ] 6.4  Painel admin: banir conta, ajustar temporada, ver métricas
+[ ] 6.5  Analytics (Firebase Analytics): retenção D1/D7, chutes por sessão
+[ ] 6.6  EAS Build + publicação nas lojas (Google Play primeiro) + TestFlight
+[ ] 6.7  Crash reporting (Sentry)
+
+════════════════════════════════════════════════════════════
+DÍVIDAS TÉCNICAS / PEQUENOS AJUSTES (encaixar quando tocar no arquivo)
+════════════════════════════════════════════════════════════
+
+[ ] T.1  Auto-disparo do chute (HomeScreen.tsx:103-118) dispara sozinho quando o
+         cooldown zera — revisar UX: melhor pedir um toque do jogador
+[ ] T.2  PenaltyScreen está duplicado: registrado no Stack (AppNavigator) E usado
+         como Modal na Home — remover do Stack ou unificar
+[ ] T.3  Tipar profile como UserProfile no HomeScreen (hoje `any` em buildCooldownMap)
+[ ] T.4  Ícone da atividade assume só penalti/falta (HomeScreen.tsx:381) — mapear
+         os 4 tipos
+[ ] T.5  GOAL_CHANCE única (65%) para auto/falta — definir chances por tipo de
+         chute (e por fase da trilha já existe) no servidor
+[ ] T.6  Nick: validar unicidade no registro (coleção nicks ou function)
+[ ] T.7  Recuperação de senha (sendPasswordResetEmail) — não existe hoje

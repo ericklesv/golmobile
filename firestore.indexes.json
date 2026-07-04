@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "hourKey", "order": "ASCENDING" },
+        { "fieldPath": "goals", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "roundKey", "order": "ASCENDING" },
+        { "fieldPath": "goals", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

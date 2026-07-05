@@ -33,6 +33,21 @@ resultado. As `firestore.rules` bloqueiam escrita direta em `users` (após cria�
 - `POST /trail-pick { pickIndex }` → `{ mine, goal, finished, phase, lineMines, ... }`
   (layout de minas fica em `users/{uid}/private/trail`, ilegível pelo cliente)
 - Erro de recarga: HTTP 429 `{ error: 'cooldown' }` (ver `isCooldownError`)
+- `POST /admin/advance` (header `x-admin-key: ADMIN_KEY`): força encerrar a rodada
+  atual — só para testes.
+
+### Liga (Fase 1 — server/league.js)
+Brasileirão do jogo. Cada gol de torcedor soma no placar do time na partida da
+rodada (`incrementTeamMatch` roteia via ponteiro `teamMatch/{teamId}`).
+- Coleções (todas só-leitura p/ cliente): `config/season` (temporada+rodada+
+  `schedule` como MAPA `{ "1": [{home,away}...] }` — Firestore não aceita array
+  aninhado), `matches/{s#r#m#}`, `standings/{seasonId}_{teamId}`, `teamMatch/{teamId}`,
+  `seasonHistory/{seasonId}`.
+- Rodada de 24h (`ROUND_DURATION_MS`, env p/ encurtar em teste); agendador
+  `setInterval` encerra a rodada (empate se dif < 5% do líder; vitória 3 pts) e
+  cria a próxima; ao fim das 15 rodadas coroa campeão e abre nova temporada.
+- Cliente: `src/services/league.ts` (subscribeTeamMatch/Standings, fetchRoundMatches),
+  placar ao vivo na Home, aba **Liga** (`LeagueScreen`).
 - Railway: env var `FIREBASE_SERVICE_ACCOUNT` = JSON da service account
   (Firebase Console → Configurações → Contas de serviço → Gerar nova chave privada);
   Root Directory do serviço = `server`. URL do serviço fica em `API_URL` no

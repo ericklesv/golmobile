@@ -40,18 +40,19 @@ FASE 0 — FUNDAÇÃO (fazer antes de qualquer feature nova)
 FASE 1 — O CORAÇÃO DO GAMEGOL: TIME vs TIME
 ════════════════════════════════════════════════════════════
 
-[ ] 1.1  Partidas de 24h entre times (coleção matches):
-         cada gol de torcedor soma no placar do time; vence quem somar mais
-[ ] 1.2  Regra do empate do BRGol: diferença de gols < 5% = empate (1 ponto);
-         vitória = 3 pontos
-[ ] 1.3  Placar AO VIVO da partida do seu time na HomeScreen (onSnapshot)
-         — "Flamengo 128 x 117 Palmeiras · termina em 6h32"
-[ ] 1.4  Tabela do Brasileirão: classificação dos 15 times (P, J, V, E, D, saldo)
-[ ] 1.5  Calendário de rodadas: geração automática dos confrontos (round-robin),
-         rodada vira a cada 24h (Cloud Function agendada / scheduler)
-[ ] 1.6  Temporada com início/fim + tela de campeão + reset de tabela
+[x] 1.1  Partidas de 24h entre times (coleção matches): gol de torcedor soma no
+         placar do time (server/league.js incrementTeamMatch; e2e validado)
+[x] 1.2  Regra do empate (5%): diferença < 5% do líder = empate (1 pt); vitória = 3
+[x] 1.3  Placar AO VIVO da partida do time na HomeScreen (onSnapshot em teamMatch->match)
+[x] 1.4  Tabela do Brasileirão: aba Liga com classificação ao vivo (P, J, SG) + jogos
+         da rodada. FALTA (melhoria): mostrar colunas V/E/D também
+[x] 1.5  Calendário round-robin (15 rodadas) + agendador que vira a rodada a cada 24h
+         (setInterval no server; ROUND_DURATION_MS configurável; /admin/advance p/ teste)
+[x] 1.6  Temporada com início/fim + campeão (seasonHistory) + reset e nova temporada
+         >> FALTA (melhoria): TELA de campeão/premiação no cliente (hoje só grava histórico)
 [ ] 1.7  Tela do MEU TIME: elenco (torcedores), artilheiros do time, próximos jogos
-[ ] 1.8  Histórico de partidas e resultados das rodadas anteriores
+[ ] 1.8  Histórico de partidas e resultados das rodadas anteriores (dados já em
+         seasonHistory + matches finished; falta a tela no cliente)
 
 ════════════════════════════════════════════════════════════
 FASE 2 — DESIGN: VISUAL 100% ATUAL (dar MUITA atenção)

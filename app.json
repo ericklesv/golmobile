@@ -24,7 +24,13 @@
       "package": "com.seuapp.golmobile"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "GolMobile",
+      "shortName": "GolMobile",
+      "themeColor": "#04101B",
+      "backgroundColor": "#04101B",
+      "display": "standalone",
+      "description": "Chute, marque e leve seu time ao topo do Brasileirão."
     },
     "plugins": [
       "expo-notifications",

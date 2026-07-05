@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Alert,
   ScrollView,
   Modal,
   Platform,
@@ -31,6 +30,7 @@ import { useAuth } from '../context/AuthContext';
 import { TEAMS, ACTION_COOLDOWNS, ACTION_LAST_TIME_FIELD } from '../constants/teams';
 import { kickAction, isCooldownError } from '../services/game';
 import { subscribeTeamMatch, TeamMatchLive } from '../services/league';
+import { useToast } from '../components/Toast';
 import {
   getTimeRemaining,
   formatCountdown,
@@ -89,6 +89,7 @@ interface Activity { id: string; nick: string; teamId: string; goal: boolean; ki
 
 export default function HomeScreen({ navigation }: any) {
   const { user, profile, refreshProfile } = useAuth();
+  const { toast } = useToast();
   const [cooldowns, setCooldowns] = useState<CooldownMap>(() => buildCooldownMap(null));
   const [lastResult, setLastResult] = useState<null | { goal: boolean; message: string }>(null);
   const [kicking, setKicking] = useState(false);
@@ -238,7 +239,7 @@ export default function HomeScreen({ navigation }: any) {
       if (isCooldownError(e)) {
         await refreshProfile(); // ressincroniza o countdown com o servidor
       } else {
-        Alert.alert('Erro', 'Sem conexão com o servidor. Tente novamente.');
+        toast('Sem conexão com o servidor. Tente de novo.', 'error');
       }
     } finally {
       setKicking(false);

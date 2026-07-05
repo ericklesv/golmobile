@@ -5,25 +5,26 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import NightBackground from '../components/NightBackground';
 import Field from '../components/Field';
 import { colors, font, radius, spacing, glow } from '../theme';
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Atenção', 'Preencha e-mail e senha.');
+      toast('Preencha e-mail e senha.', 'error');
       return;
     }
     setLoading(true);
@@ -37,7 +38,7 @@ export default function LoginScreen({ navigation }: any) {
       else if (code === 'auth/invalid-email') msg = 'Esse e-mail não parece válido.';
       else if (code === 'auth/network-request-failed') msg = 'Sem conexão. Verifique a internet.';
       else if (code) msg = `Erro: ${code}`;
-      Alert.alert('Não deu para entrar', msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }

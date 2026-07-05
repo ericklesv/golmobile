@@ -103,18 +103,20 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
 FASE 3 — VERSÃO NAVEGADOR (WEB)
 ════════════════════════════════════════════════════════════
 
-[ ] 3.1  (WEB) Substituir Alert.alert por componente próprio de toast/dialog
-         — Alert.alert NÃO renderiza no react-native-web (Home, Profile, forms)
-[ ] 3.2  (WEB) Testar e corrigir sombras/glows (shadow* → boxShadow via Platform)
-[ ] 3.3  (WEB) Layout responsivo desktop: container max-width ~480px centralizado
-         com fundo de estádio nas laterais (estilo app mobile no browser),
-         ou layout de 2 colunas em telas largas (jogo + rankings lado a lado)
-[ ] 3.4  (WEB) PWA: manifest no app.json (nome, ícones, tema), instalável,
-         favicon próprio
-[ ] 3.5  (WEB) Suporte a teclado: setas ←↑→ para escolher canto no pênalti, Enter
-[ ] 3.6  (WEB) Deploy: expo export --platform web + hospedar (Firebase Hosting
-         casa bem com o resto do stack) + domínio
-[ ] 3.7  (WEB) Cortar/adaptar expo-notifications no web (FCM web ou desabilitar)
+[x] 3.1  (WEB) Toast/diálogo próprios (src/components/Toast.tsx: useToast().toast e
+         .confirm) no lugar do Alert.alert em Home/Perfil/Login/Registro.
+[~] 3.2  (WEB) Glows: shadow* é convertido p/ boxShadow pelo react-native-web.
+         >> FALTA: conferir visualmente no navegador (deixado p/ verificação do dev)
+[x] 3.3  (WEB) Layout responsivo: container central maxWidth 480 no navegador
+         (App.tsx, só web) — experiência de app no desktop.
+[x] 3.4  (WEB) PWA: app.json web (name/shortName/themeColor/backgroundColor/
+         display standalone/description). >> Melhoria: ícones PWA dedicados (2.11).
+[ ] 3.5  (WEB) Suporte a teclado: setas ←↑→ no pênalti (mexe na tela de Pênalti —
+         fazer junto do redesign do minigame, quando o dev puder conferir).
+[x] 3.6  (WEB) DEPLOYADO: https://futgol-acc08.web.app (Firebase Hosting, GRÁTIS).
+         Deploy: `npx expo export --platform web` + `firebase deploy --only hosting`.
+         CORS da API liberado (allow-origin *). >> Melhoria: domínio próprio.
+[ ] 3.7  (WEB) expo-notifications no web: adaptar/desabilitar (junto da Fase 4 push).
 
 ════════════════════════════════════════════════════════════
 FASE 4 — RETENÇÃO E PROGRESSÃO

@@ -18,6 +18,10 @@ npm start            # Metro / Expo Go
 npm run web          # versão navegador
 cd server && npm start               # API local (precisa FIREBASE_SERVICE_ACCOUNT)
 npx firebase-tools deploy --only firestore   # deploy rules+índices (gratuito, precisa login)
+
+# publicar a versão WEB (grátis, Firebase Hosting → https://futgol-acc08.web.app):
+npx expo export --platform web       # gera dist/ (gitignored)
+npx firebase-tools deploy --only hosting
 ```
 Dev apontando para API local: `EXPO_PUBLIC_API_URL=http://<ip-local>:3000 npx expo start`
 
@@ -90,6 +94,10 @@ firestore.rules / firestore.indexes.json
   **Pendente:** Pênalti e Trilha (telas de minigame com muita animação — pedem
   verificação visual rodando antes de redesenhar). Arte de ícone/splash (PNGs).
 - Input temático reutilizável: `src/components/Field.tsx`.
+- **Web:** `Alert.alert` NÃO renderiza no navegador — usar `useToast()` de
+  `src/components/Toast.tsx` (`.toast(msg, type)` e `.confirm({...})`). Layout web
+  é centralizado em `maxWidth: 480` (App.tsx, só `Platform.OS === 'web'`).
+  Versão web publicada em https://futgol-acc08.web.app.
 
 ## Convenções e avisos
 - Sempre atualizar este arquivo e o `BACKLOG.txt` ao concluir itens.

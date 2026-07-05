@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { TEAMS, ACTION_COOLDOWNS } from '../constants/teams';
 import NightBackground from '../components/NightBackground';
 import TeamBadge from '../components/TeamBadge';
@@ -9,6 +10,7 @@ import { colors, font, radius, spacing } from '../theme';
 
 export default function ProfileScreen() {
   const { profile, logout } = useAuth();
+  const { confirm } = useToast();
   const team = TEAMS.find((t) => t.id === profile?.teamId);
   const totalGoals = profile?.totalGoals ?? 0;
   const totalKicks = profile?.totalKicks ?? 0;
@@ -16,10 +18,14 @@ export default function ProfileScreen() {
   const cdMin = (id: string) => `${ACTION_COOLDOWNS[id] / 60000} min`;
 
   function handleLogout() {
-    Alert.alert('Sair da conta', 'Quer mesmo sair?', [
-      { text: 'Ficar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: logout },
-    ]);
+    confirm({
+      title: 'Sair da conta',
+      message: 'Você vai precisar entrar de novo para jogar.',
+      confirmText: 'Sair',
+      cancelText: 'Ficar',
+      destructive: true,
+      onConfirm: logout,
+    });
   }
 
   const stats = [

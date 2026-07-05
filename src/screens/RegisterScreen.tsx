@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { TEAMS } from '../constants/teams';
 import NightBackground from '../components/NightBackground';
 import TeamBadge from '../components/TeamBadge';
@@ -19,6 +19,7 @@ import { colors, font, radius, spacing, glow } from '../theme';
 
 export default function RegisterScreen({ navigation }: any) {
   const { register } = useAuth();
+  const { toast } = useToast();
   const [nick, setNick] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,11 +28,11 @@ export default function RegisterScreen({ navigation }: any) {
 
   async function handleRegister() {
     if (!nick.trim() || !email.trim() || !password || !selectedTeam) {
-      Alert.alert('Falta pouco', 'Preencha os campos e escolha um time do coração.');
+      toast('Preencha os campos e escolha um time.', 'error');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Senha curta', 'Use pelo menos 6 caracteres.');
+      toast('A senha precisa de pelo menos 6 caracteres.', 'error');
       return;
     }
     setLoading(true);
@@ -45,7 +46,7 @@ export default function RegisterScreen({ navigation }: any) {
       else if (code === 'auth/invalid-email') msg = 'Esse e-mail não parece válido.';
       else if (code === 'auth/network-request-failed') msg = 'Sem conexão. Verifique a internet.';
       else if (code) msg = `Erro: ${code}`;
-      Alert.alert('Não deu para criar a conta', msg);
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }

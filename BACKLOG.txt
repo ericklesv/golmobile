@@ -66,8 +66,9 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
 [x] 2.1  Design system central (src/theme/index.ts): cores, spacing, radius,
          tipografia, glow. Paleta noite #04101B→#0A1B2B, gramado #22E58A,
          cal #EDF4F3, âmbar-refletor #FFC24B (recordes/liderança), cartão #FF5470.
-         >> FALTA: migrar telas antigas (Ranking/Perfil/Login/Registro/Pênalti/
-         >> Trilha ainda usam hex hardcoded — só Home/tabs migraram)
+         >> Migradas: Home, tabs, Login, Registro, Rankings, Perfil, Liga, splash.
+         >> FALTA migrar: Pênalti e Trilha (telas de minigame — pedem verificação
+         >> visual rodando; deixar para quando o usuário puder conferir)
 [x] 2.2  Tipografia (expo-font + @expo-google-fonts): Anton (pôster/GOL!),
          Saira Condensed (placar/numerais), Inter (texto). Carregadas no App.tsx.
 [x] 2.3  Ícones de verdade (@expo/vector-icons) nas tabs, alvos de chute e listas;
@@ -88,9 +89,10 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
 [ ] 2.8  Skeleton loaders + estados vazios ilustrados (nada de tela branca/texto solto)
 [ ] 2.9  Onboarding bonito: 3 slides explicando o jogo + escolha de time em grid
          com escudos grandes (a decisão mais emocional do jogo merece cerimônia)
-[ ] 2.10 Login/Registro redesenhados: logo do jogo, gradiente, inputs modernos,
-         validação inline (hoje são forms crus)
-[ ] 2.11 Ícone do app + splash screen profissionais (hoje são os defaults do Expo)
+[x] 2.10 Login/Registro redesenhados: logo lockup + wordmark Anton, componente
+         Field (input com foco), grid de times com TeamBadge, microcopy de futebol
+[~] 2.11 Splash/ícone: cor de fundo alinhada ao tema (#04101B). FALTA: arte do
+         ícone e do splash (precisa gerar PNGs — hoje ainda são os defaults Expo)
 [ ] 2.12 Microcopy com personalidade: narrador de futebol nos textos
          ("É GOOOOL!", "Pra fora! Inacreditável!") — tom Cartola FC
 

@@ -85,9 +85,11 @@ firestore.rules / firestore.indexes.json
 - Componentes reutilizáveis em `src/components/`: `NightBackground` (fundo padrão
   das telas), `TeamBadge` (escudo genérico — usar no lugar de `team.shield` emoji),
   `KickTarget` (alvo com anel SVG de cooldown), `Scoreboard` (placar ao vivo).
-- Ícones: `@expo/vector-icons` (MaterialCommunityIcons). Migradas: Home + tab bar.
-  **Pendente:** Ranking, Perfil, Login, Registro, Pênalti, Trilha ainda com estilo
-  antigo (hex hardcoded) — migrar para o theme nos próximos passos da Fase 2.
+- Ícones: `@expo/vector-icons` (MaterialCommunityIcons). Migradas para o theme:
+  Home, tab bar, Login, Registro, Rankings, Perfil, Liga, splash.
+  **Pendente:** Pênalti e Trilha (telas de minigame com muita animação — pedem
+  verificação visual rodando antes de redesenhar). Arte de ícone/splash (PNGs).
+- Input temático reutilizável: `src/components/Field.tsx`.
 
 ## Convenções e avisos
 - Sempre atualizar este arquivo e o `BACKLOG.txt` ao concluir itens.

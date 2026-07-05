@@ -18,11 +18,8 @@ FASE 0 — FUNDAÇÃO (fazer antes de qualquer feature nova)
          - cliente passa a só chamar a função e exibir o resultado
          * É O ITEM MAIS IMPORTANTE: hoje qualquer um burla cooldown mudando o relógio
            ou escreve gols direto na API. Sem isso, ranking competitivo não vale nada.
-[x] 0.4  Firestore Security Rules: (escritas em firestore.rules)
-         >> FALTA DEPLOY (gratuito): `npx firebase-tools login` (conta dona do
-         >> projeto) + `npx firebase-tools deploy --only firestore`. URGENTE:
-         >> as rules atuais do projeto EXPIRARAM (modo teste) — criação de
-         >> conta/perfil pelo app está sendo NEGADA até esse deploy.
+[x] 0.4  Firestore Security Rules: DEPLOYADAS e validadas em 04/07/2026
+         (criar perfil OK; hackear gols/ranking = 403; ler ranking e presença OK)
          - users: só o dono edita, e NUNCA os campos de gols/cooldown pelo cliente
          - rankings, activities, matches: somente leitura para clientes
 [x] 0.5  Corrigir rankings Hora/Rodada: filtrar pela chave atual

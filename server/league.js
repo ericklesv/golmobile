@@ -56,10 +56,12 @@ const matchId = (seasonId, round, i) => `s${seasonId}r${round}m${i}`;
 const standingId = (seasonId, teamId) => `${seasonId}_${teamId}`;
 
 // ─── Cria as partidas de uma rodada + ponteiros dos times ───────────────────
+// `schedule` é um mapa { "1": [{home,away},...], ... } (Firestore não aceita
+// array dentro de array, por isso mapa por rodada em vez de array de rodadas).
 function createRoundMatches(tx, seasonId, round, schedule, now) {
   const endsAt = now + ROUND_DURATION_MS;
-  const pairs = schedule[round - 1];
-  pairs.forEach(([home, away], i) => {
+  const pairs = schedule[String(round)];
+  pairs.forEach(({ home, away }, i) => {
     const id = matchId(seasonId, round, i);
     tx.set(db().doc(`matches/${id}`), {
       seasonId, round, homeTeam: home, awayTeam: away,
@@ -85,13 +87,17 @@ function computeResult(h, a) {
 
 // ─── Cria uma temporada nova (schedule + rodada 1 + classificação zerada) ───
 function startSeason(tx, seasonId, now) {
-  const schedule = generateRoundRobin(TEAM_IDS);
+  const rr = generateRoundRobin(TEAM_IDS); // array de rodadas de pares [h,a]
+  const schedule = {};
+  rr.forEach((pairs, i) => {
+    schedule[String(i + 1)] = pairs.map(([home, away]) => ({ home, away }));
+  });
   for (const teamId of TEAM_IDS) {
     tx.set(db().doc(`standings/${standingId(seasonId, teamId)}`), freshStanding(seasonId, teamId));
   }
   const roundEndsAt = createRoundMatches(tx, seasonId, 1, schedule, now);
   tx.set(db().doc('config/season'), {
-    seasonId, round: 1, totalRounds: schedule.length,
+    seasonId, round: 1, totalRounds: rr.length,
     roundStartedAt: now, roundEndsAt, status: 'active', schedule,
   });
 }
@@ -116,13 +122,13 @@ async function settleAndAdvance() {
     if (season.status !== 'active' || now < season.roundEndsAt) return { advanced: false };
 
     const { seasonId, round, totalRounds, schedule } = season;
-    const pairs = schedule[round - 1];
+    const pairs = schedule[String(round)];
 
     // Lê as partidas da rodada e as classificações dos times envolvidos
     const matchRefs = pairs.map((_, i) => db().doc(`matches/${matchId(seasonId, round, i)}`));
     const matchSnaps = await Promise.all(matchRefs.map((r) => tx.get(r)));
     const teamIds = new Set();
-    pairs.forEach(([h, a]) => { teamIds.add(h); teamIds.add(a); });
+    pairs.forEach(({ home, away }) => { teamIds.add(home); teamIds.add(away); });
     const standRefs = {};
     for (const t of teamIds) standRefs[t] = db().doc(`standings/${standingId(seasonId, t)}`);
     const standSnaps = {};

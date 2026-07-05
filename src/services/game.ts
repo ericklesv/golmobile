@@ -2,7 +2,7 @@ import { auth } from '../config/firebase';
 
 // URL da API no Railway. Em dev, aponte para o servidor local com:
 //   EXPO_PUBLIC_API_URL=http://192.168.x.x:3000 npx expo start
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://golmobile-server.up.railway.app';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://golmobile-production.up.railway.app';
 
 export type KickType = 'auto' | 'falta' | 'penalti';
 export type PenaltyDirection = 'left' | 'center' | 'right';

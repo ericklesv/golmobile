@@ -10,6 +10,7 @@ import HomeScreen from '../screens/HomeScreen';
 import RankingScreen from '../screens/RankingScreen';
 import LeagueScreen from '../screens/LeagueScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import TeamScreen from '../screens/TeamScreen';
 import PenaltyScreen from '../screens/PenaltyScreen';
 
 const Stack = createNativeStackNavigator();
@@ -70,6 +71,7 @@ function AppStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Tabs" component={AppTabs} />
+      <Stack.Screen name="Team" component={TeamScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
         name="Penalty"
         component={PenaltyScreen}

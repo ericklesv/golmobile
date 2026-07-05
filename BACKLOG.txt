@@ -50,9 +50,12 @@ FASE 1 — O CORAÇÃO DO GAMEGOL: TIME vs TIME
          (setInterval no server; ROUND_DURATION_MS configurável; /admin/advance p/ teste)
 [x] 1.6  Temporada com início/fim + campeão (seasonHistory) + reset e nova temporada
          >> FALTA (melhoria): TELA de campeão/premiação no cliente (hoje só grava histórico)
-[ ] 1.7  Tela do MEU TIME: elenco (torcedores), artilheiros do time, próximos jogos
-[ ] 1.8  Histórico de partidas e resultados das rodadas anteriores (dados já em
-         seasonHistory + matches finished; falta a tela no cliente)
+[x] 1.7  Tela MEU TIME (TeamScreen): escudo + posição/pontos, campanha V/E/D/SG,
+         artilheiros da torcida, próximos jogos. Abre tocando na identidade da Home.
+[x] 1.8  Histórico de rodadas: navegador de rodadas na aba Liga (setas ‹ ›) mostra
+         jogos/resultados de qualquer rodada (encerrada/ao vivo).
+         >> FALTA (melhoria): tela de temporadas passadas (seasonHistory) quando
+         >> houver mais de uma temporada + tela de campeão
 
 ════════════════════════════════════════════════════════════
 FASE 2 — DESIGN: VISUAL 100% ATUAL (dar MUITA atenção)

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  TouchableOpacity,
   StyleSheet,
   Animated,
   Alert,
@@ -275,18 +276,21 @@ export default function HomeScreen({ navigation }: any) {
           />
         )}
 
-        {/* Identidade do jogador + online */}
-        <View style={styles.identity}>
+        {/* Identidade do jogador + online (toque abre Meu Time) */}
+        <TouchableOpacity style={styles.identity} activeOpacity={0.8} onPress={() => navigation.navigate('Team')}>
           <TeamBadge teamId={profile?.teamId} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={styles.nick} numberOfLines={1}>{profile?.nick ?? '...'}</Text>
-            <Text style={styles.teamName} numberOfLines={1}>{team?.name ?? ''}</Text>
+            <View style={styles.teamRow}>
+              <Text style={styles.teamName} numberOfLines={1}>{team?.name ?? ''}</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color={colors.hazeDim} />
+            </View>
           </View>
           <View style={styles.onlinePill}>
             <View style={styles.onlineDot} />
             <Text style={styles.onlineText}>{onlineCount} em campo</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Meus gols por janela */}
         <View style={styles.statsRow}>
@@ -408,7 +412,8 @@ const styles = StyleSheet.create({
 
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
   nick: { color: colors.chalk, fontFamily: font.bodyBold, fontSize: 16 },
-  teamName: { color: colors.haze, fontFamily: font.bodyMed, fontSize: 12, marginTop: 1 },
+  teamRow: { flexDirection: 'row', alignItems: 'center', marginTop: 1 },
+  teamName: { color: colors.haze, fontFamily: font.bodyMed, fontSize: 12 },
   onlinePill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: colors.night0, borderRadius: radius.pill,

@@ -17,6 +17,14 @@
       ]
     },
     {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "teamId", "order": "ASCENDING" },
+        { "fieldPath": "goals", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "matches",
       "queryScope": "COLLECTION",
       "fields": [

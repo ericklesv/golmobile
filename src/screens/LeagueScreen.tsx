@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { TEAMS } from '../constants/teams';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -17,18 +18,25 @@ export default function LeagueScreen() {
   const [season, setSeason] = useState<Season | null>(null);
   const [standings, setStandings] = useState<Standing[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [viewRound, setViewRound] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     const s = await fetchSeason();
     setSeason(s);
-    if (s) setMatches(await fetchRoundMatches(s.seasonId, s.round));
+    setViewRound((prev) => prev ?? s?.round ?? 1);
     setLoading(false);
     setRefreshing(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Partidas da rodada em exibição (permite folhear rodadas passadas)
+  useEffect(() => {
+    if (!season || viewRound == null) return;
+    fetchRoundMatches(season.seasonId, viewRound).then(setMatches);
+  }, [season?.seasonId, viewRound]);
 
   useEffect(() => {
     if (!season) return;
@@ -37,6 +45,10 @@ export default function LeagueScreen() {
   }, [season?.seasonId]);
 
   const onRefresh = () => { setRefreshing(true); load(); };
+  const changeRound = (delta: number) => {
+    if (!season || viewRound == null) return;
+    setViewRound(Math.max(1, Math.min(season.totalRounds, viewRound + delta)));
+  };
 
   if (loading) {
     return <NightBackground><View style={styles.center}><ActivityIndicator color={colors.turf} /></View></NightBackground>;
@@ -54,9 +66,19 @@ export default function LeagueScreen() {
         <Text style={styles.title}>BRASILEIRÃO</Text>
         <Text style={styles.subtitle}>Temporada {season.seasonId} · Rodada {season.round}/{season.totalRounds}</Text>
 
-        {/* Jogos da rodada */}
+        {/* Jogos da rodada (com navegação entre rodadas) */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Jogos da rodada</Text>
+          <View style={styles.roundNav}>
+            <TouchableOpacity onPress={() => changeRound(-1)} disabled={viewRound === 1} hitSlop={8}>
+              <MaterialCommunityIcons name="chevron-left" size={24} color={viewRound === 1 ? colors.hazeDim : colors.chalk} />
+            </TouchableOpacity>
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+              Rodada {viewRound}{viewRound === season.round ? ' · ao vivo' : viewRound! < season.round ? ' · encerrada' : ''}
+            </Text>
+            <TouchableOpacity onPress={() => changeRound(1)} disabled={viewRound === season.totalRounds} hitSlop={8}>
+              <MaterialCommunityIcons name="chevron-right" size={24} color={viewRound === season.totalRounds ? colors.hazeDim : colors.chalk} />
+            </TouchableOpacity>
+          </View>
           {matches.length === 0 ? (
             <Text style={styles.empty}>Sem jogos nesta rodada.</Text>
           ) : (
@@ -128,6 +150,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md, borderWidth: 1, borderColor: colors.line,
   },
   sectionTitle: { color: colors.chalk, fontFamily: font.bodyBold, fontSize: 14, marginBottom: spacing.md },
+  roundNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
 
   matchRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
   noBorder: { borderBottomWidth: 0 },

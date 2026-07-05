@@ -1,5 +1,5 @@
 import {
-  doc, getDoc, getDocs, onSnapshot, collection, query, where, orderBy,
+  doc, getDoc, getDocs, onSnapshot, collection, query, where, orderBy, limit,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -11,6 +11,22 @@ export interface Season {
   roundEndsAt: number;
   status: 'active' | 'finished';
   championTeamId?: string | null;
+  schedule?: Record<string, { home: string; away: string }[]>;
+}
+
+export interface Fixture {
+  round: number;
+  opponent: string;
+  side: 'home' | 'away';
+  isPast: boolean;
+  isCurrent: boolean;
+}
+
+export interface Scorer {
+  uid: string;
+  nick: string;
+  teamId: string;
+  goals: number;
 }
 
 export interface Standing {
@@ -105,6 +121,56 @@ export function subscribeTeamMatch(teamId: string, cb: (live: TeamMatchLive | nu
     });
   });
   return () => { if (matchUnsub) matchUnsub(); ptrUnsub(); };
+}
+
+export async function fetchStandingsSorted(seasonId: number): Promise<Standing[]> {
+  const q = query(collection(db, 'standings'), where('seasonId', '==', seasonId), orderBy('points', 'desc'));
+  const snap = await getDocs(q);
+  const rows = snap.docs.map((d) => d.data() as Standing);
+  rows.sort((a, b) =>
+    b.points - a.points ||
+    (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst) ||
+    b.goalsFor - a.goalsFor
+  );
+  return rows;
+}
+
+export async function fetchStanding(seasonId: number, teamId: string): Promise<Standing | null> {
+  const snap = await getDoc(doc(db, 'standings', `${seasonId}_${teamId}`));
+  return snap.exists() ? (snap.data() as Standing) : null;
+}
+
+// Artilheiros de um time (entradas da temporada filtradas pelo time)
+export async function fetchTeamScorers(teamId: string): Promise<Scorer[]> {
+  const q = query(
+    collection(db, 'rankings', 'season', 'entries'),
+    where('teamId', '==', teamId),
+    orderBy('goals', 'desc'),
+    limit(15)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data() as Scorer);
+}
+
+// Confrontos de um time em toda a temporada, a partir do calendário
+export function teamFixtures(season: Season, teamId: string): Fixture[] {
+  if (!season.schedule) return [];
+  const out: Fixture[] = [];
+  for (let r = 1; r <= season.totalRounds; r++) {
+    const pairs = season.schedule[String(r)] ?? [];
+    for (const p of pairs) {
+      if (p.home === teamId || p.away === teamId) {
+        out.push({
+          round: r,
+          opponent: p.home === teamId ? p.away : p.home,
+          side: p.home === teamId ? 'home' : 'away',
+          isPast: r < season.round,
+          isCurrent: r === season.round,
+        });
+      }
+    }
+  }
+  return out;
 }
 
 export function formatMatchTimeLeft(endsAt: number): string {

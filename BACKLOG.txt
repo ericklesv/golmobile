@@ -9,18 +9,20 @@ FASE 0 — FUNDAÇÃO (fazer antes de qualquer feature nova)
 [x] 0.1  Iniciar repositório git + .gitignore (node_modules, .expo) + primeiro commit
 [x] 0.2  Criar CLAUDE.md documentando stack, estrutura, regras do jogo e decisões
 [x] 0.3  Mover lógica de jogo para o servidor (server/ no Railway, sem Blaze):
-         >> DEPLOYADO: https://golmobile-production.up.railway.app (deploy via
-         >> `railway up` na pasta server/). GitHub: ericklesv/golmobile. FALTA:
-         >> 1) env FIREBASE_SERVICE_ACCOUNT no Railway (JSON da service account
-         >>    do futgol-acc08 — gerar na conta DONA do projeto Firebase)
-         >> 2) deploy das rules (gratuito): npx firebase-tools login +
-         >>    npx firebase-tools deploy --only firestore
+         >> FUNCIONANDO: https://golmobile-production.up.railway.app com
+         >> FIREBASE_SERVICE_ACCOUNT configurada; e2e testado em 04/07/2026
+         >> (kick/cooldown 429/penalti/trilha OK). GitHub: ericklesv/golmobile.
+         >> Deploy: `railway up` na pasta server/.
          - função "chutar" (httpsCallable): valida cooldown pelo timestamp do servidor,
            sorteia o gol, incrementa rankings e grava a atividade — tudo numa transação
          - cliente passa a só chamar a função e exibir o resultado
          * É O ITEM MAIS IMPORTANTE: hoje qualquer um burla cooldown mudando o relógio
            ou escreve gols direto na API. Sem isso, ranking competitivo não vale nada.
-[x] 0.4  Firestore Security Rules: (escritas em firestore.rules — deploy junto com 0.3)
+[x] 0.4  Firestore Security Rules: (escritas em firestore.rules)
+         >> FALTA DEPLOY (gratuito): `npx firebase-tools login` (conta dona do
+         >> projeto) + `npx firebase-tools deploy --only firestore`. URGENTE:
+         >> as rules atuais do projeto EXPIRARAM (modo teste) — criação de
+         >> conta/perfil pelo app está sendo NEGADA até esse deploy.
          - users: só o dono edita, e NUNCA os campos de gols/cooldown pelo cliente
          - rankings, activities, matches: somente leitura para clientes
 [x] 0.5  Corrigir rankings Hora/Rodada: filtrar pela chave atual

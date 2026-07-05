@@ -42,3 +42,6 @@ yarn-error.*
 
 # web build
 /dist/
+
+# firebase deploy cache
+.firebase/

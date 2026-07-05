@@ -23,6 +23,8 @@ admin.initializeApp({
 const db = admin.firestore();
 const increment = admin.firestore.FieldValue.increment;
 
+const league = require('./league');
+
 // ─── Regras do jogo (fonte da verdade) ──────────────────────────────────────
 const ACTION_COOLDOWNS = {
   auto:    1  * 60 * 1000,
@@ -76,7 +78,9 @@ function currentRoundKey() {
 }
 
 // ─── Núcleo compartilhado: aplica o resultado de um chute na transação ─────
-function applyKickResult(tx, userRef, user, { uid, type, goal, now }) {
+// `teamMatch` é o ponteiro (teamMatch/{teamId}) lido antes das escritas; quando
+// há gol, roteia +1 para o placar do time na partida da rodada.
+function applyKickResult(tx, userRef, user, { uid, type, goal, now, teamMatch }) {
   const hourKey = currentHourKey();
   const roundKey = currentRoundKey();
 
@@ -98,12 +102,21 @@ function applyKickResult(tx, userRef, user, { uid, type, goal, now }) {
     tx.set(db.doc(`rankings/hour/entries/${uid}_${hourKey}`), { ...base, hourKey }, { merge: true });
     tx.set(db.doc(`rankings/round/entries/${uid}_${roundKey}`), { ...base, roundKey }, { merge: true });
     tx.set(db.doc(`rankings/season/entries/${uid}`), base, { merge: true });
+
+    league.incrementTeamMatch(tx, teamMatch, now);
   }
 
   tx.update(userRef, updates);
   tx.set(db.collection('activities').doc(), {
     uid, nick: user.nick, teamId: user.teamId, goal, kickType: type, ts: now,
   });
+}
+
+// Lê o ponteiro da partida viva do time (antes de qualquer escrita na transação)
+async function readTeamMatch(tx, teamId) {
+  if (!teamId) return null;
+  const snap = await tx.get(db.doc(`teamMatch/${teamId}`));
+  return snap.exists ? snap.data() : null;
 }
 
 // ─── Lógica dos endpoints ──────────────────────────────────────────────────
@@ -120,6 +133,7 @@ async function doKick(uid, type, direction) {
     const snap = await tx.get(userRef);
     if (!snap.exists) throw new GameError(412, 'no-profile', 'Perfil não encontrado.');
     const user = snap.data();
+    const teamMatch = await readTeamMatch(tx, user.teamId);
 
     const now = Date.now();
     const last = user[ACTION_FIELD[type]] || 0;
@@ -137,7 +151,7 @@ async function doKick(uid, type, direction) {
       goal = Math.random() < GOAL_CHANCE[type];
     }
 
-    applyKickResult(tx, userRef, user, { uid, type, goal, now });
+    applyKickResult(tx, userRef, user, { uid, type, goal, now, teamMatch });
     return { goal, keeperDir, cooldownMs: cd, kickedAt: now };
   });
 }
@@ -149,6 +163,7 @@ async function doTrailPick(uid, pickIndex) {
     const [userSnap, trailSnap] = await Promise.all([tx.get(userRef), tx.get(trailRef)]);
     if (!userSnap.exists) throw new GameError(412, 'no-profile', 'Perfil não encontrado.');
     const user = userSnap.data();
+    const teamMatch = await readTeamMatch(tx, user.teamId);
 
     const now = Date.now();
     let state = trailSnap.exists && trailSnap.data().active ? trailSnap.data() : null;
@@ -187,13 +202,13 @@ async function doTrailPick(uid, pickIndex) {
 
     if (mine) {
       finished = true;
-      applyKickResult(tx, userRef, user, { uid, type: 'trilha', goal: false, now });
+      applyKickResult(tx, userRef, user, { uid, type: 'trilha', goal: false, now, teamMatch });
     } else {
       nextPhase = line + 1;
       if (nextPhase >= TRAIL_LINES.length) {
         goal = true;
         finished = true;
-        applyKickResult(tx, userRef, user, { uid, type: 'trilha', goal: true, now });
+        applyKickResult(tx, userRef, user, { uid, type: 'trilha', goal: true, now, teamMatch });
       } else {
         tx.update(userRef, { trailPosition: nextPhase });
       }
@@ -253,5 +268,24 @@ app.get('/', (_req, res) => res.json({ ok: true, service: 'golmobile-server' }))
 app.post('/kick', requireAuth, handle((req) => doKick(req.uid, req.body?.type, req.body?.direction)));
 app.post('/trail-pick', requireAuth, handle((req) => doTrailPick(req.uid, req.body?.pickIndex)));
 
+// Admin: força o encerramento da rodada atual (para testes). Protegido por ADMIN_KEY.
+app.post('/admin/advance', handle(async (req) => {
+  if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
+    throw new GameError(403, 'forbidden', 'Acesso negado.');
+  }
+  await db.doc('config/season').update({ roundEndsAt: 0 });
+  return league.settleAndAdvance();
+}));
+
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`golmobile-server na porta ${port}`));
+
+// Garante a temporada e inicia o agendador antes de aceitar tráfego
+league.ensureSeason()
+  .then(() => {
+    league.startScheduler();
+    app.listen(port, () => console.log(`golmobile-server na porta ${port}`));
+  })
+  .catch((e) => {
+    console.error('Falha ao iniciar a temporada:', e);
+    process.exit(1);
+  });

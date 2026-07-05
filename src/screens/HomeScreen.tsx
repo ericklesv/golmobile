@@ -27,6 +27,7 @@ import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { TEAMS, ACTION_COOLDOWNS, ACTION_LAST_TIME_FIELD } from '../constants/teams';
 import { kickAction, isCooldownError } from '../services/game';
+import { subscribeTeamMatch, formatMatchTimeLeft, TeamMatchLive } from '../services/league';
 import {
   getTimeRemaining,
   formatCountdown,
@@ -77,6 +78,21 @@ export default function HomeScreen({ navigation }: any) {
   const [showPenalty, setShowPenalty] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [trailKey, setTrailKey] = useState(0);
+  const [match, setMatch] = useState<TeamMatchLive | null>(null);
+  const [, forceTick] = useState(0);
+
+  // Placar ao vivo da partida do meu time
+  useEffect(() => {
+    if (!profile?.teamId) return;
+    const unsub = subscribeTeamMatch(profile.teamId, setMatch);
+    return unsub;
+  }, [profile?.teamId]);
+
+  // Atualiza o "termina em ..." de minuto em minuto
+  useEffect(() => {
+    const iv = setInterval(() => forceTick((n) => n + 1), 60_000);
+    return () => clearInterval(iv);
+  }, []);
 
   // Ao fechar os modais, re-lê o perfil para atualizar cooldowns
   useEffect(() => {
@@ -213,6 +229,45 @@ export default function HomeScreen({ navigation }: any) {
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+
+      {/* Placar ao vivo da partida do time */}
+      {match && (() => {
+        const opp = TEAMS.find((t) => t.id === match.opponent);
+        const win = match.myGoals > match.oppGoals;
+        const draw = match.myGoals === match.oppGoals;
+        return (
+          <View style={styles.matchCard}>
+            <View style={styles.matchHeaderRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.matchHeaderText}>
+                RODADA {match.round} · {formatMatchTimeLeft(match.endsAt)}
+              </Text>
+            </View>
+            <View style={styles.matchScoreRow}>
+              <View style={styles.matchTeam}>
+                <Text style={styles.matchShield}>{team?.shield ?? '⚽'}</Text>
+                <Text style={styles.matchTeamName} numberOfLines={1}>{team?.name ?? 'Meu time'}</Text>
+              </View>
+              <View style={styles.matchScoreBox}>
+                <Text style={[styles.matchScore, { color: win ? '#00e676' : draw ? '#ffb300' : '#fff' }]}>
+                  {match.myGoals}
+                </Text>
+                <Text style={styles.matchScoreX}>x</Text>
+                <Text style={styles.matchScore}>{match.oppGoals}</Text>
+              </View>
+              <View style={styles.matchTeam}>
+                <Text style={styles.matchShield}>{opp?.shield ?? '⚽'}</Text>
+                <Text style={styles.matchTeamName} numberOfLines={1}>{opp?.name ?? 'Adversário'}</Text>
+              </View>
+            </View>
+            <Text style={styles.matchTip}>
+              {win ? '🔥 Seu time está na frente! Faça mais gols.'
+                : draw ? '⚖️ Empate! Cada gol seu conta.'
+                : '⚠️ Seu time está perdendo. Bora virar!'}
+            </Text>
+          </View>
+        );
+      })()}
 
       {/* Card do jogador */}
       <View style={styles.playerCard}>
@@ -407,6 +462,22 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a1628' },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+
+  matchCard: {
+    backgroundColor: '#12233c', borderRadius: 16, padding: 14, marginBottom: 16,
+    borderWidth: 1, borderColor: '#00e67640',
+  },
+  matchHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 10 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#ff4444' },
+  matchHeaderText: { color: '#8fa3bf', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  matchScoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  matchTeam: { flex: 1, alignItems: 'center', gap: 3 },
+  matchShield: { fontSize: 26 },
+  matchTeamName: { color: '#cdd8e8', fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  matchScoreBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
+  matchScore: { color: '#fff', fontSize: 34, fontWeight: '900', minWidth: 30, textAlign: 'center' },
+  matchScoreX: { color: '#556', fontSize: 16, fontWeight: '700' },
+  matchTip: { color: '#8fa3bf', fontSize: 12, textAlign: 'center', marginTop: 10 },
 
   playerCard: {
     backgroundColor: '#1a2a40', borderRadius: 16, padding: 14,

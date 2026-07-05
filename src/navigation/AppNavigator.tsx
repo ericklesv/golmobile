@@ -7,6 +7,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import RankingScreen from '../screens/RankingScreen';
+import LeagueScreen from '../screens/LeagueScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PenaltyScreen from '../screens/PenaltyScreen';
 
@@ -43,6 +44,11 @@ function AppTabs() {
         name="Jogar"
         component={HomeScreen}
         options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>⚽</Text> }}
+      />
+      <Tab.Screen
+        name="Liga"
+        component={LeagueScreen}
+        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🏅</Text> }}
       />
       <Tab.Screen
         name="Rankings"

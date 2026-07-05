@@ -42,6 +42,28 @@ service cloud.firestore {
       allow write: if authed() && request.auth.uid == uid;
     }
 
+    // Liga (temporada, partidas, tabela): leitura livre; escrita só no servidor
+    match /config/{doc} {
+      allow read: if authed();
+      allow write: if false;
+    }
+    match /matches/{matchId} {
+      allow read: if authed();
+      allow write: if false;
+    }
+    match /standings/{docId} {
+      allow read: if authed();
+      allow write: if false;
+    }
+    match /teamMatch/{teamId} {
+      allow read: if authed();
+      allow write: if false;
+    }
+    match /seasonHistory/{seasonId} {
+      allow read: if authed();
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

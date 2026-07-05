@@ -7,28 +7,36 @@ marcar itens feitos).
 
 ## Stack
 - Expo 54 / React Native 0.81 / React 19 / TypeScript
-- Firebase: Auth (email/senha), Firestore, **Cloud Functions** (projeto `futgol-acc08`)
+- Firebase (plano GRATUITO/Spark): Auth (email/senha) + Firestore (projeto `futgol-acc08`)
+- **Backend de jogo: Node/Express no Railway** (`server/`) com firebase-admin
+  (decisão: sem Cloud Functions para não exigir plano Blaze)
 - Navegação: react-navigation (stack + bottom tabs)
 
 ## Comandos
 ```
 npm start            # Metro / Expo Go
 npm run web          # versão navegador
-cd functions && npm install          # 1ª vez
-npx firebase-tools deploy --only functions,firestore   # deploy backend (precisa login + plano Blaze)
+cd server && npm start               # API local (precisa FIREBASE_SERVICE_ACCOUNT)
+npx firebase-tools deploy --only firestore   # deploy rules+índices (gratuito, precisa login)
 ```
+Dev apontando para API local: `EXPO_PUBLIC_API_URL=http://<ip-local>:3000 npx expo start`
 
 ## Arquitetura do jogo (IMPORTANTE)
-**Toda a lógica de jogo roda nas Cloud Functions** (`functions/index.js`):
+**Toda a lógica de jogo roda no servidor** (`server/index.js`, hospedado no Railway):
 sorteio de gol, validação de cooldown, incremento de rankings, feed de atividades.
-O cliente **nunca** escreve resultado de jogo no Firestore — só chama as callables via
-`src/services/game.ts` e anima o resultado. As `firestore.rules` bloqueiam escrita
-direta em `users` (após criação), `rankings` e `activities`. Não reintroduzir
-`Math.random()`/`updateDoc` de gols no cliente.
+O cliente **nunca** escreve resultado de jogo no Firestore — só chama a API via
+`src/services/game.ts` (com o ID token do Firebase Auth no header) e anima o
+resultado. As `firestore.rules` bloqueiam escrita direta em `users` (após criação),
+`rankings` e `activities`. Não reintroduzir `Math.random()`/`updateDoc` de gols no cliente.
 
-- `kick({ type: 'auto'|'falta'|'penalti', direction? })` → `{ goal, keeperDir, cooldownMs, kickedAt }`
-- `trailPick({ pickIndex })` → `{ mine, goal, finished, phase, lineMines, ... }`
+- `POST /kick { type: 'auto'|'falta'|'penalti', direction? }` → `{ goal, keeperDir, cooldownMs, kickedAt }`
+- `POST /trail-pick { pickIndex }` → `{ mine, goal, finished, phase, lineMines, ... }`
   (layout de minas fica em `users/{uid}/private/trail`, ilegível pelo cliente)
+- Erro de recarga: HTTP 429 `{ error: 'cooldown' }` (ver `isCooldownError`)
+- Railway: env var `FIREBASE_SERVICE_ACCOUNT` = JSON da service account
+  (Firebase Console → Configurações → Contas de serviço → Gerar nova chave privada);
+  Root Directory do serviço = `server`. URL do serviço fica em `API_URL` no
+  `src/services/game.ts` (sobrescreve com `EXPO_PUBLIC_API_URL`).
 
 ### Regras do jogo
 - Cooldowns: AUTO 1 min · Falta 5 min · Pênalti 10 min · Trilha 3 min
@@ -36,7 +44,7 @@ direta em `users` (após criação), `rankings` e `activities`. Não reintroduzi
   trilha = minado 3 linhas (defesa 4/1 mina, meio 3/1, ataque 3/2)
 - Rankings: `rankings/{hour|round|season}/entries` com chaves `hourKey`/`roundKey`
   no fuso **America/Sao_Paulo** (`getCurrentHourKey/RoundKey` em `src/utils/gameLogic.ts`
-  espelham `functions/index.js` — manter os dois em sincronia!)
+  espelham `server/index.js` — manter os dois em sincronia!)
 - Perfil (`users/{uid}`): `totalGoals`, `totalKicks`, `hourGoals`+`hourKey`,
   `roundGoals`+`roundKey`, `last*Time` por modo, `trailPosition`
 - Presença online: heartbeat em `presence/{uid}.lastSeen` (60s), contagem via
@@ -44,19 +52,20 @@ direta em `users` (após criação), `rankings` e `activities`. Não reintroduzi
 
 ## Estrutura
 ```
-src/config/firebase.ts    # app, auth (persistência AsyncStorage no nativo), db, functions
-src/services/game.ts      # wrappers das callables — ÚNICO caminho para jogar
+src/config/firebase.ts    # app, auth (persistência AsyncStorage no nativo), db
+src/services/game.ts      # cliente da API de jogo — ÚNICO caminho para jogar
 src/constants/teams.ts    # times, cooldowns (só para UI de countdown)
 src/context/AuthContext.tsx
 src/screens/              # Home (hub), Penalty, Trail (modais), Ranking, Profile, Login, Register
-functions/index.js        # lógica de jogo server-side
+server/index.js           # API de jogo (Express + firebase-admin, Railway)
 firestore.rules / firestore.indexes.json
 ```
 
 ## Convenções e avisos
 - Sempre atualizar este arquivo e o `BACKLOG.txt` ao concluir itens.
+- Manter as regras de jogo de `server/index.js` em sincronia com
+  `src/constants/teams.ts` (cooldowns) e `src/utils/gameLogic.ts` (chaves de janela).
 - Índices compostos necessários (hourKey+goals, roundKey+goals) estão em
   `firestore.indexes.json` — deploy junto com as rules.
-- Cloud Functions exigem plano **Blaze** no projeto Firebase.
 - `Alert.alert` não funciona no web (item 3.1 do backlog) — evitar em código novo.
 - Web: sombras `shadow*` têm suporte parcial; testar glow no navegador.

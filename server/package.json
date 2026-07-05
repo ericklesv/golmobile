@@ -1,0 +1,17 @@
+{
+  "name": "golmobile-server",
+  "description": "API do GolMobile — toda a lógica de jogo roda aqui (Railway)",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "firebase-admin": "^12.7.0"
+  },
+  "private": true
+}

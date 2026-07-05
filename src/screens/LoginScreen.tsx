@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -10,7 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import NightBackground from '../components/NightBackground';
+import Field from '../components/Field';
+import { colors, font, radius, spacing, glow } from '../theme';
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
@@ -29,107 +32,76 @@ export default function LoginScreen({ navigation }: any) {
     } catch (e: any) {
       const code = e?.code ?? '';
       let msg = 'E-mail ou senha incorretos.';
-      if (code === 'auth/user-not-found') msg = 'Usuário não encontrado.';
-      else if (code === 'auth/wrong-password') msg = 'Senha incorreta.';
-      else if (code === 'auth/invalid-email') msg = 'E-mail inválido.';
-      else if (code === 'auth/network-request-failed') msg = 'Sem conexão com a internet.';
+      if (code === 'auth/user-not-found') msg = 'Não encontramos uma conta com esse e-mail.';
+      else if (code === 'auth/wrong-password') msg = 'Senha incorreta. Tente de novo.';
+      else if (code === 'auth/invalid-email') msg = 'Esse e-mail não parece válido.';
+      else if (code === 'auth/network-request-failed') msg = 'Sem conexão. Verifique a internet.';
       else if (code) msg = `Erro: ${code}`;
-      Alert.alert('Erro ao entrar', msg);
+      Alert.alert('Não deu para entrar', msg);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Text style={styles.title}>⚽ GOLMOBILE</Text>
-      <Text style={styles.subtitle}>Chute e suba no ranking!</Text>
+    <NightBackground>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.logoLockup}>
+          <View style={styles.logoBall}>
+            <MaterialCommunityIcons name="soccer" size={30} color={colors.night0} />
+          </View>
+          <Text style={styles.wordmark}>
+            GOL<Text style={{ color: colors.turf }}>MOBILE</Text>
+          </Text>
+        </View>
+        <Text style={styles.tagline}>Chute, marque e leve seu time ao topo.</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        placeholderTextColor="#666"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        placeholderTextColor="#666"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        <Field
+          iconName="email-outline"
+          placeholder="E-mail"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <Field
+          iconName="lock-outline"
+          placeholder="Senha"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>ENTRAR</Text>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
+          {loading ? <ActivityIndicator color={colors.night0} /> : <Text style={styles.buttonText}>ENTRAR EM CAMPO</Text>}
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-        <Text style={styles.link}>Não tem conta? Cadastre-se grátis</Text>
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkWrap}>
+          <Text style={styles.link}>Ainda não joga? <Text style={styles.linkStrong}>Criar conta grátis</Text></Text>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </NightBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a1628',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
+  logoLockup: { alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
+  logoBall: {
+    width: 60, height: 60, borderRadius: 30, backgroundColor: colors.turf,
+    alignItems: 'center', justifyContent: 'center', ...glow(colors.turfGlow, 18),
   },
-  title: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#00e676',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#aaa',
-    marginBottom: 40,
-  },
-  input: {
-    width: '100%',
-    backgroundColor: '#1a2a40',
-    color: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#2a3a50',
-  },
+  wordmark: { fontFamily: font.poster, fontSize: 40, color: colors.chalk, letterSpacing: 1 },
+  tagline: { fontFamily: font.body, fontSize: 14, color: colors.haze, marginBottom: spacing.xxl, textAlign: 'center' },
   button: {
-    width: '100%',
-    backgroundColor: '#00e676',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
+    width: '100%', backgroundColor: colors.turf, borderRadius: radius.md,
+    paddingVertical: 16, alignItems: 'center', marginTop: spacing.xs, ...glow(colors.turfGlow, 14),
   },
-  buttonText: {
-    color: '#0a1628',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  link: {
-    color: '#00e676',
-    fontSize: 15,
-    textDecorationLine: 'underline',
-  },
+  buttonText: { color: colors.night0, fontFamily: font.bodyBold, fontSize: 16, letterSpacing: 1 },
+  linkWrap: { marginTop: spacing.xl },
+  link: { color: colors.haze, fontFamily: font.body, fontSize: 14 },
+  linkStrong: { color: colors.turf, fontFamily: font.bodyBold },
 });

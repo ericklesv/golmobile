@@ -1,14 +1,11 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { TEAMS, ACTION_COOLDOWNS } from '../constants/teams';
+import NightBackground from '../components/NightBackground';
+import TeamBadge from '../components/TeamBadge';
+import { colors, font, radius, spacing } from '../theme';
 
 export default function ProfileScreen() {
   const { profile, logout } = useAuth();
@@ -19,174 +16,102 @@ export default function ProfileScreen() {
   const cdMin = (id: string) => `${ACTION_COOLDOWNS[id] / 60000} min`;
 
   function handleLogout() {
-    Alert.alert('Sair', 'Tem certeza que quer sair?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert('Sair da conta', 'Quer mesmo sair?', [
+      { text: 'Ficar', style: 'cancel' },
       { text: 'Sair', style: 'destructive', onPress: logout },
     ]);
   }
 
+  const stats = [
+    { value: totalGoals, label: 'GOLS' },
+    { value: totalKicks, label: 'CHUTES' },
+    { value: conversion, label: 'APROVEITAMENTO' },
+  ];
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Avatar */}
-      <View style={styles.avatarCircle}>
-        <Text style={styles.avatarText}>
-          {profile?.nick?.charAt(0).toUpperCase() ?? '?'}
-        </Text>
-      </View>
+    <NightBackground>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.avatarWrap}>
+          <TeamBadge teamId={profile?.teamId} size={92} />
+        </View>
+        <Text style={styles.nick}>{profile?.nick ?? ''}</Text>
+        <Text style={styles.teamName}>{team?.name ?? ''}</Text>
 
-      <Text style={styles.nick}>{profile?.nick ?? ''}</Text>
-      <View style={styles.teamBadge}>
-        <Text style={styles.teamEmoji}>{team?.shield ?? '⚽'}</Text>
-        <Text style={[styles.teamName, { color: team?.color ?? '#00e676' }]}>
-          {team?.name ?? ''}
-        </Text>
-      </View>
-
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <Text style={styles.statsTitle}>Suas Estatísticas</Text>
-
+        {/* Estatísticas */}
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{totalGoals}</Text>
-            <Text style={styles.statLabel}>Gols</Text>
+          {stats.map((s) => (
+            <View key={s.label} style={styles.statCard}>
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Como jogar */}
+        <View style={styles.card}>
+          <View style={styles.cardHead}>
+            <MaterialCommunityIcons name="book-open-variant" size={16} color={colors.flood} />
+            <Text style={styles.cardTitle}>Como jogar</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{totalKicks}</Text>
-            <Text style={styles.statLabel}>Chutes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{conversion}</Text>
-            <Text style={styles.statLabel}>Aproveitamento</Text>
+          <Text style={styles.rulesText}>
+            Escolha um modo e chute. Cada gol soma para você nos rankings e para o seu time na partida do dia.
+          </Text>
+          <View style={styles.cdRow}>
+            <Cooldown icon="lightning-bolt" label="Auto" value={cdMin('auto')} color={colors.turf} />
+            <Cooldown icon="whistle" label="Falta" value={cdMin('falta')} color="#38BDF8" />
+            <Cooldown icon="run-fast" label="Trilha" value={cdMin('trilha')} color="#FF7A59" />
+            <Cooldown icon="soccer" label="Pênalti" value={cdMin('penalti')} color={colors.flood} />
           </View>
         </View>
-      </View>
 
-      {/* Como jogar */}
-      <View style={styles.rulesCard}>
-        <Text style={styles.rulesTitle}>📜 Como Jogar</Text>
-        <Text style={styles.rulesText}>
-          1. Escolha um modo de chute na tela inicial.{'\n'}
-          2. Recargas: <Text style={{ color: '#fff' }}>AUTO {cdMin('auto')}</Text> ·{' '}
-          <Text style={{ color: '#fff' }}>Falta {cdMin('falta')}</Text> ·{' '}
-          <Text style={{ color: '#fff' }}>Trilha {cdMin('trilha')}</Text> ·{' '}
-          <Text style={{ color: '#fff' }}>Pênalti {cdMin('penalti')}</Text>{'\n'}
-          3. No pênalti, escolha o canto e engane o goleiro.{'\n'}
-          4. Na trilha, drible defesa, meio e ataque sem ser desarmado.{'\n'}
-          5. Seus gols somam no ranking de hora, rodada e temporada.{'\n'}
-          6. Seja o <Text style={{ color: '#FFD700' }}>#1 no ranking</Text> e conquiste o título!
-        </Text>
-      </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
+          <MaterialCommunityIcons name="logout" size={16} color={colors.red} />
+          <Text style={styles.logoutText}>Sair da conta</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </NightBackground>
+  );
+}
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Sair da conta</Text>
-      </TouchableOpacity>
-    </ScrollView>
+function Cooldown({ icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
+  return (
+    <View style={styles.cd}>
+      <MaterialCommunityIcons name={icon} size={18} color={color} />
+      <Text style={styles.cdValue}>{value}</Text>
+      <Text style={styles.cdLabel}>{label}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a1628',
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 40,
-    alignItems: 'center',
-  },
-  avatarCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#00e676',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  avatarText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#0a1628',
-  },
-  nick: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  teamBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 30,
-  },
-  teamEmoji: { fontSize: 22 },
-  teamName: { fontSize: 16, fontWeight: '600' },
-  statsContainer: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  statsTitle: {
-    color: '#aaa',
-    fontSize: 14,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  content: { paddingHorizontal: spacing.xl, paddingTop: 44, paddingBottom: 40, alignItems: 'center' },
+  avatarWrap: { marginBottom: spacing.md },
+  nick: { fontFamily: font.poster, fontSize: 28, color: colors.chalk },
+  teamName: { fontFamily: font.bodyMed, fontSize: 14, color: colors.haze, marginBottom: spacing.xl },
+
+  statsGrid: { flexDirection: 'row', gap: spacing.sm, width: '100%', marginBottom: spacing.lg },
   statCard: {
-    flex: 1,
-    backgroundColor: '#1a2a40',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2a3a50',
+    flex: 1, backgroundColor: colors.panel, borderRadius: radius.md, paddingVertical: spacing.lg,
+    alignItems: 'center', borderWidth: 1, borderColor: colors.line,
   },
-  statValue: {
-    color: '#00e676',
-    fontSize: 20,
-    fontWeight: 'bold',
+  statValue: { color: colors.turf, fontFamily: font.score, fontSize: 28, includeFontPadding: false },
+  statLabel: { color: colors.haze, fontFamily: font.bodyBold, fontSize: 9, letterSpacing: 0.8, marginTop: 4 },
+
+  card: {
+    width: '100%', backgroundColor: colors.panel, borderRadius: radius.lg, padding: spacing.lg,
+    marginBottom: spacing.xl, borderWidth: 1, borderColor: colors.line,
   },
-  statLabel: {
-    color: '#888',
-    fontSize: 11,
-    marginTop: 4,
-  },
-  rulesCard: {
-    width: '100%',
-    backgroundColor: '#1a2a40',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 30,
-    borderWidth: 1,
-    borderColor: '#2a3a50',
-  },
-  rulesTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  rulesText: {
-    color: '#aaa',
-    fontSize: 14,
-    lineHeight: 24,
-  },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md },
+  cardTitle: { color: colors.chalk, fontFamily: font.bodyBold, fontSize: 14 },
+  rulesText: { color: colors.haze, fontFamily: font.body, fontSize: 13.5, lineHeight: 20, marginBottom: spacing.lg },
+  cdRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  cd: { alignItems: 'center', gap: 3, flex: 1 },
+  cdValue: { color: colors.chalk, fontFamily: font.scoreMed, fontSize: 15 },
+  cdLabel: { color: colors.hazeDim, fontFamily: font.body, fontSize: 10 },
+
   logoutButton: {
-    borderWidth: 1,
-    borderColor: '#ff5252',
-    borderRadius: 12,
-    paddingHorizontal: 36,
-    paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colors.red,
+    borderRadius: radius.md, paddingHorizontal: spacing.xl, paddingVertical: 13,
   },
-  logoutText: {
-    color: '#ff5252',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  logoutText: { color: colors.red, fontFamily: font.bodyBold, fontSize: 15 },
 });

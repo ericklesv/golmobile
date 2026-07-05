@@ -18,8 +18,12 @@ import {
   QueryConstraint,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { useAuth } from '../context/AuthContext';
 import { TEAMS } from '../constants/teams';
 import { getCurrentHourKey, getCurrentRoundKey } from '../utils/gameLogic';
+import NightBackground from '../components/NightBackground';
+import TeamBadge from '../components/TeamBadge';
+import { colors, font, radius, spacing } from '../theme';
 
 type Tab = 'hour' | 'round' | 'season';
 
@@ -30,7 +34,10 @@ interface RankEntry {
   goals: number;
 }
 
+const teamName = (id: string) => TEAMS.find((t) => t.id === id)?.name ?? '';
+
 export default function RankingScreen() {
+  const { profile } = useAuth();
   const [tab, setTab] = useState<Tab>('hour');
   const [data, setData] = useState<RankEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,8 +55,7 @@ export default function RankingScreen() {
 
       const q = query(collection(db, collectionPath), ...constraints);
       const snap = await getDocs(q);
-      const entries: RankEntry[] = snap.docs.map((d) => d.data() as RankEntry);
-      setData(entries);
+      setData(snap.docs.map((d) => d.data() as RankEntry));
     } catch {
       setData([]);
     } finally {
@@ -58,172 +64,87 @@ export default function RankingScreen() {
     }
   }
 
-  useEffect(() => {
-    fetchRanking(tab);
-  }, [tab]);
+  useEffect(() => { fetchRanking(tab); }, [tab]);
 
   function onRefresh() {
     setRefreshing(true);
     fetchRanking(tab);
   }
 
-  const tabLabels: Record<Tab, string> = {
-    hour: '🕐 Hora',
-    round: '🎲 Rodada',
-    season: '🏆 Temporada',
-  };
-
-  const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+  const tabLabels: Record<Tab, string> = { hour: 'Hora', round: 'Rodada', season: 'Temporada' };
+  const medalColors = [colors.flood, '#C7D0DB', '#D08A4B'];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>⚽ Rankings</Text>
+    <NightBackground>
+      <View style={styles.header}>
+        <Text style={styles.title}>ARTILHARIA</Text>
+      </View>
 
       {/* Tabs */}
       <View style={styles.tabs}>
         {(Object.keys(tabLabels) as Tab[]).map((t) => (
-          <TouchableOpacity
-            key={t}
-            style={[styles.tab, tab === t && styles.tabActive]}
-            onPress={() => setTab(t)}
-          >
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {tabLabels[t]}
-            </Text>
+          <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)} activeOpacity={0.8}>
+            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{tabLabels[t]}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#00e676" size="large" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.turf} size="large" style={{ marginTop: 40 }} />
       ) : (
         <ScrollView
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00e676" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.turf} />}
           contentContainerStyle={styles.list}
         >
           {data.length === 0 && (
-            <Text style={styles.empty}>Nenhum jogador no ranking ainda.\nSeja o primeiro! 🚀</Text>
+            <Text style={styles.empty}>Nenhum gol nesta janela ainda.{'\n'}Seja o primeiro a aparecer aqui.</Text>
           )}
           {data.map((entry, index) => {
-            const team = TEAMS.find((t) => t.id === entry.teamId);
             const isTop3 = index < 3;
+            const mine = entry.uid === profile?.uid;
             return (
-              <View key={entry.uid + index} style={[styles.row, isTop3 && styles.rowTop3]}>
-                <Text style={[styles.position, isTop3 && { color: medalColors[index] }]}>
-                  {index + 1}º
-                </Text>
-                <Text style={styles.shield}>{team?.shield ?? '⚽'}</Text>
+              <View key={entry.uid + index} style={[styles.row, isTop3 && styles.rowTop3, mine && styles.rowMine]}>
+                <Text style={[styles.position, isTop3 && { color: medalColors[index] }]}>{index + 1}</Text>
+                <TeamBadge teamId={entry.teamId} size={34} />
                 <View style={styles.playerInfo}>
-                  <Text style={styles.nick}>{entry.nick}</Text>
-                  <Text style={[styles.teamName, { color: team?.color ?? '#aaa' }]}>
-                    {team?.name ?? ''}
-                  </Text>
+                  <Text style={styles.nick} numberOfLines={1}>{entry.nick}</Text>
+                  <Text style={styles.teamName} numberOfLines={1}>{teamName(entry.teamId)}</Text>
                 </View>
-                <Text style={styles.goals}>
-                  {entry.goals} <Text style={styles.goalLabel}>gols</Text>
-                </Text>
+                <Text style={styles.goals}>{entry.goals}</Text>
+                <Text style={styles.goalLabel}>gols</Text>
               </View>
             );
           })}
         </ScrollView>
       )}
-    </View>
+    </NightBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a1628',
-    paddingTop: 20,
-  },
-  title: {
-    color: '#00e676',
-    fontSize: 26,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
+  header: { paddingTop: spacing.xl, paddingBottom: spacing.md, alignItems: 'center' },
+  title: { color: colors.chalk, fontFamily: font.poster, fontSize: 26, letterSpacing: 1 },
   tabs: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#1a2a40',
-    borderRadius: 12,
-    padding: 4,
+    flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.lg,
+    backgroundColor: colors.night0, borderRadius: radius.md, padding: 4, borderWidth: 1, borderColor: colors.line,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#00e676',
-  },
-  tabText: {
-    color: '#888',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  tabTextActive: {
-    color: '#0a1628',
-  },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 30,
-  },
-  empty: {
-    color: '#555',
-    textAlign: 'center',
-    fontSize: 16,
-    marginTop: 50,
-    lineHeight: 26,
-  },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
+  tabActive: { backgroundColor: colors.turf },
+  tabText: { color: colors.haze, fontFamily: font.bodyBold, fontSize: 12.5, letterSpacing: 0.3 },
+  tabTextActive: { color: colors.night0 },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: 30 },
+  empty: { color: colors.hazeDim, textAlign: 'center', fontFamily: font.body, fontSize: 14, marginTop: 50, lineHeight: 22 },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1a2a40',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#2a3a50',
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.panel, borderRadius: radius.md, paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.line,
   },
-  rowTop3: {
-    borderColor: '#2a4a30',
-    backgroundColor: '#162236',
-  },
-  position: {
-    color: '#888',
-    fontSize: 16,
-    fontWeight: 'bold',
-    width: 36,
-  },
-  shield: {
-    fontSize: 22,
-    marginRight: 10,
-  },
-  playerInfo: {
-    flex: 1,
-  },
-  nick: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  teamName: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  goals: {
-    color: '#00e676',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  goalLabel: {
-    fontSize: 12,
-    color: '#888',
-  },
+  rowTop3: { backgroundColor: colors.panelHi },
+  rowMine: { borderColor: colors.turf },
+  position: { color: colors.haze, fontFamily: font.score, fontSize: 20, width: 26, textAlign: 'center' },
+  playerInfo: { flex: 1 },
+  nick: { color: colors.chalk, fontFamily: font.bodyBold, fontSize: 15 },
+  teamName: { color: colors.haze, fontFamily: font.body, fontSize: 12, marginTop: 1 },
+  goals: { color: colors.turf, fontFamily: font.score, fontSize: 22 },
+  goalLabel: { color: colors.hazeDim, fontFamily: font.body, fontSize: 11 },
 });

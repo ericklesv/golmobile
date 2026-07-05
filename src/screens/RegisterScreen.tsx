@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -13,6 +12,10 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { TEAMS } from '../constants/teams';
+import NightBackground from '../components/NightBackground';
+import TeamBadge from '../components/TeamBadge';
+import Field from '../components/Field';
+import { colors, font, radius, spacing, glow } from '../theme';
 
 export default function RegisterScreen({ navigation }: any) {
   const { register } = useAuth();
@@ -24,11 +27,11 @@ export default function RegisterScreen({ navigation }: any) {
 
   async function handleRegister() {
     if (!nick.trim() || !email.trim() || !password || !selectedTeam) {
-      Alert.alert('Atenção', 'Preencha todos os campos e escolha um time.');
+      Alert.alert('Falta pouco', 'Preencha os campos e escolha um time do coração.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Atenção', 'A senha precisa ter pelo menos 6 caracteres.');
+      Alert.alert('Senha curta', 'Use pelo menos 6 caracteres.');
       return;
     }
     setLoading(true);
@@ -36,168 +39,95 @@ export default function RegisterScreen({ navigation }: any) {
       await register(email.trim(), password, nick.trim(), selectedTeam);
     } catch (e: any) {
       const code = e?.code ?? '';
-      let msg = 'Verifique os dados e tente novamente.';
-      if (code === 'auth/email-already-in-use') msg = 'Este e-mail já está cadastrado.';
+      let msg = 'Confira os dados e tente novamente.';
+      if (code === 'auth/email-already-in-use') msg = 'Esse e-mail já tem conta. Faça login.';
       else if (code === 'auth/weak-password') msg = 'Senha muito fraca. Use pelo menos 6 caracteres.';
-      else if (code === 'auth/invalid-email') msg = 'E-mail inválido.';
-      else if (code === 'auth/network-request-failed') msg = 'Sem conexão com a internet.';
+      else if (code === 'auth/invalid-email') msg = 'Esse e-mail não parece válido.';
+      else if (code === 'auth/network-request-failed') msg = 'Sem conexão. Verifique a internet.';
       else if (code) msg = `Erro: ${code}`;
-      Alert.alert('Erro ao cadastrar', msg);
+      Alert.alert('Não deu para criar a conta', msg);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#0a1628' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>⚽ Criar Conta</Text>
+    <NightBackground>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>ENTRAR EM CAMPO</Text>
+          <Text style={styles.subtitle}>Crie seu jogador e escolha um time.</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Seu nick / apelido"
-          placeholderTextColor="#666"
-          value={nick}
-          onChangeText={setNick}
-          maxLength={20}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#666"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Senha (mín. 6 caracteres)"
-          placeholderTextColor="#666"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <Field iconName="account-outline" placeholder="Seu nick" value={nick} onChangeText={setNick} maxLength={20} />
+          <Field
+            iconName="email-outline"
+            placeholder="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Field iconName="lock-outline" placeholder="Senha (mín. 6 caracteres)" value={password} onChangeText={setPassword} secureTextEntry />
 
-        <Text style={styles.sectionLabel}>Escolha seu time:</Text>
-        <View style={styles.teamsGrid}>
-          {TEAMS.map((team) => (
-            <TouchableOpacity
-              key={team.id}
-              style={[
-                styles.teamCard,
-                selectedTeam === team.id && { borderColor: team.color, backgroundColor: '#1a2a40' },
-              ]}
-              onPress={() => setSelectedTeam(team.id)}
-            >
-              <Text style={styles.teamShield}>{team.shield}</Text>
-              <Text style={[styles.teamName, selectedTeam === team.id && { color: '#fff' }]}>
-                {team.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          <Text style={styles.sectionLabel}>ESCOLHA SEU TIME</Text>
+          <View style={styles.teamsGrid}>
+            {TEAMS.map((team) => {
+              const active = selectedTeam === team.id;
+              return (
+                <TouchableOpacity
+                  key={team.id}
+                  style={[styles.teamCard, active && styles.teamCardActive]}
+                  onPress={() => setSelectedTeam(team.id)}
+                  activeOpacity={0.8}
+                >
+                  <TeamBadge teamId={team.id} size={34} />
+                  <Text style={[styles.teamName, active && { color: colors.chalk }]} numberOfLines={1}>
+                    {team.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-        <TouchableOpacity
-          style={[styles.button, !selectedTeam && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading || !selectedTeam}
-        >
-          {loading ? (
-            <ActivityIndicator color="#0a1628" />
-          ) : (
-            <Text style={styles.buttonText}>CRIAR CONTA</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, !selectedTeam && styles.buttonDisabled]}
+            onPress={handleRegister}
+            disabled={loading || !selectedTeam}
+            activeOpacity={0.85}
+          >
+            {loading ? <ActivityIndicator color={colors.night0} /> : <Text style={styles.buttonText}>COMEÇAR A JOGAR</Text>}
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 30 }}>
-          <Text style={styles.link}>Já tenho conta</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkWrap}>
+            <Text style={styles.link}>Já tenho conta</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </NightBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#00e676',
-    marginBottom: 28,
-  },
-  input: {
-    width: '100%',
-    backgroundColor: '#1a2a40',
-    color: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#2a3a50',
-  },
+  container: { paddingHorizontal: spacing.xl, paddingTop: 56, paddingBottom: 40, alignItems: 'center' },
+  title: { fontFamily: font.poster, fontSize: 30, color: colors.chalk, letterSpacing: 1 },
+  subtitle: { fontFamily: font.body, fontSize: 13, color: colors.haze, marginBottom: spacing.xl, marginTop: 2 },
   sectionLabel: {
-    alignSelf: 'flex-start',
-    color: '#aaa',
-    fontSize: 15,
-    marginBottom: 12,
-    marginTop: 4,
+    alignSelf: 'flex-start', color: colors.haze, fontFamily: font.bodyBold,
+    fontSize: 11, letterSpacing: 1, marginBottom: spacing.md, marginTop: spacing.xs,
   },
-  teamsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 24,
-  },
+  teamsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', marginBottom: spacing.xl },
   teamCard: {
-    width: '30%',
-    backgroundColor: '#1a2a40',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#2a3a50',
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginBottom: 10,
+    width: '31%', backgroundColor: colors.panel, borderRadius: radius.md, borderWidth: 1.5,
+    borderColor: colors.line, alignItems: 'center', gap: 6, paddingVertical: spacing.md, marginBottom: spacing.sm,
   },
-  teamShield: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  teamName: {
-    color: '#888',
-    fontSize: 11,
-    textAlign: 'center',
-  },
+  teamCardActive: { borderColor: colors.turf, backgroundColor: colors.panelHi },
+  teamName: { color: colors.haze, fontFamily: font.bodyMed, fontSize: 10.5, textAlign: 'center' },
   button: {
-    width: '100%',
-    backgroundColor: '#00e676',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 16,
+    width: '100%', backgroundColor: colors.turf, borderRadius: radius.md,
+    paddingVertical: 16, alignItems: 'center', ...glow(colors.turfGlow, 14),
   },
-  buttonDisabled: {
-    backgroundColor: '#1a4a30',
-  },
-  buttonText: {
-    color: '#0a1628',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  link: {
-    color: '#00e676',
-    fontSize: 15,
-    textDecorationLine: 'underline',
-  },
+  buttonDisabled: { backgroundColor: colors.turfDeep, shadowOpacity: 0 },
+  buttonText: { color: colors.night0, fontFamily: font.bodyBold, fontSize: 16, letterSpacing: 1 },
+  linkWrap: { marginTop: spacing.lg },
+  link: { color: colors.haze, fontFamily: font.bodyMed, fontSize: 14 },
 });

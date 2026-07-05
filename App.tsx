@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Platform, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +13,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { colors } from './src/theme';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Anton_400Regular,
     SairaCondensed_600SemiBold,
     SairaCondensed_700Bold,
@@ -22,7 +22,15 @@ export default function App() {
     Inter_700Bold,
   });
 
-  if (!fontsLoaded) {
+  // Segurança: nunca travar a tela por causa das fontes — libera após 4s mesmo
+  // se elas falharem/demorarem (o app cai nas fontes do sistema).
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!fontsLoaded && !fontError && !timedOut) {
     return <View style={{ flex: 1, backgroundColor: colors.night0 }} />;
   }
 

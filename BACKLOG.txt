@@ -9,11 +9,11 @@ FASE 0 — FUNDAÇÃO (fazer antes de qualquer feature nova)
 [x] 0.1  Iniciar repositório git + .gitignore (node_modules, .expo) + primeiro commit
 [x] 0.2  Criar CLAUDE.md documentando stack, estrutura, regras do jogo e decisões
 [x] 0.3  Mover lógica de jogo para o servidor (server/ no Railway, sem Blaze):
-         >> CÓDIGO PRONTO (server/index.js: POST /kick + /trail-pick). FALTA:
-         >> 1) criar serviço no Railway (Root Directory = server) com env
-         >>    FIREBASE_SERVICE_ACCOUNT (JSON da service account do futgol-acc08)
-         >> 2) colocar a URL do serviço em API_URL (src/services/game.ts)
-         >> 3) deploy das rules (gratuito): npx firebase-tools login +
+         >> DEPLOYADO: https://golmobile-production.up.railway.app (deploy via
+         >> `railway up` na pasta server/). GitHub: ericklesv/golmobile. FALTA:
+         >> 1) env FIREBASE_SERVICE_ACCOUNT no Railway (JSON da service account
+         >>    do futgol-acc08 — gerar na conta DONA do projeto Firebase)
+         >> 2) deploy das rules (gratuito): npx firebase-tools login +
          >>    npx firebase-tools deploy --only firestore
          - função "chutar" (httpsCallable): valida cooldown pelo timestamp do servidor,
            sorteia o gol, incrementa rankings e grava a atividade — tudo numa transação

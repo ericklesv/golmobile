@@ -76,6 +76,19 @@ server/index.js           # API de jogo (Express + firebase-admin, Railway)
 firestore.rules / firestore.indexes.json
 ```
 
+## Design (Fase 2 — tema "Estádio à noite")
+- Tokens em `src/theme/index.ts` (`colors`, `spacing`, `radius`, `font`, `glow`):
+  noite azul + gramado #22E58A + cal #EDF4F3 + âmbar #FFC24B. **Nada de hex solto
+  em tela nova — importar do theme.**
+- Fontes (`App.tsx`): `font.poster` Anton, `font.score`/`scoreMed` Saira Condensed
+  (numerais de placar), `font.body`/`bodyMed`/`bodyBold` Inter.
+- Componentes reutilizáveis em `src/components/`: `NightBackground` (fundo padrão
+  das telas), `TeamBadge` (escudo genérico — usar no lugar de `team.shield` emoji),
+  `KickTarget` (alvo com anel SVG de cooldown), `Scoreboard` (placar ao vivo).
+- Ícones: `@expo/vector-icons` (MaterialCommunityIcons). Migradas: Home + tab bar.
+  **Pendente:** Ranking, Perfil, Login, Registro, Pênalti, Trilha ainda com estilo
+  antigo (hex hardcoded) — migrar para o theme nos próximos passos da Fase 2.
+
 ## Convenções e avisos
 - Sempre atualizar este arquivo e o `BACKLOG.txt` ao concluir itens.
 - Manter as regras de jogo de `server/index.js` em sincronia com

@@ -60,31 +60,26 @@ FASE 2 — DESIGN: VISUAL 100% ATUAL (dar MUITA atenção)
 Meta: sair do "app de tutorial" e parecer um jogo de 2026. Referências:
 FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
 
-[ ] 2.1  Design system central (src/theme/):
-         - tokens: cores, espaçamentos, radius, tipografia, sombras
-         - dark theme como identidade (já é), mas com paleta refinada:
-           fundo com gradiente profundo (#0a1628 → #060d1a), verde-gramado neon
-           (#00e676) como cor de ação única, dourado só para conquistas
-         - acabar com cores hardcoded espalhadas pelas telas
-[ ] 2.2  Tipografia própria (expo-font): display condensada e esportiva para
-         números/placares (ex.: Archivo Expanded/Black, Barlow Condensed) +
-         Inter para texto. Números de placar GRANDES são a alma de app de futebol.
-[ ] 2.3  Substituir TODOS os emojis de UI por ícones de verdade:
-         - lucide-react-native ou @expo/vector-icons nas tabs, botões e listas
-         - escudos dos times: SVGs próprios (genéricos por cor, sem violar marca)
-           em vez de 🔴⚫ — react-native-svg
-[ ] 2.4  Redesign da HomeScreen (tela mais importante):
-         - hero: campo/estádio estilizado de fundo (SVG ou imagem), placar da
-           partida do dia no topo
-         - botões de chute: anel de progresso circular ao redor (SVG) mostrando
-           o cooldown, em vez de texto mm:ss dentro da bolinha
-         - hierarquia clara: Partida > Chutes > Ranking > Feed
-[ ] 2.5  Animações e "game feel" (react-native-reanimated + moti):
-         - confete/explosão de partículas no GOL (lottie-react-native)
-         - shake + flash vermelho na defesa
-         - haptics no chute e no gol (expo-haptics; no-op no web)
-         - som: apito, torcida, "uhhh" na defesa (expo-audio, com mute)
-         - transições de tela suaves, botões com spring ao pressionar
+# TEMA definido: "Estádio à noite" (noite azul + gramado + cal + âmbar refletor).
+# src/theme/index.ts é a fonte de tokens. Componentes em src/components/.
+
+[x] 2.1  Design system central (src/theme/index.ts): cores, spacing, radius,
+         tipografia, glow. Paleta noite #04101B→#0A1B2B, gramado #22E58A,
+         cal #EDF4F3, âmbar-refletor #FFC24B (recordes/liderança), cartão #FF5470.
+         >> FALTA: migrar telas antigas (Ranking/Perfil/Login/Registro/Pênalti/
+         >> Trilha ainda usam hex hardcoded — só Home/tabs migraram)
+[x] 2.2  Tipografia (expo-font + @expo-google-fonts): Anton (pôster/GOL!),
+         Saira Condensed (placar/numerais), Inter (texto). Carregadas no App.tsx.
+[x] 2.3  Ícones de verdade (@expo/vector-icons) nas tabs, alvos de chute e listas;
+         escudos = TeamBadge (disco com sigla + cor do clube), fim dos emojis 🔴⚫.
+         >> Melhoria opcional: escudos SVG próprios por time (hoje é disco+sigla)
+         >> FALTA: trocar emojis restantes nas telas ainda não migradas (2.1)
+[x] 2.4  HomeScreen redesenhada: Scoreboard assinatura (numerais + brilho âmbar),
+         alvos de chute com anel de progresso SVG do cooldown, hierarquia
+         Partida > Chutes > Artilheiros > Lances, fundo NightBackground.
+[~] 2.5  Game feel — PARCIAL: haptics no gol/defesa (expo-haptics) feito.
+         FALTA: confete/lottie no gol, som (apito/torcida), spring nos botões,
+         transições de tela, flash de tela na defesa.
 [ ] 2.6  Redesign do Pênalti: goleiro animado (sprite/Lottie em vez de 🧤),
          rede com física visual, câmera "atrás da bola", replay do gol
 [ ] 2.7  Redesign da Trilha: manter o minigame, melhorar arte do campo

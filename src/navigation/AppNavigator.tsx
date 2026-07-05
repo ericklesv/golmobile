@@ -1,8 +1,9 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { colors, font } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -29,36 +30,37 @@ function AppTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0d1f35',
-          borderTopColor: '#1a2a40',
+          backgroundColor: colors.night0,
+          borderTopColor: colors.line,
           borderTopWidth: 1,
-          height: 60,
+          height: 62,
           paddingBottom: 8,
+          paddingTop: 6,
         },
-        tabBarActiveTintColor: '#00e676',
-        tabBarInactiveTintColor: '#555',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarActiveTintColor: colors.turf,
+        tabBarInactiveTintColor: colors.hazeDim,
+        tabBarLabelStyle: { fontFamily: font.bodyBold, fontSize: 10, letterSpacing: 0.5 },
       }}
     >
       <Tab.Screen
         name="Jogar"
         component={HomeScreen}
-        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>⚽</Text> }}
+        options={{ tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="soccer" size={size} color={color} /> }}
       />
       <Tab.Screen
         name="Liga"
         component={LeagueScreen}
-        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🏅</Text> }}
+        options={{ tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="trophy-variant" size={size} color={color} /> }}
       />
       <Tab.Screen
         name="Rankings"
         component={RankingScreen}
-        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🏆</Text> }}
+        options={{ tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="podium" size={size} color={color} /> }}
       />
       <Tab.Screen
         name="Perfil"
         component={ProfileScreen}
-        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>👤</Text> }}
+        options={{ tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account" size={size} color={color} /> }}
       />
     </Tab.Navigator>
   );

@@ -2,13 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Animated,
   Alert,
   ScrollView,
   Modal,
+  Platform,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import PenaltyScreen from './PenaltyScreen';
 import TrailScreen from './TrailScreen';
 import {
@@ -27,13 +29,29 @@ import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { TEAMS, ACTION_COOLDOWNS, ACTION_LAST_TIME_FIELD } from '../constants/teams';
 import { kickAction, isCooldownError } from '../services/game';
-import { subscribeTeamMatch, formatMatchTimeLeft, TeamMatchLive } from '../services/league';
+import { subscribeTeamMatch, TeamMatchLive } from '../services/league';
 import {
   getTimeRemaining,
   formatCountdown,
   getCurrentHourKey,
   getCurrentRoundKey,
 } from '../utils/gameLogic';
+import NightBackground from '../components/NightBackground';
+import Scoreboard from '../components/Scoreboard';
+import KickTarget from '../components/KickTarget';
+import TeamBadge from '../components/TeamBadge';
+import { colors, font, radius, spacing, glow } from '../theme';
+
+function haptic(type: 'success' | 'warning') {
+  if (Platform.OS === 'web') return;
+  try {
+    Haptics.notificationAsync(
+      type === 'success'
+        ? Haptics.NotificationFeedbackType.Success
+        : Haptics.NotificationFeedbackType.Warning
+    );
+  } catch {}
+}
 
 // Todos os tipos de ação incluindo AUTO
 const ALL_ACTION_IDS = ['auto', 'penalti', 'falta', 'trilha'] as const;
@@ -57,10 +75,12 @@ function buildCooldownMap(profile: any): CooldownMap {
   return result;
 }
 
-const KICK_TYPES = [
-  { id: 'penalti' as ActionId, label: 'PÊNALTI', emoji: '⚽', color: '#FFD700', glow: '#FFD70066' },
-  { id: 'falta'   as ActionId, label: 'FALTA',   emoji: '🌀', color: '#00bcd4', glow: '#00bcd466' },
-  { id: 'trilha'  as ActionId, label: 'TRILHA',  emoji: '🟠', color: '#FF7043', glow: '#FF704366' },
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+const TARGETS: { id: ActionId; label: string; icon: IconName; color: string }[] = [
+  { id: 'auto',    label: 'AUTO',    icon: 'lightning-bolt', color: colors.turf },
+  { id: 'penalti', label: 'PÊNALTI', icon: 'soccer',         color: colors.flood },
+  { id: 'falta',   label: 'FALTA',   icon: 'whistle',        color: '#38BDF8' },
+  { id: 'trilha',  label: 'TRILHA',  icon: 'run-fast',       color: '#FF7A59' },
 ];
 
 interface TopPlayer { nick: string; teamId: string; goals: number; }
@@ -201,16 +221,17 @@ export default function HomeScreen({ navigation }: any) {
     Animated.timing(resultOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
   }
 
-  // O chute é decidido no servidor (Cloud Function `kick`) — aqui só animamos
-  async function handleKick() {
-    const cd = cooldowns[kickType];
+  // O chute é decidido no servidor — aqui só animamos o resultado
+  async function handleKick(type: ActionId = kickType) {
+    const cd = cooldowns[type];
     if (!user || !profile || !cd?.canAct || kicking) return;
-    if (kickType === 'penalti' || kickType === 'trilha') return; // têm telas próprias
+    if (type === 'penalti' || type === 'trilha') return; // têm telas próprias
     setKicking(true);
     try {
-      const res = await kickAction(kickType);
+      const res = await kickAction(type);
       animateBall(res.goal);
-      setLastResult(res.goal ? { goal: true, message: '⚽ GOOOOOL!' } : { goal: false, message: '❌ Defendido!' });
+      haptic(res.goal ? 'success' : 'warning');
+      setLastResult(res.goal ? { goal: true, message: 'GOL!' } : { goal: false, message: 'DEFENDIDO' });
       await refreshProfile();
     } catch (e) {
       if (isCooldownError(e)) {
@@ -224,340 +245,221 @@ export default function HomeScreen({ navigation }: any) {
   }
 
   const ballTranslateY = ballAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -100] });
-  const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+  const medalColors = [colors.flood, '#C7D0DB', '#D08A4B'];
+
+  function pressTarget(id: ActionId) {
+    setKickType(id);
+    const cd = cooldowns[id];
+    if (!cd?.canAct) return;
+    if (id === 'penalti') setShowPenalty(true);
+    else if (id === 'trilha') { setTrailKey((k) => k + 1); setShowTrail(true); }
+    else handleKick(id);
+  }
+
+  const kickIcon = (id: string) =>
+    id === 'penalti' ? 'soccer' : id === 'falta' ? 'whistle' : id === 'trilha' ? 'run-fast' : 'lightning-bolt';
 
   return (
-    <>
+    <NightBackground>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
-      {/* Placar ao vivo da partida do time */}
-      {match && (() => {
-        const opp = TEAMS.find((t) => t.id === match.opponent);
-        const win = match.myGoals > match.oppGoals;
-        const draw = match.myGoals === match.oppGoals;
-        return (
-          <View style={styles.matchCard}>
-            <View style={styles.matchHeaderRow}>
-              <View style={styles.liveDot} />
-              <Text style={styles.matchHeaderText}>
-                RODADA {match.round} · {formatMatchTimeLeft(match.endsAt)}
-              </Text>
-            </View>
-            <View style={styles.matchScoreRow}>
-              <View style={styles.matchTeam}>
-                <Text style={styles.matchShield}>{team?.shield ?? '⚽'}</Text>
-                <Text style={styles.matchTeamName} numberOfLines={1}>{team?.name ?? 'Meu time'}</Text>
-              </View>
-              <View style={styles.matchScoreBox}>
-                <Text style={[styles.matchScore, { color: win ? '#00e676' : draw ? '#ffb300' : '#fff' }]}>
-                  {match.myGoals}
-                </Text>
-                <Text style={styles.matchScoreX}>x</Text>
-                <Text style={styles.matchScore}>{match.oppGoals}</Text>
-              </View>
-              <View style={styles.matchTeam}>
-                <Text style={styles.matchShield}>{opp?.shield ?? '⚽'}</Text>
-                <Text style={styles.matchTeamName} numberOfLines={1}>{opp?.name ?? 'Adversário'}</Text>
-              </View>
-            </View>
-            <Text style={styles.matchTip}>
-              {win ? '🔥 Seu time está na frente! Faça mais gols.'
-                : draw ? '⚖️ Empate! Cada gol seu conta.'
-                : '⚠️ Seu time está perdendo. Bora virar!'}
-            </Text>
-          </View>
-        );
-      })()}
+        {/* Placar ao vivo da partida do time */}
+        {match && (
+          <Scoreboard
+            myTeamId={profile!.teamId}
+            myGoals={match.myGoals}
+            oppTeamId={match.opponent}
+            oppGoals={match.oppGoals}
+            round={match.round}
+            endsAt={match.endsAt}
+          />
+        )}
 
-      {/* Card do jogador */}
-      <View style={styles.playerCard}>
-        <View style={styles.playerRow}>
-          <View style={styles.avatarSmall}>
-            <Text style={styles.avatarLetter}>{profile?.nick?.charAt(0).toUpperCase()}</Text>
-          </View>
+        {/* Identidade do jogador + online */}
+        <View style={styles.identity}>
+          <TeamBadge teamId={profile?.teamId} size={40} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.playerNick}>{profile?.nick ?? '...'}</Text>
-            <View style={styles.teamRow}>
-              <Text style={styles.teamEmoji}>{team?.shield ?? '⚽'}</Text>
-              <Text style={[styles.teamName, { color: team?.color ?? '#00e676' }]}>{team?.name}</Text>
-            </View>
+            <Text style={styles.nick} numberOfLines={1}>{profile?.nick ?? '...'}</Text>
+            <Text style={styles.teamName} numberOfLines={1}>{team?.name ?? ''}</Text>
           </View>
-          <View style={styles.onlineBadge}>
+          <View style={styles.onlinePill}>
             <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>{onlineCount} online</Text>
+            <Text style={styles.onlineText}>{onlineCount} em campo</Text>
           </View>
         </View>
 
+        {/* Meus gols por janela */}
         <View style={styles.statsRow}>
           {[
-            { label: '🕐 Hora', value: profile?.hourKey === getCurrentHourKey() ? profile?.hourGoals ?? 0 : 0 },
-            { label: '🎲 Rodada', value: profile?.roundKey === getCurrentRoundKey() ? profile?.roundGoals ?? 0 : 0 },
-            { label: '🏆 Temp.', value: profile?.totalGoals ?? 0 },
+            { label: 'HORA', value: profile?.hourKey === getCurrentHourKey() ? profile?.hourGoals ?? 0 : 0 },
+            { label: 'RODADA', value: profile?.roundKey === getCurrentRoundKey() ? profile?.roundGoals ?? 0 : 0 },
+            { label: 'TEMPORADA', value: profile?.totalGoals ?? 0 },
           ].map((s) => (
             <View key={s.label} style={styles.statPill}>
-              <Text style={styles.statPillValue}>{s.value}</Text>
-              <Text style={styles.statPillLabel}>{s.label}</Text>
+              <Text style={styles.statValue}>{s.value}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
             </View>
           ))}
         </View>
-      </View>
 
-      {/* Área do chute */}
-      <View style={styles.kickArea}>
-        <Animated.Text style={[styles.ball, {
-          transform: [{ translateY: ballTranslateY }, { scale: scaleAnim }, { translateX: shakeAnim }],
-        }]}>
-          ⚽
-        </Animated.Text>
+        {/* Zona de chute */}
+        <View style={styles.kickCard}>
+          <View style={styles.stage}>
+            <Animated.Text style={[styles.ball, {
+              transform: [{ translateY: ballTranslateY }, { scale: scaleAnim }, { translateX: shakeAnim }],
+            }]}>
+              ⚽
+            </Animated.Text>
+            {lastResult && (
+              <Animated.Text style={[styles.result, {
+                opacity: resultOpacity,
+                color: lastResult.goal ? colors.turf : colors.red,
+                textShadowColor: lastResult.goal ? colors.turfGlow : colors.redGlow,
+              }]}>
+                {lastResult.message}
+              </Animated.Text>
+            )}
+          </View>
 
-        {lastResult && (
-          <Animated.Text style={[styles.result, {
-            opacity: resultOpacity,
-            color: lastResult.goal ? '#00e676' : '#ff5252',
-          }]}>
-            {lastResult.message}
-          </Animated.Text>
-        )}
-
-        <View style={styles.kickTypeRow}>
-          {/* Botão AUTO */}
-          {(() => {
-            const cd = cooldowns['auto'];
-            return (
-              <TouchableOpacity
-                style={styles.kickTypeBtnWrap}
-                onPress={() => { setKickType('auto'); if (cd.canAct) handleKick(); }}
-                disabled={kickType === 'auto' && (!cd.canAct || kicking)}
-                activeOpacity={0.75}
-              >
-                <View style={[
-                  styles.kickTypeBall, styles.kickMainBall,
-                  cd.canAct
-                    ? { borderColor: '#00e676', shadowColor: '#00e67699', shadowOpacity: 1, shadowRadius: 16, elevation: 12 }
-                    : { borderColor: '#2a3a50' },
-                ]}>
-                  {cd.canAct
-                    ? <Text style={styles.kickTypeBallEmoji}>🦵</Text>
-                    : <Text style={styles.kickCountdownText}>{formatCountdown(cd.remaining)}</Text>
-                  }
-                </View>
-                <View style={styles.kickTypeLabelRow}>
-                  <View style={[styles.kickTypeDot, { backgroundColor: cd.canAct ? '#00e676' : '#ff9800' }]} />
-                  <Text style={[styles.kickTypeLabel, { color: cd.canAct ? '#00e676' : '#ff9800' }]}>AUTO</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })()}
-
-          {KICK_TYPES.map((kt) => {
-            const cd = cooldowns[kt.id];
-            const active = kickType === kt.id;
-            return (
-              <TouchableOpacity
-                key={kt.id}
-                style={styles.kickTypeBtnWrap}
-                onPress={() => {
-                  setKickType(kt.id);
-                  if (kt.id === 'penalti' && cd.canAct) setShowPenalty(true);
-                  else if (kt.id === 'trilha' && cd.canAct) { setTrailKey(k => k + 1); setShowTrail(true); }
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={[
-                  styles.kickTypeBall,
-                  active && { borderColor: kt.color, shadowColor: kt.glow, shadowOpacity: 1, shadowRadius: 12, elevation: 10 },
-                  !active && { borderColor: '#2a3a50' },
-                ]}>
-                  {cd.canAct
-                    ? <Text style={styles.kickTypeBallEmoji}>{kt.emoji}</Text>
-                    : <Text style={styles.kickCountdownText}>{formatCountdown(cd.remaining)}</Text>
-                  }
-                </View>
-                <View style={styles.kickTypeLabelRow}>
-                  <View style={[styles.kickTypeDot, { backgroundColor: cd.canAct ? kt.color : '#2a3a50' }]} />
-                  <Text style={[styles.kickTypeLabel, { color: cd.canAct ? kt.color : '#556' }]}>
-                    {kt.id === 'penalti' && cd.canAct ? '▶ JOGAR' : kt.label}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          <View style={styles.targetsRow}>
+            {TARGETS.map((t) => {
+              const cd = cooldowns[t.id];
+              return (
+                <KickTarget
+                  key={t.id}
+                  iconName={t.icon}
+                  label={t.id === 'penalti' && cd.canAct ? 'JOGAR' : t.label}
+                  color={t.color}
+                  ready={cd.canAct}
+                  progress={cd.progress}
+                  countdown={formatCountdown(cd.remaining)}
+                  active={kickType === t.id}
+                  onPress={() => pressTarget(t.id)}
+                  size={t.id === 'penalti' ? 70 : 64}
+                />
+              );
+            })}
+          </View>
         </View>
 
-        {/* Barra de progresso da ação selecionada */}
-        {!cooldowns[kickType]?.canAct && (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressBar, { width: `${cooldowns[kickType]?.progress * 100}%` as any }]} />
-            </View>
+        {/* Top da hora */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <MaterialCommunityIcons name="trophy" size={16} color={colors.flood} />
+            <Text style={styles.sectionTitle}>Artilheiros da hora</Text>
           </View>
-        )}
-      </View>
-
-      {/* Mini Ranking da Hora */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🏆 Top Hora</Text>
-        {topPlayers.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum gol ainda. Seja o primeiro! 🚀</Text>
-        ) : (
-          topPlayers.map((p, i) => {
-            const t = TEAMS.find((tm) => tm.id === p.teamId);
-            return (
-              <View key={i} style={[styles.rankRow, i === topPlayers.length - 1 && { borderBottomWidth: 0 }]}>
-                <Text style={[styles.rankPos, { color: medalColors[i] }]}>{i + 1}º</Text>
-                <Text style={styles.rankShield}>{t?.shield ?? '⚽'}</Text>
-                <Text style={styles.rankNick}>{p.nick}</Text>
-                <Text style={styles.rankGoals}>{p.goals} gols</Text>
+          {topPlayers.length === 0 ? (
+            <Text style={styles.emptyText}>Ninguém marcou ainda. Seja o primeiro a estufar a rede.</Text>
+          ) : (
+            topPlayers.map((p, i) => (
+              <View key={i} style={[styles.rankRow, i === topPlayers.length - 1 && styles.noBorder]}>
+                <Text style={[styles.rankPos, { color: medalColors[i] ?? colors.haze }]}>{i + 1}</Text>
+                <TeamBadge teamId={p.teamId} size={26} />
+                <Text style={styles.rankNick} numberOfLines={1}>{p.nick}</Text>
+                <Text style={styles.rankGoals}>{p.goals}</Text>
+                <Text style={styles.rankGoalsUnit}>gols</Text>
               </View>
-            );
-          })
-        )}
-      </View>
+            ))
+          )}
+        </View>
 
-      {/* Feed de atividades */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚡ Atividades recentes</Text>
-        {activities.length === 0 ? (
-          <Text style={styles.emptyText}>Sem atividades ainda.</Text>
-        ) : (
-          activities.map((a, i) => {
-            const t = TEAMS.find((tm) => tm.id === a.teamId);
-            return (
-              <View key={a.id} style={[styles.activityRow, i === activities.length - 1 && { borderBottomWidth: 0 }]}>
-                <Text style={styles.activityShield}>{t?.shield ?? '⚽'}</Text>
-                <Text style={styles.activityText}>
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>{a.nick}</Text>
+        {/* Feed de lances */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <MaterialCommunityIcons name="flash" size={16} color={colors.turf} />
+            <Text style={styles.sectionTitle}>Lances ao vivo</Text>
+          </View>
+          {activities.length === 0 ? (
+            <Text style={styles.emptyText}>O jogo está começando. Nenhum lance ainda.</Text>
+          ) : (
+            activities.map((a, i) => (
+              <View key={a.id} style={[styles.activityRow, i === activities.length - 1 && styles.noBorder]}>
+                <TeamBadge teamId={a.teamId} size={24} />
+                <Text style={styles.activityText} numberOfLines={1}>
+                  <Text style={styles.activityNick}>{a.nick}</Text>
                   {a.goal
-                    ? <Text style={{ color: '#00e676' }}> marcou um gol! ⚽</Text>
-                    : <Text style={{ color: '#ff5252' }}> perdeu o chute ❌</Text>
-                  }
+                    ? <Text style={{ color: colors.turf }}> balançou as redes!</Text>
+                    : <Text style={{ color: colors.red }}> parou no goleiro.</Text>}
                 </Text>
-                <Text style={styles.activityKick}>{a.kickType === 'penalti' ? '🥅' : '🌀'}</Text>
+                <MaterialCommunityIcons
+                  name={kickIcon(a.kickType)}
+                  size={15}
+                  color={a.goal ? colors.turf : colors.hazeDim}
+                />
               </View>
-            );
-          })
-        )}
-      </View>
-    </ScrollView>
+            ))
+          )}
+        </View>
+      </ScrollView>
 
-    <Modal
-      visible={showPenalty}
-      animationType="slide"
-      onRequestClose={() => setShowPenalty(false)}
-    >
-      <PenaltyScreen navigation={{ goBack: () => setShowPenalty(false) }} />
-    </Modal>
-
-    <Modal
-      visible={showTrail}
-      animationType="slide"
-      onRequestClose={() => setShowTrail(false)}
-    >
-      <TrailScreen key={trailKey} navigation={{ goBack: () => setShowTrail(false) }} />
-    </Modal>
-  </>
+      <Modal visible={showPenalty} animationType="slide" onRequestClose={() => setShowPenalty(false)}>
+        <PenaltyScreen navigation={{ goBack: () => setShowPenalty(false) }} />
+      </Modal>
+      <Modal visible={showTrail} animationType="slide" onRequestClose={() => setShowTrail(false)}>
+        <TrailScreen key={trailKey} navigation={{ goBack: () => setShowTrail(false) }} />
+      </Modal>
+    </NightBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a1628' },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  container: { flex: 1 },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 40 },
 
-  matchCard: {
-    backgroundColor: '#12233c', borderRadius: 16, padding: 14, marginBottom: 16,
-    borderWidth: 1, borderColor: '#00e67640',
+  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
+  nick: { color: colors.chalk, fontFamily: font.bodyBold, fontSize: 16 },
+  teamName: { color: colors.haze, fontFamily: font.bodyMed, fontSize: 12, marginTop: 1 },
+  onlinePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: colors.night0, borderRadius: radius.pill,
+    paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: colors.line,
   },
-  matchHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 10 },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#ff4444' },
-  matchHeaderText: { color: '#8fa3bf', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  matchScoreRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  matchTeam: { flex: 1, alignItems: 'center', gap: 3 },
-  matchShield: { fontSize: 26 },
-  matchTeamName: { color: '#cdd8e8', fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  matchScoreBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 },
-  matchScore: { color: '#fff', fontSize: 34, fontWeight: '900', minWidth: 30, textAlign: 'center' },
-  matchScoreX: { color: '#556', fontSize: 16, fontWeight: '700' },
-  matchTip: { color: '#8fa3bf', fontSize: 12, textAlign: 'center', marginTop: 10 },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.turf },
+  onlineText: { color: colors.turf, fontFamily: font.bodyMed, fontSize: 11 },
 
-  playerCard: {
-    backgroundColor: '#1a2a40', borderRadius: 16, padding: 14,
-    marginBottom: 16, borderWidth: 1, borderColor: '#2a3a50',
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  statPill: {
+    flex: 1, backgroundColor: colors.panel, borderRadius: radius.md,
+    paddingVertical: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.line,
   },
-  playerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  avatarSmall: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#00e676',
-    alignItems: 'center', justifyContent: 'center', marginRight: 10,
-  },
-  avatarLetter: { fontSize: 20, fontWeight: 'bold', color: '#0a1628' },
-  playerNick: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
-  teamRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  teamEmoji: { fontSize: 14 },
-  teamName: { fontSize: 13, fontWeight: '600' },
-  onlineBadge: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#0d1f35',
-    borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4, gap: 4,
-  },
-  onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#00e676' },
-  onlineText: { color: '#00e676', fontSize: 11, fontWeight: '600' },
+  statValue: { color: colors.chalk, fontFamily: font.score, fontSize: 26, includeFontPadding: false },
+  statLabel: { color: colors.haze, fontFamily: font.bodyBold, fontSize: 9, letterSpacing: 1, marginTop: 2 },
 
-  statsRow: { flexDirection: 'row', gap: 8 },
-  statPill: { flex: 1, backgroundColor: '#0d1f35', borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
-  statPillValue: { color: '#00e676', fontSize: 18, fontWeight: 'bold' },
-  statPillLabel: { color: '#888', fontSize: 11, marginTop: 2 },
-
-  kickArea: { alignItems: 'center', marginBottom: 16, minHeight: 260, justifyContent: 'center' },
-  ball: { fontSize: 72, marginBottom: 8 },
-  result: { fontSize: 26, fontWeight: 'bold', marginBottom: 12 },
-
-  kickTypeRow: {
-    flexDirection: 'row', gap: 14, marginBottom: 20,
-    justifyContent: 'center',
+  kickCard: {
+    backgroundColor: colors.panel, borderRadius: radius.lg, paddingVertical: spacing.lg,
+    marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.line,
   },
-  kickTypeBtnWrap: { alignItems: 'center', gap: 6 },
-  kickTypeBall: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: '#0d1f35', borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center',
-    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0,
+  stage: { alignItems: 'center', justifyContent: 'center', height: 130 },
+  ball: { fontSize: 60 },
+  result: {
+    position: 'absolute', top: 8,
+    fontFamily: font.poster, fontSize: 40, letterSpacing: 1,
+    textShadowRadius: 16, textShadowOffset: { width: 0, height: 0 },
   },
-  kickMainBall: {
-    width: 68, height: 68, borderRadius: 34,
-    backgroundColor: '#0d2a1e',
-  },
-  kickTypeBallEmoji: { fontSize: 28 },
-  kickCountdownText: { color: '#ff9800', fontSize: 13, fontWeight: 'bold', letterSpacing: 0.5 },
-  kickTypeLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  kickTypeDot: { width: 6, height: 6, borderRadius: 3 },
-  kickTypeLabel: { color: '#667', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-
-  progressContainer: { width: '80%', alignItems: 'center', marginTop: -10, marginBottom: 12 },
-  progressTrack: {
-    width: '100%', height: 6, backgroundColor: '#1a2a40',
-    borderRadius: 3, marginBottom: 8, overflow: 'hidden',
-  },
-  progressBar: { height: '100%', backgroundColor: '#00e676', borderRadius: 3 },
+  targetsRow: { flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-start', paddingHorizontal: spacing.sm },
 
   section: {
-    backgroundColor: '#1a2a40', borderRadius: 16, padding: 14,
-    marginBottom: 14, borderWidth: 1, borderColor: '#2a3a50',
+    backgroundColor: colors.panel, borderRadius: radius.lg, padding: spacing.lg,
+    marginBottom: spacing.md, borderWidth: 1, borderColor: colors.line,
   },
-  sectionTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold', marginBottom: 10 },
-  emptyText: { color: '#555', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md },
+  sectionTitle: { color: colors.chalk, fontFamily: font.bodyBold, fontSize: 14 },
+  emptyText: { color: colors.hazeDim, fontFamily: font.body, fontSize: 13, textAlign: 'center', paddingVertical: spacing.sm, lineHeight: 19 },
 
   rankRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 7,
-    borderBottomWidth: 1, borderBottomColor: '#0d1f35',
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm,
+    borderBottomWidth: 1, borderBottomColor: colors.line,
   },
-  rankPos: { fontSize: 15, fontWeight: 'bold', width: 32 },
-  rankShield: { fontSize: 18, marginRight: 8 },
-  rankNick: { flex: 1, color: '#fff', fontSize: 14 },
-  rankGoals: { color: '#00e676', fontSize: 14, fontWeight: 'bold' },
+  noBorder: { borderBottomWidth: 0 },
+  rankPos: { fontFamily: font.score, fontSize: 18, width: 20, textAlign: 'center' },
+  rankNick: { flex: 1, color: colors.chalk, fontFamily: font.bodyMed, fontSize: 14 },
+  rankGoals: { color: colors.turf, fontFamily: font.score, fontSize: 18 },
+  rankGoalsUnit: { color: colors.hazeDim, fontFamily: font.body, fontSize: 11 },
 
   activityRow: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 6,
-    borderBottomWidth: 1, borderBottomColor: '#0d1f35', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm,
+    borderBottomWidth: 1, borderBottomColor: colors.line,
   },
-  activityShield: { fontSize: 16 },
-  activityText: { flex: 1, fontSize: 13, color: '#aaa' },
-  activityKick: { fontSize: 16 },
+  activityText: { flex: 1, fontFamily: font.body, fontSize: 13, color: colors.haze },
+  activityNick: { color: colors.chalk, fontFamily: font.bodyBold },
 });

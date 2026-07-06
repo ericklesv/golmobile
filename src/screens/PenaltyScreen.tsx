@@ -27,6 +27,7 @@ import { ACTION_COOLDOWNS } from '../constants/teams';
 import { getTimeRemaining, formatCountdown } from '../utils/gameLogic';
 import { useAuth } from '../context/AuthContext';
 import { kickAction, isCooldownError, PenaltyDirection } from '../services/game';
+import { penaltyCheer } from '../utils/narrator';
 import { colors, font, radius, glow } from '../theme';
 
 const { width } = Dimensions.get('window');
@@ -51,6 +52,38 @@ const DIRS: { id: Direction; icon: keyof typeof MaterialCommunityIcons.glyphMap;
   { id: 'center', icon: 'arrow-up-bold', label: 'CENTRO', key: '↑' },
   { id: 'right', icon: 'arrow-right-bold', label: 'DIREITA', key: '→' },
 ];
+
+/* Botão de direção com feedback de mola (item 2.5) */
+function DirButton({
+  icon,
+  label,
+  keyHint,
+  onPress,
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  keyHint: string;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const spring = (to: number) =>
+    Animated.spring(scale, { toValue: to, useNativeDriver: true, friction: 5, tension: 170 }).start();
+  return (
+    <TouchableOpacity
+      style={styles.dirBtn}
+      onPress={onPress}
+      onPressIn={() => spring(0.86)}
+      onPressOut={() => spring(1)}
+      activeOpacity={1}
+    >
+      <Animated.View style={[styles.dirIconBox, { transform: [{ scale }] }]}>
+        <MaterialCommunityIcons name={icon} size={30} color={colors.night0} />
+      </Animated.View>
+      <Text style={styles.dirLabel}>{label}</Text>
+      {Platform.OS === 'web' && <Text style={styles.dirKey}>{keyHint}</Text>}
+    </TouchableOpacity>
+  );
+}
 
 /* Goleiro vetorial (kit rosa sob os holofotes) */
 function Keeper() {
@@ -77,7 +110,7 @@ function Keeper() {
 export default function PenaltyScreen({ navigation }: any) {
   const { profile, refreshProfile } = useAuth();
   const [phase, setPhase] = useState<'choose' | 'animating' | 'result'>('choose');
-  const [result, setResult] = useState<{ goal: boolean; playerDir: Direction; keeperDir: Direction } | null>(null);
+  const [result, setResult] = useState<{ goal: boolean; playerDir: Direction; keeperDir: Direction; cry: string } | null>(null);
   const [reloadMs, setReloadMs] = useState(0);
   const [kickedAt, setKickedAt] = useState<number | null>(null);
   const PENALTI_CD = ACTION_COOLDOWNS['penalti'];
@@ -142,7 +175,7 @@ export default function PenaltyScreen({ navigation }: any) {
         }),
       ]).start(() => {
         setKickedAt(Date.now());
-        setResult({ goal: isGoal, playerDir, keeperDir });
+        setResult({ goal: isGoal, playerDir, keeperDir, cry: penaltyCheer(isGoal) });
         setPhase('result');
         Haptics.notificationAsync(
           isGoal ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
@@ -284,13 +317,7 @@ export default function PenaltyScreen({ navigation }: any) {
             <Text style={styles.hint}>Escolha o canto</Text>
             <View style={styles.dirRow}>
               {DIRS.map((d) => (
-                <TouchableOpacity key={d.id} style={styles.dirBtn} onPress={() => kick(d.id)} activeOpacity={0.8}>
-                  <View style={styles.dirIconBox}>
-                    <MaterialCommunityIcons name={d.icon} size={30} color={colors.night0} />
-                  </View>
-                  <Text style={styles.dirLabel}>{d.label}</Text>
-                  {Platform.OS === 'web' && <Text style={styles.dirKey}>{d.key}</Text>}
-                </TouchableOpacity>
+                <DirButton key={d.id} icon={d.icon} label={d.label} keyHint={d.key} onPress={() => kick(d.id)} />
               ))}
             </View>
           </>
@@ -301,7 +328,7 @@ export default function PenaltyScreen({ navigation }: any) {
         {phase === 'result' && result && (
           <Animated.View style={[styles.resultArea, { opacity: resultOp }]}>
             <Text style={[styles.resultText, { color: result.goal ? colors.turf : colors.red }]}>
-              {result.goal ? 'É GOOOOL!' : 'DEFENDEU!'}
+              {result.cry}
             </Text>
             <Text style={styles.resultSub}>
               {result.goal

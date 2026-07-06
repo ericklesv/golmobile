@@ -30,6 +30,7 @@ import { useAuth } from '../context/AuthContext';
 import { TEAMS, ACTION_COOLDOWNS, ACTION_LAST_TIME_FIELD } from '../constants/teams';
 import { kickAction, isCooldownError } from '../services/game';
 import { subscribeTeamMatch, TeamMatchLive } from '../services/league';
+import { cheer } from '../utils/narrator';
 import { useToast } from '../components/Toast';
 import {
   getTimeRemaining,
@@ -233,7 +234,7 @@ export default function HomeScreen({ navigation }: any) {
       const res = await kickAction(type);
       animateBall(res.goal);
       haptic(res.goal ? 'success' : 'warning');
-      setLastResult(res.goal ? { goal: true, message: 'GOL!' } : { goal: false, message: 'DEFENDIDO' });
+      setLastResult({ goal: res.goal, message: cheer(res.goal) });
       await refreshProfile();
     } catch (e) {
       if (isCooldownError(e)) {

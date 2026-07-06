@@ -82,9 +82,9 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
          alvos de chute com anel de progresso SVG do cooldown, hierarquia
          Partida > Chutes > Artilheiros > Lances, fundo NightBackground.
 [~] 2.5  Game feel — PARCIAL: haptics no gol/defesa (expo-haptics) + flash de
-         tela na defesa do pênalti + rastro (motion blur) da bola na Trilha.
-         FALTA: confete/lottie no gol, som (apito/torcida), spring nos botões,
-         transições de tela.
+         tela na defesa do pênalti + rastro (motion blur) da bola na Trilha +
+         spring nos botões (KickTarget da Home e direções do Pênalti).
+         FALTA: confete/lottie no gol, som (apito/torcida), transições de tela.
 [x] 2.6  Redesign do Pênalti: cena "atrás da bola" no tema (holofote atrás do
          gol, trave/rede em cal SVG, gramado em perspectiva, meia-lua e marca).
          Goleiro vetorial SVG (fim do emoji 🧤), bola real (bola.png). Título
@@ -100,8 +100,11 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
          Field (input com foco), grid de times com TeamBadge, microcopy de futebol
 [~] 2.11 Splash/ícone: cor de fundo alinhada ao tema (#04101B). FALTA: arte do
          ícone e do splash (precisa gerar PNGs — hoje ainda são os defaults Expo)
-[ ] 2.12 Microcopy com personalidade: narrador de futebol nos textos
-         ("É GOOOOL!", "Pra fora! Inacreditável!") — tom Cartola FC
+[x] 2.12 Microcopy com personalidade: src/utils/narrator.ts sorteia bordões de
+         narrador (GOL: "É GOOOOL!", "GOLAÇO!", "NO ÂNGULO!"…; erro: "PRA FORA!",
+         "ISOLOU!"…; defesa do pênalti: "DEFENDEU!", "AGARROU!"…). Aplicado na
+         Home (cheer) e no Pênalti (penaltyCheer, gravado no estado do resultado).
+         >> FALTA (melhoria): variar textos de recarga/estados vazios.
 
 ════════════════════════════════════════════════════════════
 FASE 3 — VERSÃO NAVEGADOR (WEB)

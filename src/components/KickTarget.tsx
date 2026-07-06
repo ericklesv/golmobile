@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, font, glow } from '../theme';
@@ -36,12 +36,22 @@ export default function KickTarget({
   const pct = ready ? 1 : Math.max(0, Math.min(1, progress));
   const ringColor = ready ? colors.turf : color;
 
+  const scale = useRef(new Animated.Value(1)).current;
+  const spring = (to: number) =>
+    Animated.spring(scale, { toValue: to, useNativeDriver: true, friction: 5, tension: 160 }).start();
+
   return (
-    <TouchableOpacity style={styles.wrap} onPress={onPress} activeOpacity={0.8}>
-      <View
+    <TouchableOpacity
+      style={styles.wrap}
+      onPress={onPress}
+      onPressIn={() => spring(0.88)}
+      onPressOut={() => spring(1)}
+      activeOpacity={1}
+    >
+      <Animated.View
         style={[
           styles.disc,
-          { width: size, height: size, borderRadius: size / 2 },
+          { width: size, height: size, borderRadius: size / 2, transform: [{ scale }] },
           ready && glow(colors.turfGlow, 16),
           !ready && active && glow(color, 12),
         ]}
@@ -68,7 +78,7 @@ export default function KickTarget({
         ) : (
           <Text style={styles.countdown}>{countdown}</Text>
         )}
-      </View>
+      </Animated.View>
       <View style={styles.labelRow}>
         <View style={[styles.dot, { backgroundColor: ready ? colors.turf : colors.hazeDim }]} />
         <Text style={[styles.label, { color: ready ? colors.chalk : colors.haze }]}>{label}</Text>

@@ -333,7 +333,7 @@ export default function HomeScreen({ navigation }: any) {
                 <KickTarget
                   key={t.id}
                   iconName={t.icon}
-                  label={t.id === 'penalti' && cd.canAct ? 'JOGAR' : t.label}
+                  label={t.label}
                   color={t.color}
                   ready={cd.canAct}
                   progress={cd.progress}

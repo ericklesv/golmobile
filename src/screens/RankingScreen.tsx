@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import {
@@ -23,6 +22,8 @@ import { TEAMS } from '../constants/teams';
 import { getCurrentHourKey, getCurrentRoundKey } from '../utils/gameLogic';
 import NightBackground from '../components/NightBackground';
 import TeamBadge from '../components/TeamBadge';
+import Skeleton from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import { colors, font, radius, spacing } from '../theme';
 
 type Tab = 'hour' | 'round' | 'season';
@@ -90,14 +91,30 @@ export default function RankingScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.turf} size="large" style={{ marginTop: 40 }} />
+        <View style={styles.list}>
+          {Array.from({ length: 7 }).map((_, i) => (
+            <View key={i} style={styles.skelRow}>
+              <Skeleton width={20} height={20} radius={5} />
+              <Skeleton width={34} height={34} radius={17} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Skeleton width={'62%'} height={13} />
+                <Skeleton width={'38%'} height={10} />
+              </View>
+              <Skeleton width={30} height={22} radius={6} />
+            </View>
+          ))}
+        </View>
       ) : (
         <ScrollView
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.turf} />}
           contentContainerStyle={styles.list}
         >
           {data.length === 0 && (
-            <Text style={styles.empty}>Nenhum gol nesta janela ainda.{'\n'}Seja o primeiro a aparecer aqui.</Text>
+            <EmptyState
+              icon="soccer"
+              title="Nenhum gol nesta janela"
+              subtitle="Chute algumas bolas e seja o primeiro a aparecer na artilharia."
+            />
           )}
           {data.map((entry, index) => {
             const isTop3 = index < 3;
@@ -133,7 +150,11 @@ const styles = StyleSheet.create({
   tabText: { color: colors.haze, fontFamily: font.bodyBold, fontSize: 12.5, letterSpacing: 0.3 },
   tabTextActive: { color: colors.night0 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: 30 },
-  empty: { color: colors.hazeDim, textAlign: 'center', fontFamily: font.body, fontSize: 14, marginTop: 50, lineHeight: 22 },
+  skelRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.panel, borderRadius: radius.md, paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.line,
+  },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: colors.panel, borderRadius: radius.md, paddingHorizontal: spacing.md,

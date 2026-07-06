@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { TEAMS } from '../constants/teams';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,8 @@ import {
 } from '../services/league';
 import NightBackground from '../components/NightBackground';
 import TeamBadge from '../components/TeamBadge';
+import Skeleton from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 import { colors, font, radius, spacing } from '../theme';
 
 const teamName = (id: string) => TEAMS.find((t) => t.id === id)?.name ?? id;
@@ -51,10 +53,40 @@ export default function LeagueScreen() {
   };
 
   if (loading) {
-    return <NightBackground><View style={styles.center}><ActivityIndicator color={colors.turf} /></View></NightBackground>;
+    return (
+      <NightBackground>
+        <View style={styles.content}>
+          <Skeleton width={200} height={26} radius={8} style={{ alignSelf: 'center' }} />
+          <Skeleton width={150} height={12} radius={6} style={{ alignSelf: 'center', marginTop: 8, marginBottom: spacing.lg }} />
+          <View style={styles.section}>
+            <Skeleton width={'55%'} height={14} style={{ marginBottom: spacing.md }} />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} height={30} radius={8} style={{ marginBottom: spacing.sm }} />
+            ))}
+          </View>
+          <View style={styles.section}>
+            <Skeleton width={'45%'} height={14} style={{ marginBottom: spacing.md }} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} height={24} radius={6} style={{ marginBottom: spacing.sm }} />
+            ))}
+          </View>
+        </View>
+      </NightBackground>
+    );
   }
   if (!season) {
-    return <NightBackground><View style={styles.center}><Text style={styles.empty}>A temporada vai começar em breve.</Text></View></NightBackground>;
+    return (
+      <NightBackground>
+        <View style={styles.center}>
+          <EmptyState
+            icon="calendar-clock"
+            title="A temporada vai começar em breve"
+            subtitle="Assim que o Brasileirão abrir, a tabela e os jogos aparecem aqui."
+            tint={colors.flood}
+          />
+        </View>
+      </NightBackground>
+    );
   }
 
   return (
@@ -80,7 +112,7 @@ export default function LeagueScreen() {
             </TouchableOpacity>
           </View>
           {matches.length === 0 ? (
-            <Text style={styles.empty}>Sem jogos nesta rodada.</Text>
+            <EmptyState icon="soccer-field" title="Sem jogos nesta rodada" tint={colors.haze} />
           ) : (
             matches.map((m, i) => {
               const mine = profile?.teamId === m.homeTeam || profile?.teamId === m.awayTeam;

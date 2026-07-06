@@ -93,7 +93,12 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
          / meio=âmbar / ataque=vermelho, fontes Anton/Saira, ícones no lugar dos
          emojis, rastro de motion blur na bola). Lógica de jogo intacta.
          >> FALTA (melhoria): ilustração própria do campo + avatares (novos assets).
-[ ] 2.8  Skeleton loaders + estados vazios ilustrados (nada de tela branca/texto solto)
+[x] 2.8  Skeleton loaders + estados vazios ilustrados. Componentes reutilizáveis:
+         src/components/Skeleton.tsx (pulso de opacidade compartilhado) e
+         src/components/EmptyState.tsx (aro luminoso + ícone + título/subtítulo).
+         Aplicados: Rankings (skeleton de linhas + vazio "Nenhum gol") e Liga
+         (skeleton do layout no load + "temporada em breve" + "sem jogos").
+         Vazios compactos da Home mantidos leves (já tinham microcopy própria).
 [ ] 2.9  Onboarding bonito: 3 slides explicando o jogo + escolha de time em grid
          com escudos grandes (a decisão mais emocional do jogo merece cerimônia)
 [x] 2.10 Login/Registro redesenhados: logo lockup + wordmark Anton, componente

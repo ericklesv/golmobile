@@ -81,10 +81,12 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
 [x] 2.4  HomeScreen redesenhada: Scoreboard assinatura (numerais + brilho âmbar),
          alvos de chute com anel de progresso SVG do cooldown, hierarquia
          Partida > Chutes > Artilheiros > Lances, fundo NightBackground.
-[~] 2.5  Game feel — PARCIAL: haptics no gol/defesa (expo-haptics) + flash de
-         tela na defesa do pênalti + rastro (motion blur) da bola na Trilha +
-         spring nos botões (KickTarget da Home e direções do Pênalti).
-         FALTA: confete/lottie no gol, som (apito/torcida), transições de tela.
+[~] 2.5  Game feel — QUASE: haptics no gol/defesa + flash na defesa do pênalti +
+         rastro (motion blur) da bola na Trilha + spring nos botões + CONFETE no
+         gol (src/components/Confetti.tsx, chuva de partículas Animated, na Home
+         e no Pênalti) + "pop" (spring) no texto de resultado do Pênalti.
+         FALTA (precisa assets): som (apito/torcida) — exige expo-av + áudios.
+         Transições de tela: já há slide nos modais/stack (parcial).
 [x] 2.6  Redesign do Pênalti: cena "atrás da bola" no tema (holofote atrás do
          gol, trave/rede em cal SVG, gramado em perspectiva, meia-lua e marca).
          Goleiro vetorial SVG (fim do emoji 🧤), bola real (bola.png). Título

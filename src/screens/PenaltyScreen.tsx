@@ -28,6 +28,7 @@ import { getTimeRemaining, formatCountdown } from '../utils/gameLogic';
 import { useAuth } from '../context/AuthContext';
 import { kickAction, isCooldownError, PenaltyDirection } from '../services/game';
 import { penaltyCheer } from '../utils/narrator';
+import Confetti from '../components/Confetti';
 import { colors, font, radius, glow } from '../theme';
 
 const { width } = Dimensions.get('window');
@@ -132,6 +133,7 @@ export default function PenaltyScreen({ navigation }: any) {
   const ballY = useRef(new Animated.Value(0)).current;
   const ballScale = useRef(new Animated.Value(1)).current;
   const resultOp = useRef(new Animated.Value(0)).current;
+  const resultScale = useRef(new Animated.Value(0.7)).current;
   const flash = useRef(new Animated.Value(0)).current;
 
   function dirToX(dir: Direction, travel: number) {
@@ -180,7 +182,11 @@ export default function PenaltyScreen({ navigation }: any) {
         Haptics.notificationAsync(
           isGoal ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
         ).catch(() => {});
-        Animated.timing(resultOp, { toValue: 1, duration: 260, useNativeDriver: true }).start();
+        resultScale.setValue(0.7);
+        Animated.parallel([
+          Animated.timing(resultOp, { toValue: 1, duration: 260, useNativeDriver: true }),
+          Animated.spring(resultScale, { toValue: 1, friction: 5, tension: 150, useNativeDriver: true }),
+        ]).start();
         if (!isGoal) {
           Animated.sequence([
             Animated.timing(flash, { toValue: 1, duration: 80, useNativeDriver: true }),
@@ -326,7 +332,7 @@ export default function PenaltyScreen({ navigation }: any) {
         {phase === 'animating' && <Text style={styles.shooting}>Chutando…</Text>}
 
         {phase === 'result' && result && (
-          <Animated.View style={[styles.resultArea, { opacity: resultOp }]}>
+          <Animated.View style={[styles.resultArea, { opacity: resultOp, transform: [{ scale: resultScale }] }]}>
             <Text style={[styles.resultText, { color: result.goal ? colors.turf : colors.red }]}>
               {result.cry}
             </Text>
@@ -347,6 +353,8 @@ export default function PenaltyScreen({ navigation }: any) {
           </Animated.View>
         )}
       </View>
+
+      {phase === 'result' && result?.goal && <Confetti />}
     </SafeAreaView>
   );
 }

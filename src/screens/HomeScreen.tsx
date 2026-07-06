@@ -42,6 +42,7 @@ import NightBackground from '../components/NightBackground';
 import Scoreboard from '../components/Scoreboard';
 import KickTarget from '../components/KickTarget';
 import TeamBadge from '../components/TeamBadge';
+import Confetti from '../components/Confetti';
 import { colors, font, radius, spacing, glow } from '../theme';
 
 function haptic(type: 'success' | 'warning') {
@@ -101,6 +102,7 @@ export default function HomeScreen({ navigation }: any) {
   const [showPenalty, setShowPenalty] = useState(false);
   const [showTrail, setShowTrail] = useState(false);
   const [trailKey, setTrailKey] = useState(0);
+  const [confettiKey, setConfettiKey] = useState(0); // >0 dispara o confete (remonta a cada gol)
   const [match, setMatch] = useState<TeamMatchLive | null>(null);
   const [, forceTick] = useState(0);
 
@@ -234,6 +236,7 @@ export default function HomeScreen({ navigation }: any) {
       const res = await kickAction(type);
       animateBall(res.goal);
       haptic(res.goal ? 'success' : 'warning');
+      if (res.goal) setConfettiKey((k) => k + 1);
       setLastResult({ goal: res.goal, message: cheer(res.goal) });
       await refreshProfile();
     } catch (e) {
@@ -397,6 +400,8 @@ export default function HomeScreen({ navigation }: any) {
           )}
         </View>
       </ScrollView>
+
+      {confettiKey > 0 && <Confetti key={confettiKey} />}
 
       <Modal visible={showPenalty} animationType="slide" onRequestClose={() => setShowPenalty(false)}>
         <PenaltyScreen navigation={{ goBack: () => setShowPenalty(false) }} />

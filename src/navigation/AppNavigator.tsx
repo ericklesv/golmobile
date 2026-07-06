@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { colors, font } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import OnboardingScreen, { ONBOARDING_KEY } from '../screens/OnboardingScreen';
 import HomeScreen from '../screens/HomeScreen';
 import RankingScreen from '../screens/RankingScreen';
 import LeagueScreen from '../screens/LeagueScreen';
@@ -17,8 +19,19 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function AuthStack() {
+  const [seen, setSeen] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_KEY)
+      .then((v) => setSeen(v === '1'))
+      .catch(() => setSeen(true)); // se falhar, não trava o usuário no onboarding
+  }, []);
+
+  if (seen === null) return null; // aguarda ler o flag
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={seen ? 'Login' : 'Onboarding'}>
+      {!seen && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>

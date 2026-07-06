@@ -99,8 +99,12 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
          Aplicados: Rankings (skeleton de linhas + vazio "Nenhum gol") e Liga
          (skeleton do layout no load + "temporada em breve" + "sem jogos").
          Vazios compactos da Home mantidos leves (já tinham microcopy própria).
-[ ] 2.9  Onboarding bonito: 3 slides explicando o jogo + escolha de time em grid
-         com escudos grandes (a decisão mais emocional do jogo merece cerimônia)
+[x] 2.9  Onboarding: src/screens/OnboardingScreen.tsx — 3 slides com swipe
+         (CHUTE A GOL / JOGUE PELO SEU TIME / SUBA NA ARTILHARIA), aro luminoso
+         + ícone grande, dots animados (scrollX), "Pular" e CTA "ESCOLHER MEU
+         TIME" -> Registro (onde já está o grid de times). Mostrado uma vez só
+         (flag ONBOARDING_KEY no AsyncStorage); AuthStack escolhe a rota inicial.
+         >> A "cerimônia" da escolha de time é o grid grande do Registro (2.10).
 [x] 2.10 Login/Registro redesenhados: logo lockup + wordmark Anton, componente
          Field (input com foco), grid de times com TeamBadge, microcopy de futebol
 [~] 2.11 Splash/ícone: cor de fundo alinhada ao tema (#04101B). FALTA: arte do

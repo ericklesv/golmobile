@@ -3,10 +3,12 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   Animated, Easing, SafeAreaView, Dimensions, Image,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { ACTION_COOLDOWNS } from '../constants/teams';
 import { getTimeRemaining, formatCountdown } from '../utils/gameLogic';
 import { trailPickAction, isCooldownError } from '../services/game';
+import { colors, font, radius } from '../theme';
 
 const { width: SW } = Dimensions.get('window');
 // Image trilha.png is 1024x1536 (2:3). Display at screen width.
@@ -16,6 +18,7 @@ const PS = 46;
 const HP = PS / 2;
 const BS = 14;   // ball diameter
 const BH = BS / 2;
+const TRAIL = 4; // ecos de motion blur atrás da bola
 // Goalkeeper position (bottom goal, center)
 const GK_X = FW * 0.500;
 const GK_Y = FH * 0.880;
@@ -26,19 +29,18 @@ const GOAL_Y = FH * 0.055;
 const TRAIL_CD = ACTION_COOLDOWNS['trilha'];
 
 // Player positions as [xFraction, yFraction] of image (1024x1536)
-// y = midpoint of player-figure vertical span measured from pixel analysis
 const LINES = [
   {
-    id: 'defense' as const, label: 'DEFESA', color: '#43A047', total: 4, safe: 3,
-    players: [[0.215,0.710],[0.396,0.710],[0.605,0.710],[0.782,0.710]] as [number,number][],
+    id: 'defense' as const, label: 'DEFESA', color: colors.turf, total: 4, safe: 3,
+    players: [[0.215, 0.710], [0.396, 0.710], [0.605, 0.710], [0.782, 0.710]] as [number, number][],
   },
   {
-    id: 'midfield' as const, label: 'MEIO CAMPO', color: '#FB8C00', total: 3, safe: 2,
-    players: [[0.268,0.490],[0.497,0.490],[0.725,0.490]] as [number,number][],
+    id: 'midfield' as const, label: 'MEIO CAMPO', color: colors.flood, total: 3, safe: 2,
+    players: [[0.268, 0.490], [0.497, 0.490], [0.725, 0.490]] as [number, number][],
   },
   {
-    id: 'attack' as const, label: 'ATAQUE', color: '#E53935', total: 3, safe: 1,
-    players: [[0.225,0.298],[0.497,0.308],[0.768,0.298]] as [number,number][],
+    id: 'attack' as const, label: 'ATAQUE', color: colors.red, total: 3, safe: 1,
+    players: [[0.225, 0.298], [0.497, 0.308], [0.768, 0.298]] as [number, number][],
   },
 ];
 
@@ -52,7 +54,7 @@ function freshStates(): PState[][] {
 }
 
 export default function TrailScreen({ navigation }: any) {
-  const { user, profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const startPhase = Math.min(profile?.trailPosition ?? 0, LINES.length - 1);
   const [phase, setPhase] = useState(startPhase);
   const [states, setStates] = useState<PState[][]>(freshStates);
@@ -65,6 +67,10 @@ export default function TrailScreen({ navigation }: any) {
   // Ball animation
   const ballX = useRef(new Animated.Value(GK_X)).current;
   const ballY = useRef(new Animated.Value(GK_Y)).current;
+  // Ecos do rastro (motion blur)
+  const trail = useRef(
+    Array.from({ length: TRAIL }, () => ({ x: new Animated.Value(GK_X), y: new Animated.Value(GK_Y) }))
+  ).current;
 
   useEffect(() => {
     const base = kickedAt ?? (profile?.lastTrilhaTime ?? 0);
@@ -89,19 +95,19 @@ export default function TrailScreen({ navigation }: any) {
 
   function moveBall(toX: number, toY: number, dur = 420, cb?: () => void) {
     Animated.parallel([
-      Animated.timing(ballX, {
-        toValue: toX, duration: dur,
-        easing: Easing.inOut(Easing.quad), useNativeDriver: true,
-      }),
-      Animated.timing(ballY, {
-        toValue: toY, duration: dur,
-        easing: Easing.inOut(Easing.quad), useNativeDriver: true,
-      }),
+      Animated.timing(ballX, { toValue: toX, duration: dur, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(ballY, { toValue: toY, duration: dur, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
     ]).start(cb ? ({ finished }) => { if (finished) cb(); } : undefined);
+    // ecos seguem com atraso crescente = rastro
+    trail.forEach((t, i) => {
+      Animated.parallel([
+        Animated.timing(t.x, { toValue: toX, duration: dur, delay: (i + 1) * 45, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(t.y, { toValue: toY, duration: dur, delay: (i + 1) * 45, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]).start();
+    });
   }
 
-  // Cada palpite é validado no servidor (Cloud Function `trailPick`);
-  // a resposta traz as minas da linha para revelar
+  // Cada palpite é validado no servidor (Cloud Function `trailPick`)
   async function pick(li: number, pi: number) {
     if (busy || gameOver !== null || phase !== li) return;
     if (li === 0 && reloadMs > 0) return;
@@ -124,7 +130,6 @@ export default function TrailScreen({ navigation }: any) {
     moveBall(FW * xf, FH * yf, 420);
     if (res.finished) setKickedAt(res.kickedAt ?? Date.now());
 
-    // After ball arrives, reveal the whole line with the server's mines
     setTimeout(() => {
       setStates(prev =>
         prev.map((line, idx) =>
@@ -137,7 +142,6 @@ export default function TrailScreen({ navigation }: any) {
       if (res.mine) {
         setTimeout(() => { setGameOver('fail'); showOverlay(); setBusy(false); }, 300);
       } else if (res.goal) {
-        // Ball flies into the top goal
         moveBall(GOAL_X, GOAL_Y, 500);
         setTimeout(() => { setGameOver('goal'); showOverlay(); setBusy(false); }, 600);
       } else {
@@ -153,10 +157,13 @@ export default function TrailScreen({ navigation }: any) {
     <SafeAreaView style={s.root}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.xBtn}>
-          <Text style={s.xBtnTxt}>{'\u2715'}</Text>
+          <MaterialCommunityIcons name="close" size={18} color={colors.chalk} />
         </TouchableOpacity>
-        <Text style={s.title}>{'\u26a1  T R I L H A'}</Text>
-        <View style={{ width: 36 }} />
+        <View style={s.titleRow}>
+          <MaterialCommunityIcons name="run-fast" size={22} color={colors.flood} />
+          <Text style={s.title}>TRILHA</Text>
+        </View>
+        <View style={{ width: 34 }} />
       </View>
 
       <View style={s.crumbs}>
@@ -165,34 +172,45 @@ export default function TrailScreen({ navigation }: any) {
             <View style={[
               s.crumb,
               phase > i && s.crumbDone,
-              phase === i && gameOver === null && { backgroundColor: l.color + '28', borderColor: l.color },
+              phase === i && gameOver === null && { backgroundColor: l.color + '24', borderColor: l.color },
             ]}>
               <Text style={[s.crumbTxt, phase === i && gameOver === null && { color: l.color }]}>
                 {l.label}
               </Text>
             </View>
-            <View style={[s.crLine, phase > i && { backgroundColor: '#00e676' }]} />
+            <View style={[s.crLine, phase > i && { backgroundColor: colors.turf }]} />
           </React.Fragment>
         ))}
-        <View style={[s.crumb, gameOver === 'goal' && { backgroundColor: '#FFD70028', borderColor: '#FFD700' }]}>
-          <Text style={{ fontSize: 13, color: gameOver === 'goal' ? '#FFD700' : '#2a4060', fontWeight: '800' }}>GOL</Text>
+        <View style={[s.crumb, gameOver === 'goal' && { backgroundColor: colors.flood + '24', borderColor: colors.flood }]}>
+          <Text style={[s.crumbTxt, gameOver === 'goal' && { color: colors.flood }]}>GOL</Text>
         </View>
       </View>
 
       <View style={[s.field, { width: FW, height: FH }]}>
-        <Image
-          source={require('../../assets/trilha.png')}
-          style={s.fieldImg}
-          resizeMode="cover"
-        />
+        <Image source={require('../../assets/trilha.png')} style={s.fieldImg} resizeMode="cover" />
 
-        {/* Animated ball */}
+        {/* Rastro (ecos atrás da bola) */}
+        {trail.map((t, i) => (
+          <Animated.Image
+            key={i}
+            source={require('../../assets/bola.png')}
+            style={[
+              s.ball,
+              {
+                opacity: 0.32 - i * 0.06,
+                transform: [
+                  { translateX: t.x }, { translateY: t.y },
+                  { scale: 1 - (i + 1) * 0.12 },
+                ],
+              },
+            ]}
+          />
+        ))}
+
+        {/* Bola */}
         <Animated.Image
           source={require('../../assets/bola.png')}
-          style={[
-            s.ball,
-            { transform: [{ translateX: ballX }, { translateY: ballY }] },
-          ]}
+          style={[s.ball, s.ballMain, { transform: [{ translateX: ballX }, { translateY: ballY }] }]}
         />
 
         {gameOver === null && !inCooldown && (
@@ -215,26 +233,26 @@ export default function TrailScreen({ navigation }: any) {
             const px = FW * xf - HP;
             const py = FH * yf - HP;
             const isActive = phase === li && gameOver === null && !inCooldown && !p.revealed;
-            const isPast   = phase > li;
-            let bg = 'transparent', bc = 'transparent', label = '', tColor = '#fff';
-            let disabled = true, showGlow = false, glowColor = '#fff';
+            const isPast = phase > li;
+            let bg = 'transparent', bc = 'transparent', label = '';
+            let tColor: string = colors.chalk, glowColor: string = colors.chalk;
+            let disabled = true, showGlow = false;
 
             if (p.revealed) {
               if (!p.mine) {
-                bg = 'rgba(0,200,80,0.75)'; bc = '#00e676'; label = '\u2713'; tColor = '#fff';
-                if (p.picked) { showGlow = true; glowColor = '#00e676'; }
+                bg = colors.turf + 'C0'; bc = colors.turf; label = '✓'; tColor = colors.night0;
+                if (p.picked) { showGlow = true; glowColor = colors.turf; }
               } else {
-                bg = 'rgba(220,30,30,0.80)'; bc = '#ff5252'; label = '\u2717'; tColor = '#fff';
-                if (p.picked) { showGlow = true; glowColor = '#ff5252'; }
+                bg = colors.red + 'CC'; bc = colors.red; label = '✗'; tColor = colors.chalk;
+                if (p.picked) { showGlow = true; glowColor = colors.red; }
               }
             } else if (isPast) {
-              bg = 'rgba(0,180,60,0.60)'; bc = '#00e676'; label = '\u2713'; tColor = '#00e676';
+              bg = colors.turf + '99'; bc = colors.turf; label = '✓'; tColor = colors.night0;
             } else if (isActive) {
               bg = line.color + '55'; bc = line.color;
-              label = String(pi + 1); tColor = '#fff';
+              label = String(pi + 1); tColor = colors.chalk;
               disabled = false; showGlow = true; glowColor = line.color;
             }
-            // locked/inactive: transparent (real player from image shows through)
 
             return (
               <TouchableOpacity
@@ -247,12 +265,7 @@ export default function TrailScreen({ navigation }: any) {
                 <View style={[
                   s.pCircle,
                   { backgroundColor: bg, borderColor: bc, borderWidth: bc === 'transparent' ? 0 : 2.5 },
-                  showGlow && {
-                    shadowColor: glowColor,
-                    shadowOpacity: 0.95,
-                    shadowRadius: 16,
-                    elevation: 12,
-                  },
+                  showGlow && { shadowColor: glowColor, shadowOpacity: 0.95, shadowRadius: 16, elevation: 12 },
                 ]}>
                   {label !== '' && <Text style={[s.pIcon, { color: tColor }]}>{label}</Text>}
                 </View>
@@ -264,6 +277,7 @@ export default function TrailScreen({ navigation }: any) {
         {inCooldown && (
           <View style={s.cdOverlay}>
             <View style={s.cdBox}>
+              <MaterialCommunityIcons name="timer-sand" size={22} color={colors.flood} />
               <Text style={s.cdTitle}>EM RECARGA</Text>
               <Text style={s.cdTimer}>{formatCountdown(reloadMs)}</Text>
             </View>
@@ -272,7 +286,7 @@ export default function TrailScreen({ navigation }: any) {
       </View>
 
       {gameOver === null && !inCooldown && (
-        <Text style={[s.hint, { color: activeLine.color }]}>{activeLine.label}  {'\u2014'}  escolha um jogador</Text>
+        <Text style={[s.hint, { color: activeLine.color }]}>{activeLine.label}  {'—'}  escolha um jogador</Text>
       )}
 
       <View style={{ flex: 1 }} />
@@ -281,15 +295,15 @@ export default function TrailScreen({ navigation }: any) {
         <Animated.View style={[s.overlay, { opacity: ovOpacity, transform: [{ translateY: ovTransY }] }]}>
           {gameOver === 'fail' ? (
             <>
-              <Text style={[s.ovTitle, { color: '#ff5252', fontSize: 32 }]}>{'\uD83D\uDE24'}</Text>
-              <Text style={[s.ovTitle, { color: '#ff5252' }]}>VOCE FOI DESARMADO!</Text>
+              <MaterialCommunityIcons name="shoe-cleat" size={34} color={colors.red} style={{ transform: [{ rotate: '-20deg' }] }} />
+              <Text style={[s.ovTitle, { color: colors.red }]}>VOCÊ FOI DESARMADO!</Text>
               <Text style={s.ovSub}>Aguarde para tentar novamente.</Text>
               {reloadMs > 0 && <Text style={s.ovTimer}>{formatCountdown(reloadMs)}</Text>}
             </>
           ) : (
             <>
-              <Text style={[s.ovTitle, { color: '#FFD700', fontSize: 36 }]}>{'\uD83C\uDFC6'}</Text>
-              <Text style={[s.ovTitle, { color: '#FFD700' }]}>TRILHA COMPLETA!</Text>
+              <MaterialCommunityIcons name="trophy" size={36} color={colors.flood} />
+              <Text style={[s.ovTitle, { color: colors.flood }]}>TRILHA COMPLETA!</Text>
               <Text style={s.ovSub}>Gol registrado! Aguarde para jogar novamente.</Text>
               {reloadMs > 0 && <Text style={s.ovTimer}>{formatCountdown(reloadMs)}</Text>}
             </>
@@ -310,39 +324,40 @@ export default function TrailScreen({ navigation }: any) {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#050d18', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
-  xBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
-  xBtnTxt: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  title: { color: '#FF7043', fontSize: 17, fontWeight: 'bold', letterSpacing: 3 },
+  root: { flex: 1, backgroundColor: colors.night0, alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: FW, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
+  xBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  title: { color: colors.chalk, fontFamily: font.poster, fontSize: 24, letterSpacing: 4 },
   crumbs: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  crumb: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 20, borderWidth: 1.5, borderColor: '#2a3a55', backgroundColor: '#111e30' },
-  crumbDone: { backgroundColor: '#0a2010', borderColor: '#00e676' },
-  crumbTxt: { color: '#2a4060', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  crLine: { width: 16, height: 2, backgroundColor: '#2a3a55', borderRadius: 1 },
-  field: { borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  crumb: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: radius.pill, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.panel },
+  crumbDone: { backgroundColor: colors.turfDeep, borderColor: colors.turf },
+  crumbTxt: { color: colors.hazeDim, fontFamily: font.bodyBold, fontSize: 10, letterSpacing: 0.5 },
+  crLine: { width: 16, height: 2, backgroundColor: colors.line, borderRadius: 1 },
+  field: { borderRadius: radius.md, overflow: 'hidden', position: 'relative' },
   ball: {
-    position: 'absolute', left: -BH, top: -BH,
-    width: BS, height: BS,
-    shadowColor: '#fff', shadowOpacity: 0.6, shadowRadius: 6, elevation: 10,
+    position: 'absolute', left: -BH, top: -BH, width: BS, height: BS, zIndex: 40,
+  },
+  ballMain: {
     zIndex: 50,
+    shadowColor: colors.chalk, shadowOpacity: 0.6, shadowRadius: 6, elevation: 10,
   },
   fieldImg: { width: '100%', height: '100%' },
-  zoneGlow: { position: 'absolute', left: 8, right: 8, borderWidth: 2, borderRadius: 10 },
+  zoneGlow: { position: 'absolute', left: 8, right: 8, borderWidth: 2, borderRadius: radius.md },
   playerAbs: { position: 'absolute' },
   pCircle: { width: PS, height: PS, borderRadius: HP, alignItems: 'center', justifyContent: 'center' },
-  pIcon: { fontSize: 20, fontWeight: 'bold' },
-  cdOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,20,0.82)', alignItems: 'center', justifyContent: 'center' },
-  cdBox: { backgroundColor: '#0d1a30', borderRadius: 16, borderWidth: 1.5, borderColor: '#FF9800', paddingVertical: 18, paddingHorizontal: 32, alignItems: 'center', gap: 6 },
-  cdTitle: { color: '#FF9800', fontSize: 15, fontWeight: '800', letterSpacing: 1 },
-  cdTimer: { color: '#FFD700', fontSize: 28, fontWeight: 'bold' },
-  hint: { marginTop: 8, fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
-  overlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(6,12,22,0.97)', borderTopLeftRadius: 26, borderTopRightRadius: 26, borderTopWidth: 2, borderColor: '#1a2a40', paddingTop: 24, paddingBottom: 36, paddingHorizontal: 28, alignItems: 'center', gap: 10 },
-  ovTitle: { fontSize: 22, fontWeight: 'bold', letterSpacing: 1, textAlign: 'center' },
-  ovSub: { color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center' },
-  ovTimer: { color: '#FF9800', fontSize: 17, fontWeight: '700', marginTop: 4 },
-  ovBack: { marginTop: 8, paddingVertical: 13, paddingHorizontal: 40, borderRadius: 40, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  ovBackTxt: { color: 'rgba(255,255,255,0.55)', fontSize: 14, fontWeight: '600' },
-  backBtn: { marginBottom: 14, paddingVertical: 13, width: '85%', borderRadius: 40, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  backBtnTxt: { color: 'rgba(255,255,255,0.45)', fontSize: 14, fontWeight: '600' },
+  pIcon: { fontFamily: font.bodyBold, fontSize: 20 },
+  cdOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4,16,27,0.84)', alignItems: 'center', justifyContent: 'center' },
+  cdBox: { backgroundColor: colors.panel, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.flood, paddingVertical: 18, paddingHorizontal: 32, alignItems: 'center', gap: 6 },
+  cdTitle: { color: colors.flood, fontFamily: font.bodyBold, fontSize: 14, letterSpacing: 1 },
+  cdTimer: { color: colors.flood, fontFamily: font.score, fontSize: 28, letterSpacing: 1 },
+  hint: { marginTop: 8, fontFamily: font.bodyBold, fontSize: 13, letterSpacing: 0.5 },
+  overlay: { position: 'absolute', bottom: 0, left: 0, right: 0, maxWidth: FW, alignSelf: 'center', backgroundColor: colors.night1, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, borderTopWidth: 1, borderColor: colors.line, paddingTop: 24, paddingBottom: 36, paddingHorizontal: 28, alignItems: 'center', gap: 10 },
+  ovTitle: { fontFamily: font.poster, fontSize: 24, letterSpacing: 1, textAlign: 'center' },
+  ovSub: { color: colors.haze, fontFamily: font.body, fontSize: 13, textAlign: 'center' },
+  ovTimer: { color: colors.flood, fontFamily: font.score, fontSize: 20, marginTop: 4 },
+  ovBack: { marginTop: 8, paddingVertical: 13, paddingHorizontal: 40, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel },
+  ovBackTxt: { color: colors.chalk, fontFamily: font.bodyBold, fontSize: 14, letterSpacing: 1 },
+  backBtn: { marginBottom: 14, paddingVertical: 13, width: '85%', maxWidth: FW, borderRadius: radius.pill, alignItems: 'center', borderWidth: 1, borderColor: colors.line },
+  backBtnTxt: { color: colors.haze, fontFamily: font.bodyBold, fontSize: 14, letterSpacing: 1 },
 });

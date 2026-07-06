@@ -69,26 +69,30 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
 [x] 2.1  Design system central (src/theme/index.ts): cores, spacing, radius,
          tipografia, glow. Paleta noite #04101B→#0A1B2B, gramado #22E58A,
          cal #EDF4F3, âmbar-refletor #FFC24B (recordes/liderança), cartão #FF5470.
-         >> Migradas: Home, tabs, Login, Registro, Rankings, Perfil, Liga, splash.
-         >> FALTA migrar: Pênalti e Trilha (telas de minigame — pedem verificação
-         >> visual rodando; deixar para quando o usuário puder conferir)
+         >> Migradas: Home, tabs, Login, Registro, Rankings, Perfil, Liga, splash,
+         >> Pênalti e Trilha. TODAS as telas usam o tema agora.
+         >> NightBackground desenha o campo cheio (holofotes + gramado + marcações).
 [x] 2.2  Tipografia (expo-font + @expo-google-fonts): Anton (pôster/GOL!),
          Saira Condensed (placar/numerais), Inter (texto). Carregadas no App.tsx.
 [x] 2.3  Ícones de verdade (@expo/vector-icons) nas tabs, alvos de chute e listas;
          escudos = TeamBadge (disco com sigla + cor do clube), fim dos emojis 🔴⚫.
          >> Melhoria opcional: escudos SVG próprios por time (hoje é disco+sigla)
-         >> FALTA: trocar emojis restantes nas telas ainda não migradas (2.1)
+         >> Emojis do Pênalti/Trilha trocados por SVG/ícones (goleiro, cabeçalhos).
 [x] 2.4  HomeScreen redesenhada: Scoreboard assinatura (numerais + brilho âmbar),
          alvos de chute com anel de progresso SVG do cooldown, hierarquia
          Partida > Chutes > Artilheiros > Lances, fundo NightBackground.
-[~] 2.5  Game feel — PARCIAL: haptics no gol/defesa (expo-haptics) feito.
+[~] 2.5  Game feel — PARCIAL: haptics no gol/defesa (expo-haptics) + flash de
+         tela na defesa do pênalti + rastro (motion blur) da bola na Trilha.
          FALTA: confete/lottie no gol, som (apito/torcida), spring nos botões,
-         transições de tela, flash de tela na defesa.
-[ ] 2.6  Redesign do Pênalti: goleiro animado (sprite/Lottie em vez de 🧤),
-         rede com física visual, câmera "atrás da bola", replay do gol
-[ ] 2.7  Redesign da Trilha: manter o minigame, melhorar arte do campo
-         (ilustração própria consistente com o design system), avatares dos
-         adversários, trail da bola com motion blur
+         transições de tela.
+[x] 2.6  Redesign do Pênalti: cena "atrás da bola" no tema (holofote atrás do
+         gol, trave/rede em cal SVG, gramado em perspectiva, meia-lua e marca).
+         Goleiro vetorial SVG (fim do emoji 🧤), bola real (bola.png). Título
+         Anton, timer tokenizado. >> FALTA (melhoria): replay do gol.
+[x] 2.7  Redesign da Trilha: migrada pro tema (fundo noite, fases defesa=gramado
+         / meio=âmbar / ataque=vermelho, fontes Anton/Saira, ícones no lugar dos
+         emojis, rastro de motion blur na bola). Lógica de jogo intacta.
+         >> FALTA (melhoria): ilustração própria do campo + avatares (novos assets).
 [ ] 2.8  Skeleton loaders + estados vazios ilustrados (nada de tela branca/texto solto)
 [ ] 2.9  Onboarding bonito: 3 slides explicando o jogo + escolha de time em grid
          com escudos grandes (a decisão mais emocional do jogo merece cerimônia)
@@ -111,8 +115,8 @@ FASE 3 — VERSÃO NAVEGADOR (WEB)
          (App.tsx, só web) — experiência de app no desktop.
 [x] 3.4  (WEB) PWA: app.json web (name/shortName/themeColor/backgroundColor/
          display standalone/description). >> Melhoria: ícones PWA dedicados (2.11).
-[ ] 3.5  (WEB) Suporte a teclado: setas ←↑→ no pênalti (mexe na tela de Pênalti —
-         fazer junto do redesign do minigame, quando o dev puder conferir).
+[x] 3.5  (WEB) Suporte a teclado no pênalti: ← chuta esquerda, ↑ centro,
+         → direita; Esc/Enter voltam. Só no web (Platform.OS === 'web').
 [x] 3.6  (WEB) DEPLOYADO: https://futgol-acc08.web.app (Firebase Hosting, GRÁTIS).
          Deploy: `npx expo export --platform web` + `firebase deploy --only hosting`.
          CORS da API liberado (allow-origin *). >> Melhoria: domínio próprio.

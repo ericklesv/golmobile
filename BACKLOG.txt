@@ -109,8 +109,12 @@ FIFA/EA FC Companion, Sorare, Fantasy Premier League, Cartola FC.
          >> A "cerimônia" da escolha de time é o grid grande do Registro (2.10).
 [x] 2.10 Login/Registro redesenhados: logo lockup + wordmark Anton, componente
          Field (input com foco), grid de times com TeamBadge, microcopy de futebol
-[~] 2.11 Splash/ícone: cor de fundo alinhada ao tema (#04101B). FALTA: arte do
-         ícone e do splash (precisa gerar PNGs — hoje ainda são os defaults Expo)
+[x] 2.11 Splash/ícone: arte própria gerada (assets/icon.png, adaptive-icon.png,
+         splash-icon.png, favicon.png). Marca = bola de futebol dentro do anel
+         verde luminoso (o alvo de chute do jogo) sobre fundo noite + brilho
+         âmbar; splash com wordmark "GOLMOBILE" em Anton + "CHUTE. MARQUE. SUBA.".
+         Gerado via SVG->Chrome headless (fonte Anton do node_modules).
+         >> Web ao vivo (3.6) mostra o novo favicon/splash só após re-export+deploy.
 [x] 2.12 Microcopy com personalidade: src/utils/narrator.ts sorteia bordões de
          narrador (GOL: "É GOOOOL!", "GOLAÇO!", "NO ÂNGULO!"…; erro: "PRA FORA!",
          "ISOLOU!"…; defesa do pênalti: "DEFENDEU!", "AGARROU!"…). Aplicado na

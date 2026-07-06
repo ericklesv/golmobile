@@ -3,10 +3,11 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   User,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
 interface UserProfile {
@@ -33,6 +34,7 @@ interface AuthContextData {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, nick: string, teamId: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -69,10 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function register(email: string, password: string, nick: string, teamId: string) {
+    const nickTrim = nick.trim();
+    const nickKey = nickTrim.toLowerCase(); // unicidade case-insensitive
     const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = cred.user.uid;
     const newProfile: UserProfile = {
-      uid: cred.user.uid,
-      nick,
+      uid,
+      nick: nickTrim,
       teamId,
       totalGoals: 0,
       totalKicks: 0,
@@ -80,11 +85,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       roundGoals: 0,
       lastKickTime: 0,
     };
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      ...newProfile,
-      createdAt: serverTimestamp(),
-    });
+
+    // Reserva o nick e cria o perfil atomicamente. Se o nick já existir (ou
+    // qualquer passo falhar), desfaz a conta recém-criada p/ não deixar órfã.
+    try {
+      await runTransaction(db, async (tx) => {
+        const nickRef = doc(db, 'nicks', nickKey);
+        const snap = await tx.get(nickRef);
+        if (snap.exists()) {
+          throw Object.assign(new Error('nick já em uso'), { code: 'nick-taken' });
+        }
+        tx.set(nickRef, { uid });
+        tx.set(doc(db, 'users', uid), { ...newProfile, createdAt: serverTimestamp() });
+      });
+    } catch (e) {
+      await cred.user.delete().catch(() => {});
+      throw e;
+    }
+
     setProfile(newProfile);
+  }
+
+  async function resetPassword(email: string) {
+    await sendPasswordResetEmail(auth, email.trim());
   }
 
   async function logout() {
@@ -96,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, register, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, register, resetPassword, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

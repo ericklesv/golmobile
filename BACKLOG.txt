@@ -195,5 +195,10 @@ DÍVIDAS TÉCNICAS / PEQUENOS AJUSTES (encaixar quando tocar no arquivo)
          os 4 tipos
 [ ] T.5  GOAL_CHANCE única (65%) para auto/falta — definir chances por tipo de
          chute (e por fase da trilha já existe) no servidor
-[ ] T.6  Nick: validar unicidade no registro (coleção nicks ou function)
-[ ] T.7  Recuperação de senha (sendPasswordResetEmail) — não existe hoje
+[x] T.6  Nick único: coleção nicks/{nickMinúsculo}={uid}, reservada na MESMA
+         transação do perfil (AuthContext.register, race-safe). Se colidir/falhar,
+         desfaz a conta órfã (cred.user.delete). Validação de formato no Registro
+         ([a-zA-Z0-9_]{2,20}) + erro "nick já em uso". Regras deployadas em prod
+         (firestore.rules: match /nicks). Case-insensitive.
+[x] T.7  Recuperação de senha: AuthContext.resetPassword (sendPasswordResetEmail)
+         + link "Esqueci minha senha" no Login (usa o e-mail do campo, toasts).

@@ -27,8 +27,13 @@ export default function RegisterScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
 
   async function handleRegister() {
-    if (!nick.trim() || !email.trim() || !password || !selectedTeam) {
+    const nickTrim = nick.trim();
+    if (!nickTrim || !email.trim() || !password || !selectedTeam) {
       toast('Preencha os campos e escolha um time.', 'error');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]{2,20}$/.test(nickTrim)) {
+      toast('Nick: 2 a 20 caracteres, apenas letras, números e _.', 'error');
       return;
     }
     if (password.length < 6) {
@@ -37,11 +42,12 @@ export default function RegisterScreen({ navigation }: any) {
     }
     setLoading(true);
     try {
-      await register(email.trim(), password, nick.trim(), selectedTeam);
+      await register(email.trim(), password, nickTrim, selectedTeam);
     } catch (e: any) {
       const code = e?.code ?? '';
       let msg = 'Confira os dados e tente novamente.';
-      if (code === 'auth/email-already-in-use') msg = 'Esse e-mail já tem conta. Faça login.';
+      if (code === 'nick-taken') msg = 'Esse nick já está em uso. Escolha outro.';
+      else if (code === 'auth/email-already-in-use') msg = 'Esse e-mail já tem conta. Faça login.';
       else if (code === 'auth/weak-password') msg = 'Senha muito fraca. Use pelo menos 6 caracteres.';
       else if (code === 'auth/invalid-email') msg = 'Esse e-mail não parece válido.';
       else if (code === 'auth/network-request-failed') msg = 'Sem conexão. Verifique a internet.';

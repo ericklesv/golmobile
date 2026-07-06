@@ -25,6 +25,16 @@ service cloud.firestore {
       }
     }
 
+    // Nicks: reserva única por jogador (doc id = nick em minúsculas).
+    // Criado só na transação de registro; imutável depois (nick não muda).
+    match /nicks/{nickId} {
+      allow read: if authed();
+      allow create: if authed()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid']);
+      allow update, delete: if false;
+    }
+
     // Rankings e feed: somente leitura; escrita só pelas Functions
     match /rankings/{scope}/entries/{entryId} {
       allow read: if authed();

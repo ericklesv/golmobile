@@ -16,11 +16,29 @@ import Field from '../components/Field';
 import { colors, font, radius, spacing, glow } from '../theme';
 
 export default function LoginScreen({ navigation }: any) {
-  const { login } = useAuth();
+  const { login, resetPassword } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      toast('Digite seu e-mail acima para receber o link de redefinição.', 'error');
+      return;
+    }
+    try {
+      await resetPassword(email);
+      toast('Enviamos um link de redefinição para o seu e-mail.', 'success');
+    } catch (e: any) {
+      const code = e?.code ?? '';
+      let msg = 'Não foi possível enviar o e-mail. Tente de novo.';
+      if (code === 'auth/user-not-found') msg = 'Não encontramos uma conta com esse e-mail.';
+      else if (code === 'auth/invalid-email') msg = 'Esse e-mail não parece válido.';
+      else if (code === 'auth/network-request-failed') msg = 'Sem conexão. Verifique a internet.';
+      toast(msg, 'error');
+    }
+  }
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -80,6 +98,10 @@ export default function LoginScreen({ navigation }: any) {
           {loading ? <ActivityIndicator color={colors.night0} /> : <Text style={styles.buttonText}>ENTRAR EM CAMPO</Text>}
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotWrap} hitSlop={8}>
+          <Text style={styles.forgot}>Esqueci minha senha</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkWrap}>
           <Text style={styles.link}>Ainda não joga? <Text style={styles.linkStrong}>Criar conta grátis</Text></Text>
         </TouchableOpacity>
@@ -102,7 +124,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16, alignItems: 'center', marginTop: spacing.xs, ...glow(colors.turfGlow, 14),
   },
   buttonText: { color: colors.night0, fontFamily: font.bodyBold, fontSize: 16, letterSpacing: 1 },
-  linkWrap: { marginTop: spacing.xl },
+  forgotWrap: { marginTop: spacing.md, alignSelf: 'center' },
+  forgot: { color: colors.haze, fontFamily: font.bodyMed, fontSize: 13 },
+  linkWrap: { marginTop: spacing.lg },
   link: { color: colors.haze, fontFamily: font.body, fontSize: 14 },
   linkStrong: { color: colors.turf, fontFamily: font.bodyBold },
 });

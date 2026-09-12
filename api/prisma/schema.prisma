@@ -1,0 +1,281 @@
+// BRGOL — modelo de dados (PostgreSQL)
+// Toda escrita de jogo passa pela API; o cliente nunca toca no banco.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Serie {
+  A
+  B
+  C
+}
+
+enum KickKind {
+  AUTO
+  PENALTY
+  FOUL
+  TRAIL
+  PARTY
+}
+
+enum SeasonStatus {
+  ACTIVE
+  FINISHED
+}
+
+enum RoundStatus {
+  LIVE
+  FINISHED
+}
+
+enum RecordScope {
+  HOUR
+  ROUND
+  SEASON
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  nick         String    @unique
+  nickLower    String    @unique
+  email        String    @unique
+  passwordHash String
+  gender       String    @default("M")
+  bio          String?
+  isAdmin      Boolean   @default(false)
+  bannedUntil  DateTime?
+  createdAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+
+  teamId Int
+  team   Team @relation(fields: [teamId], references: [id])
+
+  // Economia
+  money     Int       @default(0) // R$ virtuais
+  vipDays   Int       @default(0) // unidades de VIP no banco (1 unidade = 1 dia)
+  vipUntil  DateTime?
+  dexterity Int       @default(0) // destreza 0..30
+
+  // Contadores de gols (espelham a tabela Goal para leitura rápida)
+  goalsTotal  Int     @default(0)
+  goalsSeason Int     @default(0)
+  seasonId    Int?
+  goalsRound  Int     @default(0)
+  roundId     Int?
+  goalsHour   Int     @default(0)
+  hourKey     String?
+
+  // Estatísticas por modo (acertos / tentativas)
+  autoGoals    Int @default(0)
+  penaltyGoals Int @default(0)
+  penaltyTries Int @default(0)
+  foulGoals    Int @default(0)
+  foulTries    Int @default(0)
+  trailGoals   Int @default(0)
+  trailTries   Int @default(0)
+  partyWins    Int @default(0)
+  partyTries   Int @default(0)
+
+  // Recargas (última execução de cada modo)
+  lastAutoAt    DateTime?
+  lastPenaltyAt DateTime?
+  lastFoulAt    DateTime?
+  lastTrailAt   DateTime?
+
+  // Corrida da trilha em andamento (layout secreto + fase)
+  trailState Json?
+
+  goals       Goal[]
+  activities  Activity[]
+  nerfsGiven  Nerf[]     @relation("NerfFrom")
+  nerfsTaken  Nerf[]     @relation("NerfTo")
+  records     Record[]
+  hourWins    HourResult[]
+
+  @@index([teamId])
+  @@index([goalsTotal])
+}
+
+model Team {
+  id             Int    @id @default(autoincrement())
+  slug           String @unique
+  name           String
+  abbr           String
+  state          String
+  colorPrimary   String
+  colorSecondary String
+  stadium        String
+  serie          Serie
+  slogan         String?
+
+  users       User[]
+  homeMatches Match[]    @relation("HomeTeam")
+  awayMatches Match[]    @relation("AwayTeam")
+  standings   Standing[]
+  goals       Goal[]
+  titles      Title[]
+  activities  Activity[]
+}
+
+model Season {
+  id          Int          @id @default(autoincrement())
+  number      Int          @unique
+  startsAt    DateTime
+  endsAt      DateTime?
+  totalRounds Int
+  status      SeasonStatus @default(ACTIVE)
+
+  rounds    Round[]
+  standings Standing[]
+  goals     Goal[]
+  records   Record[]
+  titles    Title[]
+}
+
+model Round {
+  id       Int         @id @default(autoincrement())
+  seasonId Int
+  season   Season      @relation(fields: [seasonId], references: [id])
+  number   Int
+  startsAt DateTime
+  endsAt   DateTime
+  status   RoundStatus @default(LIVE)
+  topJson  Json? // top 10 artilheiros congelado no fechamento
+
+  matches Match[]
+  goals   Goal[]
+
+  @@unique([seasonId, number])
+  @@index([status, endsAt])
+}
+
+model Match {
+  id         Int         @id @default(autoincrement())
+  roundId    Int
+  round      Round       @relation(fields: [roundId], references: [id])
+  serie      Serie
+  homeTeamId Int
+  homeTeam   Team        @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId Int
+  awayTeam   Team        @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeGoals  Int         @default(0)
+  awayGoals  Int         @default(0)
+  status     RoundStatus @default(LIVE)
+
+  goals Goal[]
+
+  @@index([roundId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+}
+
+model Standing {
+  id           Int    @id @default(autoincrement())
+  seasonId     Int
+  season       Season @relation(fields: [seasonId], references: [id])
+  teamId       Int
+  team         Team   @relation(fields: [teamId], references: [id])
+  serie        Serie
+  points       Int    @default(0)
+  played       Int    @default(0)
+  wins         Int    @default(0)
+  draws        Int    @default(0)
+  losses       Int    @default(0)
+  goalsFor     Int    @default(0)
+  goalsAgainst Int    @default(0)
+
+  @@unique([seasonId, teamId])
+  @@index([seasonId, serie])
+}
+
+model Goal {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  teamId    Int
+  team      Team     @relation(fields: [teamId], references: [id])
+  matchId   Int?
+  match     Match?   @relation(fields: [matchId], references: [id])
+  roundId   Int?
+  round     Round?   @relation(fields: [roundId], references: [id])
+  seasonId  Int?
+  season    Season?  @relation(fields: [seasonId], references: [id])
+  hourKey   String
+  kind      KickKind
+  money     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([hourKey, userId])
+  @@index([roundId, userId])
+  @@index([seasonId, userId])
+  @@index([userId, kind])
+  @@index([createdAt])
+}
+
+model Activity {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  teamId    Int
+  team      Team     @relation(fields: [teamId], references: [id])
+  kind      KickKind
+  goal      Boolean
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([teamId, createdAt])
+}
+
+model HourResult {
+  id           Int      @id @default(autoincrement())
+  hourKey      String   @unique
+  closedAt     DateTime @default(now())
+  winnerUserId Int?
+  winner       User?    @relation(fields: [winnerUserId], references: [id])
+  winnerGoals  Int      @default(0)
+  topJson      Json?
+}
+
+model Record {
+  id       Int         @id @default(autoincrement())
+  scope    RecordScope
+  seasonId Int?
+  season   Season?     @relation(fields: [seasonId], references: [id])
+  userId   Int
+  user     User        @relation(fields: [userId], references: [id])
+  goals    Int
+  setAt    DateTime    @default(now())
+
+  @@unique([scope, seasonId])
+}
+
+model Title {
+  id          Int      @id @default(autoincrement())
+  seasonId    Int
+  season      Season   @relation(fields: [seasonId], references: [id])
+  teamId      Int
+  team        Team     @relation(fields: [teamId], references: [id])
+  competition String // "Série A", "Série B", "Série C"
+  place       Int // 1 = campeão, 2 = vice
+  createdAt   DateTime @default(now())
+
+  @@index([teamId])
+}
+
+model Nerf {
+  id         Int      @id @default(autoincrement())
+  fromUserId Int
+  from       User     @relation("NerfFrom", fields: [fromUserId], references: [id])
+  toUserId   Int
+  to         User     @relation("NerfTo", fields: [toUserId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([toUserId])
+}

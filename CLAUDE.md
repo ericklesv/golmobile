@@ -1,109 +1,65 @@
-# GolMobile — CLAUDE.md
+# BRGOL (nome temporário: Gol Mobile) — CLAUDE.md
 
-Jogo de futebol estilo **BRGol** (clicker de gols com cooldown): o jogador escolhe um
-time, chuta em intervalos e acumula gols em rankings. Alvo: **mobile (Expo) + navegador
-(react-native-web)**. Roteiro completo em `BACKLOG.txt` (seguir a ordem das fases e
-marcar itens feitos).
+## O que é
+Port 1:1 do **BRGOL** (jogo de navegador brasileiro de 2008–2013, falido) para os tempos
+modernos: mobile-first, PWA, "cara de jogo". Você escolhe um clube, faz gols (chute direto
+automático, pênalti, falta, trilha), cada gol soma no placar do time na rodada de 24h, e
+disputa a artilharia da hora/rodada/temporada. Todas as regras originais estão em
+**`docs/BRGOL_ORIGINAL.md`** (fonte da verdade — consultar antes de mudar qualquer número).
+Roadmap em `docs/ROADMAP.md`.
+
+Produção: **https://brgol.managol.com.br** (VPS do Managol; subdomínio já apontado).
+Repo: https://github.com/ericklesv/golmobile (branch `main` = prod, deploy automático).
 
 ## Stack
-- Expo 54 / React Native 0.81 / React 19 / TypeScript
-- Firebase (plano GRATUITO/Spark): Auth (email/senha) + Firestore (projeto `futgol-acc08`)
-- **Backend de jogo: Node/Express no Railway** (`server/`) com firebase-admin
-  (decisão: sem Cloud Functions para não exigir plano Blaze)
-- Navegação: react-navigation (stack + bottom tabs)
+| Camada | Tecnologia |
+|---|---|
+| `api/` | Node 20 ESM · Express 5 · Prisma 6 · PostgreSQL (banco `brgol`, mesmo servidor PG do Managol) |
+| `web/` | Vite 5 · React 18 · TypeScript · Tailwind 3 · framer-motion · react-three-fiber/three (cenas 3D do pênalti e da falta) · zustand · vite-plugin-pwa |
+| Infra | Nginx (site `brgol`) · PM2 (`brgol-api`, porta 4100, usuário `brgol`) · Certbot · GitHub Actions → `/usr/local/bin/brgol-deploy.sh` |
+
+`legacy-expo/` = esqueleto antigo (Expo + Firebase + Railway). Não é usado; será apagado
+depois que o novo estiver estável. Não instalar nada dele.
+
+## Arquitetura (IMPORTANTE)
+- **Toda lógica de jogo roda na API** (`api/src/services/play.js`): sorteio, recargas
+  (reserva atômica via `updateMany` — sem corrida), dinheiro, rankings, placar da partida.
+  O cliente só anima o resultado. Nunca reintroduzir `Math.random()` de gol no front.
+- Regras/números: `api/src/lib/rules.js` (recargas, dinheiro, chances, níveis, prêmios).
+  O front lê tudo via `GET /api/meta` — **não duplicar constantes no `web/`**.
+- Liga: `api/src/services/league.js` — temporada, rodadas de 24h que fecham às **19:00
+  (America/Sao_Paulo)**, round-robin determinístico por série, fechamento de hora/rodada
+  com prêmios e recordes, acesso/rebaixamento (2 sobem/2 caem), nova temporada automática.
+  Agendador: `scheduler.js` (tick a cada 30 s; 1 instância PM2 só).
+- Auto-chute: o cliente dispara `POST /api/play/auto` quando o timer zera com a aba aberta
+  (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
+- Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
+  relógio do celular.
+
+## Endpoints
+`POST /api/auth/register|login` · `GET /api/me` · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
+`POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party`
+`GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
+`POST /api/admin/advance-round|close-hour|vip|money|ban` (header `x-admin-key`)
+Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.
 
 ## Comandos
 ```
-npm start            # Metro / Expo Go
-npm run web          # versão navegador
-cd server && npm start               # API local (precisa FIREBASE_SERVICE_ACCOUNT)
-npx firebase-tools deploy --only firestore   # deploy rules+índices (gratuito, precisa login)
-
-# publicar a versão WEB (grátis, Firebase Hosting → https://futgol-acc08.web.app):
-npx expo export --platform web       # gera dist/ (gitignored)
-npx firebase-tools deploy --only hosting
+# api
+cd api && npm install && npx prisma migrate deploy && npm run seed && npm start
+# web (build de verificação — não rodamos servidor local por padrão)
+cd web && npm install && npm run build      # tsc --noEmit + vite build
+# VPS
+sudo -u brgol pm2 logs brgol-api --lines 100
+bash /usr/local/bin/brgol-deploy.sh          # forçar deploy manual
 ```
-Dev apontando para API local: `EXPO_PUBLIC_API_URL=http://<ip-local>:3000 npx expo start`
+Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos nunca no repo.
 
-## Arquitetura do jogo (IMPORTANTE)
-**Toda a lógica de jogo roda no servidor** (`server/index.js`, hospedado no Railway):
-sorteio de gol, validação de cooldown, incremento de rankings, feed de atividades.
-O cliente **nunca** escreve resultado de jogo no Firestore — só chama a API via
-`src/services/game.ts` (com o ID token do Firebase Auth no header) e anima o
-resultado. As `firestore.rules` bloqueiam escrita direta em `users` (após criação),
-`rankings` e `activities`. Não reintroduzir `Math.random()`/`updateDoc` de gols no cliente.
-
-- `POST /kick { type: 'auto'|'falta'|'penalti', direction? }` → `{ goal, keeperDir, cooldownMs, kickedAt }`
-- `POST /trail-pick { pickIndex }` → `{ mine, goal, finished, phase, lineMines, ... }`
-  (layout de minas fica em `users/{uid}/private/trail`, ilegível pelo cliente)
-- Erro de recarga: HTTP 429 `{ error: 'cooldown' }` (ver `isCooldownError`)
-- `POST /admin/advance` (header `x-admin-key: ADMIN_KEY`): força encerrar a rodada
-  atual — só para testes.
-
-### Liga (Fase 1 — server/league.js)
-Brasileirão do jogo. Cada gol de torcedor soma no placar do time na partida da
-rodada (`incrementTeamMatch` roteia via ponteiro `teamMatch/{teamId}`).
-- Coleções (todas só-leitura p/ cliente): `config/season` (temporada+rodada+
-  `schedule` como MAPA `{ "1": [{home,away}...] }` — Firestore não aceita array
-  aninhado), `matches/{s#r#m#}`, `standings/{seasonId}_{teamId}`, `teamMatch/{teamId}`,
-  `seasonHistory/{seasonId}`.
-- Rodada de 24h (`ROUND_DURATION_MS`, env p/ encurtar em teste); agendador
-  `setInterval` encerra a rodada (empate se dif < 5% do líder; vitória 3 pts) e
-  cria a próxima; ao fim das 15 rodadas coroa campeão e abre nova temporada.
-- Cliente: `src/services/league.ts` (subscribeTeamMatch/Standings, fetchRoundMatches),
-  placar ao vivo na Home, aba **Liga** (`LeagueScreen`).
-- Railway: env var `FIREBASE_SERVICE_ACCOUNT` = JSON da service account
-  (Firebase Console → Configurações → Contas de serviço → Gerar nova chave privada);
-  Root Directory do serviço = `server`. URL do serviço fica em `API_URL` no
-  `src/services/game.ts` (sobrescreve com `EXPO_PUBLIC_API_URL`).
-
-### Regras do jogo
-- Cooldowns: AUTO 1 min · Falta 5 min · Pênalti 10 min · Trilha 3 min
-- Chance de gol: auto/falta 65%; pênalti = goleiro sorteia 1 de 3 cantos (66%);
-  trilha = minado 3 linhas (defesa 4/1 mina, meio 3/1, ataque 3/2)
-- Rankings: `rankings/{hour|round|season}/entries` com chaves `hourKey`/`roundKey`
-  no fuso **America/Sao_Paulo** (`getCurrentHourKey/RoundKey` em `src/utils/gameLogic.ts`
-  espelham `server/index.js` — manter os dois em sincronia!)
-- Perfil (`users/{uid}`): `totalGoals`, `totalKicks`, `hourGoals`+`hourKey`,
-  `roundGoals`+`roundKey`, `last*Time` por modo, `trailPosition`
-- Presença online: heartbeat em `presence/{uid}.lastSeen` (60s), contagem via
-  `getCountFromServer` (janela de 2 min)
-
-## Estrutura
-```
-src/config/firebase.ts    # app, auth (persistência AsyncStorage no nativo), db
-src/services/game.ts      # cliente da API de jogo — ÚNICO caminho para jogar
-src/constants/teams.ts    # times, cooldowns (só para UI de countdown)
-src/context/AuthContext.tsx
-src/screens/              # Home (hub), Penalty, Trail (modais), Ranking, Profile, Login, Register
-server/index.js           # API de jogo (Express + firebase-admin, Railway)
-firestore.rules / firestore.indexes.json
-```
-
-## Design (Fase 2 — tema "Estádio à noite")
-- Tokens em `src/theme/index.ts` (`colors`, `spacing`, `radius`, `font`, `glow`):
-  noite azul + gramado #22E58A + cal #EDF4F3 + âmbar #FFC24B. **Nada de hex solto
-  em tela nova — importar do theme.**
-- Fontes (`App.tsx`): `font.poster` Anton, `font.score`/`scoreMed` Saira Condensed
-  (numerais de placar), `font.body`/`bodyMed`/`bodyBold` Inter.
-- Componentes reutilizáveis em `src/components/`: `NightBackground` (fundo padrão
-  das telas), `TeamBadge` (escudo genérico — usar no lugar de `team.shield` emoji),
-  `KickTarget` (alvo com anel SVG de cooldown), `Scoreboard` (placar ao vivo).
-- Ícones: `@expo/vector-icons` (MaterialCommunityIcons). Migradas para o theme:
-  Home, tab bar, Login, Registro, Rankings, Perfil, Liga, splash.
-  **Pendente:** Pênalti e Trilha (telas de minigame com muita animação — pedem
-  verificação visual rodando antes de redesenhar). Arte de ícone/splash (PNGs).
-- Input temático reutilizável: `src/components/Field.tsx`.
-- **Web:** `Alert.alert` NÃO renderiza no navegador — usar `useToast()` de
-  `src/components/Toast.tsx` (`.toast(msg, type)` e `.confirm({...})`). Layout web
-  é centralizado em `maxWidth: 480` (App.tsx, só `Platform.OS === 'web'`).
-  Versão web publicada em https://futgol-acc08.web.app.
-
-## Convenções e avisos
-- Sempre atualizar este arquivo e o `BACKLOG.txt` ao concluir itens.
-- Manter as regras de jogo de `server/index.js` em sincronia com
-  `src/constants/teams.ts` (cooldowns) e `src/utils/gameLogic.ts` (chaves de janela).
-- Índices compostos necessários (hourKey+goals, roundKey+goals) estão em
-  `firestore.indexes.json` — deploy junto com as rules.
-- `Alert.alert` não funciona no web (item 3.1 do backlog) — evitar em código novo.
-- Web: sombras `shadow*` têm suporte parcial; testar glow no navegador.
+## Convenções
+- PT-BR em UI, commits (`tipo(escopo): descrição`), logs e mensagens de erro.
+- Design system: tokens do Tailwind (`web/tailwind.config.js`) — tema "Estádio à noite":
+  night/turf/chalk/flood/card. Fontes: Anton (pôster), Saira Condensed (placar), Inter.
+  Nada de hex solto em tela nova. Layout mobile (max-width 480 centralizado no desktop).
+- Escudos são gerados (`Shield.tsx`, sigla + cores) — sem marcas registradas.
+- Antes de mexer em produção/servidor: mostrar o comando e pedir autorização.
+- Ao concluir itens, atualizar `docs/ROADMAP.md` e este arquivo.

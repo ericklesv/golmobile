@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#16324F"/><stop offset="1" stop-color="#04101B"/></radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0.6" stop-color="#22E58A" stop-opacity="0.35"/><stop offset="1" stop-color="#22E58A" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="230" fill="url(#glow)"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#22E58A" stroke-width="18"/>
+  <circle cx="256" cy="256" r="96" fill="#EDF4F3"/>
+  <g fill="#0A1B2B">
+    <polygon points="256,196 288,220 276,258 236,258 224,220"/>
+    <polygon points="256,160 272,182 240,182"/>
+    <polygon points="200,214 222,206 230,232 208,246 190,232"/>
+    <polygon points="312,214 322,232 304,246 282,232 290,206"/>
+    <polygon points="226,300 246,286 266,286 286,300 276,326 236,326"/>
+    <polygon points="170,262 188,252 200,270 190,290"/>
+    <polygon points="342,262 322,290 312,270 324,252"/>
+  </g>
+  <text x="256" y="452" text-anchor="middle" font-family="Anton, Impact, 'Arial Black', sans-serif" font-size="74" fill="#22E58A" letter-spacing="4">BRGOL</text>
+</svg>

@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #02080F;
+  color: #EDF4F3;
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+input, textarea { user-select: text; }
+
+/* Moldura de app: no desktop fica centralizado como um celular */
+.app-frame {
+  position: relative;
+  margin: 0 auto;
+  min-height: 100%;
+  max-width: 480px;
+  background: linear-gradient(180deg, #04101B 0%, #0A1B2B 100%);
+  box-shadow: 0 0 0 1px #22405F, 0 0 80px rgba(0,0,0,0.6);
+  overflow-x: hidden;
+}
+
+.stadium-bg {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+.stadium-bg::before {
+  content: ''; position: absolute; inset: -40% -20% auto -20%; height: 90%;
+  background:
+    radial-gradient(60% 45% at 30% 20%, rgba(255,194,75,0.14) 0%, transparent 60%),
+    radial-gradient(60% 45% at 75% 15%, rgba(34,229,138,0.14) 0%, transparent 60%);
+}
+.stadium-bg::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 46%;
+  background:
+    repeating-linear-gradient(180deg, rgba(34,229,138,0.05) 0 18px, rgba(34,229,138,0.02) 18px 36px),
+    linear-gradient(180deg, transparent, rgba(34,229,138,0.08));
+  mask-image: linear-gradient(180deg, transparent, black 40%);
+}
+
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl font-score font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:active:scale-100; }
+.btn-turf { @apply btn bg-turf text-night-0 shadow-glow; }
+.btn-flood { @apply btn bg-flood text-night-0 shadow-flood; }
+.btn-ghost { @apply btn bg-night-2 text-chalk border border-line; }
+.btn-red { @apply btn bg-card text-white shadow-red; }
+.card { @apply rounded-2xl border border-line bg-night-2/80 backdrop-blur-sm; }
+.field { @apply w-full rounded-xl border border-line bg-night-1 px-4 py-3 text-chalk placeholder:text-hazedim outline-none focus:border-turf; }
+.label { @apply text-[11px] font-bold uppercase tracking-widest text-haze; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }

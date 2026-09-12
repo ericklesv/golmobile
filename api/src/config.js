@@ -7,7 +7,7 @@ function must(name, fallback) {
 }
 
 export const config = {
-  port: Number(process.env.PORT || 4100),
+  port: Number(process.env.PORT || 4310),
   jwtSecret: must('JWT_SECRET', process.env.NODE_ENV === 'production' ? undefined : 'dev-secret'),
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
   adminKey: process.env.ADMIN_KEY || '',

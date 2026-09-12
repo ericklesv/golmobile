@@ -16,7 +16,7 @@ Repo: https://github.com/ericklesv/golmobile (branch `main` = prod, deploy autom
 |---|---|
 | `api/` | Node 20 ESM · Express 5 · Prisma 6 · PostgreSQL (banco `brgol`, mesmo servidor PG do Managol) |
 | `web/` | Vite 5 · React 18 · TypeScript · Tailwind 3 · framer-motion · react-three-fiber/three (cenas 3D do pênalti e da falta) · zustand · vite-plugin-pwa |
-| Infra | Nginx (site `brgol`) · PM2 (`brgol-api`, porta 4100, usuário `brgol`) · Certbot · GitHub Actions → `/usr/local/bin/brgol-deploy.sh` |
+| Infra | Nginx (site `brgol`) · PM2 (`brgol-api`, porta 4310, usuário `brgol`) · Certbot · GitHub Actions → `/usr/local/bin/brgol-deploy.sh` |
 
 `legacy-expo/` = esqueleto antigo (Expo + Firebase + Railway). Não é usado; será apagado
 depois que o novo estiver estável. Não instalar nada dele.

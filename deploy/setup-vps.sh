@@ -27,7 +27,7 @@ echo "==> .env da api"
 cat > "$APP_DIR/api/.env" <<EOF
 DATABASE_URL=postgresql://brgol:${DB_PASS}@localhost:5432/brgol?schema=public
 JWT_SECRET=${JWT}
-PORT=4100
+PORT=4310
 CORS_ORIGINS=https://${DOMAIN}
 ADMIN_KEY=${ADMIN}
 NODE_ENV=production
@@ -55,4 +55,4 @@ echo "==> certbot"
 certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --redirect -m admin@managol.com.br || echo "certbot falhou — rodar manualmente"
 
 echo "==> pronto: https://$DOMAIN"
-curl -s "http://127.0.0.1:4100/api/health" || true
+curl -s "http://127.0.0.1:4310/api/health" || true

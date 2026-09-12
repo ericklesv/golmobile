@@ -12,13 +12,15 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
 
 log "==> deploy iniciado"
 cd "$APP_DIR"
-OLD=$(git rev-parse HEAD)
-sudo -u "$APP_USER" -H git fetch --quiet origin "$BRANCH"
-sudo -u "$APP_USER" -H git reset --hard --quiet "origin/$BRANCH"
-NEW=$(git rev-parse HEAD)
+# git sempre como o dono do repo (root vê "dubious ownership")
+g() { sudo -u "$APP_USER" -H git -C "$APP_DIR" "$@"; }
+OLD=$(g rev-parse HEAD)
+g fetch --quiet origin "$BRANCH"
+g reset --hard --quiet "origin/$BRANCH"
+NEW=$(g rev-parse HEAD)
 log "commit $OLD -> $NEW"
 
-CHANGED=$(git diff --name-only "$OLD" "$NEW" || echo "all")
+CHANGED=$(g diff --name-only "$OLD" "$NEW" || echo "all")
 FIRST=0; [ "$OLD" = "$NEW" ] && FIRST=1
 
 need() { [ "$FIRST" = 1 ] || echo "$CHANGED" | grep -q "^$1" ; }

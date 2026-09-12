@@ -24,7 +24,7 @@ export function Shield({ team, size = 40, className = '' }: { team: T | null | u
         <rect x="0" y="0" width="64" height="64" fill={`url(#${id}s)`} />
       </g>
       <path d="M32 3 L57 11 V32 C57 47 45 57 32 61 C19 57 7 47 7 32 V11 Z" fill="none" stroke="#EDF4F3" strokeOpacity="0.85" strokeWidth="2.5" />
-      <text x="32" y="38" textAnchor="middle" fontFamily="Anton, Impact, sans-serif" fontSize="17" fill={light ? '#0A1B2B' : '#FFFFFF'} stroke={light ? 'none' : '#000'} strokeOpacity="0.35" strokeWidth="0.6" letterSpacing="0.5">
+      <text x="32" y="38" textAnchor="middle" fontFamily="Anton, Impact, sans-serif" fontSize="17" fill={light ? '#0A1B2B' : '#FFFFFF'} stroke={light ? '#FFFFFF' : '#0A0A0A'} strokeOpacity="0.9" strokeWidth="2.2" paintOrder="stroke" letterSpacing="0.5">
         {abbr}
       </text>
     </svg>

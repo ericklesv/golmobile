@@ -86,7 +86,7 @@ export function TrailScreen() {
       <div className="flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="rounded-full bg-night-2 p-2 text-chalk"><ArrowLeft className="h-5 w-5" /></button>
         <div className="font-poster text-lg tracking-wide text-orange-400">TRILHA</div>
-        <div className="rounded-full bg-night-2 px-3 py-1 text-xs text-chalk">{active ? <span className="text-orange-400">EM JOGO</span> : ready ? <span className="text-turf">PRONTO</span> : <Countdown readyAt={me.cooldowns.TRAIL.readyAt} />}</div>
+        <div className="rounded-full bg-night-2 px-3 py-1 text-xs text-chalk">{!me.cooldowns.TRAIL.unlocked ? <span className="text-card">LVL 3</span> : active ? <span className="text-orange-400">EM JOGO</span> : ready ? <span className="text-turf">PRONTO</span> : <Countdown readyAt={me.cooldowns.TRAIL.readyAt} />}</div>
       </div>
 
       <div className="relative mx-auto w-full max-w-[340px] px-3">

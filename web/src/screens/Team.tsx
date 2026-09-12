@@ -23,11 +23,11 @@ export function TeamScreen() {
   return (
     <div className="flex flex-col gap-3">
       <section className="card overflow-hidden">
-        <div className="h-16" style={{ background: `linear-gradient(135deg, ${t.colorPrimary}, ${t.colorSecondary})`, opacity: 0.85 }} />
-        <div className="-mt-9 flex items-end gap-3 px-3 pb-3">
+        <div className="h-14" style={{ background: `linear-gradient(135deg, ${t.colorPrimary}, ${t.colorSecondary})`, opacity: 0.85 }} />
+        <div className="-mt-7 flex items-end gap-3 px-3 pb-3">
           <Shield team={t} size={76} className="drop-shadow-lg" />
-          <div className="min-w-0 flex-1 pb-1">
-            <h1 className="truncate font-poster text-2xl uppercase text-chalk">{t.name}</h1>
+          <div className="min-w-0 flex-1 pt-8">
+            <h1 className="truncate font-poster text-2xl uppercase text-chalk drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]">{t.name}</h1>
             <div className="text-[11px] uppercase tracking-wider text-haze">{t.state} · {t.stadium} · Série {t.serie}</div>
           </div>
         </div>

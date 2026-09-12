@@ -21,7 +21,8 @@ Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIG
 - [x] Perfil (números por modo, loja, texto pessoal), perfil público, página do time, regras/níveis
 - [x] PWA instalável (manifest + service worker), layout mobile-first
 - [x] Deploy automático (GitHub Actions → VPS)
-- [ ] Verificação visual em produção (screenshots) e ajustes finos de animação 3D
+- [x] Verificação visual em produção (screenshots via Edge headless, 12/09/2026) — todas as telas OK
+- [ ] Ajustes finos de animação 3D (câmera do pênalti mais alta/afastada, torcida menos "confete")
 - [ ] Recuperação de senha por e-mail (SMTP Brevo do Managol)
 - [ ] Captcha/anti-bot nos chutes manuais (o original tinha; hoje só rate-limit + heartbeat)
 

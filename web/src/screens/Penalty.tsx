@@ -8,67 +8,66 @@ import type { KickResult } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Countdown, Spinner, useCountdown } from '../components/ui';
 import { toast } from '../components/Toast';
-import { Pitch, Goal, Player, Ball, Stadium, Lights, ease, clamp01 } from '../scenes/common';
+import { ease, clamp01 } from '../scenes/common';
+import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, preloadModels, type KeeperHandle } from '../scenes/models';
 
 type Dir = 'left' | 'center' | 'right';
 interface Shot { dir: Dir; keeperDir: Dir; goal: boolean; t0: number }
-const X: Record<Dir, number> = { left: -2.6, center: 0, right: 2.6 };
+const X: Record<Dir, number> = { left: -2.7, center: 0, right: 2.7 };
 
-function Scene({ shot, teamColor }: { shot: Shot | null; teamColor: string }) {
+function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }) {
   const ball = useRef<THREE.Group>(null);
   const keeper = useRef<THREE.Group>(null);
-  const cam = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.6, 15));
+  const kh = useRef<KeeperHandle>(null);
+  const started = useRef<number | null>(null);
 
-  useFrame(({ camera, clock }) => {
-    const t = clock.getElapsedTime();
+  useFrame(({ camera }) => {
     const b = ball.current, k = keeper.current;
     if (!b || !k) return;
     if (!shot) {
-      b.position.set(0, 0.22, 11);
-      // goleiro balança esperando
-      k.position.set(Math.sin(t * 1.5) * 0.4, 0, 0.3);
-      k.rotation.z = 0;
-      camera.position.lerp(cam.current, 0.08);
-      camera.lookAt(0, 1.2, 0);
+      b.position.set(0, 0.21, 11);
+      k.position.set(0, 0, 0.5);
+      camera.position.lerp(new THREE.Vector3(0, 1.7, 16), 0.08);
+      camera.lookAt(0, 1.4, 0);
       return;
     }
+    if (started.current !== shot.t0) {
+      started.current = shot.t0;
+      kh.current?.play(shot.keeperDir === 'center' ? 'jump' : 'dive', { once: true });
+    }
     const e = (performance.now() - shot.t0) / 1000;
-    const flight = 0.75;
+    const flight = 0.8;
     const p = clamp01(e / flight);
-    const tx = X[shot.dir] * (shot.goal ? 1 : 0.92);
-    const ty = shot.dir === 'center' ? 0.9 : 1.5;
+    const tx = X[shot.dir] * (shot.goal ? 1 : 0.9);
+    const ty = shot.dir === 'center' ? 1.0 : 1.6;
     if (p < 1) {
       b.position.x = tx * ease.out(p);
       b.position.z = 11 - 11 * p;
-      b.position.y = 0.22 + Math.sin(p * Math.PI) * 1.2 + ty * p;
+      b.position.y = 0.21 + Math.sin(p * Math.PI) * 1.0 + ty * p;
+      b.rotation.x -= 0.25;
     } else if (shot.goal) {
-      const q = clamp01((e - flight) / 0.35);
-      b.position.z = -1.6 * q; b.position.y = Math.max(0.22, (0.22 + ty) - 1.0 * q);
+      const q = clamp01((e - flight) / 0.4);
+      b.position.z = -1.5 * q; b.position.y = Math.max(0.21, (0.21 + ty) - 1.2 * q);
     } else {
-      // defesa: bola volta rebatida
-      const q = clamp01((e - flight) / 0.6);
-      b.position.z = 0.6 + 6 * q; b.position.y = 0.22 + Math.sin(q * Math.PI) * 1.6; b.position.x = tx * (1 - q * 0.4);
+      const q = clamp01((e - flight) / 0.7);
+      b.position.z = 0.6 + 7 * q; b.position.y = 0.21 + Math.sin(q * Math.PI) * 1.8; b.position.x = tx * (1 - q * 0.5);
     }
-    // goleiro mergulha no canto escolhido por ele
-    const kp = clamp01((e - 0.12) / 0.55);
-    const kx = X[shot.keeperDir] * 0.8 * ease.out(kp);
-    k.position.set(kx, 0, 0.3);
-    k.rotation.z = shot.keeperDir === 'center' ? 0 : (shot.keeperDir === 'left' ? 1 : -1) * 1.1 * ease.out(kp);
-    k.position.y = shot.keeperDir === 'center' ? 0 : 0.5 * Math.sin(kp * Math.PI);
-    // câmera acompanha
-    camera.position.lerp(new THREE.Vector3(tx * 0.3, 1.8, 9), 0.04);
-    camera.lookAt(tx * 0.5, 1.2, 0);
+    // goleiro desliza para o canto que escolheu (a animação faz o mergulho)
+    const kp = clamp01((e - 0.1) / 0.6);
+    k.position.set(X[shot.keeperDir] * 0.45 * ease.out(kp), 0, 0.5);
+    camera.position.lerp(new THREE.Vector3(tx * 0.25, 1.9, 9.5), 0.04);
+    camera.lookAt(tx * 0.5, 1.3, 0);
   });
 
   return (
     <>
-      <Lights />
-      <Stadium c1={teamColor} />
-      <Pitch />
-      <Goal />
-      <group ref={keeper}><Player color="#111827" arms={0.5} gloves /></group>
-      <group ref={ball}><Ball position={[0, 0, 0]} /></group>
-      <fog attach="fog" args={['#7fc5ff', 30, 70]} />
+      <SceneLights />
+      <StadiumModel />
+      <GoalModel />
+      <group ref={keeper} position={[0, 0, 0.5]}>
+        <KeeperModel ref={kh} color={keeperColor} flip={shot?.keeperDir === 'left'} />
+      </group>
+      <group ref={ball}><BallModel /></group>
     </>
   );
 }
@@ -83,6 +82,7 @@ export function PenaltyScreen() {
   const [overlay, setOverlay] = useState(false);
   const rem = useCountdown(me.cooldowns.PENALTY.readyAt);
   const ready = rem <= 0 && me.cooldowns.PENALTY.unlocked;
+  useEffect(() => { preloadModels(); }, []);
 
   async function kick(dir: Dir) {
     if (busy || !ready || shot) return;
@@ -91,7 +91,7 @@ export function PenaltyScreen() {
       const r = await api.penalty(dir);
       setResult(r);
       setShot({ dir, keeperDir: r.keeperDir ?? dir, goal: r.goal, t0: performance.now() });
-      setTimeout(() => setOverlay(true), 1500);
+      setTimeout(() => setOverlay(true), 1800);
       refresh();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'cooldown') { toast('Pênalti ainda em recarga.'); refresh(); }
@@ -120,8 +120,8 @@ export function PenaltyScreen() {
         <div className="trap trap-blue text-[12px]">{ready ? <span className="t-green">PRONTO</span> : <Countdown readyAt={me.cooldowns.PENALTY.readyAt} />}</div>
       </div>
       <div className="h-[62vh] w-full">
-        <Canvas shadows camera={{ position: [0, 1.6, 15], fov: 48 }} dpr={[1, 1.75]} gl={{ antialias: true }} style={{ background: 'linear-gradient(#46b4ff, #1f7ae6)' }}>
-          <Suspense fallback={null}><Scene shot={shot} teamColor={me.team.colorPrimary} /></Suspense>
+        <Canvas shadows camera={{ position: [0, 1.7, 16], fov: 48 }} dpr={[1, 1.75]} gl={{ antialias: true }} style={{ background: 'linear-gradient(#46b4ff, #1f7ae6)' }}>
+          <Suspense fallback={null}><Scene shot={shot} keeperColor="#f2c200" /></Suspense>
         </Canvas>
       </div>
       <div className="relative flex flex-1 flex-col justify-center gap-3 px-4 pb-6">

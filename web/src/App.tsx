@@ -10,6 +10,7 @@ import { TrailScreen } from './screens/Trail';
 // Cenas 3D (three.js ~260 KB gz) só carregam quando o jogador abre o pênalti/falta
 const PenaltyScreen = lazy(() => import('./screens/Penalty').then((m) => ({ default: m.PenaltyScreen })));
 const FoulScreen = lazy(() => import('./screens/Foul').then((m) => ({ default: m.FoulScreen })));
+const Debug3DScreen = lazy(() => import('./screens/Debug3D').then((m) => ({ default: m.Debug3DScreen })));
 import { PartyScreen } from './screens/Party';
 import { RankingsScreen } from './screens/Rankings';
 import { LeagueScreen } from './screens/League';
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/penalti" element={<Private><Suspense fallback={<Splash />}><PenaltyScreen /></Suspense></Private>} />
         <Route path="/falta" element={<Private><Suspense fallback={<Splash />}><FoulScreen /></Suspense></Private>} />
         <Route path="/trilha" element={<Private><TrailScreen /></Private>} />
+        <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />
         <Route path="*" element={<Navigate to={me ? '/' : '/bem-vindo'} replace />} />
       </Routes>

@@ -6,17 +6,20 @@ Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIG
 Feitos hoje: header (foto · nick/xp · nível → /perfil), foto de perfil (PNG/JPG/WEBP/GIF ≤ 5 MB),
 aba **Loja**, moeda VIP no header, texto pessoal no perfil público, lista de jogadores ativos
 (24 h) clicável, rolagem por arraste no PC, roleta calibrada, setas de chute no pênalti/falta.
-1. **Loja de verdade** (itens listados em "Em breve" na tela `/loja`, regras em
-   `CONCORRENTE_BRGOL_ONLINE.md`): Energia do chute nv 1–5 (28 h), Boost Auto (−60 s, 28 h),
-   Caneleira (última linha da trilha), Chuteiras por nível **sem nome de jogador** (+2 % a +10 %,
-   30 dias), troca de nome/cor do nick. Servidor: tabela `Item`/`UserItem` com validade;
-   `cooldownFor`/chances passam a considerar itens ativos.
+1. [x] **Loja de verdade** (13/09/2026): Energia do chute nv 1–5 (28 h), Boost Auto (−60 s, 28 h),
+   Caneleira (última linha da trilha; R$ 80 mil ou 1 VIP), Chuteiras Couro/Bronze/Prata/Ouro/Diamante
+   (+2 % a +10 %, 30 dias, só uma equipada), troca de nick e cor do nick (nível 8+). Catálogo em
+   `api/src/lib/items.js`, tabelas `UserItem`/`ShopLog`, `cooldownFor`/chances/trilha leem os itens
+   ativos. `GET/POST /api/shop/*`. Falta: mercado de chuteiras entre jogadores (depois).
 2. **VIP pago** (pacotes de dias via AbacatePay Pix, mesmo fluxo do Managol) e **auto-chute
    offline para VIP** (scheduler marca o gol a cada 5 min mesmo sem app aberto).
 3. **Uniformes reais nas cenas 3D** (pack Soccer Players Uniforms) — pipeline em `tools/3d/README.md`.
-4. **Recuperação de senha por e-mail** (SMTP Brevo; envs SMTP_* na VPS).
-5. **Captcha/anti-bot nos chutes manuais** + regras/proibições na tela de regras (proxy, flood,
-   auto-penalty, 1 login por IP fixo).
+4. [x] **Recuperação de senha por e-mail** (13/09/2026): `POST /api/auth/forgot|reset`, telas
+   `/esqueci-senha` e `/redefinir-senha`. **Pendente na VPS:** preencher `SMTP_*`, `MAIL_FROM` e
+   `PUBLIC_WEB_URL` no `api/.env` (Brevo) — sem isso o link só aparece no log do PM2.
+5. [x] **Captcha nos chutes manuais** (13/09/2026): conta numérica a cada 10 chutes manuais
+   (`GET /api/play/captcha`, `captchaRequired` no `/api/me`). Falta: regras/proibições na tela
+   de regras (proxy, flood, auto-penalty, 1 login por IP fixo).
 6. **Cargos do time** (Presidente/Diretor/Capitão/Auxiliar, só VIP), caixa do time (R$ e VIP),
    **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
    adversário atual, boosts Gatorade/Energético comprados pelo presidente).
@@ -49,8 +52,8 @@ empate por diferença < 5 % nas copas.
 - [x] Script de deploy na VPS (`brgol-deploy.sh`, manual via SSH — GitHub Actions removido em 13/09)
 - [x] Verificação visual em produção (screenshots via Edge headless, 12/09/2026) — todas as telas OK
 - [x] Cenas 3D com modelos reais dos packs comprados: estádio st_080 com torcida, trave/rede, bola e jogador (goleiro/barreira) com poses procedurais — `tools/3d/`
-- [ ] Recuperação de senha por e-mail (SMTP Brevo do Managol)
-- [ ] Captcha/anti-bot nos chutes manuais (o original tinha; hoje só rate-limit + heartbeat)
+- [x] Recuperação de senha por e-mail (13/09/2026; configurar SMTP na VPS)
+- [x] Captcha/anti-bot nos chutes manuais (13/09/2026: conta numérica a cada 10 chutes manuais)
 
 ## Fase 2 — Comunidade e time (features originais restantes)
 - [ ] Cargos do time: Presidente, Diretor, Capitão, Auxiliar (só VIP) e caixa do time em VIPs
@@ -71,7 +74,7 @@ empate por diferença < 5 % nas copas.
 - [ ] Bola de Ouro da temporada (fórmula do dossiê) + Top Chutadores
 - [ ] Hora Premiada, Giro Premiado diário, Ranking de Fama
 - [ ] Desafios X1 e Torneio X1
-- [ ] Loja de itens temporários (Espionagem da Trilha, Impulso, Potência, Boost)
+- [x] Loja de itens com validade (13/09/2026: Energia, Boost Auto, Caneleira, Chuteiras, nick/cor) — faltam Espionagem da Trilha, Impulso, Potência
 - [ ] VIP pago (AbacatePay Pix, igual ao Managol) e doação de VIP entre jogadores
 - [ ] Notificações push ("seu chute recarregou", "seu time está perdendo")
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável

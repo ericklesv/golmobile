@@ -143,7 +143,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   acabou, aparece "Jogar de novo". Nunca pôr no .env da VPS.
 
 ## Endpoints
-`POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
+`POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
@@ -221,8 +221,12 @@ servidos pelo próprio Express em `/api/uploads/`.
 - Escudos reais em `web/public/escudos/<slug>.svg|png` (projeto privado para amigos);
   `Shield.tsx` renderiza `<img>` com fallback de sigla.
 - 3D: modelos glTF em `web/public/3d/` gerados dos packs comprados via `tools/3d/` (README lá).
-  `scenes/models.tsx` (estádio, trave, bola) e `scenes/keeper.tsx` (jogador com poses
-  procedurais). Rota oculta `/debug3d?view=&pose=` para conferir por screenshot.
+  `scenes/models.tsx` (estádio, trave, bola = **Trionda** `trionda.glb`) e `scenes/keeper.tsx`
+  (jogador com clipes procedurais de salto em arco + **uniforme composto em runtime**:
+  `kit-mask.png` + `kit-ao.png` + cores + escudo no peito). Goleiro e barreira vestem a camisa
+  do **adversário da rodada** (`GET /api/me/opponent`; sem partida, kit padrão amarelo/vermelho).
+  Rota oculta `/debug3d?view=&pose=&at=&badge=&c1=&c2=` para conferir por screenshot.
+  **Temporário:** MVGIC sem recarga de pênalti/falta (`COOLDOWN_FREE_NICKS`, rules.js).
 - Trilha: a bola é `components/TrailBall.tsx` (arte SVG cartoon no traço do kit + animação por
   requestAnimationFrame; o rastro é pintado por ela). Não usar `motion.g animate={{ x, y }}`
   dentro do `<svg>` da Trilha: a bola antiga, feita assim, nunca se moveu (ficava presa no

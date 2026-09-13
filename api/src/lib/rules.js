@@ -139,11 +139,16 @@ export function isVip(user, now = Date.now()) {
   return !!user.vipUntil && new Date(user.vipUntil).getTime() > now;
 }
 
+// Contas de teste do dono sem recarga de pênalti/falta (pedido de 13/09/2026, para testar
+// as animações à vontade). Tirar daqui quando o teste acabar.
+const COOLDOWN_FREE_NICKS = new Set(['mvgic']);
+
 /**
  * Recarga efetiva (ms) de um modo para um usuário. Se o usuário veio com `items`
  * (UserItem ativos — ver items.js), a Energia do chute e o Boost Auto entram aqui.
  */
 export function cooldownFor(user, kind, now = Date.now()) {
+  if ((kind === 'PENALTY' || kind === 'FOUL') && COOLDOWN_FREE_NICKS.has(user.nickLower ?? user.nick?.toLowerCase())) return 0;
   return applyItemCooldown(user, kind, baseCooldownFor(user, kind, now), now);
 }
 

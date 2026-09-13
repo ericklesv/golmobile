@@ -22,13 +22,18 @@ import { SkeletonUtils } from 'three-stdlib';
 // kit-mask.png (do pack, com regiões extras pintadas no build — tools/3d/build3d.mjs):
 // azul = cor primária, vermelho = secundária, verde = chuteira, magenta = luva,
 // cinza = cabelo, preto = pele. kit-ao.png dá o sombreamento (dobras, rosto).
-export interface KitColors { primary: string; secondary: string; skin?: string; hair?: string; boots?: string; gloves?: string }
+export interface KitColors { primary: string; secondary: string; skin?: string; hair?: string; boots?: string; gloves?: string; badge?: string /* slug do time → /escudos/<slug>.svg|png no peito */ }
 
 const kitCache = new Map<string, THREE.CanvasTexture>();
 let kitImages: Promise<[HTMLImageElement, HTMLImageElement]> | null = null;
 const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 const hexRgb = (hex: string): [number, number, number] => { const n = parseInt(hex.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-export const kitKeyOf = (kit?: KitColors | null) => kit ? `${kit.primary}|${kit.secondary}|${kit.skin ?? ''}|${kit.hair ?? ''}|${kit.boots ?? ''}|${kit.gloves ?? ''}` : '';
+export const kitKeyOf = (kit?: KitColors | null) => kit ? `${kit.primary}|${kit.secondary}|${kit.skin ?? ''}|${kit.hair ?? ''}|${kit.boots ?? ''}|${kit.gloves ?? ''}|${kit.badge ?? ''}` : '';
+
+async function loadBadge(slug: string): Promise<HTMLImageElement | null> {
+  try { return await loadImg(`/escudos/${slug}.svg`); } catch { /* tenta png */ }
+  try { return await loadImg(`/escudos/${slug}.png`); } catch { return null; }
+}
 
 async function kitTexture(kit: KitColors): Promise<THREE.CanvasTexture> {
   const key = kitKeyOf(kit);
@@ -66,6 +71,11 @@ async function kitTexture(kit: KitColors): Promise<THREE.CanvasTexture> {
     out.data[i + 3] = 255;
   }
   g.putImageData(out, 0, 0);
+  // escudo do time no peito (ilha esquerda da máscara = frente da camisa)
+  if (kit.badge) {
+    const img = await loadBadge(kit.badge);
+    if (img) { try { g.drawImage(img, 122, 96, 44, 44); } catch { /* svg sem tamanho: ignora */ } }
+  }
   const tex = new THREE.CanvasTexture(c);
   tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace;
   kitCache.set(key, tex);

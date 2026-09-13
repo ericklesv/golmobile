@@ -19,6 +19,7 @@ export function Debug3DScreen() {
     top: { pos: [0, 60, 60], look: [0, 0, 30], fov: 50 },
     goal: { pos: [0, 2, 6], look: [0, 1.2, 0], fov: 60 },
     keeper: { pos: [3, 1.6, 3], look: [0, 1, 0], fov: 50 },
+    ball: { pos: [0.7, 0.6, 12.2], look: [0, 0.21, 11], fov: 45 },
   };
   const c = cams[view] ?? cams.penalty;
   return (
@@ -29,9 +30,9 @@ export function Debug3DScreen() {
           <StadiumModel />
           <GoalModel />
           <group position={[0, 0.21, 11]}><BallModel /></group>
-          <KeeperModel color="#f2c200" kit={{ primary: '#f2c200', secondary: '#14335F', gloves: '#e8e8e8' }} pose={pose} flip={flip} position={[0, 0, 0.4]} custom={custom} sampleAt={at} />
-          <KeeperModel color="#c3131a" kit={{ primary: '#c3131a', secondary: '#F4F7FB' }} pose="wall" position={[-1.2, 0, 10.5]} seed={1} />
-          <KeeperModel color="#c3131a" kit={{ primary: '#c3131a', secondary: '#F4F7FB' }} pose="wall" position={[-0.4, 0, 10.5]} seed={2} />
+          <KeeperModel color="#f2c200" kit={{ primary: q.get('c1') ?? '#f2c200', secondary: q.get('c2') ?? '#14335F', gloves: '#e8e8e8', badge: q.get('badge') ?? undefined }} pose={pose} flip={flip} position={[0, 0, 0.4]} custom={custom} sampleAt={at} />
+          <KeeperModel color="#c3131a" kit={{ primary: q.get('c1') ?? '#c3131a', secondary: q.get('c2') ?? '#F4F7FB', badge: q.get('badge') ?? undefined }} pose="wall" position={[-1.2, 0, 10.5]} seed={1} />
+          <KeeperModel color="#c3131a" kit={{ primary: q.get('c1') ?? '#c3131a', secondary: q.get('c2') ?? '#F4F7FB', badge: q.get('badge') ?? undefined }} pose="wall" position={[-0.4, 0, 10.5]} seed={2} />
           <gridHelper args={[40, 40]} position={[0, 0.02, 20]} />
           <axesHelper args={[5]} />
         </Suspense>

@@ -10,7 +10,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-const URLS = { stadium: '/3d/stadium.glb', goal: '/3d/goal.glb', ball: '/3d/ball.glb', keeper: '/3d/keeper.glb' };
+// bola = Trionda (modelo da Copa 2026, otimizado de Downloads/fifa_trionda_ball_world_cup_2026.glb)
+const URLS = { stadium: '/3d/stadium.glb', goal: '/3d/goal.glb', ball: '/3d/trionda.glb', keeper: '/3d/keeper.glb' };
 export function preloadModels() { Object.values(URLS).forEach((u) => useGLTF.preload(u)); }
 
 /** Estádio inteiro (campo 68x110 m). Modelo vem em 1/100 e centrado: escala 100, gol em z=0. */

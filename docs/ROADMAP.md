@@ -31,6 +31,11 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
 9. Mensagens privadas, amigos, chat do time; "à frente/atrás" no ranking geral no perfil.
 10. Limpeza pré-lançamento: apagar contas de teste `craque_g88qn` / `craque_warvl` e zerar temporada.
 Pendências pequenas: cabelo nos jogadores 3D; empate por diferença < 5 % nas copas.
+Minigames novos planejados (13/09, design em **`docs/FALTA_PRO.md`**): **Falta PRO**
+(simulador de falta com arrasto + curva, Trionda, servidor valida) e **Frangalho**
+(transposto do Managol — mecânica original a confirmar com o dono antes de fazer).
+**Temporário:** MVGIC está sem recarga de pênalti/falta (`COOLDOWN_FREE_NICKS` em
+`rules.js`) para o dono testar as animações — tirar depois.
 Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em runtime:
 `kit-mask.png` + `kit-ao.png` + cores em `keeper.tsx` — pele, chuteira, luva do goleiro);
 `keeper.glb` reconstruído com UVs e sem as animações não usadas (84 KB).

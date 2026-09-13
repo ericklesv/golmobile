@@ -10,8 +10,8 @@ import { Countdown, Spinner, useCountdown } from '../components/ui';
 import { toast } from '../components/Toast';
 import { useCaptcha } from '../components/Captcha';
 import { KickArrowButton } from '../components/KickArrows';
-import { ease, clamp01 } from '../scenes/common';
-import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, preloadModels, type KeeperHandle } from '../scenes/models';
+import { ease, clamp01, bounceY } from '../scenes/common';
+import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, preloadModels, type KeeperHandle, type KitColors } from '../scenes/models';
 
 type Dir = 'left' | 'over' | 'right';
 type Outcome = 'goal' | 'wall' | 'keeper' | 'out';
@@ -30,7 +30,7 @@ function targetFor(dir: Dir, outcome: Outcome): THREE.Vector3 {
   return new THREE.Vector3(x, y, outcome === 'goal' ? -0.6 : 0.3);
 }
 
-function Scene({ shot, keeperColor, wallColor }: { shot: Shot | null; keeperColor: string; wallColor: string }) {
+function Scene({ shot, keeperColor, wallColor, gkKit, wallKit }: { shot: Shot | null; keeperColor: string; wallColor: string; gkKit: KitColors; wallKit: KitColors }) {
   const ball = useRef<THREE.Group>(null);
   const keeper = useRef<THREE.Group>(null);
   const wall = useRef<THREE.Group>(null);
@@ -65,7 +65,22 @@ function Scene({ shot, keeperColor, wallColor }: { shot: Shot | null; keeperColo
     b.rotation.x -= 0.2;
     if (p >= 1) {
       const q = clamp01((e - flight) / 0.6);
-      if (shot.outcome === 'goal') { b.position.z = tgt.z - 1.2 * q; b.position.y = Math.max(0.21, tgt.y - 0.9 * q); }
+      if (shot.outcome === 'goal') {
+        // GOL: estufa a rede, a rede devolve e a bola quica no chão dentro do gol
+        const t = e - flight;
+        b.position.x = tgt.x;
+        if (t < 0.12) {
+          b.position.z = tgt.z - (1.35 + tgt.z) * ease.out(t / 0.12);
+          b.position.y = tgt.y;
+          b.rotation.x -= 0.4;
+        } else {
+          const t2 = t - 0.12;
+          b.position.z = -1.35 + 0.75 * ease.out(clamp01(t2 / 0.5));
+          b.position.y = bounceY(tgt.y, t2);
+          b.position.x = tgt.x * (1 - 0.08 * clamp01(t2 / 1.2));
+          b.rotation.x -= 0.12;
+        }
+      }
       if (shot.outcome === 'wall') { b.position.z = tgt.z + 5 * q; b.position.y = 0.21 + Math.sin(q * Math.PI) * 1.4; }
       if (shot.outcome === 'keeper') { b.position.x = k.position.x * 0.8; b.position.y = 1.0; }
       if (shot.outcome === 'out') { b.position.z = tgt.z - 4 * q; b.position.y = tgt.y + 1.5 * q; }
@@ -86,9 +101,9 @@ function Scene({ shot, keeperColor, wallColor }: { shot: Shot | null; keeperColo
       <SceneLights />
       <StadiumModel />
       <GoalModel />
-      <group ref={keeper} position={[0, 0, 0.5]}><KeeperModel ref={kh} color={keeperColor} kit={GK_KIT} flip={keeperFlip} speed={7} /></group>
+      <group ref={keeper} position={[0, 0, 0.5]}><KeeperModel ref={kh} color={keeperColor} kit={gkKit} flip={keeperFlip} speed={7} /></group>
       <group ref={wall} position={[0, 0, WALL_Z]}>
-        {[-1.2, -0.4, 0.4, 1.2].map((x, i) => <KeeperModel key={x} color={wallColor} kit={WALL_KIT} pose="wall" position={[x, 0, 0]} seed={i * 1.7} />)}
+        {[-1.2, -0.4, 0.4, 1.2].map((x, i) => <KeeperModel key={x} color={wallColor} kit={wallKit} pose="wall" position={[x, 0, 0]} seed={i * 1.7} />)}
       </group>
       <group ref={ball}><BallModel /></group>
     </>
@@ -106,7 +121,19 @@ export function FoulScreen() {
   const rem = useCountdown(me.cooldowns.FOUL.readyAt);
   const ready = rem <= 0 && me.cooldowns.FOUL.unlocked;
   const captcha = useCaptcha(me.captchaRequired);
+  const [opp, setOpp] = useState<{ gk: KitColors; wall: KitColors } | null>(null);
   useEffect(() => { preloadModels(); }, []);
+  // goleiro E barreira vestem a camisa do adversário da rodada (com escudo)
+  useEffect(() => {
+    let alive = true;
+    api.opponent().then(({ opponent }) => {
+      if (alive && opponent) {
+        const base = { primary: opponent.colorPrimary, secondary: opponent.colorSecondary, badge: opponent.slug };
+        setOpp({ gk: { ...base, gloves: '#e8e8e8' }, wall: base });
+      }
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   async function kick(dir: Dir) {
     if (busy || !ready || shot) return;
@@ -116,7 +143,7 @@ export function FoulScreen() {
       const r = await api.foul(dir, captcha.payload);
       setResult(r);
       setShot({ dir, outcome: (r.outcome ?? (r.goal ? 'goal' : 'keeper')) as Outcome, t0: performance.now() });
-      setTimeout(() => setOverlay(true), 2000);
+      setTimeout(() => setOverlay(true), r.goal ? 2500 : 2000); // gol: deixa a bola quicar na rede antes do overlay
       refresh();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'cooldown') { toast('Falta ainda em recarga.'); refresh(); }
@@ -138,7 +165,7 @@ export function FoulScreen() {
       </div>
       <div className="h-[62vh] w-full">
         <Canvas shadows camera={{ position: [3.5, 2.4, 26], fov: 50 }} dpr={[1, 1.75]} gl={{ antialias: true }} style={{ background: 'linear-gradient(#46b4ff, #1f7ae6)' }}>
-          <Suspense fallback={null}><Scene shot={shot} keeperColor="#f2c200" wallColor="#7f1d1d" /></Suspense>
+          <Suspense fallback={null}><Scene shot={shot} keeperColor="#f2c200" wallColor="#7f1d1d" gkKit={opp?.gk ?? GK_KIT} wallKit={opp?.wall ?? WALL_KIT} /></Suspense>
         </Canvas>
       </div>
       <div className="relative flex flex-1 flex-col justify-center gap-3 px-4 pb-6">

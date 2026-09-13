@@ -40,6 +40,7 @@ export const api = {
   // me
   me: () => req<Me>('GET', '/api/me'),
   heartbeat: () => req<{ ok: boolean; online: number; active: number; serverTime: number }>('POST', '/api/me/heartbeat'),
+  opponent: () => req<{ opponent: import('./types').Team | null }>('GET', '/api/me/opponent'),
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
   buyDexterity: (qty = 1) => req<Me>('POST', '/api/me/buy-dexterity', { qty }),
   nerf: (nick: string) => req<{ ok: boolean; me: Me }>('POST', `/api/me/nerf/${encodeURIComponent(nick)}`),

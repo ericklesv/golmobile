@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { prisma } from '../prisma.js';
 import { handle, GameError, notFound, badRequest } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
-import { meView, publicView } from '../services/view.js';
+import { meView, publicView, teamView } from '../services/view.js';
+import { liveMatchForTeam } from '../services/league.js';
 import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf } from '../lib/rules.js';
 import { meInclude } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
@@ -18,6 +19,14 @@ async function fresh(id) {
 me.get('/', handle(async (req) => {
   const u = await fresh(req.user.id);
   return { ...meView(u), captchaRequired: captchaRequired(u) }; // captcha dos chutes manuais (lib/captcha.js)
+}));
+
+// Adversário da rodada atual (goleiro/barreira das cenas 3D vestem a camisa dele)
+me.get('/opponent', handle(async (req) => {
+  const u = await prisma.user.findUnique({ where: { id: req.user.id }, select: { teamId: true } });
+  const match = u ? await liveMatchForTeam(u.teamId) : null;
+  const opp = match ? (match.homeTeamId === u.teamId ? match.awayTeam : match.homeTeam) : null;
+  return { opponent: teamView(opp) };
 }));
 
 // Presença: o cliente chama a cada 60 s enquanto está aberto (necessário p/ auto-chute)

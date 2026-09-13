@@ -195,3 +195,24 @@ export const ease = {
   inOut: (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
 };
 export const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
+
+/**
+ * Altura (centro) de uma bola de raio r que cai de y0 e quica no chão, t segundos
+ * depois de largada. Fechado por trechos balísticos com restituição — dá o
+ * "pingue-pingue" amortecido de um gol de verdade.
+ */
+export function bounceY(y0: number, t: number, r = 0.21, g = 9, rest = 0.45): number {
+  let h = Math.max(0, y0 - r); // altura acima do chão
+  let vUp = 0;
+  let tt = t;
+  for (let i = 0; i < 8; i++) {
+    const disc = vUp * vUp + 2 * g * h;
+    const tGround = (vUp + Math.sqrt(disc)) / g; // quando toca o chão neste trecho
+    if (tt < tGround) return r + h + vUp * tt - (g / 2) * tt * tt;
+    tt -= tGround;
+    vUp = (g * tGround - vUp) * rest; // velocidade devolvida pelo quique
+    h = 0;
+    if (vUp < 0.2) break; // parou de quicar
+  }
+  return r;
+}

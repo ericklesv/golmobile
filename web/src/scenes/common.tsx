@@ -47,12 +47,12 @@ export function makeBallTexture(): THREE.CanvasTexture {
   return t;
 }
 
-export function makeCrowdTexture(c1 = '#c3131a', c2 = '#22405F'): THREE.CanvasTexture {
+export function makeCrowdTexture(c1 = '#c3131a', c2 = '#1467D9'): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 1024; c.height = 256;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#0a1b2b'; g.fillRect(0, 0, 1024, 256);
-  const cols = [c1, c2, '#EDF4F3', '#0a1b2b', '#16324F', c1];
+  g.fillStyle = '#3d5a8a'; g.fillRect(0, 0, 1024, 256);
+  const cols = [c1, c2, '#F4F7FB', '#2b4470', '#ffd54a', c1];
   for (let i = 0; i < 9000; i++) {
     g.fillStyle = cols[Math.floor(Math.random() * cols.length)];
     g.globalAlpha = 0.5 + Math.random() * 0.5;
@@ -162,8 +162,8 @@ export function Stadium({ c1, c2 }: { c1?: string; c2?: string }) {
     const c = document.createElement('canvas');
     c.width = 1024; c.height = 96;
     const g = c.getContext('2d')!;
-    g.fillStyle = '#0A1B2B'; g.fillRect(0, 0, 1024, 96);
-    g.font = 'bold 64px Anton, Impact, sans-serif'; g.fillStyle = '#22E58A'; g.textBaseline = 'middle';
+    g.fillStyle = '#123C8A'; g.fillRect(0, 0, 1024, 96);
+    g.font = 'bold 64px "Lilita One", Impact, sans-serif'; g.fillStyle = '#FFC63D'; g.textBaseline = 'middle';
     for (let x = 30; x < 1024; x += 260) g.fillText('BRGOL', x, 48);
     const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1); t.colorSpace = THREE.SRGBColorSpace;
     return t;

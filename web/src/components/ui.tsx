@@ -11,7 +11,7 @@ export function Panel({ title, ribbon = 'blue', right, children, className = '' 
     <section className={`relative ${title ? 'pt-7' : ''} ${className}`}>
       {title && (
         <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-center">
-          <div className={`ribbon ribbon-${ribbon} text-[18px]`}>{title}</div>
+          <div className={`ribbon ribbon-${ribbon} text-[16px]`}>{title}</div>
         </div>
       )}
       <div className={`panel ${title ? 'pt-7' : ''}`}>

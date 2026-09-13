@@ -103,7 +103,7 @@ img { -webkit-user-drag: none; }
 .item-empty {  border-width: 12px; border-image: url(/ui/item-empty.png) 18 fill; }
 
 /* Ribbon de título (257x142, fatias laterais 100) */
-.ribbon { @apply inline-flex items-center justify-center font-display text-white; border-width: 0 40px; height: 58px; min-width: 200px; padding: 0 4px 6px; font-size: 22px; text-shadow: 0 2px 0 rgba(0,0,0,0.35); letter-spacing: 0.5px; }
+.ribbon { @apply inline-flex items-center justify-center font-display text-white; border-width: 0 34px; height: 58px; min-width: 120px; padding: 0 2px 6px; font-size: 22px; white-space: nowrap; text-shadow: 0 2px 0 rgba(0,0,0,0.35); letter-spacing: 0.5px; }
 .ribbon-orange { border-image: url(/ui/ribbon-orange.png) 0 100 fill; }
 .ribbon-green { border-image: url(/ui/ribbon-green.png) 0 100 fill; }
 .ribbon-blue { border-image: url(/ui/ribbon-blue.png) 0 100 fill; }
@@ -117,13 +117,13 @@ img { -webkit-user-drag: none; }
 .trap-green { border-image: url(/ui/trap-green.png) 0 22 0 10 fill; }
 
 /* Barra de recurso (dinheiro): 31x64, fatias 16 / 15 */
-.resbar { @apply inline-flex items-center font-display text-white; border-width: 0 8px; height: 32px; padding: 0 10px 0 4px; font-size: 16px; text-shadow: 0 1px 0 rgba(0,0,0,0.4); border-image: url(/ui/resbar.png) 0 14 0 15 fill; }
+.resbar { @apply inline-flex items-center font-display; color: var(--ink); border-width: 0 8px; height: 32px; padding: 0 10px 0 4px; font-size: 16px; border-image: url(/ui/resbar.png) 0 14 0 15 fill; }
 
 /* Barra de progresso (Slider_Level01): fundo 30x29 fatia 10 / preenchimento 37x63 fatias 19/18 */
 .bar { @apply relative; border-width: 6px; border-image: url(/ui/lvl-bg.png) 10 fill; height: 22px; }
 .bar > i { @apply absolute block; inset: -3px; border-width: 0 9px; border-image: url(/ui/lvl-fill-blue.png) 0 17 0 18 fill; min-width: 22px; transition: width 0.4s ease; }
 .bar > i.yellow { border-image: url(/ui/lvl-fill-yellow.png) 0 17 0 18 fill; }
-.bar > span { @apply absolute inset-0 flex items-center justify-center font-display text-white; font-size: 12px; text-shadow: 0 1px 0 rgba(0,0,0,0.5); z-index: 1; }
+.bar > span { @apply absolute inset-0 flex items-center justify-center font-display; color: var(--ink); font-size: 12px; z-index: 1; }
 
 /* Campo de texto (50x57, fatias 20 22 28 22) */
 .field { @apply w-full outline-none; border-width: 10px 11px 14px 11px; border-image: url(/ui/input.png) 20 22 28 22 fill; color: var(--ink); font-weight: 800; font-size: 16px; background: transparent; padding: 2px 4px; }

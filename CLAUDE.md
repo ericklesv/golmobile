@@ -57,9 +57,16 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
 
 ## Convenções
 - PT-BR em UI, commits (`tipo(escopo): descrição`), logs e mensagens de erro.
-- Design system: tokens do Tailwind (`web/tailwind.config.js`) — tema "Estádio à noite":
-  night/turf/chalk/flood/card. Fontes: Anton (pôster), Saira Condensed (placar), Inter.
-  Nada de hex solto em tela nova. Layout mobile (max-width 480 centralizado no desktop).
-- Escudos são gerados (`Shield.tsx`, sigla + cores) — sem marcas registradas.
+- **Visual = kit "BRGOL Casual"** em `web/src/index.css`: sprites 9-slice do pack Layer Lab
+  *GUI Pro – Casual Game* (licenciado; fonte em `IdleFM/client/Assets/Layer Lab`, cópia usada
+  em `web/public/ui/`). Classes: `.btn .btn-{orange,green,blue,sky,yellow,red,gray,white}`
+  `.btn-{lg,md,sm}`, `.panel`, `.panel-navy`, `.card-*`, `.ribbon ribbon-*`, `.trap trap-*`,
+  `.resbar`, `.bar`, `.field`, `.toast`, `.menu-btn`, texto `.t-display .t-out .t-gold .t-green .t-red`.
+  Fatias vêm dos `.meta` do Unity (ordem CSS: top right bottom left) — deixar sempre ≥2px de
+  miolo (caps que somam a largura toda não renderizam no CSS). Fontes: Lilita One + Nunito.
+  Fundo: céu + gramado (`.app-frame` + `.stadium-bg`). **Nada de emoji nem "cara de site/IA"**
+  (glassmorphism escuro, gradientes neon): botão é sprite, título é ribbon, ícone é PNG do pack.
+- Escudos reais em `web/public/escudos/<slug>.svg|png` (projeto privado para amigos);
+  `Shield.tsx` renderiza `<img>` com fallback de sigla.
 - Antes de mexer em produção/servidor: mostrar o comando e pedir autorização.
 - Ao concluir itens, atualizar `docs/ROADMAP.md` e este arquivo.

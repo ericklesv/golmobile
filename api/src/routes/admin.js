@@ -38,6 +38,14 @@ admin.post('/level', handle(async (req) => {
   return { nick: u.nick, level: lvl, levelPoints: u.goalsTotal + u.levelBonus, levelBonus: u.levelBonus };
 }));
 
+/** Zera os minigames diários do jogador (testes): apaga as partidas de hoje e de outros dias. */
+admin.post('/reset-daily', handle(async (req) => {
+  const user = await prisma.user.findUnique({ where: { nickLower: String(req.body?.nick || '').toLowerCase() } });
+  if (!user) throw notFound('Jogador não encontrado.');
+  const r = await prisma.dailyGame.deleteMany({ where: { userId: user.id } });
+  return { nick: user.nick, removed: r.count };
+}));
+
 admin.post('/money', handle(async (req) => {
   const user = await prisma.user.findUnique({ where: { nickLower: String(req.body?.nick || '').toLowerCase() } });
   if (!user) throw notFound('Jogador não encontrado.');

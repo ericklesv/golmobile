@@ -28,6 +28,7 @@ export function AlvoScreen() {
   const [, tick] = useState(0);
   const busy = useRef(false);
   const timer = useRef<number | null>(null);
+  const curRef = useRef<AlvoState['current']>(null); // alvo da vez (o botão que está saindo da tela não pode responder pelo anterior)
 
   function load() {
     api.alvo().then((r) => setGame(r.state)).catch((e) => {
@@ -38,6 +39,7 @@ export function AlvoScreen() {
   useEffect(() => { load(); return () => { if (timer.current) window.clearTimeout(timer.current); }; }, []);
 
   const current = game?.current ?? null;
+  curRef.current = current;
   const finished = !!game?.finished;
 
   // relógio do anel do alvo (60 fps enquanto há alvo aceso)
@@ -70,12 +72,13 @@ export function AlvoScreen() {
   }, [current?.index, running]);
 
   async function hit() {
-    if (!current || busy.current) return;
+    const cur = curRef.current;
+    if (!cur || busy.current) return;
     if (timer.current) window.clearTimeout(timer.current);
     busy.current = true;
-    const spot = { x: current.x, y: current.y };
+    const spot = { x: cur.x, y: cur.y };
     try {
-      const r = await api.alvoHit(current.index, game!.day);
+      const r = await api.alvoHit(cur.index, game!.day);
       sound.play(r.hit ? 'pop' : 'error');
       setFlash({ ...spot, hit: r.hit });
       setGame(r.state);
@@ -83,7 +86,11 @@ export function AlvoScreen() {
       busy.current = false;
       if (r.state.finished) finish(r.state);
       else window.setTimeout(next, FLASH_MS);
-    } catch (e) { busy.current = false; handleError(e); }
+    } catch (e) {
+      busy.current = false;
+      // alvo já tinha apagado/trocado: só ressincroniza e segue o jogo
+      if (e instanceof ApiError && (e.code === 'out-of-sync' || e.code === 'not-served')) next(); else handleError(e);
+    }
   }
 
   function finish(s: AlvoState) {
@@ -139,7 +146,7 @@ export function AlvoScreen() {
         )}
         <AnimatePresence>
           {running && current && (
-            <motion.button key={current.index} onPointerDown={hit} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+            <motion.button key={current.index} onPointerDown={hit} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0, opacity: 0, transition: { duration: 0.12 } }} transition={{ type: 'spring', stiffness: 500, damping: 22 }}
               className="no-drag absolute h-[72px] w-[72px] -translate-x-1/2 -translate-y-1/2 touch-none" style={{ left: `${current.x * 100}%`, top: `${current.y * 100}%` }} aria-label="alvo">
               <span className="absolute inset-0 rounded-full bg-white shadow-[0_4px_0_rgba(0,0,0,0.3)]" />
               <span className="absolute inset-[9px] rounded-full bg-danger" />

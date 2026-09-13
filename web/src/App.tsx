@@ -32,8 +32,8 @@ function Splash() {
     <div className="app-frame flex min-h-full items-center justify-center">
       <div className="stadium-bg" />
       <div className="relative text-center">
-        <img src="/ui/ico-coin01_s.png" alt="" className="mx-auto h-12 w-12 animate-spin" />
-        <div className="t-display t-out mt-2 text-6xl tracking-wide">BRGOL</div>
+        <img src="/brand/logo-v.webp" alt="JogaGol" className="mx-auto w-48 drop-shadow-[0_10px_18px_rgba(0,0,0,0.4)]" />
+        <img src="/ui/ico-coin01_s.png" alt="" className="mx-auto mt-4 h-10 w-10 animate-spin" />
         <div className="t-display t-out mt-1 text-[12px] uppercase tracking-[0.3em]">carregando o estádio…</div>
       </div>
     </div>

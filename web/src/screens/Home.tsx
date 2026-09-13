@@ -178,10 +178,8 @@ export function HomeScreen() {
         <TopList rows={home?.tops.hour.slice(0, 5) ?? []} highlight={me.nick} empty="Ninguém marcou nesta hora ainda. Seja o primeiro!" />
         {home?.records?.HOUR && <div className="mt-2 text-center text-[11px] font-extrabold text-muted">Recorde da hora: <span className="text-orange-deep">{home.records.HOUR.goals}</span> gols · {home.records.HOUR.nick}</div>}
       </Panel>
-      <div className="grid grid-cols-2 gap-3">
-        <Panel title="TOP RODADA" ribbon="blue"><TopList rows={home?.tops.round.slice(0, 5) ?? []} highlight={me.nick} empty="Sem gols na rodada." /></Panel>
-        <Panel title="TEMPORADA" ribbon="green"><TopList rows={home?.tops.season.slice(0, 5) ?? []} highlight={me.nick} empty="Sem gols na temporada." /></Panel>
-      </div>
+      <Panel title="TOP RODADA" ribbon="blue"><TopList rows={home?.tops.round.slice(0, 5) ?? []} highlight={me.nick} empty="Sem gols na rodada." /></Panel>
+      <Panel title="TOP TEMPORADA" ribbon="green"><TopList rows={home?.tops.season.slice(0, 5) ?? []} highlight={me.nick} empty="Sem gols na temporada." /></Panel>
       <Link to="/rankings" className="btn btn-blue btn-md w-full"><img src="/ui/ico-ranking.png" className="h-6 w-6" alt="" /> Rankings completos</Link>
 
       {home?.lastHour?.nick && (
@@ -196,7 +194,7 @@ export function HomeScreen() {
         <ul className="flex flex-col gap-1.5">
           {(home?.feed ?? []).slice(0, 12).map((f) => (
             <li key={f.id} className="flex items-start gap-2 text-[12px] font-bold">
-              <Shield team={f.team} size={20} className="mt-0.5" />
+              {f.team ? <Link to={`/time/${f.team.slug}`} className="mt-0.5 shrink-0"><Shield team={f.team} size={20} /></Link> : <Shield team={f.team} size={20} className="mt-0.5" />}
               <span className={`flex-1 leading-snug ${f.goal ? 'text-navy-ink' : 'text-muted'}`}>{f.text}</span>
               <span className="shrink-0 text-[10px] text-muted">{timeAgo(f.at)}</span>
             </li>

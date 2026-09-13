@@ -12,8 +12,7 @@ export function LandingScreen() {
     <div className="app-frame flex min-h-full flex-col px-5 pb-8" style={{ paddingTop: 'calc(var(--sat) + 40px)' }}>
       <div className="stadium-bg" />
       <div className="relative text-center">
-        <motion.img src="/ui/ico-trophy_l.png" alt="" initial={{ scale: 0.6, opacity: 0, rotate: -10 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} className="mx-auto h-28 w-28 drop-shadow-[0_8px_0_rgba(0,0,0,0.25)]" />
-        <h1 className="t-display t-out -mt-2 text-7xl tracking-wide">BRGOL</h1>
+        <motion.img src="/brand/logo-v.webp" alt="JogaGol" initial={{ scale: 0.7, opacity: 0, rotate: -6 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} className="mx-auto w-56 drop-shadow-[0_10px_18px_rgba(0,0,0,0.4)]" />
         <div className="trap trap-orange mx-auto -mt-1 text-[12px] uppercase tracking-[0.25em]">chute · marque · suba</div>
       </div>
       <div className="relative mt-7 flex flex-1 flex-col gap-3">

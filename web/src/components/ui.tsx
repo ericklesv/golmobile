@@ -34,9 +34,9 @@ export function TopList({ rows, empty = 'Ninguém marcou ainda.', highlight }: {
           <span className="flex w-7 shrink-0 items-center justify-center">
             {r.position <= 3 ? <img src={medal[r.position - 1]} className="ico h-7 w-7" alt="" /> : <span className="font-display text-base text-muted">{r.position}</span>}
           </span>
-          <Avatar url={r.avatarUrl} size={26} />
-          <Shield team={r.team} size={22} />
-          <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className={`min-w-0 flex-1 truncate text-[15px] font-extrabold ${r.vip ? 'text-sky-deep' : 'text-navy-ink'}`}>
+          <Link to={`/jogador/${encodeURIComponent(r.nick)}`} aria-label={r.nick}><Avatar url={r.avatarUrl} size={26} /></Link>
+          {r.team?.slug ? <Link to={`/time/${r.team.slug}`} aria-label={r.team.name}><Shield team={r.team} size={22} /></Link> : <Shield team={r.team} size={22} />}
+          <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className={`min-w-0 flex-1 break-all text-[14px] font-extrabold leading-tight ${r.vip ? 'text-sky-deep' : 'text-navy-ink'}`}>
             {r.nick}{r.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}
           </Link>
           <span className="font-display text-lg text-grass-deep">{r.goals}</span>

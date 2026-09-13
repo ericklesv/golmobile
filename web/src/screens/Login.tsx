@@ -23,7 +23,7 @@ export function LoginScreen() {
     <div className="app-frame flex min-h-full flex-col px-5" style={{ paddingTop: 'calc(var(--sat) + 40px)' }}>
       <div className="stadium-bg" />
       <div className="relative text-center">
-        <h1 className="t-display t-out text-6xl tracking-wide">BRGOL</h1>
+        <img src="/brand/logo-v.webp" alt="JogaGol" className="mx-auto w-52 drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)]" />
       </div>
       <form onSubmit={submit} className="panel relative mt-8 flex flex-col gap-3 pt-8">
         <div className="absolute -top-7 left-1/2 -translate-x-1/2"><div className="ribbon ribbon-blue text-[18px]">ENTRAR</div></div>

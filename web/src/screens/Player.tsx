@@ -33,7 +33,7 @@ export function PlayerScreen() {
     <div className="flex flex-col gap-4">
       <section className="panel-navy">
         <div className="flex items-center gap-3">
-          <div className="relative"><Avatar url={p.avatarUrl} size={64} /><Shield team={p.team} size={28} className="absolute -bottom-1 -right-1" /></div>
+          <div className="relative"><Avatar url={p.avatarUrl} size={64} /><Link to={`/time/${p.team.slug}`} className="absolute -bottom-1 -right-1"><Shield team={p.team} size={28} /></Link></div>
           <div className="min-w-0 flex-1">
             <div className={`t-display truncate text-3xl ${p.vip ? 'text-sky-light' : 't-out'}`}>{p.nick} {p.vip && <img src="/ui/ico-crown_silver.png" className="ico h-5 w-5" alt="VIP" />}</div>
             <div className="text-[12px] font-extrabold text-white/90"><Link to={`/time/${p.team.slug}`} className="t-gold t-display">{p.team.name}</Link> · {p.online ? <span className="t-green">online</span> : 'offline'}</div>
@@ -69,7 +69,7 @@ export function PlayerScreen() {
       <Panel title="ÚLTIMOS LANCES" ribbon="green">
         {p.recent.length ? <ul className="flex flex-col gap-1.5 text-[12px] font-bold">{p.recent.map((r) => <li key={r.id} className="flex gap-2"><span className={`flex-1 ${r.goal ? 'text-navy-ink' : 'text-muted'}`}>{r.text}</span><span className="text-muted">{timeAgo(r.at)}</span></li>)}</ul> : <p className="text-xs font-bold text-muted">Nenhum lance ainda.</p>}
       </Panel>
-      <p className="t-display t-out text-center text-[11px]">No BRGOL desde {new Date(p.createdAt).toLocaleDateString('pt-BR')}</p>
+      <p className="t-display t-out text-center text-[11px]">No JogaGol desde {new Date(p.createdAt).toLocaleDateString('pt-BR')}</p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
-# BRGOL (nome temporário: Gol Mobile) — CLAUDE.md
+# JogaGol (antigo BRGOL) — CLAUDE.md
 
 ## O que é
+**Nome do jogo: JogaGol** (logo em `web/public/brand/logo-{v,h}.webp`; domínio futuro jogagol.com.br).
 Port 1:1 do **BRGOL** (jogo de navegador brasileiro de 2008–2013, falido) para os tempos
 modernos: mobile-first, PWA, "cara de jogo". Você escolhe um clube, faz gols (chute direto
 automático, pênalti, falta, trilha), cada gol soma no placar do time na rodada de 24h, e

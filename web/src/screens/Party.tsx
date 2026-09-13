@@ -57,7 +57,7 @@ export function PartyScreen() {
         <div className="ribbon ribbon-yellow">PARTY GOL</div>
         <div className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</div>
       </div>
-      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">A roleta do BRGOL: aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire. Parou em <span className="t-gold t-display">GOL</span> ({segs.filter((s) => s === 'GOL').length} de {n} casas), você recebe <span className="t-green t-display">{fmt(prize)}</span>; em ERROU, perde a aposta. Só dinheiro virtual!</p>
+      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">A roleta do JogaGol: aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire. Parou em <span className="t-gold t-display">GOL</span> ({segs.filter((s) => s === 'GOL').length} de {n} casas), você recebe <span className="t-green t-display">{fmt(prize)}</span>; em ERROU, perde a aposta. Só dinheiro virtual!</p>
 
       <div className="relative mx-auto mt-4 w-[320px]">
         <img src="/ui/roulette-bg.png" alt="" className="absolute inset-0 h-full w-full" />

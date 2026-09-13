@@ -7,11 +7,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['favicon.png', 'brand/logo-v.webp', 'brand/logo-h.webp'],
       manifest: {
-        name: 'BRGOL',
-        short_name: 'BRGOL',
-        description: 'Chute, marque e leve seu time ao topo. O BRGOL voltou.',
+        name: 'JogaGol',
+        short_name: 'JogaGol',
+        description: 'Chute, marque e leve seu time ao topo.',
         theme_color: '#04101B',
         background_color: '#04101B',
         display: 'standalone',

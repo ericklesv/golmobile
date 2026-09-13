@@ -57,7 +57,7 @@ export function Layout() {
             <button onClick={() => nav('/loja')} className="resbar text-[14px]" aria-label="Dinheiro"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-7 w-7" alt="" />{money(me.money)}</button>
             <button onClick={() => nav('/loja')} className="resbar text-[14px]" aria-label="VIP"><img src="/ui/ico-crown_silver.png" className="ico -ml-3 h-7 w-7" alt="" />{me.vipDays} VIP</button>
           </div>
-          <Shield team={me.team} size={34} className="shrink-0" />
+          <button onClick={() => nav(`/time/${me.team.slug}`)} className="shrink-0" aria-label={me.team.name}><Shield team={me.team} size={34} /></button>
         </div>
       </header>
 

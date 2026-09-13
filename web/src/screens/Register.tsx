@@ -38,7 +38,7 @@ export function RegisterScreen() {
       <div className="stadium-bg" />
       <div className="relative flex items-center justify-between">
         <Link to="/bem-vindo" className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></Link>
-        <div className="t-display t-out text-3xl">BRGOL</div>
+        <img src="/brand/logo-h.webp" alt="JogaGol" className="h-12 drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]" />
         <span className="trap trap-blue">{step}/2</span>
       </div>
 

@@ -155,7 +155,7 @@ export function Ball({ r = 0.22, position = [0, 0.22, 11] as [number, number, nu
   );
 }
 
-/** Arquibancada ao fundo + placas de publicidade "BRGOL". */
+/** Arquibancada ao fundo + placas de publicidade "JOGAGOL". */
 export function Stadium({ c1, c2 }: { c1?: string; c2?: string }) {
   const crowd = useMemo(() => makeCrowdTexture(c1, c2), [c1, c2]);
   const board = useMemo(() => {
@@ -164,7 +164,7 @@ export function Stadium({ c1, c2 }: { c1?: string; c2?: string }) {
     const g = c.getContext('2d')!;
     g.fillStyle = '#123C8A'; g.fillRect(0, 0, 1024, 96);
     g.font = 'bold 64px "Lilita One", Impact, sans-serif'; g.fillStyle = '#FFC63D'; g.textBaseline = 'middle';
-    for (let x = 30; x < 1024; x += 260) g.fillText('BRGOL', x, 48);
+    for (let x = 30; x < 1024; x += 260) g.fillText('JOGAGOL', x, 48);
     const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1); t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }, []);

@@ -70,7 +70,7 @@ export function TeamScreen() {
 
       <Panel title="TORCEDORES ATIVOS" ribbon="green">
         <p className="mb-2 text-center text-[11px] font-bold text-muted">Quem entrou nas últimas 24 horas · ponto verde = online agora</p>
-        {page.active.length ? <ul className="flex flex-wrap gap-2">{page.active.map((u) => <li key={u.nick}><Link to={`/jogador/${encodeURIComponent(u.nick)}`} className="pill-blue inline-flex items-center gap-1 text-[12px] font-extrabold text-white"><Avatar url={u.avatarUrl} size={18} />{u.online && <span className="inline-block h-2 w-2 rounded-full bg-grass shadow-[0_0_6px_#4CD137]" />}{u.nick}</Link></li>)}</ul> : <p className="text-xs font-bold text-muted">Ninguém da torcida entrou nas últimas 24 h.</p>}
+        {page.active.length ? <ul className="flex flex-wrap gap-2">{page.active.map((u) => <li key={u.nick}><Link to={`/jogador/${encodeURIComponent(u.nick)}`} className="pill-blue inline-flex items-center gap-1 whitespace-nowrap text-[12px] font-extrabold text-white"><Avatar url={u.avatarUrl} size={18} />{u.online && <span className="inline-block h-2 w-2 rounded-full bg-grass shadow-[0_0_6px_#4CD137]" />}{u.nick}</Link></li>)}</ul> : <p className="text-xs font-bold text-muted">Ninguém da torcida entrou nas últimas 24 h.</p>}
       </Panel>
     </div>
   );

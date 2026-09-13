@@ -25,6 +25,7 @@ enum KickKind {
   TERMO
   QUIZ
   MEMORIA
+  QUALTIME
 }
 
 enum SeasonStatus {

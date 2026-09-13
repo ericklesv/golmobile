@@ -7,7 +7,8 @@ import { createHash } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { GameError, badRequest } from '../lib/errors.js';
 import { dayNumber, nextMidnight, quizDayNumber, nextNoon } from '../lib/time.js';
-import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, levelOf } from '../lib/rules.js';
+import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, levelOf } from '../lib/rules.js';
+import { questionsOfDay as qualtimeQuestions } from '../lib/qualtime/bank.js';
 import { teamView } from './view.js';
 import { evaluate, keyOf, loadDictionary } from '../lib/termo/rules.js';
 import { wordOfDay } from '../lib/termo/answers.js';
@@ -21,6 +22,7 @@ function calendar(now) {
     TERMO: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     QUIZ: { day: quizDayNumber(now), nextAt: nextNoon(now).getTime() },
     MEMORIA: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
+    QUALTIME: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
   };
 }
 
@@ -387,5 +389,114 @@ export async function memoriaFlip(userId, rawIndex, clientDay) {
       data: { state: st, won: finished, reward: reward ?? undefined, finishedAt: finished ? now : null },
     });
     return { state: memoriaView(userId, day, saved, teams, now), revealed: [card(first), card(index)], match, reward };
+  });
+}
+
+// ─── De que time é? ────────────────────────────────────────────────────────
+// Mesma mecânica do Quiz (relógio no servidor, pergunta só quando pedida), mas as opções são
+// 4 escudos. Perguntas do dia iguais para todos (lib/qualtime/bank.js); a ordem dos escudos é
+// embaralhada por jogador. Estado: { answers: [{ choice, correct }], servedAt }.
+
+function qualtimeOptions(userId, day, q, teamsBySlug) {
+  const p = permFor(userId, day, q.key); // p[k] = índice em q.options (0 = resposta)
+  return { options: p.map((k) => teamView(teamsBySlug.get(q.options[k])) ?? null), correctChoice: p.indexOf(0) };
+}
+
+function qualtimeView(userId, day, row, teams, now = new Date()) {
+  const st = row?.state ?? {};
+  const qs = qualtimeQuestions(day, QUALTIME.questions);
+  const bySlug = new Map(teams.map((t) => [t.slug, t]));
+  const answers = st.answers ?? [];
+  const finished = !!row?.finishedAt;
+  const results = answers.map((ans, k) => {
+    const q = qs[k]; const { options, correctChoice } = qualtimeOptions(userId, day, q, bySlug);
+    return { text: q.text, type: q.type, options, choice: ans.choice, correctChoice, correct: ans.correct };
+  });
+  let current = null;
+  if (!finished && st.servedAt && answers.length < qs.length) {
+    const q = qs[answers.length];
+    current = { index: answers.length, text: q.text, type: q.type, options: qualtimeOptions(userId, day, q, bySlug).options, deadline: st.servedAt + QUALTIME.seconds * 1000 };
+  }
+  return {
+    day, total: qs.length, index: answers.length, results, current, finished,
+    hits: answers.filter((a) => a.correct).length, reward: row?.reward ?? null,
+    seconds: QUALTIME.seconds, pointsPerHit: QUALTIME.pointsPerHit, goalAt: QUALTIME.goalAt,
+    nextAt: nextMidnight(now).getTime(), serverTime: now.getTime(),
+  };
+}
+
+function qualtimeUnlock(user) {
+  const g = MINIGAMES.find((x) => x.id === 'QUALTIME');
+  if (levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `"De que time é?" libera no nível ${g.unlock}.`);
+}
+
+/** Tranca a partida do dia (cria se não existe); pergunta que estourou o tempo vira erro. */
+async function withQualtime(userId, clientDay, fn) {
+  const now = new Date();
+  const day = dayNumber(now);
+  if (clientDay !== undefined && clientDay !== null && Number(clientDay) !== day) {
+    throw new GameError(409, 'day-changed', 'Virou o dia: já tem perguntas novas. Recarregue.');
+  }
+  const teams = await allTeams();
+  return prisma.$transaction(async (tx) => {
+    const user = await loadUser(tx, userId);
+    qualtimeUnlock(user);
+    const fresh = JSON.stringify({ answers: [], servedAt: null });
+    await tx.$executeRaw`
+      INSERT INTO "DailyGame" ("userId", game, day, state, won, "createdAt", "updatedAt")
+      VALUES (${userId}, 'QUALTIME', ${day}, ${fresh}::jsonb, false, now(), now())
+      ON CONFLICT ("userId", game, day) DO NOTHING`;
+    const [row] = await tx.$queryRaw`
+      SELECT id, state, won, reward, "finishedAt" FROM "DailyGame"
+       WHERE "userId" = ${userId} AND game = 'QUALTIME' AND day = ${day} FOR UPDATE`;
+    const st = { answers: [...(row.state.answers ?? [])], servedAt: row.state.servedAt ?? null };
+    const total = QUALTIME.questions;
+    const expired = !row.finishedAt && st.servedAt && now.getTime() - st.servedAt > QUALTIME.seconds * 1000 + QUALTIME.toleranceMs;
+    const extra = await fn({ st, row, day, now, expired, user, teams });
+    if (expired && !extra?.handledTimeout) { st.answers.push({ choice: -1, correct: false }); st.servedAt = null; }
+    let reward = row.reward ?? null;
+    let finishedAt = row.finishedAt;
+    if (!finishedAt && st.answers.length >= total) {
+      const hits = st.answers.filter((a) => a.correct).length;
+      const levelPoints = hits * QUALTIME.pointsPerHit;
+      reward = { goal: false, levelPoints, hits, total, text: null };
+      if (hits >= QUALTIME.goalAt) {
+        const match = await liveMatchForTeam(user.teamId, tx);
+        const { text } = await applyResult(tx, user, { kind: 'QUALTIME', goal: true, now, match, money: 0, phrase: `acertou ${hits} de ${total} no "De que time é?"` });
+        Object.assign(reward, { goal: true, text });
+      }
+      if (levelPoints) await tx.user.update({ where: { id: userId }, data: { levelBonus: { increment: levelPoints } } });
+      finishedAt = now;
+    }
+    const saved = await tx.dailyGame.update({ where: { id: row.id }, data: { state: st, won: !!reward?.goal, reward: reward ?? undefined, finishedAt } });
+    const { handledTimeout, ...out } = extra ?? {};
+    return { ...out, state: qualtimeView(userId, day, saved, teams, now) };
+  });
+}
+
+export function qualtimeState(userId) { return withQualtime(userId, undefined, async () => ({})); }
+
+/** Mostra a próxima pergunta e começa o relógio (idempotente enquanto ela estiver no ar). */
+export function qualtimeNext(userId, clientDay) {
+  return withQualtime(userId, clientDay, async ({ st, row, expired, now }) => {
+    if (row.finishedAt || expired) return {};
+    if (!st.servedAt && st.answers.length < QUALTIME.questions) st.servedAt = now.getTime();
+    return {};
+  });
+}
+
+/** Responde a pergunta da vez. choice = posição do escudo (0..3); -1 = acabou o tempo. */
+export function qualtimeAnswer(userId, index, choice, clientDay) {
+  return withQualtime(userId, clientDay, async ({ st, row, day, expired, teams }) => {
+    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o "De que time é?" de hoje. Volte amanhã!');
+    if (!Number.isInteger(index) || index !== st.answers.length) throw new GameError(409, 'out-of-sync', 'Essa pergunta já passou.');
+    if (!st.servedAt) throw new GameError(409, 'not-served', 'Peça a pergunta antes de responder.');
+    const q = qualtimeQuestions(day, QUALTIME.questions)[index];
+    const { correctChoice } = qualtimeOptions(userId, day, q, new Map(teams.map((t) => [t.slug, t])));
+    const c = expired ? -1 : Number.isInteger(choice) && choice >= 0 && choice <= 3 ? choice : -1;
+    const correct = c >= 0 && c === correctChoice;
+    st.answers.push({ choice: c, correct });
+    st.servedAt = null;
+    return { correct, timeout: c === -1, correctChoice, handledTimeout: true };
   });
 }

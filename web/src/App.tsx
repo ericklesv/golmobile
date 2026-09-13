@@ -28,6 +28,7 @@ import { installClickSounds } from './lib/sound';
 import { LevelsScreen } from './screens/Levels';
 import { ChatScreen } from './screens/Chat';
 import { MemoriaScreen } from './screens/Memoria';
+import { QualtimeScreen } from './screens/Qualtime';
 
 function Splash() {
   return (
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/trilha" element={<Private><TrailScreen /></Private>} />
         <Route path="/termo" element={<Private><TermoScreen /></Private>} />
         <Route path="/memoria" element={<Private><MemoriaScreen /></Private>} />
+        <Route path="/qualtime" element={<Private><QualtimeScreen /></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />

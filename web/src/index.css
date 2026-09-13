@@ -179,3 +179,5 @@ img { -webkit-user-drag: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 [hidden] { display: none !important; }
+/* opção errada escolhida no "De que time é?": o item amarelo puxado pro vermelho */
+.hue-wrong { filter: hue-rotate(-32deg) saturate(1.6); }

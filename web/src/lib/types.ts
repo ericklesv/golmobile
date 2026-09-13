@@ -157,3 +157,10 @@ export interface MemoriaState {
   cards: MemoriaCard[]; open: number | null; moves: number; matchedPairs: number;
   finished: boolean; won: boolean; reward: MemoriaReward | null; nextAt: number;
 }
+export interface QualtimeResult { text: string; type: string; options: (Team | null)[]; choice: number; correctChoice: number; correct: boolean }
+export interface QualtimeState {
+  day: number; total: number; index: number; results: QualtimeResult[];
+  current: { index: number; text: string; type: string; options: (Team | null)[]; deadline: number } | null;
+  finished: boolean; hits: number; reward: { goal: boolean; levelPoints: number; hits: number; total: number; text: string | null } | null;
+  seconds: number; pointsPerHit: number; goalAt: number; nextAt: number; serverTime: number;
+}

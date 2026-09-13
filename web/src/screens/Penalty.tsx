@@ -43,11 +43,14 @@ function Scene({ shot, keeperColor, kit }: { shot: Shot | null; keeperColor: str
     const e = (performance.now() - shot.t0) / 1000;
     const flight = 0.8;
     const p = clamp01(e / flight);
-    const tx = X[shot.dir] * (shot.goal ? 1 : 0.9);
-    const ty = shot.dir === 'center' ? 1.0 : 1.6;
+    // defesa: o voo termina NA LUVA (mais perto e mais baixo que o canto do gol)
+    const save = !shot.goal;
+    const tx = X[shot.dir] * (shot.goal ? 1 : 0.82);
+    const ty = shot.dir === 'center' ? (save ? 0.9 : 1.0) : (save ? 1.1 : 1.6);
+    const endZ = save ? 0.55 : 0;
     if (p < 1) {
       b.position.x = tx * ease.out(p);
-      b.position.z = 11 - 11 * p;
+      b.position.z = 11 - (11 - endZ) * p;
       b.position.y = 0.21 + Math.sin(p * Math.PI) * 1.0 + ty * p;
       b.rotation.x -= 0.25;
     } else if (shot.goal) {
@@ -66,9 +69,21 @@ function Scene({ shot, keeperColor, kit }: { shot: Shot | null; keeperColor: str
         b.position.x = tx * (1 - 0.08 * clamp01(t2 / 1.2));
         b.rotation.x -= 0.12;
       }
+    } else if (shot.dir === 'center') {
+      // ENCAIXOU: o goleiro segura a bola no peito e desce com ela
+      const t = e - flight;
+      b.position.x = 0;
+      b.position.z = 0.75;
+      b.position.y = 1.15 - 0.3 * clamp01(t / 0.6);
+      b.rotation.x -= 0.02;
     } else {
-      const q = clamp01((e - flight) / 0.7);
-      b.position.z = 0.6 + 7 * q; b.position.y = 0.21 + Math.sin(q * Math.PI) * 1.8; b.position.x = tx * (1 - q * 0.5);
+      // ESPALMADA: a bola bate na luva e volta quicando para o campo
+      const t = e - flight;
+      const d = Math.min(t, 1.8);
+      b.position.z = 0.55 + 4.0 * d - 0.55 * d * d;
+      b.position.x = tx - Math.sign(tx) * 0.7 * Math.min(t, 1.4);
+      b.position.y = bounceY(0.21 + ty, t, 0.21, 9, 0.5);
+      b.rotation.x -= 0.1;
     }
     // o clipe do mergulho já leva o corpo ~1,8 m para o lado; o grupo só complementa o alcance
     const kp = clamp01((e - 0.25) / 0.5);

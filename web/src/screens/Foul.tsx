@@ -25,9 +25,14 @@ const WALL_KIT = { primary: '#c3131a', secondary: '#F4F7FB' }; // barreira = adv
 function targetFor(dir: Dir, outcome: Outcome): THREE.Vector3 {
   if (outcome === 'wall') return new THREE.Vector3(dir === 'left' ? -1.2 : dir === 'right' ? 1.0 : 0, 1.4, WALL_Z);
   if (outcome === 'out') return new THREE.Vector3(dir === 'left' ? -4.2 : dir === 'right' ? 4.2 : 0.5, dir === 'over' ? 3.2 : 1.2, -1);
+  if (outcome === 'keeper') {
+    // defesa: o voo termina NA LUVA (dentro do alcance do mergulho)
+    const x = dir === 'left' ? -2.2 : dir === 'right' ? 2.2 : 0.4;
+    return new THREE.Vector3(x, dir === 'over' ? 1.7 : 0.9, 0.5);
+  }
   const x = dir === 'left' ? -2.8 : dir === 'right' ? 2.8 : 0.4;
   const y = dir === 'over' ? 2.0 : 1.0;
-  return new THREE.Vector3(x, y, outcome === 'goal' ? -0.6 : 0.3);
+  return new THREE.Vector3(x, y, -0.6);
 }
 
 function Scene({ shot, keeperColor, wallColor, gkKit, wallKit }: { shot: Shot | null; keeperColor: string; wallColor: string; gkKit: KitColors; wallKit: KitColors }) {
@@ -82,7 +87,23 @@ function Scene({ shot, keeperColor, wallColor, gkKit, wallKit }: { shot: Shot | 
         }
       }
       if (shot.outcome === 'wall') { b.position.z = tgt.z + 5 * q; b.position.y = 0.21 + Math.sin(q * Math.PI) * 1.4; }
-      if (shot.outcome === 'keeper') { b.position.x = tgt.x * 0.6; b.position.y = shot.dir === 'over' ? 1.6 : 0.45; b.position.z = 0.6; }
+      if (shot.outcome === 'keeper') {
+        const t = e - flight;
+        if (shot.dir === 'over') {
+          // ENCAIXOU no salto: segura a bola e desce com ela
+          b.position.x = tgt.x * 0.5;
+          b.position.z = 0.75;
+          b.position.y = Math.max(1.0, tgt.y - 0.9 * t);
+          b.rotation.x -= 0.02;
+        } else {
+          // ESPALMADA: bate na luva e volta quicando para o campo
+          const d = Math.min(t, 1.8);
+          b.position.z = 0.5 + 3.6 * d - 0.5 * d * d;
+          b.position.x = tgt.x - Math.sign(tgt.x || 1) * 0.6 * Math.min(t, 1.4);
+          b.position.y = bounceY(tgt.y, t, 0.21, 9, 0.5);
+          b.rotation.x -= 0.1;
+        }
+      }
       if (shot.outcome === 'out') { b.position.z = tgt.z - 4 * q; b.position.y = tgt.y + 1.5 * q; }
     }
     const jump = shot.dir === 'over' ? Math.sin(clamp01((e - 0.15) / 0.5) * Math.PI) * 0.5 : 0;

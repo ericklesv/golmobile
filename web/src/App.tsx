@@ -4,6 +4,7 @@ import { useAuth } from './store/auth';
 import { ToastHost } from './components/Toast';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { LevelUpWatcher } from './components/LevelUp';
 import { LoginScreen } from './screens/Login';
 import { RegisterScreen } from './screens/Register';
 import { HomeScreen } from './screens/Home';
@@ -67,6 +68,7 @@ export default function App() {
   return (
     <>
       <ToastHost />
+      {me && <LevelUpWatcher />}
       <ErrorBoundary resetKey={loc.pathname}>
       <Routes>
         <Route path="/bem-vindo" element={me ? <Navigate to="/" replace /> : <LandingScreen />} />

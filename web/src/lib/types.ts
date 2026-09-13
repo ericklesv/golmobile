@@ -88,6 +88,8 @@ export interface Meta {
   /** Hora (Brasília) em que cada minigame diário renova. */
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
+  /** Minigames jogáveis e o nível que libera cada um. */
+  minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];
   teams: Team[];
   items: ShopItemDef[];
 }

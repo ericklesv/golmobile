@@ -50,6 +50,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
   relógio do celular.
+- **Janela de "subiu de nível"** (`components/LevelUp.tsx`, montada no App para quem está logado; pedido do
+  dono, 13/09/2026): vigia `me.level.lvl`; o último nível visto fica no aparelho (`localStorage`
+  `brgol.nivelVisto.<id>`, gravado só quando a janela aparece). Mostra o nível novo, "LIBERADO X! JOGAR
+  AGORA" para cada minigame do catálogo (`meta.minigames`, sem os "em breve") e "Nova habilidade" (skills
+  de `LEVELS` que não começam com "Libera"). 1ª vez no aparelho só anota (sem janela de níveis antigos).
 - **Nível = pontos de nível = `goalsTotal + levelBonus`** (o bônus vem dos minigames diários).
   No servidor, use sempre `levelOf(user)` (`rules.js`) — nunca `levelFor(user.goalsTotal)`,
   senão o bônus some (desbloqueios, rebote, nerf, recarga da trilha). O front mostra

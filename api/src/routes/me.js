@@ -6,6 +6,7 @@ import { requireAuth } from '../lib/auth.js';
 import { meView, publicView } from '../services/view.js';
 import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf } from '../lib/rules.js';
 import { meInclude } from '../lib/items.js';
+import { captchaRequired } from '../lib/captcha.js';
 
 export const me = Router();
 me.use(requireAuth);
@@ -14,7 +15,10 @@ async function fresh(id) {
   return prisma.user.findUnique({ where: { id }, include: meInclude() });
 }
 
-me.get('/', handle(async (req) => meView(await fresh(req.user.id))));
+me.get('/', handle(async (req) => {
+  const u = await fresh(req.user.id);
+  return { ...meView(u), captchaRequired: captchaRequired(u) }; // captcha dos chutes manuais (lib/captcha.js)
+}));
 
 // Presença: o cliente chama a cada 60 s enquanto está aberto (necessário p/ auto-chute)
 me.post('/heartbeat', handle(async (req) => {

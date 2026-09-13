@@ -29,6 +29,8 @@ export interface Me {
   trail: { active: boolean; phase: number; revealed: { phase: number; index: number }[] };
   /** Itens da loja ativos (ver ShopView) e cor do nick (chave da paleta). */
   items: UserItemView[]; nickColor: string | null;
+  /** Só em GET /api/me: o próximo chute manual exige captcha (a cada 10 chutes). */
+  captchaRequired?: boolean;
   serverTime: number;
 }
 
@@ -159,3 +161,6 @@ export interface ShopView {
   history: { key: string; name: string; price: number; currency: 'money' | 'vip'; at: number }[];
   serverTime: number;
 }
+
+// ─── Captcha dos chutes manuais ─────────────────────────────────────────────
+export interface CaptchaPayload { captchaId: string; answer: string }

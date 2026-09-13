@@ -7,6 +7,7 @@ import type { TrailResult } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Countdown, useCountdown } from '../components/ui';
 import { toast } from '../components/Toast';
+import { useCaptcha } from '../components/Captcha';
 import { TrailBall, useTrailBall, type BallLeg, type Pt } from '../components/TrailBall';
 
 // Campo vertical 300x460 (igual ao original: você sai do seu gol embaixo e sobe)
@@ -70,9 +71,12 @@ export function TrailScreen() {
   const thieves = (meta?.trailLines[phase]?.mines ?? 1) - (cells[phase]?.filter((c) => c === 'mine').length ?? 0);
   const rem = useCountdown(me.cooldowns.TRAIL.readyAt);
   const ready = (rem <= 0 || active) && me.cooldowns.TRAIL.unlocked;
+  const needCaptcha = !!me.captchaRequired && !active; // só para começar uma trilha nova
+  const captcha = useCaptcha(needCaptcha);
 
   async function pick(li: number, i: number) {
     if (busy || li !== phase || !ready || cells[li][i] !== 'idle' || result?.finished) return;
+    if (needCaptcha && !captcha.payload) { toast('Responda a conta anti-robô antes de começar.'); return; }
     setBusy(true);
     const slot = slotOf(li, i);
     const before = ball.planned();
@@ -80,7 +84,7 @@ export function TrailScreen() {
     const tapped = performance.now();
     const arrive = ball.push([{ to: slot, ms: MOVE.toPlayer, hop: 6, ease: 'out' }]);
     try {
-      const r = await api.trail(i);
+      const r = await api.trail(i, needCaptcha ? captcha.payload : null);
       const legs: BallLeg[] = !r.mine
         ? [{ to: ahead(slot), ms: MOVE.ahead, hop: 3 }, ...(r.goal ? [{ to: shotAt(slot.x), ms: MOVE.shot, hop: 16, ease: 'in' as const, scale: 0.8 }] : [])]
         : r.rebound ? [{ to: behind(slot), ms: MOVE.back, hop: 8, ease: 'out' }]
@@ -116,6 +120,7 @@ export function TrailScreen() {
       ball.reset(before);
       setBusy(false);
       if (e instanceof ApiError && e.code === 'cooldown') { toast('Trilha ainda em recarga.'); refresh(); }
+      else if (e instanceof ApiError && e.code === 'captcha') { toast(e.message, 'error'); captcha.refresh(); refresh(); }
       else toast((e as Error).message, 'error');
     }
   }
@@ -186,6 +191,7 @@ export function TrailScreen() {
         </svg>
       </div>
 
+      {ready && !result?.finished && captcha.box && <div className="relative mx-3 mt-3">{captcha.box}</div>}
       <div className="panel relative mx-3 mb-6 mt-3 text-center text-[13px] font-extrabold text-navy-ink">
         {!me.cooldowns.TRAIL.unlocked ? <span className="text-danger">A Trilha libera no nível 3 (Sub-12, 88 gols).</span>
           : !ready ? <>Recarga: <Countdown readyAt={me.cooldowns.TRAIL.readyAt} className="text-orange-deep" /> · níveis reduzem o tempo</>

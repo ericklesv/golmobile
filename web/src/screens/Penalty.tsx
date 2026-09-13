@@ -8,6 +8,7 @@ import type { KickResult } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Countdown, Spinner, useCountdown } from '../components/ui';
 import { toast } from '../components/Toast';
+import { useCaptcha } from '../components/Captcha';
 import { KickArrowButton } from '../components/KickArrows';
 import { ease, clamp01 } from '../scenes/common';
 import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, preloadModels, type KeeperHandle } from '../scenes/models';
@@ -83,19 +84,22 @@ export function PenaltyScreen() {
   const [overlay, setOverlay] = useState(false);
   const rem = useCountdown(me.cooldowns.PENALTY.readyAt);
   const ready = rem <= 0 && me.cooldowns.PENALTY.unlocked;
+  const captcha = useCaptcha(me.captchaRequired);
   useEffect(() => { preloadModels(); }, []);
 
   async function kick(dir: Dir) {
     if (busy || !ready || shot) return;
+    if (me.captchaRequired && !captcha.payload) { toast('Responda a conta anti-robô antes de bater.'); return; }
     setBusy(true);
     try {
-      const r = await api.penalty(dir);
+      const r = await api.penalty(dir, captcha.payload);
       setResult(r);
       setShot({ dir, keeperDir: r.keeperDir ?? dir, goal: r.goal, t0: performance.now() });
       setTimeout(() => setOverlay(true), 1800);
       refresh();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'cooldown') { toast('Pênalti ainda em recarga.'); refresh(); }
+      else if (e instanceof ApiError && e.code === 'captcha') { toast(e.message, 'error'); captcha.refresh(); refresh(); }
       else toast((e as Error).message, 'error');
     } finally { setBusy(false); }
   }
@@ -127,6 +131,7 @@ export function PenaltyScreen() {
       </div>
       <div className="relative flex flex-1 flex-col justify-center gap-3 px-4 pb-6">
         <div className="stadium-bg" />
+        {!shot && captcha.box}
         <p className="t-display t-out relative text-center text-[13px] uppercase tracking-widest">
           {shot ? (result?.goal ? 'É GOL!' : 'O goleiro foi no canto certo…') : `Escolha o canto · destreza ${me.dexterity} · ${Math.round((2 / 3 + me.dexterity / 100) * 100)}% de acerto`}
         </p>

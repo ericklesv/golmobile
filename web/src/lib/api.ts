@@ -1,4 +1,4 @@
-import type { ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, ShopView, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { ActivePlayer, CaptchaPayload, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, ShopView, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -47,9 +47,10 @@ export const api = {
   changeTeam: (teamSlug: string) => req<Me>('POST', '/api/me/change-team', { teamSlug }),
   // play
   autoKick: () => req<KickResult>('POST', '/api/play/auto'),
-  penalty: (direction: 'left' | 'center' | 'right') => req<KickResult>('POST', '/api/play/penalty', { direction }),
-  foul: (direction: 'left' | 'over' | 'right') => req<KickResult>('POST', '/api/play/foul', { direction }),
-  trail: (index: number) => req<TrailResult>('POST', '/api/play/trail', { index }),
+  penalty: (direction: 'left' | 'center' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/penalty', { direction, ...(captcha ?? {}) }),
+  foul: (direction: 'left' | 'over' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/foul', { direction, ...(captcha ?? {}) }),
+  trail: (index: number, captcha?: CaptchaPayload | null) => req<TrailResult>('POST', '/api/play/trail', { index, ...(captcha ?? {}) }),
+  captcha: () => req<{ id: string; question: string; expiresAt: number }>('GET', '/api/play/captcha'),
   party: () => req<PartyResult>('POST', '/api/play/party'),
   // minigames diários
   daily: () => req<DailyStatus>('GET', '/api/daily'),

@@ -155,6 +155,22 @@ depois que o novo estiver estável. Não instalar nada dele.
   Teste local sem limite: `MINIGAMES_LIVRES=1` no `api/.env` do PC (ignorado com NODE_ENV=production) —
   acabou, aparece "Jogar de novo". Nunca pôr no .env da VPS.
 
+- **Frangaço** (`lib/frangaco.js` = regras puras; `services/frangaco.js`; tela `Frangaco.tsx` em
+  `/frangaco`; nível 10, vira às **20h**; transposto do Managol — design em `docs/FALTA_PRO.md`):
+  duelo de pênaltis ALTERNADO contra um clube IA da **mesma série** (5 cobranças suas + 5 defesas,
+  você bate e depois defende). Cobrança = mira contínua 0..1 no gol da cena 3D do pênalti, com
+  **finta** opcional (anuncia um canto — o goleiro IA tende a ir nele — e bate no outro; fintar e
+  bater no anunciado é punido); a destreza aperta a dispersão e "seca" o goleiro. Defesa = câmera
+  atrás do gol, o servidor sorteia alvo + **janela de reação** (900→660 ms apertando com as fases) e
+  valida o toque `{x, y, ms}` pelo relógio DO SERVIDOR (tolerância de rede 200 ms; janela servida no
+  response do kick com folga de 9 s — estourou com a aba fechada, resolve sozinho como gol da IA).
+  5x5 empatado = morte súbita (até 3 rodadas; persistindo, a defesa mais rápida decide). **Mata-mata
+  de 4 fases, um duelo por dia**; o progresso do torneio atravessa os dias nas linhas de `DailyGame`
+  (a mais recente de dias anteriores diz a fase — venceu e não é campeão = fase seguinte). Venceu =
+  **1 gol** (kind `FRANGACO`, migração 0017) e avança; CAMPEÃO = +R$ 500 e +20 de nível; perdeu =
+  eliminado, torneio novo no dia seguinte. Nada de alvo/goleiro decidido no cliente; `MINIGAMES_LIVRES=1`
+  também vale aqui.
+
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
@@ -162,6 +178,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}` (minigames)
+`GET /api/daily/frangaco` · `POST /api/daily/frangaco/start|frangaco/kick{x,y,anunciado?}|frangaco/save{x,y,ms}` (Frangaço; coordenadas 0..1 do gol)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)

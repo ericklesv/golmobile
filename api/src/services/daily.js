@@ -29,6 +29,7 @@ function calendar(now) {
     ALVO: { day: dayNumberAt(RESET_HOUR.ALVO, now), nextAt: nextResetAt(RESET_HOUR.ALVO, now).getTime() },
     CAMISAS: { day: dayNumberAt(RESET_HOUR.CAMISAS, now), nextAt: nextResetAt(RESET_HOUR.CAMISAS, now).getTime() },
     HATTRICK: { day: dayNumberAt(RESET_HOUR.HATTRICK, now), nextAt: nextResetAt(RESET_HOUR.HATTRICK, now).getTime() },
+    FRANGACO: { day: dayNumberAt(RESET_HOUR.FRANGACO, now), nextAt: nextResetAt(RESET_HOUR.FRANGACO, now).getTime() },
     // Estatísticas viram às 13h; sem os dados baixados, ficam de fora
     ...(statsReady() ? { STATS: { day: statsDayNumber(now), nextAt: nextStatsReset(now).getTime() } } : {}),
   };

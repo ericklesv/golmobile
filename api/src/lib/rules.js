@@ -196,7 +196,7 @@ export const MINIGAMES = [
   { id: 'PARTY', name: 'Party GoL', unlock: 1, daily: false, route: '/partygol', icon: '/ui/ico-coin02.png', desc: 'Aposte R$ 50 na roleta e leve R$ 150. Primeira vitória do dia vale gol.', reward: 'gol + R$ 150' },
   { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: 'gol + até 30 de nível' },
   { id: 'STATS', name: 'Estatísticas', unlock: 3, daily: true, route: '/estatisticas', icon: '/ui/ico-ranking.png', desc: 'Quem tem mais? Acertou, segue; errou, acaba. 5 seguidos é gol.', reward: 'gol + até 30 de nível' },
-  { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Estádio, apelido ou ídolo: qual é o time? 8 rodadas, 10 s cada.', reward: 'gol + até 32 de nível' },
+  { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Pista → escudo e escudo → pista. 10 rodadas, 7 s cada; 8 acertos é gol.', reward: 'gol + até 30 de nível' },
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: '10 alvos acendem no gol, 1,5 s cada. Toque rápido!', reward: 'gol + até 30 de nível' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'EMBAIXADINHAS', name: 'Embaixadinhas', unlock: 12, daily: true, route: '/embaixadinhas', icon: '/ui/ico-energy.png', desc: 'Toque no ritmo e não deixe a bola cair.', reward: 'gol + nível', soon: true },
@@ -208,9 +208,11 @@ export const MINIGAMES = [
 export const MEMORIA = { pairs: 8, goalAtMoves: 14, levelPoints: [[8, 30], [10, 25], [12, 20], [14, 15], [18, 10], [Infinity, 5]] };
 DAILY_GAMES.push('MEMORIA');
 KIND_LABEL.MEMORIA = 'Memória dos Escudos';
-// De que time é?: vira à meia-noite. 8 pistas (estádio, estado, apelido, ídolo) com 4 escudos,
-// 10 s cada (relógio no servidor). +4 de nível por acerto (até +32); 6 acertos = 1 gol.
-export const QUALTIME = { questions: 8, seconds: 10, pointsPerHit: 4, goalAt: 6, toleranceMs: 2500 };
+// De que time é?: vira à meia-noite. 10 pistas alternando "pista → 4 escudos" e "escudo → 4 pistas"
+// (estádio, cidade, fundação, cores+estado, apelido, mascote, ídolo, clássico; distratores
+// parecidos). 7 s por pista, −0,5 s a cada acerto seguido (mínimo 5 s), relógio no servidor.
+// +3 de nível por acerto (até +30); 8 acertos = 1 gol. (Refeito em 13/09/2026: estava fácil demais.)
+export const QUALTIME = { questions: 10, seconds: 7, minSeconds: 5, streakStep: 0.5, pointsPerHit: 3, goalAt: 8, toleranceMs: 2500 };
 DAILY_GAMES.push('QUALTIME');
 KIND_LABEL.QUALTIME = 'De que time é?';
 // Alvo no Gol: vira à meia-noite. 10 alvos acendem um a um (posição sorteada), cada um fica

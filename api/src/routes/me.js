@@ -8,6 +8,7 @@ import { liveMatchForTeam } from '../services/league.js';
 import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf } from '../lib/rules.js';
 import { meInclude } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
+import { clientIp } from '../lib/ip.js';
 
 export const me = Router();
 me.use(requireAuth);
@@ -31,7 +32,7 @@ me.get('/opponent', handle(async (req) => {
 
 // Presença: o cliente chama a cada 60 s enquanto está aberto (necessário p/ auto-chute)
 me.post('/heartbeat', handle(async (req) => {
-  await prisma.user.update({ where: { id: req.user.id }, data: { lastSeenAt: new Date() } });
+  await prisma.user.update({ where: { id: req.user.id }, data: { lastSeenAt: new Date(), lastIp: clientIp(req), lastIpAt: new Date() } });
   const online = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) } } });
   const active = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 24 * 3600_000) } } });
   return { ok: true, online, active, serverTime: Date.now() };

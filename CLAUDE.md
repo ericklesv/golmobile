@@ -108,6 +108,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   Não voltar a ter botão "Outra" (jogador achava que era confirmar e ficava trocando de conta).
 - **Senha** (`routes/password.js`): `forgot` sempre 200; token SHA-256 de uso único (1 h) em
   `PasswordReset`; e-mail via Nodemailer (`SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`); sem SMTP, loga o link.
+- **Painel de admin** (`routes/adminPanel.js` em `/api/painel`; tela `/admin`, lazy, fora das abas):
+  SÓ usuários com `User.isAdmin` (ericklesv e MVGIC, marcados na migração 0015; middleware
+  `requireAdmin` = JWT + isAdmin no banco). Lista/busca/edita jogadores, dá gols de verdade
+  (kind `AUTO` via `applyResult`, 1–100 por chamada) e exp (`levelBonus`), bane (`banHours`;
+  0 desbane) e mostra IP + geolocalização (`lib/ip.js`: `User.lastIp` capturado no
+  cadastro/login/heartbeat; ip-api.com server-side com cache de 24 h — nunca chamar do front).
+  Toda ação fica na tabela `AdminAction` (`GET /api/painel/log`). Entrada discreta no perfil.
+  Não confundir com `/api/admin` (x-admin-key, uso via curl) — intocado.
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
   cliente antes do fim (nem no JSON). Acertar = 1 gol normal (`applyResult` com kind `TERMO`:
   placar, artilharia, lances) + pontos de nível pela tentativa (`TERMO.levelPoints`, 30→5);
@@ -157,6 +165,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
+`GET /api/painel/users?q=&page=|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.
 
 ## Comandos

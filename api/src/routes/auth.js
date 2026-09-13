@@ -7,6 +7,7 @@ import { handle, badRequest, GameError } from '../lib/errors.js';
 import { signToken } from '../lib/auth.js';
 import { meView } from '../services/view.js';
 import { meInclude } from '../lib/items.js';
+import { clientIp } from '../lib/ip.js';
 
 export const auth = Router();
 
@@ -30,7 +31,7 @@ auth.post('/register', limiter, handle(async (req) => {
   if (clash) throw new GameError(409, 'taken', clash.nickLower === nickLower ? 'Esse nick já está em uso.' : 'Esse e-mail já está cadastrado.');
   const passwordHash = await bcrypt.hash(body.password, 10);
   const user = await prisma.user.create({
-    data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id },
+    data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id, lastIp: clientIp(req), lastIpAt: new Date() },
     include: { team: true },
   });
   return { token: signToken(user), me: meView(user) };
@@ -48,6 +49,6 @@ auth.post('/login', limiter, handle(async (req) => {
   if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
     throw new GameError(401, 'bad-credentials', 'Nick/e-mail ou senha incorretos.');
   }
-  await prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } });
+  await prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: clientIp(req), lastIpAt: new Date() } });
   return { token: signToken(user), me: meView(user) };
 }));

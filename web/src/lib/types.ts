@@ -246,6 +246,28 @@ export interface CamisasGuess {
   goal: { text: string; seq: number[]; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
 }
 
+// ─── Painel de admin (/api/painel — só usuários com isAdmin) ───────────────
+export interface AdminGeo { country: string | null; region: string | null; city: string | null; isp: string | null }
+export interface AdminUserRow {
+  id: number; nick: string; email: string; avatarUrl: string | null; nickColor: string | null;
+  team: Team | null; level: { lvl: number; name: string }; levelPoints: number;
+  goalsTotal: number; money: number; vip: boolean; vipDays: number;
+  banned: boolean; bannedUntil: string | null; isAdmin: boolean; lastSeenAt: string; online: boolean;
+}
+export interface AdminUserDetail extends AdminUserRow {
+  gender: string; bio: string | null; createdAt: string; dexterity: number; levelBonus: number; vipUntil: string | null;
+  /** Última conexão do jogador: IP + geolocalização (geo null = sem dados). */
+  conn: { ip: string | null; at: string | null; geo: AdminGeo | null };
+}
+export interface AdminUsersPage { page: number; pages: number; total: number; users: AdminUserRow[] }
+/** Campos editáveis; banHours > 0 bane a partir de agora, 0 desbane. */
+export interface AdminPatch {
+  nick?: string; email?: string; bio?: string | null; money?: number; vipDays?: number;
+  dexterity?: number; nickColor?: string | null; teamSlug?: string; banHours?: number;
+}
+export interface AdminLogRow { id: number; admin: string; target: string | null; targetAvatar: string | null; action: string; payload: any; at: string }
+export interface AdminLogPage { page: number; pages: number; total: number; rows: AdminLogRow[] }
+
 // ─── Hat Trick (chute de longe) ─────────────────────────────────────────────
 /** Posições em metros: gol em y = 0 (x = 0 no meio), campo crescendo para baixo. */
 export interface HattrickShot { i: number; ball: { x: number; y: number }; wind: { speed: number; angle: number } }

@@ -13,6 +13,7 @@ import { me } from './routes/me.js';
 import { play } from './routes/play.js';
 import { game } from './routes/game.js';
 import { admin } from './routes/admin.js';
+import { adminPanel } from './routes/adminPanel.js';
 import { daily } from './routes/daily.js';
 import { shop } from './routes/shop.js';
 import { password } from './routes/password.js';
@@ -42,6 +43,7 @@ app.use('/api/auth', auth);
 app.use('/api/me', me);
 app.use('/api/play', play);
 app.use('/api/admin', admin);
+app.use('/api/painel', adminPanel); // painel de admin (JWT + isAdmin)
 app.use('/api/daily', daily);
 app.use('/api/shop', shop);
 app.use('/api/auth', password); // forgot / reset (recuperação de senha por e-mail)

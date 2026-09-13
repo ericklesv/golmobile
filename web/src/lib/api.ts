@@ -1,4 +1,4 @@
-import type { AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, HattrickShootResponse, HattrickState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, HattrickShootResponse, HattrickState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -107,6 +107,13 @@ export const api = {
   shopEquip: (key: string) => req<Me>('POST', '/api/shop/equip', { key }),
   shopNick: (nick: string) => req<Me>('POST', '/api/shop/nick', { nick }),
   shopNickColor: (color: string | null) => req<Me>('POST', '/api/shop/nick-color', { color }),
+  // painel de admin (só usuários com isAdmin; o servidor nega os demais)
+  adminUsers: (q = '', page = 1) => req<AdminUsersPage>('GET', `/api/painel/users?q=${encodeURIComponent(q)}&page=${page}`),
+  adminUser: (id: number) => req<AdminUserDetail>('GET', `/api/painel/users/${id}`),
+  adminPatch: (id: number, body: AdminPatch) => req<AdminUserDetail>('PATCH', `/api/painel/users/${id}`, body),
+  adminGols: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow; text: string | null }>('POST', `/api/painel/users/${id}/gols`, { qtd }),
+  adminExp: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow }>('POST', `/api/painel/users/${id}/exp`, { qtd }),
+  adminLog: (page = 1) => req<AdminLogPage>('GET', `/api/painel/log?page=${page}`),
   // recuperação de senha
   forgotPassword: (email: string) => req<{ ok: boolean; message: string }>('POST', '/api/auth/forgot', { email }),
   resetPassword: (token: string, password: string) => req<{ ok: boolean; nick: string; message: string }>('POST', '/api/auth/reset', { token, password }),

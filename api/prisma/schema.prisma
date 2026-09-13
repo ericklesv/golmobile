@@ -63,6 +63,8 @@ model User {
   bannedUntil  DateTime?
   createdAt    DateTime  @default(now())
   lastSeenAt   DateTime  @default(now())
+  lastIp       String? // último IP visto (cadastro/login/heartbeat) — painel de admin
+  lastIpAt     DateTime?
 
   teamId Int
   team   Team @relation(fields: [teamId], references: [id])
@@ -118,6 +120,8 @@ model User {
   items       UserItem[]
   shopLogs    ShopLog[]
   passwordResets PasswordReset[]
+  adminActions AdminAction[] @relation("AdminActionBy")
+  adminTargeted AdminAction[] @relation("AdminActionTo")
 
   @@index([teamId])
   @@index([goalsTotal])
@@ -376,6 +380,21 @@ model ChatMessage {
   createdAt DateTime @default(now())
 
   @@index([room, id])
+}
+
+// Auditoria do painel de admin (/api/painel): toda ação (editar, gols, exp, ban…) fica registrada.
+model AdminAction {
+  id        Int      @id @default(autoincrement())
+  adminId   Int
+  admin     User     @relation("AdminActionBy", fields: [adminId], references: [id])
+  targetId  Int?
+  target    User?    @relation("AdminActionTo", fields: [targetId], references: [id])
+  action    String // "editar" | "gols" | "exp" | "banir" | "desbanir"
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetId, createdAt])
 }
 
 // Cabeção (head soccer 1x1 ao vivo): histórico das partidas + antifraude (IP, gol por dia).

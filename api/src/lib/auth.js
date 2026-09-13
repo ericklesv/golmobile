@@ -30,6 +30,16 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+/** Middleware do painel (/api/painel): login normal (JWT) + isAdmin no banco. */
+export function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ error: 'forbidden', message: 'Acesso restrito à administração.' });
+    }
+    next();
+  });
+}
+
 export function requireAdminKey(req, res, next) {
   if (!config.adminKey || req.headers['x-admin-key'] !== config.adminKey) {
     return res.status(403).json({ error: 'forbidden', message: 'Acesso negado.' });

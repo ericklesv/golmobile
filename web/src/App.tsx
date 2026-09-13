@@ -15,6 +15,8 @@ import { QuizScreen } from './screens/Quiz';
 const PenaltyScreen = lazy(() => import('./screens/Penalty').then((m) => ({ default: m.PenaltyScreen })));
 const FoulScreen = lazy(() => import('./screens/Foul').then((m) => ({ default: m.FoulScreen })));
 const Debug3DScreen = lazy(() => import('./screens/Debug3D').then((m) => ({ default: m.Debug3DScreen })));
+// Painel de admin: só carrega para quem abre /admin (e o servidor exige isAdmin)
+const AdminScreen = lazy(() => import('./screens/Admin').then((m) => ({ default: m.AdminScreen })));
 import { PartyScreen } from './screens/Party';
 import { RankingsScreen } from './screens/Rankings';
 import { LeagueScreen } from './screens/League';
@@ -100,6 +102,7 @@ export default function App() {
         <Route path="/hat-trick" element={<Private><HattrickScreen /></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
+        <Route path="/admin" element={<Private><Suspense fallback={<Splash />}><AdminScreen /></Suspense></Private>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />
         <Route path="/chat" element={<Private><ChatScreen /></Private>} />
         <Route path="/esqueci-senha" element={me ? <Navigate to="/" replace /> : <EsqueciSenhaScreen />} /><Route path="/redefinir-senha" element={<RedefinirSenhaScreen />} />

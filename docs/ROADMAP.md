@@ -23,6 +23,11 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
 5. [x] **Captcha nos chutes manuais** (13/09/2026): conta numérica a cada 10 chutes manuais
    (`GET /api/play/captcha`, `captchaRequired` no `/api/me`). Falta: regras/proibições na tela
    de regras (proxy, flood, auto-penalty, 1 login por IP fixo).
+5b. [x] **Painel de admin** (13/09/2026): `/admin` (só ericklesv e MVGIC, `User.isAdmin` na
+   migração 0015) — lista/busca de jogadores, edição de perfil (nick/e-mail/bio/dinheiro/VIP/
+   destreza/time/cor), gols de verdade e exp, ban/desban, IP + geolocalização (ip-api.com com
+   cache 24 h; `User.lastIp` no cadastro/login/heartbeat) e log de auditoria (`AdminAction`).
+   API em `/api/painel/*` (`routes/adminPanel.js`, middleware `requireAdmin`).
 6. **Cargos do time** (Presidente/Diretor/Capitão/Auxiliar, só VIP), caixa do time (R$ e VIP),
    **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
    adversário atual, boosts Gatorade/Energético comprados pelo presidente).

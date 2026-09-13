@@ -16,6 +16,7 @@ import { nextMidnight } from '../lib/time.js';
 import { CABECAO } from '../lib/rules.js';
 
 const TICK_MS = 1000 / 30;
+const RECONNECT_GRACE_MS = 20_000; // caiu no meio da partida: tem 20 s para voltar antes do W.O.
 const BOT_AFTER_MS = 15_000; // ninguém na fila em 15 s → entra um bot (partida de treino, não vale gol)
 const BOT_NAMES = ['Zagalinho', 'Pé de Pano', 'Perna Longa', 'Cabeça de Bagre', 'Canhotinha', 'Bicudo', 'Matador', 'Camisa 10'];
 const queue = [];          // [{ conn }]
@@ -59,12 +60,15 @@ export function attachCabecao(server) {
   });
   wss.on('connection', (ws, req, user) => {
     const conn = { ws, user, ip: clientIp(req), match: null, side: -1, alive: true };
-    // uma conexão por jogador: a antiga cai
-    for (const c of conns) if (c.user.id === user.id) { send(c.ws, { t: 'kicked', reason: 'outra-aba' }); c.ws.close(); }
+    // uma conexão por jogador: a antiga cai — mas uma partida em andamento passa para a nova
+    for (const c of [...conns]) if (c.user.id === user.id) { c.replaced = true; send(c.ws, { t: 'kicked', reason: 'outra-aba' }); c.ws.close(); takeOver(c, conn); }
+    // caiu há pouco e voltou: retoma a partida
+    for (const m of matches.values()) for (const c of m.conns) if (c.user.id === user.id && c !== conn && c.dropped) takeOver(c, conn);
     conns.add(conn);
     send(ws, { t: 'hello', me: user.id, ...cabecaoStatus() });
+    if (conn.match) resendMatch(conn);
     ws.on('message', (raw) => { let m; try { m = JSON.parse(raw); } catch { return; } onMessage(conn, m); });
-    ws.on('close', () => { conns.delete(conn); leaveQueue(conn); if (conn.match) onDisconnect(conn); });
+    ws.on('close', () => { conns.delete(conn); leaveQueue(conn); if (conn.match && !conn.replaced) onDisconnect(conn); });
     ws.on('pong', () => { conn.alive = true; });
   });
   // keepalive (nginx fecha conexões ociosas)
@@ -153,17 +157,38 @@ function startMatch(a, b) {
   }, TICK_MS);
 }
 
+/** A partida (e o lado) de `from` passa para a conexão nova `to`. */
+function takeOver(from, to) {
+  const m = from.match;
+  if (!m || m.done) return;
+  clearTimeout(from.dropTimer);
+  to.match = m; to.side = from.side;
+  m.conns[from.side] = to;
+  from.match = null; from.side = -1; from.dropped = false;
+}
+function resendMatch(conn) {
+  const m = conn.match;
+  send(conn.ws, { t: 'match', id: m.id, side: conn.side, players: m.conns.map(playerView), field: FIELD, training: m.bot, resumed: true });
+}
+
 function onDisconnect(conn) {
   const m = conn.match;
   if (!m || m.done) return;
-  // quem cai perde por W.O.
-  const winner = conn.side === 0 ? 1 : 0;
-  finishMatch(m, { winner, reason: 'wo' });
+  // caiu: o boneco fica parado e o jogador tem RECONNECT_GRACE_MS para voltar; senão perde por W.O.
+  conn.dropped = true;
+  setInput(m.sim, conn.side, { l: 0, r: 0, j: 0, k: 0 });
+  const other = m.conns[1 - conn.side];
+  send(other.ws, { t: 'opp-dropped', seconds: RECONNECT_GRACE_MS / 1000 });
+  conn.dropTimer = setTimeout(() => {
+    if (m.done || !conn.dropped || m.conns[conn.side] !== conn) return;
+    finishMatch(m, { winner: conn.side === 0 ? 1 : 0, reason: 'wo' });
+  }, RECONNECT_GRACE_MS);
 }
 
 async function finishMatch(m, result) {
   m.done = true;
   clearInterval(m.timer);
+  for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
   const [a, b] = m.conns;
   const sc = m.sim.score;

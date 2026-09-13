@@ -48,41 +48,63 @@ export function CabecaoScreen() {
   useEffect(() => {
     if (!demo) return;
     const opp = (meta?.teams ?? []).find((t) => t.slug !== me.team.slug) ?? me.team;
-    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'BOT Zagalinho', avatarUrl: null, team: opp, bot: true }], field: { w: 800, h: 400, goalW: 112, goalH: 206, barH: 10, playerR: 50, ballR: 17 } };
+    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'BOT Zagalinho', avatarUrl: null, team: opp, bot: true }], field: { w: 960, h: 380, goalW: 112, goalH: 206, barH: 10, playerR: 50, ballR: 17 } };
     matchRef.current = mm; setMatch(mm);
-    const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[260, 0, 200, 0, 1, 1], [560, 70, 0, 0, -1, 0]], b: [420, 120, 0, 0] };
+    const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[300, 0, 200, 0, 1, 1], [660, 70, 0, 0, -1, 0]], b: [480, 120, 0, 0] };
     snapRef.current = { s: sn, at: performance.now() }; setSnap(sn);
   }, [demo]);
 
-  // conexão
+  // conexão (com reconexão automática: queda de rede ou troca de aba não perde a partida)
+  const [queuedAt, setQueuedAt] = useState<number | null>(null);
+  const [, tickQueue] = useState(0);
+  useEffect(() => { if (!queuedAt) return; const iv = setInterval(() => tickQueue((n) => n + 1), 1000); return () => clearInterval(iv); }, [queuedAt]);
   useEffect(() => {
     if (demo) return;
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/api/ws/cabecao?token=${encodeURIComponent(token.get() ?? '')}`);
-    wsRef.current = ws;
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => { setConnected(false); setInQueue(false); };
-    ws.onerror = () => toast('Sem conexão com a arena do Cabeção.', 'error');
-    ws.onmessage = (ev) => {
-      const m = JSON.parse(ev.data);
-      if (m.t === 'hello' || m.t === 'queue') setStatus({ queue: m.queue, playing: m.playing, rules: m.rules });
-      else if (m.t === 'left') setInQueue(false);
-      else if (m.t === 'match') { setInQueue(false); setOver(null); setStatus((st) => st ? { ...st, queue: Math.max(0, st.queue - 1) } : st); lastScore.current = [0, 0]; const mm = { side: m.side, players: m.players, field: m.field, training: !!m.training }; matchRef.current = mm; setMatch(mm); sound.play('pop'); }
-      else if (m.t === 's') {
-        snapRef.current = { s: m, at: performance.now() };
-        if (m.sc[0] !== lastScore.current[0] || m.sc[1] !== lastScore.current[1]) { lastScore.current = [m.sc[0], m.sc[1]]; sound.play(m.ls === matchRef.current?.side ? 'goal' : 'error'); }
-        setSnap(m);
-      }
-      else if (m.t === 'over') { setOver(m); if (m.award?.goal) { setTimeout(() => setOverlay(true), 800); } refresh(); }
-      else if (m.t === 'kicked') toast('Você abriu o Cabeção em outra aba.');
-      else if (m.t === 'error') toast(m.message, 'error');
+    let closed = false, tries = 0, timer: number | undefined;
+    const connect = () => {
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${proto}://${location.host}/api/ws/cabecao?token=${encodeURIComponent(token.get() ?? '')}`);
+      wsRef.current = ws;
+      ws.onopen = () => { tries = 0; setConnected(true); };
+      ws.onclose = () => {
+        setConnected(false); setInQueue(false); setQueuedAt(null);
+        if (closed) return;
+        // partida em andamento ou fila: volta sozinho (o servidor segura a partida por 20 s)
+        tries++;
+        if (tries <= 8) timer = window.setTimeout(connect, Math.min(4000, 600 * tries));
+        else toast('Sem conexão com a arena do Cabeção.', 'error');
+      };
+      ws.onerror = () => {};
+      ws.onmessage = (ev) => {
+        const m = JSON.parse(ev.data);
+        if (m.t === 'hello' || m.t === 'queue') setStatus({ queue: m.queue, playing: m.playing, rules: m.rules });
+        else if (m.t === 'left') { setInQueue(false); setQueuedAt(null); }
+        else if (m.t === 'match') {
+          setInQueue(false); setQueuedAt(null); setOver(null);
+          if (!m.resumed) lastScore.current = [0, 0];
+          setStatus((st) => st ? { ...st, queue: Math.max(0, st.queue - 1) } : st);
+          const mm = { side: m.side, players: m.players, field: m.field, training: !!m.training }; matchRef.current = mm; setMatch(mm);
+          if (m.resumed) toast('Partida retomada!'); else sound.play('pop');
+        }
+        else if (m.t === 's') {
+          snapRef.current = { s: m, at: performance.now() };
+          if (m.sc[0] !== lastScore.current[0] || m.sc[1] !== lastScore.current[1]) { lastScore.current = [m.sc[0], m.sc[1]]; sound.play(m.ls === matchRef.current?.side ? 'goal' : 'error'); }
+          setSnap(m);
+        }
+        else if (m.t === 'over') { setOver(m); if (m.award?.goal) { setTimeout(() => setOverlay(true), 800); } refresh(); }
+        else if (m.t === 'opp-dropped') toast(`Adversário caiu. Ele tem ${m.seconds} s para voltar, senão você vence por W.O.`);
+        else if (m.t === 'kicked') { closed = true; toast('Você abriu o Cabeção em outra aba — a partida continua lá.'); }
+        else if (m.t === 'error') toast(m.message, 'error');
+      };
     };
-    return () => { ws.close(); };
+    connect();
+    return () => { closed = true; if (timer) clearTimeout(timer); wsRef.current?.close(); };
   }, []);
 
   const send = (m: object) => { const ws = wsRef.current; if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(m)); };
-  const join = () => { send({ t: 'join' }); setInQueue(true); sound.play('tap'); };
-  const leave = () => { send({ t: 'leave' }); setInQueue(false); };
+  const join = () => { send({ t: 'join' }); setInQueue(true); setQueuedAt(Date.now()); sound.play('tap'); };
+  const leave = () => { send({ t: 'leave' }); setInQueue(false); setQueuedAt(null); };
+  const waited = queuedAt ? Math.floor((Date.now() - queuedAt) / 1000) : 0;
 
   // entradas: teclado (PC) + botões (toque); manda a cada mudança e a cada 100 ms
   useEffect(() => {
@@ -113,11 +135,11 @@ export function CabecaoScreen() {
       const ex = cur ? Math.min(0.12, (performance.now() - cur.at) / 1000) : 0; // extrapolação curta
       const moving = cur && (cur.s.ph === 'play' || cur.s.ph === 'golden');
       const players = match.players.map((pl, i) => {
-        const p = cur?.s.p[i] ?? [i === 0 ? 180 : 620, 0, 0, 0, i === 0 ? 1 : -1, 0];
+        const p = cur?.s.p[i] ?? [i === 0 ? 260 : 700, 0, 0, 0, i === 0 ? 1 : -1, 0];
         const k = moving ? ex : 0;
         return { x: p[0] + p[2] * k, y: Math.max(0, p[1] + p[3] * k), vx: p[2], face: p[4], kick: !!p[5], grounded: p[1] <= 0.5, team: pl.team, skin: SKINS[Math.abs(pl.id) % SKINS.length], hair: HAIRS[Math.abs(pl.id) % HAIRS.length], hairStyle: Math.abs(pl.id * 7 + 3) % 3 };
       });
-      const b = cur?.s.b ?? [400, 260, 0, 0];
+      const b = cur?.s.b ?? [480, 250, 0, 0];
       const k = moving ? ex : 0;
       draw(ctx, W, H, f, players, { x: b[0] + b[2] * k, y: Math.max(f.ballR, b[1] + b[3] * k), vx: b[2] }, performance.now(), cur?.s.ph === 'goal');
     };
@@ -162,7 +184,8 @@ export function CabecaoScreen() {
           {inQueue ? (
             <div className="panel text-center text-navy-ink">
               <div className="t-display text-[20px]">Procurando adversário…</div>
-              <p className="mt-1 text-[12px] font-bold text-muted">Fique nesta tela. Assim que outro craque entrar na fila, a partida começa.</p>
+              <div className="t-display mt-1 text-[28px] tabular-nums text-orange-deep">{Math.floor(waited / 60)}:{String(waited % 60).padStart(2, '0')}</div>
+              <p className="mt-1 text-[12px] font-bold text-muted">{status?.queue ?? 0} na fila · {status?.playing ?? 0} jogando. {waited < (rules?.botAfterSec ?? 15) ? `Sem ninguém em ${(rules?.botAfterSec ?? 15) - waited} s, entra um BOT de treino.` : 'Chamando um BOT de treino…'}</p>
               <div className="mx-auto my-3 h-2 w-40 overflow-hidden rounded-full bg-sky/20"><div className="h-full w-1/3 animate-[slide_1.1s_linear_infinite] rounded-full bg-sky" /></div>
               <button onClick={leave} className="btn btn-red btn-md w-full">Sair da fila</button>
             </div>
@@ -187,7 +210,7 @@ export function CabecaoScreen() {
             </div>
             <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5 text-right"><Shield team={match.players[1].team} size={24} /><span className="t-display t-out break-all text-[10px] leading-tight">{match.players[1].nick}</span></div>
           </div>
-          <div className="relative w-full overflow-hidden rounded-xl border-4 border-white/80 shadow-[0_6px_0_rgba(0,0,0,0.3)]" style={{ aspectRatio: '16 / 10' }}>
+          <div className="relative w-full overflow-hidden rounded-xl border-4 border-white/80 shadow-[0_6px_0_rgba(0,0,0,0.3)]" style={{ aspectRatio: '2 / 1' }}>
             <canvas ref={canvasRef} className="block touch-none" />
             {ph === 'countdown' && snap && (snap.sc[0] + snap.sc[1] > 0 || snap.g) && <div className="absolute inset-0 flex items-center justify-center"><span className="t-display t-out text-[64px] drop-shadow">{snap.g && snap.cd > 1.2 ? 'GOL DE OURO' : Math.ceil(snap.cd) || 'VAI!'}</span></div>}
             {ph === 'countdown' && snap && snap.sc[0] + snap.sc[1] === 0 && !snap.g && (
@@ -206,6 +229,7 @@ export function CabecaoScreen() {
               </div>
             )}
             {ph === 'goal' && snap && <div className="absolute inset-0 flex items-center justify-center"><span className={`t-display text-[52px] ${snap.ls === match.side ? 't-gold' : 't-red'}`}>{snap.ls === match.side ? 'GOOOL!' : 'GOL DELE…'}</span></div>}
+            {!connected && !over && !demo && <div className="absolute inset-0 flex items-center justify-center bg-navy-deep/70"><span className="t-display t-out text-[20px]">Reconectando…</span></div>}
             {over && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-navy-deep/80 p-3 text-center">
                 <span className={`t-display text-[34px] ${over.winner === over.you ? 't-gold' : over.winner == null ? 't-out' : 't-red'}`}>{over.winner === over.you ? 'VOCÊ VENCEU!' : over.winner == null ? 'EMPATE' : 'PERDEU'}</span>

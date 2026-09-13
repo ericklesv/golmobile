@@ -1,16 +1,16 @@
 /**
  * Cabeção — simulação 2D (estilo head soccer) que roda NO SERVIDOR a 30 Hz.
- * Unidades lógicas: campo 800 × 400, y cresce para cima, chão em y = 0.
+ * Unidades lógicas: campo 960 × 380, y cresce para cima, chão em y = 0.
  * Jogador 0 defende o gol da esquerda (ataca para a direita); jogador 1 o contrário.
  * Puro (sem I/O): recebe entradas, avança `step(dt)`, devolve estado serializável.
  */
 export const FIELD = {
-  w: 800, h: 400,
+  w: 960, h: 380,
   goalW: 112, goalH: 206, barH: 10,      // boca do gol (profundidade), altura, espessura do travessão — casam com a textura do gol
   playerR: 50, ballR: 17,                // jogador = círculo de raio R (cabeça grande) apoiado no chão
-  speed: 290, jump: 560, gravity: 1400,  // jogador
-  ballGravity: 1000, ballMax: 950, bounce: 0.78, groundFriction: 0.985,
-  kickRange: 100, kickVx: 560, kickVy: 380, headBoost: 1.05,
+  speed: 300, jump: 560, gravity: 1400,  // jogador
+  ballGravity: 1100, ballMax: 820, bounce: 0.7, groundFriction: 0.98,
+  kickRange: 100, kickVx: 500, kickVy: 340, headBoost: 1.0,
   matchSec: 60, goldenSec: 20, goalPauseSec: 1.3, countdownSec: 3,
 };
 
@@ -27,9 +27,9 @@ export function createSim() {
 }
 
 function mkPlayer(i) {
-  return { x: i === 0 ? 230 : 570, y: 0, vx: 0, vy: 0, face: i === 0 ? 1 : -1, kick: 0, grounded: true };
+  return { x: i === 0 ? 260 : 700, y: 0, vx: 0, vy: 0, face: i === 0 ? 1 : -1, kick: 0, grounded: true };
 }
-function mkBall() { return { x: 400, y: 260, vx: 0, vy: 0 }; }
+function mkBall() { return { x: 480, y: 250, vx: 0, vy: 0 }; }
 function blankInput() { return { l: 0, r: 0, j: 0, k: 0, jEdge: 0, kEdge: 0 }; }
 
 /** Entrada do jogador i: {l, r, j, k} (0/1). Pulo e chute contam na borda de subida. */

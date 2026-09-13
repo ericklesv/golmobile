@@ -10,7 +10,7 @@ export interface Field { w: number; h: number; goalW: number; goalH: number; bar
 export interface DrawPlayer { x: number; y: number; vx: number; face: number; kick: boolean; grounded: boolean; team: { slug: string; colorPrimary: string; colorSecondary: string }; skin: string; hair: string; hairStyle?: number }
 export interface DrawBall { x: number; y: number; vx: number }
 
-export const ASPECT = 16 / 10;
+export const ASPECT = 2; // canvas largura/altura (campo largo)
 const TEX_W = 1334;
 const GROUND = 0.8;
 const BASE = '/api/uploads/cabecao/';
@@ -40,18 +40,18 @@ function seats() {
   fanSeats = [];
   for (let row = 0; row < 2; row++) {
     const step = 44 + row * 4;
-    for (let x = -30 + (row ? 22 : 0); x < TEX_W + 30; x += step) fanSeats.push({ sheet: Math.floor(rnd() * 4), cell: Math.floor(rnd() * 16), x: x + rnd() * 8, row, phase: rnd() * Math.PI * 2 });
+    for (let x = -30 + (row ? 22 : 0); x < TEX_W * 1.25 + 30; x += step) fanSeats.push({ sheet: Math.floor(rnd() * 4), cell: Math.floor(rnd() * 16), x: x + rnd() * 8, row, phase: rnd() * Math.PI * 2 });
   }
   return fanSeats;
 }
 
 export function draw(ctx: CanvasRenderingContext2D, W: number, H: number, f: Field, players: DrawPlayer[], ball: DrawBall, t: number, excited: boolean) {
   const sx = W / f.w;          // escala lógica → canvas
-  const ts = W / TEX_W;        // escala das texturas → canvas
+  const ts = sx * (800 / TEX_W); // escala das texturas → canvas (800 unidades lógicas = 1334 px de textura); fundos esticam até W
   const gy = H * GROUND;       // chão
   const X = (x: number) => x * sx;
   const Y = (y: number) => gy - y * sx;
-  const at = (name: string, x: number, y: number, w?: number, h?: number) => { const im = tex(name); if (im) ctx.drawImage(im, x, y, w ?? im.naturalWidth * ts, h ?? im.naturalHeight * ts); return !!im; };
+  const at = (name: string, x: number, y: number, w?: number, h?: number) => { const im = tex(name); if (im) ctx.drawImage(im, x, y, w ?? W, h ?? im.naturalHeight * ts); return !!im; }; // fundos: largura total
 
   // fundo
   ctx.fillStyle = '#5E7FA8'; ctx.fillRect(0, 0, W, H);

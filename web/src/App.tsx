@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './store/auth';
 import { ToastHost } from './components/Toast';
 import { Layout } from './components/Layout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginScreen } from './screens/Login';
 import { RegisterScreen } from './screens/Register';
 import { HomeScreen } from './screens/Home';
@@ -59,11 +60,13 @@ export default function App() {
   const boot = useAuth((s) => s.boot);
   const loading = useAuth((s) => s.loading);
   const me = useAuth((s) => s.me);
+  const loc = useLocation();
   useEffect(() => { boot(); const a = installDragScroll(); const b = installClickSounds(); return () => { a(); b(); }; }, []);
   if (loading) return <Splash />;
   return (
     <>
       <ToastHost />
+      <ErrorBoundary resetKey={loc.pathname}>
       <Routes>
         <Route path="/bem-vindo" element={me ? <Navigate to="/" replace /> : <LandingScreen />} />
         <Route path="/entrar" element={me ? <Navigate to="/" replace /> : <LoginScreen />} />
@@ -98,6 +101,7 @@ export default function App() {
         <Route path="/esqueci-senha" element={me ? <Navigate to="/" replace /> : <EsqueciSenhaScreen />} /><Route path="/redefinir-senha" element={<RedefinirSenhaScreen />} />
         <Route path="*" element={<Navigate to={me ? '/' : '/bem-vindo'} replace />} />
       </Routes>
+      </ErrorBoundary>
     </>
   );
 }

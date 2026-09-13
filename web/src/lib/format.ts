@@ -22,8 +22,9 @@ export function timeAgo(iso: string | number): string {
 }
 
 export function hourLabel(hourKey: string): string {
-  const h = hourKey.split('-')[3];
-  return h ? `${h}:00` : hourKey;
+  const s = String(hourKey ?? ''); // à prova de chave errada (antes um número aqui derrubava a tela)
+  const h = s.split('-')[3];
+  return h ? `${h}:00` : s;
 }
 
 export function pct(v: number) { return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`; }

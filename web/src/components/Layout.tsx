@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '../store/auth';
 import { Shield } from './Shield';
 import { Avatar } from './Avatar';
@@ -20,6 +21,7 @@ export function Layout() {
   const me = useAuth((s) => s.me);
   const active = useAuth((s) => s.active);
   const nav = useNavigate();
+  const loc = useLocation();
 
   // Presença: heartbeat a cada 60 s enquanto a aba está aberta
   useEffect(() => {
@@ -64,7 +66,7 @@ export function Layout() {
       </header>
 
       <main className="relative flex-1 px-3 pb-28 pt-3">
-        <Outlet />
+        <ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary>
       </main>
       <ChatFab />
 

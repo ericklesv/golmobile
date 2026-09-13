@@ -16,9 +16,11 @@ export function RankingsScreen() {
   const [scope, setScope] = useState<Scope>('hora');
   const [rows, setRows] = useState<TopRow[] | null>(null);
   const [key, setKey] = useState<any>(null);
+  // Trocar de aba limpa a lista E a chave no mesmo instante: a chave da Temporada/Rodada é um
+  // número; se sobrasse para a aba Hora (que espera "2026-09-13-14"), a tela quebrava.
+  const pick = (s: Scope) => { setRows(null); setKey(null); setScope(s); };
 
   useEffect(() => {
-    setRows(null);
     let alive = true;
     api.rankings(scope, 50).then((r) => { if (alive) { setRows(r.rows); setKey(r.key); } }).catch(() => alive && setRows([]));
     return () => { alive = false; };
@@ -29,7 +31,7 @@ export function RankingsScreen() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-center"><div className="ribbon ribbon-orange ribbon-lg"><img src="/ui/ico-trophy_s.png" className="mr-2 h-9 w-9" alt="" />ARTILHARIA</div></div>
-      <Tabs value={scope} onChange={setScope} items={ITEMS} />
+      <Tabs value={scope} onChange={pick} items={ITEMS} />
       <Panel title={sub} ribbon="blue">
         {rows === null ? <div className="flex justify-center py-8"><Spinner /></div> : <TopList rows={rows} highlight={me.nick} empty="Ninguém pontuou aqui ainda. Vai lá e chuta!" />}
       </Panel>

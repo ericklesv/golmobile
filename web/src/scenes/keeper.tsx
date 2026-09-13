@@ -22,7 +22,7 @@ interface Pose { bones: Record<string, Rot>; root?: { rot?: Rot; pos?: [number, 
 // Ângulos em graus (convertidos abaixo). Lado "positivo" = +x (mergulho padrão para +x).
 const POSES_DEG: Record<KeeperPose, Pose> = {
   idle: { bones: { LeftArm: [0, 0, 18], RightArm: [0, 0, -18], LeftForeArm: [0, 0, 10], RightForeArm: [0, 0, -10], LeftUpLeg: [-8, 0, 4], RightUpLeg: [-8, 0, -4], LeftLeg: [16, 0, 0], RightLeg: [16, 0, 0], Spine: [8, 0, 0] } },
-  wall: { bones: { LeftArm: [-80, 0, 25], RightArm: [-80, 0, -25], LeftForeArm: [-15, 0, 80], RightForeArm: [-15, 0, -80], Spine: [6, 0, 0], LeftUpLeg: [0, 0, 6], RightUpLeg: [0, 0, -6] } },
+  wall: { bones: { LeftArm: [0, 0, 32], RightArm: [0, 0, -32], LeftForeArm: [-100, 0, 12], RightForeArm: [-100, 0, -12], Spine: [6, 0, 0], LeftUpLeg: [0, 0, 6], RightUpLeg: [0, 0, -6] } },
   dive: { bones: { LeftArm: [0, 0, 170], RightArm: [0, 0, 150], LeftForeArm: [0, 0, 10], RightForeArm: [0, 0, 20], LeftUpLeg: [0, 0, -10], RightUpLeg: [-20, 0, 25], LeftLeg: [10, 0, 0], RightLeg: [40, 0, 0], Spine: [0, 0, -10], Head: [0, 0, 10] }, root: { rot: [0, 0, -75], pos: [0.9, 0.55, 0] } },
   jump: { bones: { LeftArm: [0, 0, 165], RightArm: [0, 0, -165], LeftForeArm: [0, 0, 8], RightForeArm: [0, 0, -8], LeftUpLeg: [-40, 0, 6], RightUpLeg: [-40, 0, -6], LeftLeg: [70, 0, 0], RightLeg: [70, 0, 0] }, root: { pos: [0, 0.7, 0] } },
   miss: { bones: { LeftArm: [0, 0, 120], RightArm: [-30, 0, -40], LeftForeArm: [0, 0, 30], LeftUpLeg: [-10, 0, 10], RightUpLeg: [-15, 0, -20], Spine: [0, 0, -15], Head: [10, 0, 0] }, root: { rot: [0, 0, -25], pos: [0.5, 0.1, 0] } },

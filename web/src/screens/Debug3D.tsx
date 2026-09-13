@@ -8,7 +8,8 @@ import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, type Keep
 export function Debug3DScreen() {
   const [q] = useSearchParams();
   const view = q.get('view') ?? 'penalty';
-  const anim = (q.get('anim') ?? 'idle') as KeeperAction;
+  const animQ = q.get('anim') ?? 'idle';
+  const anim = (animQ === 'none' ? 'idle' : animQ) as KeeperAction;
   const flip = q.get('flip') === '1';
   const cams: Record<string, { pos: [number, number, number]; look: [number, number, number]; fov: number }> = {
     penalty: { pos: [0, 1.6, 15], look: [0, 1.2, 0], fov: 48 },
@@ -26,7 +27,7 @@ export function Debug3DScreen() {
           <StadiumModel />
           <GoalModel />
           <group position={[0, 0.21, 11]}><BallModel /></group>
-          <KeeperModel color="#f2c200" action={anim} flip={flip} position={[0, 0, 0.4]} />
+          <KeeperModel color="#f2c200" action={anim} flip={flip} position={[0, 0, 0.4]} frozen={animQ === 'none'} />
           <KeeperModel color="#c3131a" position={[-1.2, 0, 10.5]} />
           <KeeperModel color="#c3131a" position={[-0.4, 0, 10.5]} />
           <gridHelper args={[40, 40]} position={[0, 0.02, 20]} />

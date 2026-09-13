@@ -53,10 +53,10 @@ export function BallModel({ spin = 0 }: { spin?: number }) {
 export type KeeperAction = 'idle' | 'dive' | 'jump' | 'miss' | 'save_low';
 export interface KeeperHandle { play: (a: KeeperAction, opts?: { flip?: boolean; once?: boolean }) => void }
 
-interface KeeperProps { color?: string; skin?: string; shorts?: string; action?: KeeperAction; flip?: boolean; position?: [number, number, number]; rotation?: [number, number, number]; scale?: number }
+interface KeeperProps { color?: string; action?: KeeperAction; flip?: boolean; position?: [number, number, number]; rotation?: [number, number, number]; scale?: number; frozen?: boolean }
 
 /** Jogador animado (goleiro ou barreira). `flip` espelha para mergulhar pro outro lado. */
-export const KeeperModel = forwardRef<KeeperHandle, KeeperProps>(function KeeperModel({ color = '#f2c200', action = 'idle', flip = false, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1 }, ref) {
+export const KeeperModel = forwardRef<KeeperHandle, KeeperProps>(function KeeperModel({ color = '#f2c200', action = 'idle', flip = false, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, frozen = false }, ref) {
   const { scene, animations } = useGLTF(URLS.keeper);
   const obj = useMemo(() => {
     const s = SkeletonUtils.clone(scene) as THREE.Group;
@@ -85,7 +85,7 @@ export const KeeperModel = forwardRef<KeeperHandle, KeeperProps>(function Keeper
     current.current = next;
   };
   useImperativeHandle(ref, () => ({ play: (a, opts) => play(a, opts) }), [actions]);
-  useEffect(() => { play(action); }, [action, actions]);
+  useEffect(() => { if (!frozen) play(action); }, [action, actions, frozen]);
   useEffect(() => () => { mixer.stopAllAction(); }, [mixer]);
 
   return (

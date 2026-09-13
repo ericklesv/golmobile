@@ -62,14 +62,14 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Minigames diários** (`services/daily.js`, tabela `DailyGame`): 1 partida por jogador,
   por jogo, por dia. **Cada minigame vira numa hora própria** (decisão do dono, 13/09/2026: sempre
   ter algum renovando) — `RESET_HOUR` em `rules.js`: **Termo 0h, Quiz 12h, Estatísticas 13h,
-  Memória 14h, De que time é? 15h, Camisas 16h, Alvo no Gol 17h, Hat Trick 18h**; jogo novo pega a
-  próxima hora livre (19h…), nunca repetir hora. Termo/Quiz/Estatísticas usam `dayNumber`/`quizDayNumber`/
+  Memória 14h, De que time é? 15h, Camisas 16h, Alvo no Gol 17h, Hat Trick 18h, Falta PRO 19h**; jogo novo pega a
+  próxima hora livre (20h…), nunca repetir hora. Termo/Quiz/Estatísticas usam `dayNumber`/`quizDayNumber`/
   `statsDayNumber`; os outros, `dayNumberAt(hora)`/`nextResetAt(hora)` (`time.js`: o nº do dia é
   a data em que a janela TERMINA — por isso a troca da meia-noite para a hora nova não tirou nem
   deu partida a ninguém). Textos de "já jogou" usam `resetLabel(jogo)` ("renova às 14h"). A Home mostra o **slider horizontal de minigames**
   (`MinigameSlider.tsx`, dados de `GET /api/daily/hub`): catálogo em `MINIGAMES` (`rules.js`)
   com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, Estatísticas 3,
-  De que time é? 4, Camisas 5, Alvo no Gol 6, Hat Trick 7, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
+  De que time é? 4, Camisas 5, Alvo no Gol 6, Hat Trick 7, Falta PRO 8, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
   card "EM BREVE". O nível também é conferido no servidor ao começar (403 `locked`).
   Minigame novo: entrada em `MINIGAMES` (tirar o `soon`) + `DAILY_GAMES` + `calendar()` +
   serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regras do
@@ -155,13 +155,26 @@ depois que o novo estiver estável. Não instalar nada dele.
   Teste local sem limite: `MINIGAMES_LIVRES=1` no `api/.env` do PC (ignorado com NODE_ENV=production) —
   acabou, aparece "Jogar de novo". Nunca pôr no .env da VPS.
 
+- **Falta PRO** (`lib/faltapro.js` = física pura; `services/faltapro.js`; tela `FaltaPro.tsx`; nível 8,
+  vira às 19h): cobrança de falta 3D estilo Free Kick Classic — câmera baixa atrás da Trionda, cena
+  do pênalti/falta reaproveitada (StadiumModel/GoalModel/BallModel/KeeperModel com kit do adversário).
+  O jogador ARRASTA a partir da bola (pointer events): a tela resume o rastro em `dirX` (lado),
+  `dirY` (altura), `power` (velocidade média do gesto) e `spin` (curvatura do rastro = efeito
+  Magnus — desenhar um arco curva a bola). O SERVIDOR sorteia as 5 cobranças no start (distância,
+  barreira 3–5 que pode pular — o pulo é secreto —, goleiro sorteado secreto, 2 alvos bônus no
+  ângulo), simula tudo e devolve o voo (amostras [x, z, y] a 30/s) para a tela animar. 5 cobranças;
+  3+ gols = exatamente 1 gol do time (kind `FALTAPRO`, na 3ª conversão); +4 de nível por conversão
+  (até +20); alvo bônus = +R$ 50 (alvo é gol certo). Rasteira passa por baixo da barreira que pulou.
+  Calibrar: `node scripts/faltapro-balance.js` (bom ~36% de gol e vence 26% dos dias, médio ~21%,
+  iniciante ~13%). `MINIGAMES_LIVRES=1` também vale aqui.
+
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
-`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}` (minigames)
+`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick|daily/faltapro` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}|daily/faltapro/start|daily/faltapro/kick{i,dirX,dirY,power,spin}` (minigames)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)

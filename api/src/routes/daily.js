@@ -5,6 +5,7 @@ import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, m
 import { statsState, statsStart, statsPick } from '../services/stats.js';
 import { camisasState, camisasStart, camisasGuess } from '../services/camisas.js';
 import { hattrickState, hattrickStart, hattrickShoot } from '../services/hattrick.js';
+import { faltaproState, faltaproStart, faltaproKick } from '../services/faltapro.js';
 
 /**
  * Minigames diários (1x por dia): GET /api/daily · Termo: GET /api/daily/termo,
@@ -39,3 +40,7 @@ daily.post('/camisas/guess', handle((req) => camisasGuess(req.user.id, req.body?
 daily.get('/hattrick', handle((req) => hattrickState(req.user.id)));
 daily.post('/hattrick/start', handle((req) => hattrickStart(req.user.id)));
 daily.post('/hattrick/shoot', handle((req) => hattrickShoot(req.user.id, req.body)));
+// Falta PRO (cobrança de falta 3D): GET /api/daily/faltapro, POST start, POST kick {i, dirX, dirY, power, spin}
+daily.get('/faltapro', handle((req) => faltaproState(req.user.id)));
+daily.post('/faltapro/start', handle((req) => faltaproStart(req.user.id)));
+daily.post('/faltapro/kick', handle((req) => faltaproKick(req.user.id, req.body)));

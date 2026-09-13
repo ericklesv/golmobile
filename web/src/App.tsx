@@ -14,6 +14,7 @@ import { QuizScreen } from './screens/Quiz';
 // Cenas 3D (three.js ~260 KB gz) só carregam quando o jogador abre o pênalti/falta
 const PenaltyScreen = lazy(() => import('./screens/Penalty').then((m) => ({ default: m.PenaltyScreen })));
 const FoulScreen = lazy(() => import('./screens/Foul').then((m) => ({ default: m.FoulScreen })));
+const FaltaProScreen = lazy(() => import('./screens/FaltaPro').then((m) => ({ default: m.FaltaProScreen })));
 const Debug3DScreen = lazy(() => import('./screens/Debug3D').then((m) => ({ default: m.Debug3DScreen })));
 // Painel de admin: só carrega para quem abre /admin (e o servidor exige isAdmin)
 const AdminScreen = lazy(() => import('./screens/Admin').then((m) => ({ default: m.AdminScreen })));
@@ -100,6 +101,7 @@ export default function App() {
         <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
         <Route path="/camisas" element={<Private><CamisasScreen /></Private>} />
         <Route path="/hat-trick" element={<Private><HattrickScreen /></Private>} />
+        <Route path="/falta-pro" element={<Private><Suspense fallback={<Splash />}><FaltaProScreen /></Suspense></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/admin" element={<Private><Suspense fallback={<Splash />}><AdminScreen /></Suspense></Private>} />

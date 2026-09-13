@@ -9,6 +9,7 @@ import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRI
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView } from '../lib/items.js';
 import { HATTRICK } from '../lib/hattrick.js';
+import { FALTAPRO } from '../lib/faltapro.js';
 
 export const game = Router();
 
@@ -38,6 +39,7 @@ game.get('/meta', handle(async () => {
     // minigames jogáveis e o nível que libera cada um (janela de "subiu de nível": LIBERADO X! JOGAR AGORA)
     minigames: MINIGAMES.filter((g) => !g.soon).map(({ id, name, unlock, route, icon }) => ({ id, name, unlock, route, icon })),
     hattrick: { lives: HATTRICK.lives, pointsPerGoal: HATTRICK.pointsPerGoal, maxPoints: HATTRICK.maxPoints },
+    faltapro: { kicks: FALTAPRO.kicks, goalAt: FALTAPRO.goalAt, pointsPerGoal: FALTAPRO.pointsPerGoal, maxPoints: FALTAPRO.maxPoints, targetMoney: FALTAPRO.targetMoney },
     teams: teams.map(teamView),
     items: catalogView(), // catálogo da loja (lib/items.js)
   };

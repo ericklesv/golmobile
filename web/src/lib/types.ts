@@ -88,6 +88,7 @@ export interface Meta {
   /** Hora (Brasília) em que cada minigame diário renova. */
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
+  faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
   /** Minigames jogáveis e o nível que libera cada um. */
   minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];
   teams: Team[];
@@ -287,4 +288,33 @@ export interface HattrickFlight {
 export interface HattrickShootResponse {
   state: HattrickState; result: HattrickResult; levelPoints: number; flight: HattrickFlight; shot: HattrickShot;
   goal: { text: string; hatTrick: boolean; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
+}
+
+// ─── Falta PRO (cobrança de falta 3D) ───────────────────────────────────────
+/** Metros, sistema da cena 3D: gol em z = 0 (x = 0 no meio, y = altura), campo em +z. */
+export interface FaltaProKick {
+  i: number; ball: { x: number; z: number };
+  wall: { z: number; x0: number; x1: number; n: number };
+  keeperX: number; targets: { x: number; y: number }[];
+}
+export type FaltaProResult = 'goal' | 'saved' | 'wall' | 'wide' | 'over' | 'post' | 'bar' | 'short';
+export interface FaltaProState {
+  day: number; nextAt: number; kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number;
+  playing: boolean; finished: boolean;
+  /** Só no teste local (MINIGAMES_LIVRES=1): acabou, pode jogar de novo na hora. */
+  freePlay?: boolean;
+  i: number; goals: number; points: number; money: number;
+  kick: FaltaProKick | null;
+  results: { i: number; result: FaltaProResult; target: number | null }[];
+}
+export interface FaltaProFlight {
+  /** Amostras [x, z, y] a 30/s (x lateral, z distância do gol, y altura). */
+  T: number; samples: [number, number, number][]; cross: { x: number; y: number } | null;
+  wall: { jump: boolean; hit: { x: number; y: number; t: number } | null };
+  keeper: { react: number; speed: number; from: number; to: number; save: boolean } | null;
+}
+export interface FaltaProKickResponse {
+  state: FaltaProState; result: FaltaProResult; target: number | null; levelPoints: number; money: number;
+  flight: FaltaProFlight; kick: FaltaProKick;
+  goal: { text: string; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
 }

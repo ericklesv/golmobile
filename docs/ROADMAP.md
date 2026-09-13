@@ -2,6 +2,20 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## Próximos passos (combinados em 13/09/2026 — fazer nesta ordem)
+1. **Uniformes reais nas cenas 3D**: vestir goleiro e barreira com as texturas do pack
+   *Soccer Players Uniforms* (430 camisas em `player/texture/uniform_up`, skins, meiões) —
+   barreira com a camisa do adversário da rodada, goleiro com camisa contrastante.
+   Pipeline: `tools/3d/README.md`. Validar em `/debug3d`.
+2. **Recuperação de senha por e-mail** (SMTP Brevo já usado no Managol; envs SMTP_* na VPS).
+3. **Captcha/anti-bot nos chutes manuais** (o original exigia captcha em pênalti/falta/trilha).
+4. **Cargos do time** (Presidente/Diretor/Capitão/Auxiliar, só VIP) e caixa do time em VIPs.
+5. **Ordem de chute / Secar / Seguir ordem** (mecânica original de ajudar outro jogo).
+6. **Mensagens privadas + amigos online + chat do time.**
+7. Limpeza antes do lançamento: apagar contas de teste `craque_g88qn` e `craque_warvl`
+   (criadas pelos scripts de screenshot) e zerar a temporada (`POST /api/admin/...` a criar).
+Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas do `keeper.glb`.
+
 ## Fase 1 — Núcleo 1:1 em produção (brgol.managol.com.br)
 - [x] API Node/Express/Prisma/Postgres na VPS do Managol (porta 4100, PM2 `brgol-api`)
 - [x] Cadastro (nick único, e-mail, senha, sexo, time em A/B/C) e login (JWT)

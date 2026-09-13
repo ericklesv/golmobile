@@ -55,6 +55,37 @@ bash /usr/local/bin/brgol-deploy.sh          # forçar deploy manual
 ```
 Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos nunca no repo.
 
+## Regras de trabalho (valem para todo mundo e toda IA no projeto)
+- **Commit + push em `main` a cada alteração concluída** (não acumular trabalho local): o
+  outro colaborador precisa sempre ter a versão atual pelo git. Commits em PT-BR.
+- **O jogo roda SOMENTE na VPS do Managol** (`root@187.127.17.121`, projeto em
+  `/var/www/brgol/app`). Não existe ambiente local nem outra hospedagem. Todo deploy é
+  `bash /usr/local/bin/brgol-deploy.sh` na VPS (faz `git reset --hard origin/main`, `npm ci`,
+  `prisma migrate deploy`, build do web e `pm2 restart brgol-api`).
+- Antes de qualquer comando na VPS: mostrar o comando e pedir autorização.
+- Verificação visual = build (`cd web && npm run build`) + screenshot de produção com Edge
+  headless/puppeteer-core (ver `tools/`); se não der para ver, dizer que não viu.
+- Próximos passos combinados estão em **`docs/ROADMAP.md` → "Próximos passos"**. Seguir a ordem.
+
+## Para o colaborador (ericklesv) e sua IA
+- Tudo que o jogo usa está no git: sprites do kit em `web/public/ui/`, escudos em
+  `web/public/escudos/`, modelos 3D em `web/public/3d/`. Basta `git pull` — não precisa dos
+  packs originais da Unity (esses ficam na máquina do Guilherme; ver `tools/3d/README.md`).
+- **Deploy sem acesso à VPS (caminho recomendado):** o repo tem `.github/workflows/deploy.yml`.
+  Quando o secret `VPS_SSH_KEY` estiver configurado no GitHub (Guilherme faz isso em
+  Settings → Secrets → Actions), **todo push em `main` deploya sozinho** em ~1 min. Acompanhe em
+  https://github.com/ericklesv/golmobile/actions e confira `https://brgol.managol.com.br/api/health`.
+- **Acesso direto à VPS (opcional, precisa da intervenção do Guilherme):**
+  1. Gerar uma chave: `ssh-keygen -t ed25519 -C "erick-brgol" -f ~/.ssh/id_ed25519_brgol`
+  2. Enviar para o Guilherme SOMENTE o conteúdo de `~/.ssh/id_ed25519_brgol.pub`
+     (nunca a chave privada).
+  3. O Guilherme adiciona a chave em `/root/.ssh/authorized_keys` na VPS.
+  4. Testar: `ssh -i ~/.ssh/id_ed25519_brgol root@187.127.17.121 'bash /usr/local/bin/brgol-deploy.sh'`
+  A VPS é compartilhada com o Managol e outros projetos (nginx, PM2, Postgres): mexer só em
+  `/var/www/brgol`, `/etc/nginx/sites-available/brgol`, PM2 `brgol-api` e banco `brgol`.
+- Segredos da API (`api/.env` na VPS) nunca vão para o git; `ADMIN_KEY` está lá para os
+  endpoints `/api/admin/*`.
+
 ## Convenções
 - PT-BR em UI, commits (`tipo(escopo): descrição`), logs e mensagens de erro.
 - **Visual = kit "BRGOL Casual"** em `web/src/index.css`: sprites 9-slice do pack Layer Lab

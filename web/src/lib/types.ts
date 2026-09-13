@@ -95,7 +95,7 @@ export interface PublicPlayer {
 }
 
 export interface TeamPage {
-  team: Team; slogan: string | null; members: number; online: { nick: string; goalsTotal: number }[]; totalGoals: number;
+  team: Team; slogan: string | null; members: number; active: { nick: string; goalsTotal: number; online: boolean }[]; totalGoals: number;
   standing: (Standing & { position: number }) | null;
   match: MatchView | null;
   tops: { hour: TopRow[]; round: TopRow[]; season: TopRow[] };

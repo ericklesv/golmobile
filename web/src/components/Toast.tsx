@@ -27,9 +27,9 @@ export function ToastHost() {
       <AnimatePresence>
         {items.map((t) => (
           <motion.button key={t.id} initial={{ opacity: 0, y: -16, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} onClick={() => remove(t.id)}
-            className="toast pointer-events-auto flex w-full max-w-md items-center gap-2 text-sm font-extrabold">
-            <img src={icon[t.type]} className="ico h-6 w-6" alt="" />
-            <span className={t.type === 'error' ? 'text-danger' : t.type === 'success' ? 'text-grass-deep' : ''}>{t.msg}</span>
+            className="toast pointer-events-auto flex w-full max-w-md items-center gap-3 font-extrabold shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
+            <img src={icon[t.type]} className="ico h-8 w-8 shrink-0" alt="" />
+            <span className={`flex-1 ${t.type === 'error' ? 'text-danger' : t.type === 'success' ? 'text-grass-deep' : 'text-navy-ink'}`}>{t.msg}</span>
           </motion.button>
         ))}
       </AnimatePresence>

@@ -125,11 +125,12 @@ game.get('/teams/:slug', handle(async (req) => {
   if (!team) throw notFound('Time não encontrado.');
   const now = new Date();
   const round = await currentRound();
-  const [match, standing, members, online, roundTop, seasonTop, hourTop, titles, allInSerie] = await Promise.all([
+  const [match, standing, members, active, roundTop, seasonTop, hourTop, titles, allInSerie] = await Promise.all([
     liveMatchForTeam(team.id),
     round ? prisma.standing.findUnique({ where: { seasonId_teamId: { seasonId: round.seasonId, teamId: team.id } } }) : null,
     prisma.user.count({ where: { teamId: team.id } }),
-    prisma.user.findMany({ where: { teamId: team.id, lastSeenAt: { gt: new Date(now.getTime() - 2 * 60_000) } }, select: { nick: true, goalsTotal: true }, take: 50 }),
+    // torcedores ativos = entraram nas últimas 24 h
+    prisma.user.findMany({ where: { teamId: team.id, lastSeenAt: { gt: new Date(now.getTime() - 24 * 3600_000) } }, select: { nick: true, goalsTotal: true, lastSeenAt: true }, orderBy: { lastSeenAt: 'desc' }, take: 100 }),
     round ? topScorers({ roundId: round.id, teamId: team.id }, 10) : [],
     round ? topScorers({ seasonId: round.seasonId, teamId: team.id }, 10) : [],
     topScorers({ hourKey: hourKey(now), teamId: team.id }, 10),
@@ -141,7 +142,7 @@ game.get('/teams/:slug', handle(async (req) => {
   const totalGoals = await prisma.goal.count({ where: { teamId: team.id } });
   return {
     team: teamView(team), slogan: team.slogan,
-    members, online, totalGoals,
+    members, active: active.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, online: u.lastSeenAt.getTime() > now.getTime() - 2 * 60_000 })), totalGoals,
     standing: standing ? { position, ...standing } : null,
     match: match ? matchView(match) : null,
     tops: { hour: hourTop, round: roundTop, season: seasonTop },

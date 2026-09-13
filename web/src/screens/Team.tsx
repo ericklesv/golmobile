@@ -40,7 +40,7 @@ export function TeamScreen() {
           <Stat label="posição" value={`${page.standing?.position ?? '-'}º`} />
           <Stat label="pontos" value={page.standing?.points ?? 0} gold />
           <Stat label="torcida" value={num(page.members)} />
-          <Stat label="online" value={page.online.length} />
+          <Stat label="ativos 24h" value={page.active.length} />
         </div>
         {page.standing && <div className="mt-2 text-center text-[12px] font-extrabold text-white/90">Campanha {page.standing.wins}V {page.standing.draws}E {page.standing.losses}D · SG {page.standing.diff} · {num(page.totalGoals)} gols na história</div>}
       </section>
@@ -67,8 +67,9 @@ export function TeamScreen() {
         </Panel>
       )}
 
-      <Panel title="TORCEDORES ONLINE" ribbon="green">
-        {page.online.length ? <ul className="flex flex-wrap gap-2">{page.online.map((u) => <li key={u.nick}><Link to={`/jogador/${encodeURIComponent(u.nick)}`} className="pill-blue text-[12px] font-extrabold text-white">{u.nick}</Link></li>)}</ul> : <p className="text-xs font-bold text-muted">Ninguém online agora.</p>}
+      <Panel title="TORCEDORES ATIVOS" ribbon="green">
+        <p className="mb-2 text-center text-[11px] font-bold text-muted">Quem entrou nas últimas 24 horas · ponto verde = online agora</p>
+        {page.active.length ? <ul className="flex flex-wrap gap-2">{page.active.map((u) => <li key={u.nick}><Link to={`/jogador/${encodeURIComponent(u.nick)}`} className="pill-blue inline-flex items-center gap-1 text-[12px] font-extrabold text-white">{u.online && <span className="inline-block h-2 w-2 rounded-full bg-grass shadow-[0_0_6px_#4CD137]" />}{u.nick}</Link></li>)}</ul> : <p className="text-xs font-bold text-muted">Ninguém da torcida entrou nas últimas 24 h.</p>}
       </Panel>
     </div>
   );

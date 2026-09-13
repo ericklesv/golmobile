@@ -66,10 +66,10 @@ export function Layout() {
         <ul className="flex gap-1">
           {tabs.map((t) => (
             <li key={t.to} className="flex-1">
-              <NavLink to={t.to} end={t.end} className={({ isActive }) => `menu-btn flex flex-col items-center justify-center gap-0.5 py-0.5 transition ${isActive ? 'brightness-110' : 'brightness-75 saturate-50'}`}>
+              <NavLink to={t.to} end={t.end} className={({ isActive }) => `menu-btn flex flex-col items-center justify-center gap-0.5 py-0.5 transition ${isActive ? '' : 'opacity-80'}`}>
                 {({ isActive }) => (<>
                   <img src={t.icon} alt="" className={`h-8 w-8 object-contain ${isActive ? 'animate-bob' : ''}`} />
-                  <span className="t-display text-[10px] uppercase tracking-wide text-white" style={{ textShadow: '0 1px 0 rgba(0,0,0,.5)' }}>{t.label}</span>
+                  <span className={`t-display text-[10px] uppercase tracking-wide ${isActive ? 'text-orange-deep' : 'text-navy-ink'}`}>{t.label}</span>
                 </>)}
               </NavLink>
             </li>

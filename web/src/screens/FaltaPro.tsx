@@ -107,8 +107,9 @@ function Scene({ kick, flight, gkKit, wallKit }: { kick: FaltaProKick; flight: F
   useFrame(({ camera }) => {
     const t = flight ? (performance.now() - flight.t0) / 1000 : 0;
     if (ball.current) {
-      if (!flight) { ball.current.position.set(b.x, 0.11, b.z); ball.current.rotation.set(0, 0, 0); }
-      else { const p = ballAt(flight.res, t); ball.current.position.set(p.x, p.y, p.z); ball.current.rotation.x -= 0.25; }
+      // o servidor simula com raio real (0,11 m); o modelo visual tem 0,21 m — nunca enterrar
+      if (!flight) { ball.current.position.set(b.x, 0.21, b.z); ball.current.rotation.set(0, 0, 0); }
+      else { const p = ballAt(flight.res, t); ball.current.position.set(p.x, Math.max(0.21, p.y), p.z); ball.current.rotation.x -= 0.25; }
     }
     if (keeper.current) {
       const from = fk ? fk.from : kick.keeperX;
@@ -129,9 +130,9 @@ function Scene({ kick, flight, gkKit, wallKit }: { kick: FaltaProKick; flight: F
         setTimeout(() => kh.current?.pose(pose), Math.max(140, (fk?.react ?? 0.3) * 1000));
       }
     }
-    if (!flight) { // câmera baixa, ~0,6 m atrás da Trionda
-      camera.position.lerp(v.set(b.x + away.x * 1.15, 0.62, b.z + away.z * 1.15), 0.12);
-      camera.lookAt(0, 1.35, 0);
+    if (!flight) { // câmera baixa atrás da Trionda: bola grande embaixo, gol em cima (ref. Free Kick Classic)
+      camera.position.lerp(v.set(b.x + away.x * 2.2, 1.0, b.z + away.z * 2.2), 0.12);
+      camera.lookAt(b.x * 0.65, 0.55, b.z * 0.65);
     } else {
       const p = ball.current!.position;
       camera.position.lerp(v.set(b.x * 0.5 + away.x * 3, 1.7, Math.min(b.z + 2, p.z + 7)), 0.045);

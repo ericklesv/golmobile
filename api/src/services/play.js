@@ -4,7 +4,7 @@
  */
 import { prisma } from '../prisma.js';
 import { GameError, badRequest, cooldown as cooldownError } from '../lib/errors.js';
-import { hourKey } from '../lib/time.js';
+import { hourKey, nextMidnight } from '../lib/time.js';
 import {
   COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE,
   DEXTERITY_BONUS_PER_POINT, PARTY_WIN_CHANCE, REBOUND_CHANCE, KIND_LABEL,
@@ -269,17 +269,27 @@ export async function partySpin(userId) {
     const win = rnd() < PARTY_WIN_CHANCE;
     const candidates = PARTY_SEGMENTS.map((s, i) => ({ s, i })).filter((x) => (x.s === 'GOL') === win);
     const segment = pick(candidates).i;
+    const now = new Date();
     const user = await tx.user.update({
       where: { id: userId },
       data: win ? { money: { increment: MONEY.PARTY_PRIZE }, partyWins: { increment: 1 } } : {},
       include: { team: true },
     });
-    await tx.activity.create({
-      data: {
-        userId, teamId: user.teamId, kind: 'PARTY', goal: win,
-        text: win ? `${user.nick} acertou no Party GoL e faturou R$ ${MONEY.PARTY_PRIZE}!` : `${user.nick} errou no Party GoL.`,
-      },
-    });
-    return { win, segment, segments: PARTY_SEGMENTS, money: user.money, prize: win ? MONEY.PARTY_PRIZE : 0, bet: MONEY.PARTY_BET };
+    // Regra do dono (13/09/2026): todo minigame vencido dá 1 gol + o bônus dele. Na roleta o gol
+    // vale só na PRIMEIRA vitória do dia (Brasília) — senão dinheiro compraria gols sem limite.
+    let goal = false, text;
+    if (win) {
+      const dayStart = new Date(nextMidnight(now).getTime() - 24 * 3600_000);
+      const already = await tx.goal.count({ where: { userId, kind: 'PARTY', createdAt: { gte: dayStart } } });
+      goal = already === 0;
+    }
+    if (goal) {
+      const match = await liveMatchForTeam(user.teamId, tx);
+      ({ text } = await applyResult(tx, user, { kind: 'PARTY', goal: true, now, match, money: 0, phrase: `acertou no Party GoL, faturou R$ ${MONEY.PARTY_PRIZE} e ainda marcou` }));
+    } else {
+      text = win ? `${user.nick} acertou no Party GoL e faturou R$ ${MONEY.PARTY_PRIZE}!` : `${user.nick} errou no Party GoL.`;
+      await tx.activity.create({ data: { userId, teamId: user.teamId, kind: 'PARTY', goal: false, text } });
+    }
+    return { win, goal, text, segment, segments: PARTY_SEGMENTS, money: user.money, prize: win ? MONEY.PARTY_PRIZE : 0, bet: MONEY.PARTY_BET };
   });
 }

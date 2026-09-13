@@ -193,13 +193,13 @@ KIND_LABEL.QUIZ = 'Quiz';
 export const MINIGAMES = [
   { id: 'TERMO', name: 'Termo do dia', unlock: 0, daily: true, route: '/termo', icon: '/ui/ico-gift_purple.png', desc: 'Acerte a palavra de futebol em até 6 tentativas.', reward: 'gol + até 30 de nível' },
   { id: 'QUIZ', name: 'Quiz do dia', unlock: 0, daily: true, route: '/quiz', icon: '/ui/ico-chesticon_gold01_l.png', desc: '5 perguntas de futebol, 20 s cada.', reward: 'gol + até 30 de nível' },
-  { id: 'PARTY', name: 'Party GoL', unlock: 1, daily: false, route: '/partygol', icon: '/ui/ico-coin02.png', desc: 'Aposte R$ 50 na roleta e leve R$ 150.', reward: 'R$ 150' },
+  { id: 'PARTY', name: 'Party GoL', unlock: 1, daily: false, route: '/partygol', icon: '/ui/ico-coin02.png', desc: 'Aposte R$ 50 na roleta e leve R$ 150. Primeira vitória do dia vale gol.', reward: 'gol + R$ 150' },
   { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: 'gol + até 30 de nível' },
   { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Estádio, apelido ou ídolo: qual é o time? 8 rodadas, 10 s cada.', reward: 'gol + até 32 de nível' },
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: 'Acerte os alvos que aparecem no gol.', reward: 'gol + nível', soon: true },
-  { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'dinheiro', soon: true },
+  { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'EMBAIXADINHAS', name: 'Embaixadinhas', unlock: 12, daily: true, route: '/embaixadinhas', icon: '/ui/ico-energy.png', desc: 'Toque no ritmo e não deixe a bola cair.', reward: 'gol + nível', soon: true },
-  { id: 'DISPUTA', name: 'Disputa de pênaltis', unlock: 15, daily: false, route: '/disputa', icon: '/ui/ico-trophy_m.png', desc: 'Cinco pênaltis contra outro craque.', reward: 'dinheiro + nível', soon: true },
+  { id: 'DISPUTA', name: 'Disputa de pênaltis', unlock: 15, daily: false, route: '/disputa', icon: '/ui/ico-trophy_m.png', desc: 'Cinco pênaltis contra outro craque.', reward: 'gol + dinheiro', soon: true },
 ];
 // Memória dos Escudos: 8 pares (16 cartas) sorteados por jogador/dia. Fechar em até
 // `goalAtMoves` jogadas = 1 gol; os pontos de nível caem conforme o nº de jogadas.

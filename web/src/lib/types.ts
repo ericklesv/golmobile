@@ -69,7 +69,7 @@ export interface TrailResult {
   lineMines: boolean[] | null; money: number; text: string | null; cooldownMs: number; kickedAt: number;
 }
 
-export interface PartyResult { win: boolean; segment: number; segments: string[]; money: number; prize: number; bet: number }
+export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number }
 
 export interface Meta {
   cooldowns: Record<Kind, { normal: number; vip: number }>;

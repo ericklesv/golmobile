@@ -72,7 +72,8 @@ empate por diferença < 5 % nas copas.
 - [x] **Quiz do dia** (vira ao meio-dia): 5 perguntas de futebol, 4 alternativas, 20 s cada; +6 de nível por acerto e 3 acertos = 1 gol; a Home mostra só uma faixa (o minigame que vence primeiro) (13/09/2026)
 - [x] **Hub de minigames**: slider horizontal na Home, cada card com o nível que libera, PRONTO/CONTINUAR/JOGADO/EM BREVE (13/09/2026)
 - [x] **Memória dos Escudos** (nível 2, vira à meia-noite): 16 cartas/8 pares sorteados por jogador; até 14 jogadas = 1 gol; nível +30 (≤8), +25 (≤10), +20 (≤12), +15 (≤14), +10 (≤18), +5 (13/09/2026)
-- [ ] **De que time é?** (nível 4): jogador/escudo/estádio → qual time, com tempo
+- [x] **De que time é?** (nível 4, vira à meia-noite): 8 pistas (estádio, estado, apelido, ídolo) com 4 escudos, 10 s cada; +4 de nível por acerto, 6 acertos = 1 gol; banco em `api/src/lib/qualtime/bank.js` (13/09/2026)
+- [x] Regra: todo minigame vencido = 1 gol + bônus; Party GoL dá o gol na 1ª vitória do dia; slider ordenado por disponibilidade (13/09/2026)
 - [ ] **Alvo no Gol** (nível 6): alvos aparecem no gol 3D, toque rápido
 - [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP
 - [ ] **Embaixadinhas** (nível 12): ritmo, não deixar a bola cair

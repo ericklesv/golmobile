@@ -263,6 +263,10 @@ export async function minigamesHub(userId, now = new Date()) {
       started: d?.started ?? false, finished: d?.finished ?? false, won: d?.won ?? false, nextAt: d?.nextAt ?? null,
     };
   });
+  // Ordem do slider (regra do dono): disponíveis primeiro (o que já começou na frente), depois
+  // os já jogados pelo que volta antes, depois os bloqueados por nível, por fim os "em breve".
+  const rank = (g) => (g.available ? (g.started ? 0 : 1) : g.unlocked && !g.soon ? 2 : !g.unlocked && !g.soon ? 3 : 4);
+  games.sort((a, b) => rank(a) - rank(b) || (rank(a) === 2 ? (a.nextAt ?? 0) - (b.nextAt ?? 0) : a.unlockLevel - b.unlockLevel));
   return { level: lvl, games };
 }
 

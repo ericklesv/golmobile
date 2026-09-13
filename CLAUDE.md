@@ -48,8 +48,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, De que time é? 4,
   Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` = card "EM BREVE".
   Minigame novo: entrada em `MINIGAMES` (tirar o `soon`) + `DAILY_GAMES` + `calendar()` +
-  serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regra do
-  dono: um minigame por vez, perfeito e funcional antes do próximo.** Fora de produção,
+  serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regras do
+  dono (13/09/2026): um minigame por vez, perfeito e funcional antes do próximo; TODO
+  minigame vencido dá exatamente 1 gol + outro bônus (nível, dinheiro…), nunca mais de 1 gol;**
+  o slider vem ordenado do servidor: disponíveis primeiro (começado na frente), depois os já
+  jogados pelo que volta antes, depois bloqueados por nível, por fim "em breve". Party GoL:
+  R$ 150 por vitória e o gol só na primeira vitória do dia (senão dinheiro compraria gols). Fora de produção,
   `TERMO_DAY=<n>` / `QUIZ_DAY=<n>` forçam o dia (teste da virada).
 - **Quiz do dia** (`lib/quiz/`): 5 perguntas de 4 alternativas, 20 s cada. O relógio é do
   servidor (começa no `POST next`; estourou + 2,5 s de tolerância = erro); alternativas

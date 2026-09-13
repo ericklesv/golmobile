@@ -19,7 +19,7 @@ export function PartyScreen() {
   const bet = meta?.money.PARTY_BET ?? 50;
   const prize = meta?.money.PARTY_PRIZE ?? 150;
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<{ win: boolean; prize: number } | null>(null);
+  const [result, setResult] = useState<{ win: boolean; goal: boolean; prize: number } | null>(null);
   const [overlay, setOverlay] = useState(false);
   const [rot, setRot] = useState(0);
   const ctrl = useAnimation();
@@ -40,7 +40,7 @@ export function PartyScreen() {
       const to = Math.ceil(rot / 360) * 360 + 360 * 4 + finalAbs;
       await ctrl.start({ rotate: [rot, to], transition: { duration: 3.8, ease: [0.15, 0.85, 0.25, 1] } });
       setRot(to);
-      setResult({ win: r.win, prize: r.prize });
+      setResult({ win: r.win, goal: r.goal, prize: r.prize });
       await refresh();
       setTimeout(() => setOverlay(true), 250);
     } catch (e) {
@@ -51,13 +51,13 @@ export function PartyScreen() {
   return (
     <div className="app-frame relative flex min-h-full flex-col">
       <div className="stadium-bg" />
-      <GoalOverlay open={overlay} goal={!!result?.win} title={result?.win ? 'GOOOL!!' : 'ERROU!'} text={result?.win ? `Você acertou no Party GoL e faturou ${fmt(prize)}!` : `Perdeu a aposta de ${fmt(bet)}. Tenta de novo?`} money={result?.prize ?? 0} team={me.team} onClose={() => setOverlay(false)} autoClose={3000} />
+      <GoalOverlay open={overlay} goal={!!result?.win} title={result?.win ? 'GOOOL!!' : 'ERROU!'} text={result?.win ? (result.goal ? `Você acertou no Party GoL, faturou ${fmt(prize)} e ainda marcou 1 gol pro ${me.team.name}!` : `Você acertou no Party GoL e faturou ${fmt(prize)}! (o gol da roleta é só na primeira vitória do dia)`) : `Perdeu a aposta de ${fmt(bet)}. Tenta de novo?`} money={result?.prize ?? 0} team={me.team} onClose={() => setOverlay(false)} autoClose={3000} />
       <div className="relative flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
         <div className="ribbon ribbon-yellow">PARTY GOL</div>
         <div className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</div>
       </div>
-      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">A roleta do JogaGol: aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire. Parou em <span className="t-gold t-display">GOL</span> ({segs.filter((s) => s === 'GOL').length} de {n} casas), você recebe <span className="t-green t-display">{fmt(prize)}</span>; em ERROU, perde a aposta. Só dinheiro virtual!</p>
+      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">A roleta do JogaGol: aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire. Parou em <span className="t-gold t-display">GOL</span> ({segs.filter((s) => s === 'GOL').length} de {n} casas), você recebe <span className="t-green t-display">{fmt(prize)}</span>; em ERROU, perde a aposta. A primeira vitória do dia ainda vale <span className="t-gold t-display">1 gol</span>. Só dinheiro virtual!</p>
 
       <div className="relative mx-auto mt-4 w-[320px]">
         <img src="/ui/roulette-bg.png" alt="" className="absolute inset-0 h-full w-full" />

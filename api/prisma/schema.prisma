@@ -122,6 +122,7 @@ model User {
   items       UserItem[]
   shopLogs    ShopLog[]
   passwordResets PasswordReset[]
+  vipPurchases VipPurchase[]
   adminActions AdminAction[] @relation("AdminActionBy")
   adminTargeted AdminAction[] @relation("AdminActionTo")
 
@@ -419,4 +420,29 @@ model CabecaoMatch {
   @@index([winnerId, createdAt])
   @@index([aId, createdAt])
   @@index([bId, createdAt])
+}
+
+// VIP pago (PIX na Efí): uma compra = uma cobrança com txid NOSSO (único). Só vira PAID quando a própria
+// cobrança está CONCLUIDA na Efí (nunca por valor/horário — lição do Rifa Express); o endToEndId do PIX
+// é único, então o mesmo PIX nunca credita duas vezes. status: PENDING | PAID | EXPIRED | FAILED.
+model VipPurchase {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  packKey     String
+  days        Int
+  amountCents Int
+  txid        String    @unique
+  status      String    @default("PENDING")
+  pixCode     String?
+  qrImage     String?
+  expiresAt   DateTime
+  e2eId       String?   @unique
+  paidAt      DateTime?
+  checkedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
 }

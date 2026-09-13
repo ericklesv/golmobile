@@ -338,3 +338,17 @@ export interface FrangacoState {
   } | null;
   reward: FrangacoReward | null;
 }
+
+// ─── VIP pago (PIX na Efí) ──────────────────────────────────────────────────
+export interface VipPack { key: string; days: number; price: number; perDay: number; tag: string | null }
+export interface VipPurchase {
+  id: number; packKey: string; days: number; amount: number; status: 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED';
+  /** PIX copia e cola e a imagem do QR (PNG em base64, sem o prefixo data:). */
+  pixCode: string | null; qrImage: string | null; expiresAt: number; paidAt: number | null;
+}
+export interface VipState {
+  /** enabled = a compra por PIX está ligada no servidor; test = Efí simulada (só no PC de teste). */
+  enabled: boolean; test: boolean; packs: VipPack[];
+  vip: { active: boolean; until: number | null; bank: number };
+  pending: VipPurchase | null; history: VipPurchase[];
+}

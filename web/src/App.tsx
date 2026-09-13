@@ -41,6 +41,7 @@ import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirS
 import { StatsScreen } from './screens/Stats';
 import { CamisasScreen } from './screens/Camisas';
 import { HattrickScreen } from './screens/Hattrick';
+import { VipScreen } from './screens/Vip';
 
 function Splash() {
   return (
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="/time/:slug" element={<TeamScreen />} />
           <Route path="/perfil" element={<ProfileScreen />} />
           <Route path="/loja" element={<ShopScreen />} />
+          <Route path="/vip" element={<VipScreen />} />
           <Route path="/niveis" element={<LevelsScreen />} />
           <Route path="/ativos" element={<ActiveScreen />} />
           <Route path="/jogador/:nick" element={<PlayerScreen />} />

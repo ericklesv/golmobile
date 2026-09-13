@@ -1,4 +1,4 @@
-import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, FrangacoDefense, FrangacoKick, FrangacoPending, FrangacoReward, FrangacoState, HattrickShootResponse, HattrickState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, FrangacoDefense, FrangacoKick, FrangacoPending, FrangacoReward, FrangacoState, HattrickShootResponse, HattrickState, VipPurchase, VipState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -108,6 +108,11 @@ export const api = {
   removeAvatar: () => req<Me>('DELETE', '/api/uploads/avatar'),
   search: (q: string) => req<{ nick: string; goalsTotal: number; avatarUrl: string | null; team: any }[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
   feed: (team?: string) => req<any[]>('GET', `/api/feed${team ? `?team=${team}` : ''}`),
+  // VIP pago (PIX)
+  vip: () => req<VipState>('GET', '/api/vip'),
+  vipBuy: (pack: string) => req<{ purchase: VipPurchase }>('POST', '/api/vip/buy', { pack }),
+  vipPurchase: (id: number) => req<{ purchase: VipPurchase; bank: number }>('GET', `/api/vip/purchases/${id}`),
+  vipTestPay: (id: number) => req<{ purchase: VipPurchase; bank: number }>('POST', `/api/vip/purchases/${id}/test-pay`),
   // loja
   shop: () => req<ShopView>('GET', '/api/shop'),
   shopBuy: (key: string, currency: 'money' | 'vip' = 'money') => req<{ me: Me; item: UserItemView }>('POST', '/api/shop/buy', { key, currency }),

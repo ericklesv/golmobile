@@ -14,8 +14,11 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    (+2 % a +10 %, 30 dias, só uma equipada), troca de nick e cor do nick (nível 8+). Catálogo em
    `api/src/lib/items.js`, tabelas `UserItem`/`ShopLog`, `cooldownFor`/chances/trilha leem os itens
    ativos. `GET/POST /api/shop/*`. Falta: mercado de chuteiras entre jogadores (depois).
-2. **VIP pago** (pacotes de dias via AbacatePay Pix, mesmo fluxo do Managol) e **auto-chute
-   offline para VIP** (scheduler marca o gol a cada 5 min mesmo sem app aberto).
+2. [~] **VIP pago** (13/09/2026, código pronto e testado com a Efí simulada): pacotes de dias de VIP
+   por **PIX na Efí** (tela `/vip`, botão VIP do topo e atalho na Loja), dias guardados no banco de
+   VIPs e ativados quando o jogador quiser, e **auto-chute offline para VIP** (scheduler). **Falta:**
+   OK do dono nos preços (`VIP_PACKS`), credenciais da Efí no `api/.env` da VPS + `node
+   scripts/efi-webhook.js`, e um PIX real de teste. Depois: cartão, doação de VIP entre jogadores.
 3. **Uniformes reais nas cenas 3D** (pack Soccer Players Uniforms) — pipeline em `tools/3d/README.md`.
 4. [x] **Recuperação de senha por e-mail** (13/09/2026): `POST /api/auth/forgot|reset`, telas
    `/esqueci-senha` e `/redefinir-senha`. **Pendente na VPS:** preencher `SMTP_*`, `MAIL_FROM` e
@@ -110,7 +113,7 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [ ] Hora Premiada, Giro Premiado diário, Ranking de Fama
 - [ ] Desafios X1 e Torneio X1
 - [x] Loja de itens com validade (13/09/2026: Energia, Boost Auto, Caneleira, Chuteiras, nick/cor) — faltam Espionagem da Trilha, Impulso, Potência
-- [ ] VIP pago (AbacatePay Pix, igual ao Managol) e doação de VIP entre jogadores
+- [~] VIP pago (PIX Efí — código pronto 13/09/2026, falta ligar as credenciais) e doação de VIP entre jogadores
 - [ ] Notificações push ("seu chute recarregou", "seu time está perdendo")
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável
 

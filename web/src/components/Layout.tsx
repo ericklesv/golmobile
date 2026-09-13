@@ -59,7 +59,7 @@ export function Layout() {
           <button onClick={() => nav('/')} className="mx-auto hidden min-[360px]:block shrink-0" aria-label="Início"><img src="/brand/logo-h.webp" alt="JogaGol" className="h-9 drop-shadow-[0_3px_6px_rgba(0,0,0,0.45)]" /></button>
           <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
             <button onClick={() => nav('/loja')} className="resbar text-[14px]" aria-label="Dinheiro"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-7 w-7" alt="" />{money(me.money)}</button>
-            <button onClick={() => nav('/loja')} className="resbar text-[14px]" aria-label="VIP"><img src="/ui/ico-crown_silver.png" className="ico -ml-3 h-7 w-7" alt="" />{me.vipDays} VIP</button>
+            <button onClick={() => nav('/vip')} className="resbar text-[14px]" aria-label="VIP"><img src="/ui/ico-crown_silver.png" className="ico -ml-3 h-7 w-7" alt="" />{me.vipDays} VIP</button>
           </div>
           <button onClick={() => nav(`/time/${me.team.slug}`)} className="shrink-0" aria-label={me.team.name}><Shield team={me.team} size={34} /></button>
         </div>

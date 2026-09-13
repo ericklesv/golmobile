@@ -50,7 +50,7 @@ export const api = {
   penalty: (direction: 'left' | 'center' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/penalty', { direction, ...(captcha ?? {}) }),
   foul: (direction: 'left' | 'over' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/foul', { direction, ...(captcha ?? {}) }),
   trail: (index: number, captcha?: CaptchaPayload | null) => req<TrailResult>('POST', '/api/play/trail', { index, ...(captcha ?? {}) }),
-  captcha: () => req<{ id: string; question: string; expiresAt: number }>('GET', '/api/play/captcha'),
+  captcha: (fresh = false) => req<{ id: string; question: string; expiresAt: number }>('GET', `/api/play/captcha${fresh ? '?nova=1' : ''}`),
   party: () => req<PartyResult>('POST', '/api/play/party'),
   // minigames diários
   daily: () => req<DailyStatus>('GET', '/api/daily'),

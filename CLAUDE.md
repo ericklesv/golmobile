@@ -37,7 +37,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   (se fechou no meio do chute, o gol vai para a rodada nova) — não voltar a ler e encerrar
   em passos separados (o gol do instante do fechamento ficava no placar e fora da tabela).
   **Ordem da tabela = `standingOrder`** (pontos, saldo, gols pró, nome), a MESMA na tela, na
-  página do time e no título/acesso/rebaixamento. Gols da hora/rodada/temporada do jogador
+  página do time e no título/acesso/rebaixamento. **Prêmio de time** (campeão/vice, VIP de
+  `PRIZES.team`): vai para quem marcou pelo menos 1 gol pelo time na temporada (decisão do
+  dono; só estar no time não conta — trocar de time é livre). Gols da hora/rodada/temporada do jogador
   ficam gravados até o próximo gol dele: na tela, sempre via `periodGoals` (`view.js`).
   **Mexeu na liga? Rode `node scripts/sim-liga.js`** (pasta api/, só banco LOCAL, schema
   `liga_sim` criado e apagado por ele): temporada inteira de 30 rodadas + virada, com gols no
@@ -84,6 +86,10 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
   `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).
+  Só contas fáceis de somar/subtrair (números até 10, decisão do dono). **Uma conta aberta por
+  jogador** (pedir de novo devolve a mesma; `?nova=1` troca), vale **30 min** (a recarga é 10) e,
+  acertou, o chute pendente fica liberado mesmo se for recusado (recarga) — não voltar a
+  "gastar" a conta antes do chute sair (era o bug de a conta se repetir mesmo acertando).
 - **Senha** (`routes/password.js`): `forgot` sempre 200; token SHA-256 de uso único (1 h) em
   `PasswordReset`; e-mail via Nodemailer (`SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`); sem SMTP, loga o link.
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o

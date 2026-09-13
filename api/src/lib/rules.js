@@ -34,11 +34,12 @@ export const PARTY_WIN_CHANCE = 3 / 8; // roleta de 8 fatias, 3 de GOL
 export const FOUL_BASE_CHANCE = 0.5;
 export const DEXTERITY_BONUS_PER_POINT = 0.01;
 
-// Trilha: linhas [total, errados]. Defesa 4/1, meio 3/1, ataque 3/1 (~33%).
+// Trilha: linhas [total, errados]. Defesa 4/1, meio 3/1, ataque 3/2 (~17% de gol).
+// Ataque com 2 errados desde 12/09/2026 (com 1 estava fácil, ~33%).
 export const TRAIL_LINES = [
   { name: 'DEFESA', total: 4, mines: 1 },
   { name: 'MEIO-CAMPO', total: 3, mines: 1 },
-  { name: 'ATAQUE', total: 3, mines: 1 },
+  { name: 'ATAQUE', total: 3, mines: 2 },
 ];
 
 // ─── Premiações (tabela de 2009) ────────────────────────────────────────────

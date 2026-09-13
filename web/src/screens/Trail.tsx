@@ -30,6 +30,7 @@ const shotAt = (x: number): Pt => ({ x: 150 + (x < 150 ? -17 : 17), y: 7 });
 
 type Cell = 'idle' | 'safe' | 'mine' | 'picked';
 type Pick = { phase: number; index: number };
+const NUMBER_WORD: Record<number, string> = { 2: 'Dois', 3: 'Três' };
 
 /** Numa linha já vencida, o último jogador tentado foi o driblado; os anteriores roubaram a bola (rebote). */
 function wasDribbled(revealed: Pick[], phase: number, p: Pick) {
@@ -50,6 +51,7 @@ function routeOf(revealed: Pick[], phase: number): Pt[] {
 
 export function TrailScreen() {
   const me = useAuth((s) => s.me)!;
+  const meta = useAuth((s) => s.meta);
   const refresh = useAuth((s) => s.refresh);
   const nav = useNavigate();
   const [phase, setPhase] = useState(me.trail.active ? me.trail.phase : 0);
@@ -64,6 +66,8 @@ export function TrailScreen() {
   const [overlay, setOverlay] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const active = me.trail.active || phase > 0;
+  // ladrões que ainda restam na linha (o rebote revela um e a jogada continua na mesma linha)
+  const thieves = (meta?.trailLines[phase]?.mines ?? 1) - (cells[phase]?.filter((c) => c === 'mine').length ?? 0);
   const rem = useCountdown(me.cooldowns.TRAIL.readyAt);
   const ready = (rem <= 0 || active) && me.cooldowns.TRAIL.unlocked;
 
@@ -186,7 +190,7 @@ export function TrailScreen() {
         {!me.cooldowns.TRAIL.unlocked ? <span className="text-danger">A Trilha libera no nível 3 (Sub-12, 88 gols).</span>
           : !ready ? <>Recarga: <Countdown readyAt={me.cooldowns.TRAIL.readyAt} className="text-orange-deep" /> · níveis reduzem o tempo</>
           : result?.finished ? (result.goal ? 'Gol de trilha! +R$ 40' : 'A defesa levou a melhor.')
-          : <>Toque em um jogador da linha <b className="text-orange-deep">{LINES[phase]?.name}</b> para driblar. Um deles rouba a bola.</>}
+          : <>Toque em um jogador da linha <b className="text-orange-deep">{LINES[phase]?.name}</b> para driblar. {thieves > 1 ? `${NUMBER_WORD[thieves] ?? thieves} deles roubam a bola.` : 'Um deles rouba a bola.'}</>}
       </div>
     </div>
   );

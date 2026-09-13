@@ -179,8 +179,9 @@ todos queriam, a rivalidade".
 ## 11. Decisões nossas (onde o original não documenta)
 - Chance base: pênalti = goleiro escolhe 1 de 3 (66 %); falta = 50 % + destreza;
   cada ponto de destreza = +1 % (máx. 30 → pênalti 96 %, falta 80 %).
-- Trilha: 3 linhas (defesa 4 jogadores / 1 errado, meio 3 / 1, ataque 3 / 1) → ~33 %;
-  rebotes por nível dão segunda chance.
+- Trilha: 3 linhas (defesa 4 jogadores / 1 errado, meio 3 / 1, ataque 3 / 2) → ~17 %;
+  rebotes por nível dão segunda chance. Ataque com 2 errados: decisão de 12/09/2026
+  (com 1 errado, ~33 %, a trilha estava fácil).
 - Gol de trilha = R$40 (não documentado no original).
 - Auto-chute exige o app aberto (heartbeat) — igual ao original, que exigia estar logado.
 - Empate só com gols iguais (regra original); sem margem percentual.

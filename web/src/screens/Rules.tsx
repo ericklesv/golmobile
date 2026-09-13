@@ -6,6 +6,10 @@ export function RulesScreen() {
   const meta = useAuth((s) => s.meta);
   const me = useAuth((s) => s.me)!;
   const min = (ms: number) => `${Math.round(ms / 60000)} min`;
+  // "1 de 4 na defesa, 1 de 3 no meio e 2 de 3 no ataque" — vem das regras da API
+  const where = ['na defesa', 'no meio', 'no ataque'];
+  const parts = meta?.trailLines.map((l, i) => `${l.mines} de ${l.total} ${where[i] ?? ''}`.trim()) ?? [];
+  const thieves = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}` : parts[0];
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-center"><div className="ribbon ribbon-blue ribbon-lg">COMO JOGAR</div></div>
@@ -14,7 +18,7 @@ export function RulesScreen() {
           <li><b className="text-grass-deep">Chute direto</b> — com o app aberto, sai sozinho quando recarrega. Sempre gol: +{fmt(meta?.money.AUTO ?? 10)}.</li>
           <li><b className="text-gold-deep">Pênalti</b> — escolha esquerda, meio ou direita. O goleiro pula pra um canto. +{fmt(meta?.money.PENALTY ?? 20)}.</li>
           <li><b className="text-sky-deep">Falta</b> — por fora da barreira ou por cima. Libera no nível 1. +{fmt(meta?.money.FOUL ?? 30)}.</li>
-          <li><b className="text-orange-deep">Trilha</b> — drible a defesa, o meio e o ataque tocando em um jogador por linha. Um deles rouba a bola. Libera no nível 3. +{fmt(meta?.money.TRAIL ?? 40)}.</li>
+          <li><b className="text-orange-deep">Trilha</b> — drible a defesa, o meio e o ataque tocando em um jogador por linha. {thieves ? `Roubam a bola: ${thieves}.` : 'Em cada linha, alguém rouba a bola.'} Libera no nível 3. +{fmt(meta?.money.TRAIL ?? 40)}.</li>
           <li><b className="text-gold-deep">Party GoL</b> — a roleta: aposta {fmt(meta?.money.PARTY_BET ?? 50)}, acertou leva {fmt(meta?.money.PARTY_PRIZE ?? 150)}.</li>
         </ul>
       </Panel>

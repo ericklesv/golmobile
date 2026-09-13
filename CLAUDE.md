@@ -68,9 +68,12 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
 - Próximos passos combinados estão em **`docs/ROADMAP.md` → "Próximos passos"**. Seguir a ordem.
 
 ## Para o colaborador (ericklesv) e sua IA
-- Tudo que o jogo usa está no git: sprites do kit em `web/public/ui/`, escudos em
-  `web/public/escudos/`, modelos 3D em `web/public/3d/`. Basta `git pull` — não precisa dos
-  packs originais da Unity (esses ficam na máquina do Guilherme; ver `tools/3d/README.md`).
+- Tudo que o jogo **já usa** está no git: sprites do kit em `web/public/ui/`, escudos em
+  `web/public/escudos/`, modelos 3D em `web/public/3d/`. Para **peças novas** do pack Layer Lab
+  (menu novo, popup, ícone), a biblioteca completa fica em `assets/layerlab/` (no repo se ele for
+  privado; senão distribuída por fora e gitignored) — receita de recorte 9-slice e tabela de
+  fatias em `docs/SPRITES_LAYERLAB.md`. Packs 3D da Unity ficam só na máquina do Guilherme;
+  `tools/3d/README.md` gera os `.glb` que entram no repo.
 - **Deploy sem acesso à VPS (caminho recomendado):** o repo tem `.github/workflows/deploy.yml`.
   Quando o secret `VPS_SSH_KEY` estiver configurado no GitHub (Guilherme faz isso em
   Settings → Secrets → Actions), **todo push em `main` deploya sozinho** em ~1 min. Acompanhe em

@@ -68,7 +68,8 @@ export function ProfileScreen() {
           </div>
         </div>
         <div className="mt-3">
-          <Bar value={me.goalsTotal - me.level.goals} max={(me.level.next?.goals ?? me.goalsTotal) - me.level.goals} label={`${num(me.goalsTotal)} gols${me.level.next ? ` · ${me.level.next.name} em ${num(me.level.next.goals)}` : ' · nível máximo'}`} yellow />
+          <Bar value={me.levelPoints - me.level.goals} max={(me.level.next?.goals ?? me.levelPoints) - me.level.goals} label={`${num(me.levelPoints)} pontos${me.level.next ? ` · ${me.level.next.name} em ${num(me.level.next.goals)}` : ' · nível máximo'}`} yellow />
+          {me.levelBonus > 0 && <div className="mt-1 text-center text-[11px] font-extrabold text-white/80">{num(me.goalsTotal)} gols + {num(me.levelBonus)} do Termo do dia</div>}
           {me.level.next?.skill && <div className="mt-1 text-center text-[11px] font-extrabold text-white/80">Próximo nível libera: {me.level.next.skill}</div>}
         </div>
       </section>

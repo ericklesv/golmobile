@@ -4,7 +4,7 @@ import { prisma } from '../prisma.js';
 import { handle, GameError, notFound, badRequest } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { meView, publicView } from '../services/view.js';
-import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelFor } from '../lib/rules.js';
+import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf } from '../lib/rules.js';
 
 export const me = Router();
 me.use(requireAuth);
@@ -46,12 +46,12 @@ me.post('/buy-dexterity', handle(async (req) => {
 
 // Nerfar destreza de outro jogador (lvl 14+, R$1.000): tira 1 ponto da vítima
 me.post('/nerf/:nick', handle(async (req) => {
-  const lvl = levelFor(req.user.goalsTotal).lvl;
+  const lvl = levelOf(req.user).lvl;
   if (lvl < NERF_MIN_LEVEL) throw new GameError(403, 'locked', `Nerfar libera no nível ${NERF_MIN_LEVEL} (Campeão).`);
   const victim = await prisma.user.findUnique({ where: { nickLower: String(req.params.nick).toLowerCase() } });
   if (!victim) throw notFound('Jogador não encontrado.');
   if (victim.id === req.user.id) throw badRequest('Você não pode nerfar a si mesmo.');
-  if (levelFor(victim.goalsTotal).lvl < NERF_MIN_LEVEL) throw badRequest('Só jogadores nível 14+ podem receber nerf.');
+  if (levelOf(victim).lvl < NERF_MIN_LEVEL) throw badRequest('Só jogadores nível 14+ podem receber nerf.');
   if (victim.dexterity <= 0) throw badRequest('Esse jogador não tem destreza para perder.');
   await prisma.$transaction(async (tx) => {
     const paid = await tx.user.updateMany({ where: { id: req.user.id, money: { gte: MONEY.NERF_PRICE } }, data: { money: { decrement: MONEY.NERF_PRICE } } });

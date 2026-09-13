@@ -35,10 +35,25 @@ depois que o novo estiver estável. Não instalar nada dele.
   (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
   relógio do celular.
+- **Nível = pontos de nível = `goalsTotal + levelBonus`** (o bônus vem dos minigames diários).
+  No servidor, use sempre `levelOf(user)` (`rules.js`) — nunca `levelFor(user.goalsTotal)`,
+  senão o bônus some (desbloqueios, rebote, nerf, recarga da trilha). O front mostra
+  `me.levelPoints` na barra de nível.
+- **Minigames diários** (`services/daily.js`, tabela `DailyGame`): 1 partida por jogador,
+  por jogo, por dia; o dia vira à **meia-noite de Brasília** (`dayNumber`/`nextMidnight` em
+  `time.js`, #1 = 12/09/2026). A faixa roxa da Home (`DailyStrip`) só aparece enquanto houver
+  jogo por fazer. Minigame novo: entra em `DAILY_GAMES` + serviço + tela (sem migração).
+  Fora de produção, `TERMO_DAY=<n>` força o dia (teste da virada).
+- **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
+  cliente antes do fim (nem no JSON). Acertar = 1 gol normal (`applyResult` com kind `TERMO`:
+  placar, artilharia, lances) + pontos de nível pela tentativa (`TERMO.levelPoints`, 30→5);
+  não dá dinheiro. Respostas em `answers.js` (a lista do Termo do Corujão, 46 dias à frente):
+  **palavra nova entra no fim**, antes do dia #93 (13/12/2026). Dicionário em `palavras.txt`.
 
 ## Endpoints
 `POST /api/auth/register|login` · `GET /api/me` · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party`
+`GET /api/daily|daily/termo` · `POST /api/daily/termo/guess{word,day}` (minigames diários)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|ban` (header `x-admin-key`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.
@@ -110,5 +125,8 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
   requestAnimationFrame; o rastro é pintado por ela). Não usar `motion.g animate={{ x, y }}`
   dentro do `<svg>` da Trilha: a bola antiga, feita assim, nunca se moveu (ficava presa no
   canto 0,0 do campo).
+- Termo: casas `.tile tile-{slot,now,typed,correct,present,absent}` (Label_Round01_White e
+  item-*) e teclas `.key key-{correct,present,absent,kick}` (Button01_195) em `index.css`.
+  Cores: verde = letra no lugar, laranja = em outro lugar, cinza = não tem.
 - Antes de mexer em produção/servidor: mostrar o comando e pedir autorização.
 - Ao concluir itens, atualizar `docs/ROADMAP.md` e este arquivo.

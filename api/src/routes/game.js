@@ -5,7 +5,7 @@ import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct } from '../services/league.js';
 import { teamView, publicView } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 
 export const game = Router();
@@ -28,6 +28,7 @@ game.get('/meta', handle(async () => {
     levels: LEVELS, prizes: PRIZES, trailLines: TRAIL_LINES, unlock: UNLOCK_LEVEL,
     chances: { penalty: 2 / 3, foul: FOUL_BASE_CHANCE, perDexterity: DEXTERITY_BONUS_PER_POINT, rebound: REBOUND_CHANCE },
     partySegments: PARTY_SEGMENTS,
+    termo: TERMO,
     teams: teams.map(teamView),
   };
 }));

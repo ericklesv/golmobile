@@ -22,6 +22,7 @@ enum KickKind {
   FOUL
   TRAIL
   PARTY
+  TERMO
 }
 
 enum SeasonStatus {
@@ -71,6 +72,9 @@ model User {
   goalsHour   Int     @default(0)
   hourKey     String?
 
+  // Pontos de nível extras (minigames diários). Nível = goalsTotal + levelBonus.
+  levelBonus  Int     @default(0)
+
   // Estatísticas por modo (acertos / tentativas)
   autoGoals    Int @default(0)
   penaltyGoals Int @default(0)
@@ -97,9 +101,29 @@ model User {
   nerfsTaken  Nerf[]     @relation("NerfTo")
   records     Record[]
   hourWins    HourResult[]
+  dailyGames  DailyGame[]
 
   @@index([teamId])
   @@index([goalsTotal])
+}
+
+// Minigames diários: 1 partida por jogador, por jogo, por dia (o dia vira à
+// meia-noite de Brasília). `game` é texto para um minigame novo não pedir migração.
+model DailyGame {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id])
+  game       String // "TERMO"
+  day        Int // nº do dia no calendário dos minigames (#1 = 12/09/2026)
+  state      Json // estado do minigame (Termo: { guesses: string[] })
+  won        Boolean   @default(false)
+  reward     Json? // o que ganhou ao vencer (gol, pontos de nível)
+  finishedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, game, day])
+  @@index([game, day])
 }
 
 model Team {

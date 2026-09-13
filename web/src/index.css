@@ -63,7 +63,7 @@ img { -webkit-user-drag: none; }
 }
 
 /* ── 9-slice ─────────────────────────────────────────────────────────── */
-.ui, .btn, .btn-sq, .panel, .panel-navy, .panel-full, .card-blue, .card-green, .card-orange, .card-purple, .card-white, .pill-blue, .pill-white, .item-blue, .item-yellow, .item-green, .item-empty, .ribbon, .trap, .resbar, .bar, .bar > i, .field, .toast, .menu-btn { border-style: solid; border-color: transparent; border-image-repeat: stretch; box-sizing: border-box; }
+.ui, .btn, .btn-sq, .panel, .panel-navy, .panel-full, .card-blue, .card-green, .card-orange, .card-purple, .card-white, .pill-blue, .pill-white, .item-blue, .item-yellow, .item-green, .item-empty, .ribbon, .trap, .resbar, .bar, .bar > i, .field, .toast, .menu-btn, .tile, .key { border-style: solid; border-color: transparent; border-image-repeat: stretch; box-sizing: border-box; }
 
 /* Botões (Button01_195_*: 64x195; fatias 30 31 70 33 em escala 1/3) */
 .btn { @apply inline-flex items-center justify-center gap-2 font-display text-white tracking-wide transition select-none; border-width: 10px 10px 23px 11px; text-shadow: 0 2px 0 rgba(0,0,0,0.35); line-height: 1; }
@@ -135,6 +135,33 @@ img { -webkit-user-drag: none; }
 
 /* Botão de menu (50x57) */
 .menu-btn {  border-width: 9px 12px 15px 12px; border-image: url(/ui/menu-btn.png) 15 20 25 20 fill; }
+
+/* ── Termo do dia ────────────────────────────────────────────────────────
+   Casas: Label_Round01_White (60x67, fatias 32 29 33 29) para vazia/digitada;
+   item-* (177x188, fatia 24) para as cores. Verde = letra no lugar, laranja =
+   em outro lugar, cinza (item-blue dessaturado) = não tem. --tile vem da tela. */
+.tile { @apply flex items-center justify-center font-display uppercase leading-none; width: var(--tile, 52px); height: var(--tile, 52px); font-size: calc(var(--tile, 52px) * 0.5); }
+.tile-slot, .tile-now, .tile-typed { border-width: 9px 8px 10px 8px; border-image: url(/ui/label-round-white.png) 32 29 33 29 fill; color: var(--ink); }
+.tile-slot { opacity: 0.35; }
+.tile-now { opacity: 0.8; }
+.tile-correct, .tile-present, .tile-absent { border-width: 8px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+.tile-correct { border-image: url(/ui/item-green.png) 24 fill; }
+.tile-present { border-image: url(/ui/item-yellow.png) 24 fill; }
+.tile-absent { border-image: url(/ui/item-blue.png) 24 fill; filter: grayscale(0.9) brightness(1.05); color: rgba(255,255,255,0.8); }
+.tile-flip { animation: tileFlip 0.24s ease-out both; }
+.tile-jump { animation: tileJump 0.5s cubic-bezier(.3,.7,.4,1.5) both; }
+@keyframes tileFlip { from { transform: rotateX(90deg); } to { transform: rotateX(0); } }
+@keyframes tileJump { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-14px); } }
+
+/* Teclado: botões do kit em miniatura (Button01_195: fatias 30 29 70 31) */
+.key { @apply flex min-w-0 flex-1 items-center justify-center font-display uppercase leading-none transition-transform; height: 46px; border-width: 5px 6px 12px 6px; padding: 0 0 1px; font-size: 17px; color: var(--ink); border-image: url(/ui/btn-white.png) 30 29 70 31 fill; }
+.key:active:not(:disabled) { transform: translateY(2px); }
+.key:disabled { opacity: 0.6; }
+.key-correct { border-image: url(/ui/btn-green.png) 30 29 70 31 fill; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+.key-present { border-image: url(/ui/btn-orange.png) 30 29 70 31 fill; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+.key-absent { border-image: url(/ui/btn-gray.png) 30 29 70 31 fill; color: rgba(255,255,255,0.7); }
+.key-kick { flex: 2.3; font-size: 14px; letter-spacing: 0.5px; border-image: url(/ui/btn-sky.png) 30 29 70 31 fill; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+@media (prefers-reduced-motion: reduce) { .tile-flip, .tile-jump { animation: none; } }
 
 /* Texto de jogo */
 .t-display { font-family: 'Lilita One', Impact, sans-serif; letter-spacing: 0.3px; }

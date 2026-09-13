@@ -54,6 +54,8 @@ Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas
 - [ ] Som de alerta (lvl 2) e mensagens coloridas (lvl 8)
 
 ## Fase 3 — Novidades (inspiradas no revival brgol.online)
+- [x] Minigames diários (1x por dia, vira à meia-noite): **Termo do dia** — palavra de futebol, 6 tentativas; acertar = 1 gol pro time + pontos de nível (+30 na 1ª … +5 na 6ª); faixa roxa na Home enquanto disponível (12/09/2026)
+- [ ] Próximos minigames diários (a estrutura `DailyGame` já aceita — ver CLAUDE.md)
 - [ ] Bola de Ouro da temporada (fórmula do dossiê) + Top Chutadores
 - [ ] Hora Premiada, Giro Premiado diário, Ranking de Fama
 - [ ] Desafios X1 e Torneio X1
@@ -63,6 +65,7 @@ Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável
 
 ## Dívidas / ideias
+- [ ] **Termo: a lista de respostas acaba no dia #93 (13/12/2026)** — acrescentar palavras no fim de `api/src/lib/termo/answers.js` antes disso (depois o calendário dá a volta)
 - [ ] Socket.IO para placar/feed em tempo real (hoje polling 15 s)
 - [ ] Painel admin web (hoje só endpoints com `x-admin-key`)
 - [ ] Apagar `legacy-expo/` quando o novo estiver validado

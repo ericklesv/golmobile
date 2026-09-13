@@ -10,13 +10,15 @@ interface Props {
   title?: string;
   text?: string | null;
   money?: number;
+  /** Pontos de nível extras (minigames diários). */
+  levelPoints?: number;
   team?: Team | null;
   onClose: () => void;
   autoClose?: number;
 }
 
-/** Tela de resultado estilo "Stage Clear": ribbon, estrelas, prêmio em moedas, narração. */
-export function GoalOverlay({ open, goal, title, text, money = 0, team, onClose, autoClose = 4500 }: Props) {
+/** Tela de resultado estilo "Stage Clear": ribbon, estrelas, prêmio em moedas/nível, narração. */
+export function GoalOverlay({ open, goal, title, text, money = 0, levelPoints = 0, team, onClose, autoClose = 4500 }: Props) {
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(onClose, autoClose);
@@ -52,6 +54,11 @@ export function GoalOverlay({ open, goal, title, text, money = 0, team, onClose,
             {goal && money > 0 && (
               <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="resbar mt-3 text-lg">
                 <img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-9 w-9" alt="" /> +{fmtMoney(money)}
+              </motion.div>
+            )}
+            {goal && levelPoints > 0 && (
+              <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="resbar mt-3 text-lg">
+                <img src="/ui/lvl-badge-blue.png" className="ico -ml-3 h-9 w-9" alt="" /> +{levelPoints} de nível
               </motion.div>
             )}
             {text && (

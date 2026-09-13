@@ -8,7 +8,7 @@ import { hourKey } from '../lib/time.js';
 import {
   COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE,
   DEXTERITY_BONUS_PER_POINT, PARTY_WIN_CHANCE, REBOUND_CHANCE, KIND_LABEL,
-  cooldownFor, levelFor, reboundLevel,
+  cooldownFor, levelOf, reboundLevel,
 } from '../lib/rules.js';
 import { liveMatchForTeam } from './league.js';
 
@@ -52,14 +52,14 @@ async function claimCooldown(tx, user, kind, now) {
 }
 
 function requireUnlocked(user, kind) {
-  const lvl = levelFor(user.goalsTotal).lvl;
+  const lvl = levelOf(user).lvl;
   if (lvl < UNLOCK_LEVEL[kind]) {
     throw new GameError(403, 'locked', `${KIND_LABEL[kind][0].toUpperCase()}${KIND_LABEL[kind].slice(1)} libera no nível ${UNLOCK_LEVEL[kind]}.`);
   }
 }
 
-/** Aplica gol/erro: contadores, Goal, Activity, placar da partida. */
-async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) {
+/** Aplica gol/erro: contadores, Goal, Activity, placar da partida. (Os minigames diários também usam.) */
+export async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) {
   const hk = hourKey(now);
   const seasonId = match?.round?.seasonId ?? null;
   const roundId = match?.roundId ?? null;
@@ -69,7 +69,7 @@ async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) 
   let text;
   if (goal) {
     const hits = { AUTO: 'autoGoals', PENALTY: 'penaltyGoals', FOUL: 'foulGoals', TRAIL: 'trailGoals' }[kind];
-    data[hits] = { increment: 1 };
+    if (hits) data[hits] = { increment: 1 }; // o Termo guarda o histórico em DailyGame
     data.goalsTotal = { increment: 1 };
     data.money = { increment: money };
     data.goalsHour = user.hourKey === hk ? { increment: 1 } : 1;
@@ -95,7 +95,7 @@ async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) 
   return { text, match };
 }
 
-function loadUser(tx, id) {
+export function loadUser(tx, id) {
   return tx.user.findUnique({ where: { id }, include: { team: true } });
 }
 
@@ -130,7 +130,7 @@ export async function penalty(userId, direction) {
     const cd = await claimCooldown(tx, user, 'PENALTY', now);
     const match = await liveMatchForTeam(user.teamId, tx);
     const chance = 2 / 3 + user.dexterity * DEXTERITY_BONUS_PER_POINT;
-    const lvl = levelFor(user.goalsTotal).lvl;
+    const lvl = levelOf(user).lvl;
     let goal = rnd() < chance;
     let rebound = false;
     if (!goal) {
@@ -156,7 +156,7 @@ export async function foul(userId, direction) {
     const cd = await claimCooldown(tx, user, 'FOUL', now);
     const match = await liveMatchForTeam(user.teamId, tx);
     const chance = FOUL_BASE_CHANCE + user.dexterity * DEXTERITY_BONUS_PER_POINT;
-    const lvl = levelFor(user.goalsTotal).lvl;
+    const lvl = levelOf(user).lvl;
     let goal = rnd() < chance;
     let rebound = false;
     if (!goal) {
@@ -210,7 +210,7 @@ export async function trailPick(userId, pickIndex) {
     let rebound = false;
     let nextPhase = line;
     let text = null;
-    const lvl = levelFor(user.goalsTotal).lvl;
+    const lvl = levelOf(user).lvl;
 
     if (mine) {
       const rb = REBOUND_CHANCE[reboundLevel(lvl, 'TRAIL')] || 0;

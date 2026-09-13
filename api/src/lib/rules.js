@@ -111,6 +111,11 @@ export function levelFor(goals) {
   return { ...cur, next };
 }
 
+/** Pontos de nível: cada gol vale 1, e os minigames diários dão pontos extras (levelBonus). */
+export const levelPoints = (user) => user.goalsTotal + (user.levelBonus ?? 0);
+/** Nível do jogador. Use sempre este (e não levelFor(goalsTotal)) — senão o bônus some. */
+export const levelOf = (user) => levelFor(levelPoints(user));
+
 /** Segundos descontados da recarga da trilha pelos níveis conquistados. */
 export function trailReductionSec(level) {
   return LEVELS.filter((l) => l.lvl <= level && l.trail).reduce((s, l) => s + l.trail, 0);
@@ -138,7 +143,7 @@ export function cooldownFor(user, kind, now = Date.now()) {
   const vip = isVip(user, now);
   const base = COOLDOWNS[kind][vip ? 'vip' : 'normal'];
   if (kind !== 'TRAIL') return base;
-  const lvl = levelFor(user.goalsTotal).lvl;
+  const lvl = levelOf(user).lvl;
   const reduced = base - trailReductionSec(lvl) * 1000;
   return Math.max(TRAIL_MIN[vip ? 'vip' : 'normal'], reduced);
 }
@@ -158,4 +163,12 @@ export const KIND_LABEL = {
   FOUL: 'falta',
   TRAIL: 'trilha',
   PARTY: 'Party GoL',
+  TERMO: 'Termo',
 };
+
+// ─── Minigames diários (1x por dia; o dia vira à meia-noite de Brasília) ────
+// Termo do dia: 5 letras, 6 tentativas. Acertar = 1 gol normal (placar do time,
+// artilharia e lances) + pontos de nível pela tentativa em que acertou
+// (1ª +30 … 6ª +5 — decisão do dono em 12/09/2026). Não dá dinheiro.
+export const TERMO = { letters: 5, tries: 6, levelPoints: [30, 25, 20, 15, 10, 5] };
+export const DAILY_GAMES = ['TERMO'];

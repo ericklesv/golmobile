@@ -1,5 +1,5 @@
 /** Projeções de dados para o cliente (nunca expõe hash, e-mail alheio, layout da trilha). */
-import { cooldownFor, LAST_FIELD, levelFor, isVip, UNLOCK_LEVEL, reboundLevel } from '../lib/rules.js';
+import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel } from '../lib/rules.js';
 
 export function teamView(t) {
   if (!t) return null;
@@ -15,13 +15,13 @@ export function cooldownsView(user, now = Date.now()) {
     const cd = cooldownFor(user, kind, now);
     const last = user[LAST_FIELD[kind]] ? new Date(user[LAST_FIELD[kind]]).getTime() : 0;
     const remaining = Math.max(0, last + cd - now);
-    out[kind] = { cooldownMs: cd, remainingMs: remaining, readyAt: last + cd, unlocked: levelFor(user.goalsTotal).lvl >= UNLOCK_LEVEL[kind] };
+    out[kind] = { cooldownMs: cd, remainingMs: remaining, readyAt: last + cd, unlocked: levelOf(user).lvl >= UNLOCK_LEVEL[kind] };
   }
   return out;
 }
 
 export function meView(user, now = Date.now()) {
-  const level = levelFor(user.goalsTotal);
+  const level = levelOf(user);
   return {
     id: user.id, nick: user.nick, email: user.email, gender: user.gender, bio: user.bio,
     isAdmin: user.isAdmin, createdAt: user.createdAt,
@@ -30,6 +30,7 @@ export function meView(user, now = Date.now()) {
     dexterity: user.dexterity,
     goalsTotal: user.goalsTotal, goalsSeason: user.goalsSeason, goalsRound: user.goalsRound, goalsHour: user.goalsHour,
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
+    levelBonus: user.levelBonus ?? 0, levelPoints: levelPoints(user),
     stats: {
       auto: { goals: user.autoGoals },
       penalty: { goals: user.penaltyGoals, tries: user.penaltyTries },
@@ -46,7 +47,7 @@ export function meView(user, now = Date.now()) {
 }
 
 export function publicView(user, now = Date.now()) {
-  const level = levelFor(user.goalsTotal);
+  const level = levelOf(user);
   return {
     id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, createdAt: user.createdAt,
     team: teamView(user.team), vip: isVip(user, now), dexterity: user.dexterity,

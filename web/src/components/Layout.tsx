@@ -30,7 +30,7 @@ export function Layout() {
   }, []);
 
   if (!me) return null;
-  const lvlPct = me.level.next ? ((me.goalsTotal - me.level.goals) / (me.level.next.goals - me.level.goals)) * 100 : 100;
+  const lvlPct = me.level.next ? ((me.levelPoints - me.level.goals) / (me.level.next.goals - me.level.goals)) * 100 : 100;
   return (
     <div className="app-frame flex min-h-full flex-col">
       <div className="stadium-bg" />
@@ -46,7 +46,7 @@ export function Layout() {
               <div className={`t-display truncate text-[15px] leading-tight ${me.vip ? 'text-sky-light' : 'text-white'}`}>{me.nick}{me.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}</div>
               <div className="bar mt-0.5 w-28" style={{ height: 14 }}>
                 <i style={{ width: `calc(${Math.min(100, lvlPct)}% + 6px)` }} />
-                <span style={{ fontSize: 9 }}>{me.goalsTotal}/{me.level.next?.goals ?? me.goalsTotal}</span>
+                <span style={{ fontSize: 9 }}>{me.levelPoints}/{me.level.next?.goals ?? me.levelPoints}</span>
               </div>
             </div>
           </button>

@@ -1,4 +1,4 @@
-import type { Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, TeamPage, TopRow, TrailResult } from './types';
+import type { DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -51,6 +51,10 @@ export const api = {
   foul: (direction: 'left' | 'over' | 'right') => req<KickResult>('POST', '/api/play/foul', { direction }),
   trail: (index: number) => req<TrailResult>('POST', '/api/play/trail', { index }),
   party: () => req<PartyResult>('POST', '/api/play/party'),
+  // minigames diários
+  daily: () => req<DailyStatus>('GET', '/api/daily'),
+  termo: () => req<TermoState>('GET', '/api/daily/termo'),
+  termoGuess: (word: string, day: number) => req<{ state: TermoState; reward: TermoReward | null }>('POST', '/api/daily/termo/guess', { word, day }),
   // leitura
   meta: () => req<Meta>('GET', '/api/meta'),
   home: (team?: string) => req<Home>('GET', `/api/home${team ? `?team=${encodeURIComponent(team)}` : ''}`),

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../store/auth';
-import type { Home, Kind } from '../lib/types';
+import type { DailyStatus, Home, Kind } from '../lib/types';
 import { Shield } from '../components/Shield';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Panel, TopList, ProgressRing, useCountdown, Countdown } from '../components/ui';
@@ -45,6 +45,42 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
         {!cd.unlocked ? `lvl ${unlockLvl}` : trailActive ? 'EM JOGO' : ready ? 'PRONTO' : countdown(rem)}
       </span>
     </motion.button>
+  );
+}
+
+/** Minigames do dia (1x por dia). Só aparece enquanto houver jogo por fazer; some ao terminar. */
+function DailyStrip() {
+  const me = useAuth((s) => s.me)!;
+  const meta = useAuth((s) => s.meta);
+  const [status, setStatus] = useState<DailyStatus | null>(null);
+  const load = useCallback(() => api.daily().then(setStatus).catch(() => {}), []);
+  useEffect(() => { load(); }, [load]);
+  // à meia-noite chega palavra nova: reaparece sem precisar recarregar a Home
+  useEffect(() => {
+    if (!status) return;
+    const t = setTimeout(load, Math.max(1_000, status.nextAt - Date.now() + 2_000));
+    return () => clearTimeout(t);
+  }, [status?.nextAt, load]);
+
+  const termo = status?.games.find((g) => g.id === 'TERMO');
+  if (!termo?.available) return null;
+  return (
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+      <Link to="/termo" className="card-purple flex items-center gap-3 transition-transform active:translate-y-[2px]">
+        <img src="/ui/ico-gift_purple.png" alt="" className="h-11 w-11 shrink-0 animate-bob" />
+        <div className="min-w-0 flex-1">
+          <div className="t-display t-out text-[18px] leading-tight">Termo do dia</div>
+          <div className="text-[12px] font-extrabold leading-snug text-white/90">
+            {termo.started ? 'Continue de onde parou.' : `Acerte a palavra de futebol e marque 1 gol pro ${me.team.name}.`}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end leading-none">
+          <span className="text-[10px] font-extrabold text-white/80">até</span>
+          <span className="t-display t-gold text-[20px]">+{meta?.termo.levelPoints[0] ?? 30}</span>
+          <span className="text-[10px] font-extrabold text-white/80">de nível</span>
+        </div>
+      </Link>
+    </motion.div>
   );
 }
 
@@ -118,6 +154,8 @@ export function HomeScreen() {
           <div className="py-4 text-center text-sm font-bold text-white/80">{home ? 'Seu time folga nesta rodada.' : '…'}</div>
         )}
       </section>
+
+      <DailyStrip />
 
       {/* Alvos de chute */}
       <section className="grid grid-cols-4 gap-2">

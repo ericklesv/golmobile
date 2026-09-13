@@ -10,6 +10,8 @@ export function RulesScreen() {
   const where = ['na defesa', 'no meio', 'no ataque'];
   const parts = meta?.trailLines.map((l, i) => `${l.mines} de ${l.total} ${where[i] ?? ''}`.trim()) ?? [];
   const thieves = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}` : parts[0];
+  const pts = meta?.termo.levelPoints ?? [30, 25, 20, 15, 10, 5];
+  const termoPoints = `+${pts[0]} na 1ª tentativa, caindo até +${pts[pts.length - 1]} na ${pts.length}ª`;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-center"><div className="ribbon ribbon-blue ribbon-lg">COMO JOGAR</div></div>
@@ -20,6 +22,7 @@ export function RulesScreen() {
           <li><b className="text-sky-deep">Falta</b> — por fora da barreira ou por cima. Libera no nível 1. +{fmt(meta?.money.FOUL ?? 30)}.</li>
           <li><b className="text-orange-deep">Trilha</b> — drible a defesa, o meio e o ataque tocando em um jogador por linha. {thieves ? `Roubam a bola: ${thieves}.` : 'Em cada linha, alguém rouba a bola.'} Libera no nível 3. +{fmt(meta?.money.TRAIL ?? 40)}.</li>
           <li><b className="text-gold-deep">Party GoL</b> — a roleta: aposta {fmt(meta?.money.PARTY_BET ?? 50)}, acertou leva {fmt(meta?.money.PARTY_PRIZE ?? 150)}.</li>
+          <li><b className="text-grass-deep">Termo do dia</b> — uma palavra de futebol por dia, {meta?.termo.tries ?? 6} tentativas. Acertou, é gol do seu time e ganha pontos de nível: {termoPoints}.</li>
         </ul>
       </Panel>
       <Panel title="RECARGAS" ribbon="blue">
@@ -41,7 +44,8 @@ export function RulesScreen() {
         </ul>
       </Panel>
       <Panel title="NÍVEIS" ribbon="orange">
-        <table className="w-full text-[12px] font-bold"><thead className="label"><tr><th className="text-left">Lvl</th><th className="text-left">Nome</th><th>Gols</th><th className="text-left">Habilidade</th></tr></thead>
+        <p className="mb-2 text-[12px] font-bold text-muted">Cada gol vale 1 ponto de nível. O Termo do dia dá pontos extras.</p>
+        <table className="w-full text-[12px] font-bold"><thead className="label"><tr><th className="text-left">Lvl</th><th className="text-left">Nome</th><th>Pontos</th><th className="text-left">Habilidade</th></tr></thead>
           <tbody>{meta?.levels.map((l) => <tr key={l.lvl} className={`border-t border-sky/20 ${l.lvl === me.level.lvl ? 'bg-gold/30 text-orange-deep' : 'text-navy-ink'}`}><td className="py-1">{l.lvl}</td><td>{l.name}</td><td className="text-center">{l.goals.toLocaleString('pt-BR')}</td><td className="text-muted">{l.skill ?? '—'}</td></tr>)}</tbody></table>
       </Panel>
     </div>

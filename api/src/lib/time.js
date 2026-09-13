@@ -61,4 +61,23 @@ export function nextRoundClose(date = new Date()) {
   return candidate;
 }
 
+// ─── Calendário dos minigames diários (o dia vira à meia-noite de Brasília) ──
+const DAY_ONE = Date.UTC(2026, 8, 12); // dia #1 = 12/09/2026
+
+/** Nº do dia no calendário dos minigames. Fora de produção, TERMO_DAY força outro (teste da virada). */
+export function dayNumber(date = new Date()) {
+  if (process.env.NODE_ENV !== 'production') {
+    const forced = Number(process.env.TERMO_DAY);
+    if (Number.isInteger(forced) && forced > 0) return forced;
+  }
+  const { y, m, d } = tzParts(date);
+  return Math.round((Date.UTC(y, m - 1, d) - DAY_ONE) / 86_400_000) + 1;
+}
+
+/** A próxima meia-noite de Brasília (quando os minigames renovam). */
+export function nextMidnight(date = new Date()) {
+  const { y, m, d } = tzParts(date);
+  return fromTz(y, m, d + 1, 0, 0);
+}
+
 export const MIN = 60_000;

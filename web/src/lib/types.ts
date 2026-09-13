@@ -14,6 +14,8 @@ export interface Me {
   money: number; vipDays: number; vipUntil: string | null; vip: boolean; dexterity: number;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   hourKey: string | null; roundId: number | null; seasonId: number | null;
+  /** Pontos de nível = gols + levelBonus (minigames diários). A barra de nível usa estes. */
+  levelBonus: number; levelPoints: number;
   stats: {
     auto: { goals: number };
     penalty: { goals: number; tries: number };
@@ -75,7 +77,27 @@ export interface Meta {
   unlock: Record<Kind, number>;
   chances: { penalty: number; foul: number; perDexterity: number; rebound: number[] };
   partySegments: string[];
+  termo: { letters: number; tries: number; levelPoints: number[] };
   teams: Team[];
+}
+
+// ─── Minigames diários ──────────────────────────────────────────────────────
+export type DailyGameId = 'TERMO';
+export interface DailyStatus {
+  day: number; nextAt: number;
+  games: { id: DailyGameId; available: boolean; started: boolean; finished: boolean; won: boolean }[];
+}
+
+export type TermoColor = 'correct' | 'present' | 'absent';
+export interface TermoReward { goal: boolean; levelPoints: number; tries: number; text: string; match: { id: number; homeGoals: number; awayGoals: number } | null }
+export interface TermoState {
+  day: number;
+  guesses: { word: string; colors: TermoColor[] }[];
+  finished: boolean; won: boolean;
+  /** A palavra do dia — só vem depois do fim. */
+  answer: string | null;
+  reward: TermoReward | null;
+  nextAt: number;
 }
 
 export interface Standing { position: number; team: Team; points: number; played: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number; diff: number }

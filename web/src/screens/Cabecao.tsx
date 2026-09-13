@@ -8,7 +8,7 @@ import { Avatar } from '../components/Avatar';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { toast } from '../components/Toast';
 import { sound } from '../lib/sound';
-import { draw, ASPECT, type Field } from '../lib/cabecaoDraw';
+import { draw, preloadArena, ASPECT, type Field } from '../lib/cabecaoDraw';
 
 /**
  * Cabeção — head soccer 1x1 ao vivo. Fila por WebSocket; a simulação roda no servidor
@@ -41,14 +41,16 @@ export function CabecaoScreen() {
   const input = useRef({ l: 0, r: 0, j: 0, k: 0 });
   const lastScore = useRef<[number, number]>([0, 0]);
 
+  useEffect(() => { preloadArena(); }, []);
+
   // ?demo=1 — cena parada só pra conferir a arte (sem servidor)
   const demo = new URLSearchParams(location.search).get('demo');
   useEffect(() => {
     if (!demo) return;
     const opp = (meta?.teams ?? []).find((t) => t.slug !== me.team.slug) ?? me.team;
-    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'adversario', avatarUrl: null, team: opp }], field: { w: 800, h: 400, goalW: 56, goalH: 168, barH: 10, playerR: 50, ballR: 17 } };
+    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'adversario', avatarUrl: null, team: opp }], field: { w: 800, h: 400, goalW: 112, goalH: 206, barH: 10, playerR: 50, ballR: 17 } };
     matchRef.current = mm; setMatch(mm);
-    const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[250, 0, 0, 0, 1, 1], [560, 70, 0, 0, -1, 0]], b: [420, 120, 0, 0] };
+    const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[260, 0, 200, 0, 1, 1], [560, 70, 0, 0, -1, 0]], b: [420, 120, 0, 0] };
     snapRef.current = { s: sn, at: performance.now() }; setSnap(sn);
   }, [demo]);
 
@@ -113,11 +115,11 @@ export function CabecaoScreen() {
       const players = match.players.map((pl, i) => {
         const p = cur?.s.p[i] ?? [i === 0 ? 180 : 620, 0, 0, 0, i === 0 ? 1 : -1, 0];
         const k = moving ? ex : 0;
-        return { x: p[0] + p[2] * k, y: Math.max(0, p[1] + p[3] * k), face: p[4], kick: !!p[5], team: pl.team, skin: SKINS[pl.id % SKINS.length], hair: HAIRS[pl.id % HAIRS.length] };
+        return { x: p[0] + p[2] * k, y: Math.max(0, p[1] + p[3] * k), vx: p[2], face: p[4], kick: !!p[5], grounded: p[1] <= 0.5, team: pl.team, skin: SKINS[pl.id % SKINS.length], hair: HAIRS[pl.id % HAIRS.length] };
       });
       const b = cur?.s.b ?? [400, 260, 0, 0];
       const k = moving ? ex : 0;
-      draw(ctx, W, H, f, players, { x: b[0] + b[2] * k, y: Math.max(f.ballR, b[1] + b[3] * k), vx: b[2] }, performance.now());
+      draw(ctx, W, H, f, players, { x: b[0] + b[2] * k, y: Math.max(f.ballR, b[1] + b[3] * k), vx: b[2] }, performance.now(), cur?.s.ph === 'goal');
     };
     loop();
     return () => cancelAnimationFrame(raf);

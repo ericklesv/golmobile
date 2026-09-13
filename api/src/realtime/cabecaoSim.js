@@ -1,12 +1,12 @@
 /**
  * Cabeção — simulação 2D (estilo head soccer) que roda NO SERVIDOR a 30 Hz.
- * Unidades lógicas: campo 1000 × 500, y cresce para cima, chão em y = 0.
+ * Unidades lógicas: campo 800 × 400, y cresce para cima, chão em y = 0.
  * Jogador 0 defende o gol da esquerda (ataca para a direita); jogador 1 o contrário.
  * Puro (sem I/O): recebe entradas, avança `step(dt)`, devolve estado serializável.
  */
 export const FIELD = {
   w: 800, h: 400,
-  goalW: 56, goalH: 168, barH: 10,       // boca do gol (profundidade), altura, espessura do travessão
+  goalW: 112, goalH: 206, barH: 10,      // boca do gol (profundidade), altura, espessura do travessão — casam com a textura do gol
   playerR: 50, ballR: 17,                // jogador = círculo de raio R (cabeça grande) apoiado no chão
   speed: 290, jump: 560, gravity: 1400,  // jogador
   ballGravity: 1000, ballMax: 950, bounce: 0.78, groundFriction: 0.985,
@@ -27,7 +27,7 @@ export function createSim() {
 }
 
 function mkPlayer(i) {
-  return { x: i === 0 ? 180 : 620, y: 0, vx: 0, vy: 0, face: i === 0 ? 1 : -1, kick: 0, grounded: true };
+  return { x: i === 0 ? 230 : 570, y: 0, vx: 0, vy: 0, face: i === 0 ? 1 : -1, kick: 0, grounded: true };
 }
 function mkBall() { return { x: 400, y: 260, vx: 0, vy: 0 }; }
 function blankInput() { return { l: 0, r: 0, j: 0, k: 0, jEdge: 0, kEdge: 0 }; }

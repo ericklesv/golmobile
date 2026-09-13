@@ -26,12 +26,47 @@ function roomFor(user, name) {
   throw badRequest('Sala inválida.');
 }
 
-function view(m) {
+function view(m, mentions) {
   const lvl = levelOf(m.user);
   return {
-    id: m.id, text: m.text, color: m.color, at: m.createdAt,
+    id: m.id, text: m.text, color: m.color, at: m.createdAt, mentions: mentionsOf(m.text, mentions),
     user: { id: m.user.id, nick: m.user.nick, avatarUrl: m.user.avatarUrl ?? null, level: lvl.lvl, levelName: lvl.name, vip: isVip(m.user), nickColor: m.user.nickColor ?? null, team: teamView(m.user.team) },
   };
+}
+
+// Menções: @nick vira link no cliente. Resolvidas aqui a cada leitura (mensagens antigas
+// também funcionam). Nick permite ponto/hífen no fim, então "@fulano." testa as duas formas.
+const MENTION_RE = /@([a-zA-Z0-9_.\-]{3,14})/g;
+
+function mentionTokens(text) {
+  const out = new Set();
+  for (const m of text.matchAll(MENTION_RE)) {
+    const t = m[1].toLowerCase();
+    out.add(t);
+    const stripped = t.replace(/[._\-]+$/, '');
+    if (stripped.length >= 3) out.add(stripped);
+  }
+  return out;
+}
+
+/** Mapa nickLower -> { nick, avatarUrl } com só os usuários citados nestas mensagens. */
+async function resolveMentions(texts) {
+  const tokens = new Set();
+  for (const t of texts) for (const tok of mentionTokens(t)) tokens.add(tok);
+  if (!tokens.size) return {};
+  const users = await prisma.user.findMany({
+    where: { nickLower: { in: [...tokens] } },
+    select: { nick: true, nickLower: true, avatarUrl: true },
+  });
+  return Object.fromEntries(users.map((u) => [u.nickLower, { nick: u.nick, avatarUrl: u.avatarUrl ?? null }]));
+}
+
+/** Só as menções desta mensagem (subconjunto do mapa geral), ou null se não tem nenhuma. */
+function mentionsOf(text, all) {
+  if (!all) return null;
+  const own = {};
+  for (const tok of mentionTokens(text)) if (all[tok]) own[tok] = all[tok];
+  return Object.keys(own).length ? own : null;
 }
 
 const userSel = { include: { team: true } };
@@ -44,8 +79,11 @@ chat.get('/:room', handle(async (req) => {
     where: { room, ...(after ? { id: { gt: after } } : {}) },
     orderBy: { id: 'desc' }, take: 60, include: { user: userSel },
   });
-  const online = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) }, ...(room !== 'geral' ? { teamId: user.teamId } : {}) } });
-  return { room, messages: rows.reverse().map(view), online, colorLevel: CHAT_COLOR_LEVEL, colors: CHAT_COLORS, canColor: levelOf(user).lvl >= CHAT_COLOR_LEVEL };
+  const [online, mentions] = await Promise.all([
+    prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) }, ...(room !== 'geral' ? { teamId: user.teamId } : {}) } }),
+    resolveMentions(rows.map((r) => r.text)),
+  ]);
+  return { room, messages: rows.reverse().map((m) => view(m, mentions)), online, colorLevel: CHAT_COLOR_LEVEL, colors: CHAT_COLORS, canColor: levelOf(user).lvl >= CHAT_COLOR_LEVEL };
 }));
 
 const schema = z.object({ text: z.string().trim().min(1, 'Escreva algo.').max(MAX_LEN, `Máximo de ${MAX_LEN} caracteres.`), color: z.string().optional() });
@@ -66,5 +104,5 @@ chat.post('/:room', handle(async (req) => {
   }
   lastSent.set(user.id, now);
   const m = await prisma.chatMessage.create({ data: { room, userId: user.id, text, color }, include: { user: userSel } });
-  return view(m);
+  return view(m, await resolveMentions([m.text]));
 }));

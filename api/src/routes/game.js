@@ -170,7 +170,7 @@ game.get('/players/active', handle(async () => {
 
 game.get('/players/search', handle(async (req) => {
   const q = String(req.query.q || '').trim().toLowerCase();
-  if (q.length < 2) return [];
+  if (q.length < 1) return [];
   const users = await prisma.user.findMany({ where: { nickLower: { contains: q } }, take: 20, orderBy: { goalsTotal: 'desc' }, include: { team: teamSel } });
   return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, avatarUrl: u.avatarUrl, team: teamView(u.team) }));
 }));

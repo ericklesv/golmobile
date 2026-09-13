@@ -95,7 +95,7 @@ export const api = {
     return data as Me;
   },
   removeAvatar: () => req<Me>('DELETE', '/api/uploads/avatar'),
-  search: (q: string) => req<{ nick: string; goalsTotal: number; team: any }[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
+  search: (q: string) => req<{ nick: string; goalsTotal: number; avatarUrl: string | null; team: any }[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
   feed: (team?: string) => req<any[]>('GET', `/api/feed${team ? `?team=${team}` : ''}`),
   // loja
   shop: () => req<ShopView>('GET', '/api/shop'),

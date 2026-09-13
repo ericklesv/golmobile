@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
-import type { ChatMessage, ChatRoom } from '../lib/types';
+import type { ChatMention, ChatMessage, ChatRoom } from '../lib/types';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { Tabs, Spinner } from '../components/ui';
@@ -15,6 +15,48 @@ export function chatLastSeen(): number { try { return Number(localStorage.getIte
 
 function hhmm(iso: string) { const d = new Date(iso); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
 
+// Menções @nick — o servidor resolve quem existe (m.mentions); aqui só viram link.
+const MENTION_RE = /@([a-zA-Z0-9_.\-]{3,14})/g;
+
+function MsgText({ m }: { m: ChatMessage }) {
+  const style = { color: m.color ?? '#14335F', textShadow: m.color ? '0 1px 0 rgba(0,0,0,0.25)' : undefined };
+  const cls = 'break-words text-[14px] font-bold leading-snug';
+  if (!m.mentions) return <p className={cls} style={style}>{m.text}</p>;
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  for (const match of m.text.matchAll(MENTION_RE)) {
+    const idx = match.index!;
+    let token = match[1];
+    let hit: ChatMention | undefined = m.mentions[token.toLowerCase()];
+    if (!hit) {
+      const stripped = token.replace(/[._\-]+$/, '');
+      if (stripped.length >= 3) hit = m.mentions[stripped.toLowerCase()];
+      if (hit) token = stripped;
+    }
+    if (!hit) continue;
+    if (idx > last) parts.push(m.text.slice(last, idx));
+    parts.push(
+      <Link key={idx} to={`/jogador/${encodeURIComponent(hit.nick)}`}
+        className="mx-0.5 inline-flex translate-y-[3px] items-center gap-1 rounded-full bg-navy-deep/10 py-px pl-0.5 pr-1.5 align-baseline text-[13px] font-extrabold text-sky-deep">
+        <img src={hit.avatarUrl || '/ui/ico-userthumbnail.png'} className="h-4 w-4 rounded-full object-cover" alt="" />
+        @{hit.nick}
+      </Link>,
+    );
+    last = idx + 1 + token.length;
+  }
+  if (last === 0) return <p className={cls} style={style}>{m.text}</p>;
+  parts.push(m.text.slice(last));
+  return <p className={cls} style={style}>{parts}</p>;
+}
+
+/** "@qua" antes do cursor = autocomplete ativo; devolve onde o @ começa e o que já foi digitado. */
+function detectMention(value: string, caret: number): { start: number; q: string } | null {
+  const m = /(^|\s)@([a-zA-Z0-9_.\-]{0,14})$/.exec(value.slice(0, caret));
+  return m ? { start: caret - m[2].length - 1, q: m[2] } : null;
+}
+
+type Sug = { nick: string; avatarUrl: string | null; team: any };
+
 export function ChatScreen() {
   const me = useAuth((s) => s.me)!;
   const nav = useNavigate();
@@ -24,8 +66,13 @@ export function ChatScreen() {
   const [text, setText] = useState('');
   const [color, setColor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mention, setMention] = useState<{ start: number; q: string } | null>(null);
+  const [sug, setSug] = useState<Sug[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const msgsRef = useRef<ChatMessage[]>([]);
   const lastId = useRef(0);
+  useEffect(() => { msgsRef.current = msgs ?? []; }, [msgs]);
 
   // carga inicial + polling incremental a cada 3 s
   useEffect(() => {
@@ -53,6 +100,57 @@ export function ChatScreen() {
 
   useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs?.length]);
 
+  // Sugestões do @: primeiro quem já falou na sala, depois a busca geral de jogadores.
+  useEffect(() => {
+    if (!mention) { setSug([]); return; }
+    const q = mention.q.toLowerCase();
+    const seen = new Set<string>([me.nick.toLowerCase()]);
+    const local: Sug[] = [];
+    const list = msgsRef.current;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const u = list[i].user;
+      const key = u.nick.toLowerCase();
+      if (seen.has(key) || !key.includes(q)) continue;
+      seen.add(key);
+      local.push({ nick: u.nick, avatarUrl: u.avatarUrl, team: u.team });
+    }
+    setSug(local.slice(0, 6));
+    if (!q) return;
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const rows = await api.search(q);
+        if (!alive) return;
+        setSug((prev) => {
+          const have = new Set(prev.map((p) => p.nick.toLowerCase()));
+          have.add(me.nick.toLowerCase());
+          return [...prev, ...rows.filter((r) => !have.has(r.nick.toLowerCase()))].slice(0, 6);
+        });
+      } catch {}
+    }, 250);
+    return () => { alive = false; clearTimeout(t); };
+  }, [mention, me.nick]);
+
+  function onInput(e: React.ChangeEvent<HTMLInputElement> | React.SyntheticEvent<HTMLInputElement>) {
+    const el = e.currentTarget;
+    setText(el.value);
+    setMention(detectMention(el.value, el.selectionStart ?? el.value.length));
+  }
+
+  function pickMention(nick: string) {
+    if (!mention) return;
+    const el = inputRef.current;
+    const caret = el?.selectionStart ?? text.length;
+    const next = (text.slice(0, mention.start) + '@' + nick + ' ' + text.slice(caret)).slice(0, 200);
+    setText(next); setMention(null); setSug([]);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const pos = Math.min(mention.start + nick.length + 2, next.length);
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
   async function send(e: React.FormEvent) {
     e.preventDefault();
     const t = text.trim();
@@ -62,7 +160,7 @@ export function ChatScreen() {
       const m = await api.chatSend(room, t, color ?? undefined);
       setMsgs((prev) => [...(prev ?? []), m].slice(-150));
       lastId.current = Math.max(lastId.current, m.id);
-      setText('');
+      setText(''); setMention(null);
       sound.play('coin');
     } catch (err) { toast((err as Error).message, 'error'); }
     finally { setBusy(false); }
@@ -97,7 +195,7 @@ export function ChatScreen() {
                       <span className="text-[9px] font-bold uppercase text-muted">lvl {m.user.level} · {m.user.levelName}</span>
                       <span className="ml-auto pl-2 text-[9px] font-bold text-muted">{hhmm(m.at)}</span>
                     </div>
-                    <p className="break-words text-[14px] font-bold leading-snug" style={{ color: m.color ?? '#14335F', textShadow: m.color ? '0 1px 0 rgba(0,0,0,0.25)' : undefined }}>{m.text}</p>
+                    <MsgText m={m} />
                   </div>
                 </li>
               );
@@ -116,8 +214,23 @@ export function ChatScreen() {
         ) : (
           <div className="mb-1 px-1 text-[10px] font-extrabold text-white/80">Mensagens coloridas liberam no nível {info?.colorLevel ?? 8} (Titular).</div>
         )}
-        <div className="flex items-end gap-2">
-          <input className="field flex-1" value={text} onChange={(e) => setText(e.target.value)} maxLength={200} placeholder={room === 'geral' ? 'Fala pra galera…' : `Fala pra torcida do ${me.team.name}…`} style={color ? { color } : undefined} />
+        <div className="relative flex items-end gap-2">
+          {mention && sug.length > 0 && (
+            <div className="no-drag absolute bottom-full left-0 right-0 z-10 mb-2 overflow-hidden rounded-2xl bg-white shadow-[0_6px_18px_rgba(0,0,0,0.35)]">
+              {sug.map((s) => (
+                <button type="button" key={s.nick} onMouseDown={(e) => { e.preventDefault(); pickMention(s.nick); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-sky/15">
+                  <Avatar url={s.avatarUrl} size={26} />
+                  <span className="text-[13px] font-extrabold text-navy-ink">{s.nick}</span>
+                  {s.team && <Shield team={s.team} size={15} />}
+                </button>
+              ))}
+            </div>
+          )}
+          <input ref={inputRef} className="field flex-1" value={text} onChange={onInput} onSelect={onInput}
+            onKeyDown={(e) => { if (e.key === 'Escape' && mention) { e.preventDefault(); setMention(null); } }}
+            onBlur={() => setMention(null)}
+            maxLength={200} placeholder={room === 'geral' ? 'Fala pra galera…' : `Fala pra torcida do ${me.team.name}…`} style={color ? { color } : undefined} />
           <button className="btn btn-green btn-md px-5" disabled={busy || !text.trim()}>{busy ? '…' : 'Enviar'}</button>
         </div>
       </form>

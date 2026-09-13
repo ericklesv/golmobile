@@ -133,7 +133,7 @@ game.get('/teams/:slug', handle(async (req) => {
     round ? prisma.standing.findUnique({ where: { seasonId_teamId: { seasonId: round.seasonId, teamId: team.id } } }) : null,
     prisma.user.count({ where: { teamId: team.id } }),
     // torcedores ativos = entraram nas últimas 24 h
-    prisma.user.findMany({ where: { teamId: team.id, lastSeenAt: { gt: new Date(now.getTime() - 24 * 3600_000) } }, select: { nick: true, goalsTotal: true, lastSeenAt: true }, orderBy: { lastSeenAt: 'desc' }, take: 100 }),
+    prisma.user.findMany({ where: { teamId: team.id, lastSeenAt: { gt: new Date(now.getTime() - 24 * 3600_000) } }, select: { nick: true, goalsTotal: true, lastSeenAt: true, avatarUrl: true }, orderBy: { lastSeenAt: 'desc' }, take: 100 }),
     round ? topScorers({ roundId: round.id, teamId: team.id }, 10) : [],
     round ? topScorers({ seasonId: round.seasonId, teamId: team.id }, 10) : [],
     topScorers({ hourKey: hourKey(now), teamId: team.id }, 10),
@@ -145,7 +145,7 @@ game.get('/teams/:slug', handle(async (req) => {
   const totalGoals = await prisma.goal.count({ where: { teamId: team.id } });
   return {
     team: teamView(team), slogan: team.slogan,
-    members, active: active.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, online: u.lastSeenAt.getTime() > now.getTime() - 2 * 60_000 })), totalGoals,
+    members, active: active.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, avatarUrl: u.avatarUrl, online: u.lastSeenAt.getTime() > now.getTime() - 2 * 60_000 })), totalGoals,
     standing: standing ? { position, ...standing } : null,
     match: match ? matchView(match) : null,
     tops: { hour: hourTop, round: roundTop, season: seasonTop },
@@ -154,11 +154,22 @@ game.get('/teams/:slug', handle(async (req) => {
 }));
 
 // ─── Jogadores ──────────────────────────────────────────────────────────────
+// Jogadores ativos nas últimas 24 h (para a listagem clicável)
+game.get('/players/active', handle(async () => {
+  const now = Date.now();
+  const users = await prisma.user.findMany({
+    where: { lastSeenAt: { gt: new Date(now - 24 * 3600_000) } },
+    orderBy: { lastSeenAt: 'desc' }, take: 300,
+    select: { nick: true, goalsTotal: true, goalsRound: true, lastSeenAt: true, avatarUrl: true, vipUntil: true, team: teamSel },
+  });
+  return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, goalsRound: u.goalsRound, avatarUrl: u.avatarUrl, lastSeenAt: u.lastSeenAt, online: u.lastSeenAt.getTime() > now - 2 * 60_000, vip: !!(u.vipUntil && u.vipUntil.getTime() > now), team: teamView(u.team) }));
+}));
+
 game.get('/players/search', handle(async (req) => {
   const q = String(req.query.q || '').trim().toLowerCase();
   if (q.length < 2) return [];
   const users = await prisma.user.findMany({ where: { nickLower: { contains: q } }, take: 20, orderBy: { goalsTotal: 'desc' }, include: { team: teamSel } });
-  return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, team: teamView(u.team) }));
+  return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, avatarUrl: u.avatarUrl, team: teamView(u.team) }));
 }));
 
 game.get('/players/:nick', handle(async (req) => {

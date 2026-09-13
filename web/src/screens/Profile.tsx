@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { Shield } from '../components/Shield';
+import { Avatar } from '../components/Avatar';
 import { Panel, Bar } from '../components/ui';
 import { toast } from '../components/Toast';
 import { money as fmt, num } from '../lib/format';
@@ -30,22 +31,25 @@ export function ProfileScreen() {
   const [q, setQ] = useState('');
   const [found, setFound] = useState<{ nick: string; team: any }[]>([]);
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  async function pickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|webp|gif)$/i.test(f.type)) { toast('Envie PNG, JPG, WEBP ou GIF.', 'error'); return; }
+    if (f.size > 5 * 1024 * 1024) { toast('A imagem precisa ter no máximo 5 MB.', 'error'); return; }
+    setBusy(true);
+    try { setMe(await api.uploadAvatar(f)); toast('Foto de perfil atualizada!', 'success'); }
+    catch (err) { toast((err as Error).message, 'error'); } finally { setBusy(false); }
+  }
+  async function removeAvatar() {
+    if (busy) return; setBusy(true);
+    try { setMe(await api.removeAvatar()); toast('Foto removida.', 'success'); } catch (err) { toast((err as Error).message, 'error'); } finally { setBusy(false); }
+  }
 
-  const dexPrice = meta?.money.DEXTERITY_PRICE ?? 1000;
   const dexMax = meta?.dexterityMax ?? 30;
 
-  async function buyDex() {
-    if (busy) return; setBusy(true);
-    try { setMe(await api.buyDexterity(1)); toast('+1 destreza! Mais chance nos pênaltis e faltas.', 'success'); }
-    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
-  }
   async function saveBio() {
     try { setMe(await api.setBio(bio)); toast('Texto pessoal salvo.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
-  }
-  async function activateVip() {
-    if (busy) return; setBusy(true);
-    try { setMe(await api.activateVip(1)); toast('VIP ativado por 1 dia. Recargas pela metade!', 'success'); }
-    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   async function search(v: string) {
     setQ(v);
@@ -57,10 +61,12 @@ export function ProfileScreen() {
     <div className="flex flex-col gap-4">
       <section className="panel-navy">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <img src="/ui/ico-userthumbnail.png" alt="" className="h-20 w-20" />
+          <button onClick={() => fileRef.current?.click()} className="no-drag relative shrink-0" aria-label="Trocar foto de perfil" disabled={busy}>
+            <Avatar url={me.avatarUrl} size={80} />
             <Shield team={me.team} size={34} className="absolute -bottom-1 -right-1" />
-          </div>
+            <span className="absolute -left-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full bg-orange shadow"><img src="/ui/pi-edit.png" className="h-4 w-4" alt="" /></span>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={pickAvatar} />
+          </button>
           <div className="min-w-0 flex-1">
             <div className={`t-display truncate text-3xl ${me.vip ? 'text-sky-light' : 't-out'}`}>{me.nick} {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}</div>
             <div className="text-[12px] font-extrabold text-white/90">{me.gender === 'F' ? 'Jogadora' : 'Jogador'} do <Link to={`/time/${me.team.slug}`} className="t-gold t-display">{me.team.name}</Link></div>
@@ -72,6 +78,11 @@ export function ProfileScreen() {
           {me.levelBonus > 0 && <div className="mt-1 text-center text-[11px] font-extrabold text-white/80">{num(me.goalsTotal)} gols + {num(me.levelBonus)} do Termo do dia</div>}
           {me.level.next?.skill && <div className="mt-1 text-center text-[11px] font-extrabold text-white/80">Próximo nível libera: {me.level.next.skill}</div>}
         </div>
+        <div className="mt-3 flex gap-2">
+          <button onClick={() => fileRef.current?.click()} disabled={busy} className="btn btn-sky btn-sm flex-1">{me.avatarUrl ? 'Trocar foto' : 'Enviar foto'}</button>
+          {me.avatarUrl && <button onClick={removeAvatar} disabled={busy} className="btn btn-gray btn-sm">Remover</button>}
+        </div>
+        <p className="mt-1 text-center text-[10px] font-bold text-white/70">PNG, JPG, WEBP ou GIF animado · até 5 MB</p>
       </section>
 
       <div className="grid grid-cols-3 gap-2">
@@ -95,19 +106,8 @@ export function ProfileScreen() {
         </div>
       </Panel>
 
-      <Panel title="LOJA DO JOGADOR" ribbon="yellow">
-        <div className="flex items-center gap-3 rounded-xl bg-sky/10 p-2">
-          <img src="/ui/ico-energy.png" className="h-10 w-10 shrink-0" alt="" />
-          <div className="flex-1 text-[12px] font-bold text-muted"><b className="text-navy-ink">Destreza</b> · +1% de acerto em pênaltis e faltas por ponto (máx. {dexMax}). {fmt(dexPrice)} a unidade.</div>
-          <button onClick={buyDex} disabled={busy || me.dexterity >= dexMax || me.money < dexPrice} className="btn btn-orange btn-sm">+1</button>
-        </div>
-        <div className="mt-2 flex items-center gap-3 rounded-xl bg-sky/10 p-2">
-          <img src="/ui/ico-crown_silver.png" className="h-10 w-10 shrink-0" alt="" />
-          <div className="flex-1 text-[12px] font-bold text-muted"><b className="text-navy-ink">VIP</b> · recargas pela metade, nome azul. Você tem <b className="text-navy-ink">{me.vipDays}</b> unidade(s) ganhas em prêmios.</div>
-          <button onClick={activateVip} disabled={busy || me.vipDays < 1} className="btn btn-blue btn-sm">1 dia</button>
-        </div>
-        <p className="mt-2 text-center text-[11px] font-bold text-muted">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL}. <Link to="/regras" className="text-orange-deep">Níveis e regras</Link></p>
-      </Panel>
+      <Link to="/loja" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-goldpouch.png" className="h-6 w-6" alt="" /> Loja: destreza, VIP e itens</Link>
+      <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL} · <Link to="/regras" className="t-gold t-display">níveis e regras</Link></p>
 
       <Panel title="TEXTO PESSOAL" ribbon="green">
         <textarea className="field min-h-[80px] text-sm" maxLength={400} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Grite para a torcida (máx. 400 caracteres)" />

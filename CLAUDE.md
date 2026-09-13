@@ -62,6 +62,8 @@ depois que o novo estiver estável. Não instalar nada dele.
 ## Endpoints
 `POST /api/auth/register|login` · `GET /api/me` · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party`
+`POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
+`GET /api/players/active` (24 h)
 `GET /api/daily|daily/termo|daily/quiz` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}` (minigames diários)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|ban` (header `x-admin-key`)
@@ -78,6 +80,8 @@ sudo -u brgol pm2 logs brgol-api --lines 100
 bash /usr/local/bin/brgol-deploy.sh          # forçar deploy manual
 ```
 Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos nunca no repo.
+Uploads (fotos de perfil) ficam em `UPLOADS_DIR=/var/www/brgol/uploads` (fora do repo, dono `brgol`),
+servidos pelo próprio Express em `/api/uploads/`.
 
 ## Regras de trabalho (valem para todo mundo e toda IA no projeto)
 - **Commit + push em `main` a cada alteração concluída** (não acumular trabalho local): o
@@ -91,6 +95,10 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
 - Verificação visual = build (`cd web && npm run build`) + screenshot de produção com Edge
   headless/puppeteer-core (ver `tools/`); se não der para ver, dizer que não viu.
 - Próximos passos combinados estão em **`docs/ROADMAP.md` → "Próximos passos"**. Seguir a ordem.
+- Referência do concorrente (o que copiar/adaptar/descartar): `docs/CONCORRENTE_BRGOL_ONLINE.md`.
+- UI: telas dentro do `Layout` (header + 6 abas: Jogar, Liga, Rankings, Loja, Time, Perfil);
+  o header leva ao perfil e mostra dinheiro e VIP. Rolagem por arraste no PC é global
+  (`web/src/lib/dragScroll.ts`) — botões que não podem iniciar arraste usam a classe `no-drag`.
 
 ## Para o colaborador (ericklesv) e sua IA
 - Tudo que o jogo **já usa** está no git: sprites do kit em `web/public/ui/`, escudos em

@@ -1,4 +1,4 @@
-import type { DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
+import type { ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -67,6 +67,16 @@ export const api = {
   titles: () => req<any[]>('GET', '/api/league/titles'),
   team: (slug: string) => req<TeamPage>('GET', `/api/teams/${slug}`),
   player: (nick: string) => req<PublicPlayer>('GET', `/api/players/${encodeURIComponent(nick)}`),
+  activePlayers: () => req<ActivePlayer[]>('GET', '/api/players/active'),
+  uploadAvatar: async (file: File) => {
+    const fd = new FormData(); fd.append('avatar', file);
+    const headers: Record<string, string> = {}; const t = token.get(); if (t) headers.Authorization = `Bearer ${t}`;
+    const res = await fetch(`${BASE}/api/uploads/avatar`, { method: 'POST', headers, body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, (data as any).error || 'upload', (data as any).message || 'Falha no envio.');
+    return data as Me;
+  },
+  removeAvatar: () => req<Me>('DELETE', '/api/uploads/avatar'),
   search: (q: string) => req<{ nick: string; goalsTotal: number; team: any }[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
   feed: (team?: string) => req<any[]>('GET', `/api/feed${team ? `?team=${team}` : ''}`),
 };

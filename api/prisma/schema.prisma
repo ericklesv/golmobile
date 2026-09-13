@@ -50,6 +50,7 @@ model User {
   passwordHash String
   gender       String    @default("M")
   bio          String?
+  avatarUrl    String?   // /api/uploads/avatars/<id>.<ext>
   isAdmin      Boolean   @default(false)
   bannedUntil  DateTime?
   createdAt    DateTime  @default(now())

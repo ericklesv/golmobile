@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { PublicPlayer } from '../lib/types';
 import { Shield } from '../components/Shield';
+import { Avatar } from '../components/Avatar';
 import { Panel, Spinner, Empty } from '../components/ui';
 import { toast } from '../components/Toast';
 import { num, timeAgo } from '../lib/format';
@@ -32,14 +33,17 @@ export function PlayerScreen() {
     <div className="flex flex-col gap-4">
       <section className="panel-navy">
         <div className="flex items-center gap-3">
-          <div className="relative"><img src="/ui/ico-userthumbnail.png" alt="" className="h-16 w-16" /><Shield team={p.team} size={28} className="absolute -bottom-1 -right-1" /></div>
+          <div className="relative"><Avatar url={p.avatarUrl} size={64} /><Shield team={p.team} size={28} className="absolute -bottom-1 -right-1" /></div>
           <div className="min-w-0 flex-1">
             <div className={`t-display truncate text-3xl ${p.vip ? 'text-sky-light' : 't-out'}`}>{p.nick} {p.vip && <img src="/ui/ico-crown_silver.png" className="ico h-5 w-5" alt="VIP" />}</div>
             <div className="text-[12px] font-extrabold text-white/90"><Link to={`/time/${p.team.slug}`} className="t-gold t-display">{p.team.name}</Link> · {p.online ? <span className="t-green">online</span> : 'offline'}</div>
             <div className="trap trap-orange mt-1 text-[11px] uppercase">Lvl {p.level.lvl} · {p.level.name}</div>
           </div>
         </div>
-        {p.bio && <p className="mt-3 rounded-xl bg-white/15 p-2 text-[13px] font-bold">{p.bio}</p>}
+        <div className="mt-3 rounded-xl bg-white/15 p-2">
+          <div className="t-display text-[10px] uppercase tracking-wider text-white/70">Texto pessoal</div>
+          <p className={`text-[13px] font-bold ${p.bio ? 'text-white' : 'italic text-white/60'}`}>{p.bio || 'Este jogador ainda não escreveu nada.'}</p>
+        </div>
       </section>
 
       <div className="grid grid-cols-4 gap-2 text-center">

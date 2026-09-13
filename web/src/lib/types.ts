@@ -9,7 +9,7 @@ export interface Team {
 export interface Cooldown { cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean }
 
 export interface Me {
-  id: number; nick: string; email: string; gender: string; bio: string | null; isAdmin: boolean; createdAt: string;
+  id: number; nick: string; email: string; gender: string; bio: string | null; avatarUrl: string | null; isAdmin: boolean; createdAt: string;
   team: Team;
   money: number; vipDays: number; vipUntil: string | null; vip: boolean; dexterity: number;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
@@ -30,7 +30,7 @@ export interface Me {
   serverTime: number;
 }
 
-export interface TopRow { position: number; userId: number; nick: string; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean }
+export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean }
 
 export interface MatchView {
   id: number; serie: Serie; status: 'LIVE' | 'FINISHED';
@@ -124,7 +124,7 @@ export interface League {
 }
 
 export interface PublicPlayer {
-  id: number; nick: string; gender: string; bio: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number;
+  id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
   positions: { geral: number; penal: number; falta: number; trilha: number };
@@ -132,9 +132,11 @@ export interface PublicPlayer {
 }
 
 export interface TeamPage {
-  team: Team; slogan: string | null; members: number; active: { nick: string; goalsTotal: number; online: boolean }[]; totalGoals: number;
+  team: Team; slogan: string | null; members: number; active: { nick: string; goalsTotal: number; avatarUrl: string | null; online: boolean }[]; totalGoals: number;
   standing: (Standing & { position: number }) | null;
   match: MatchView | null;
   tops: { hour: TopRow[]; round: TopRow[]; season: TopRow[] };
   titles: { season: number; competition: string; place: number }[];
 }
+
+export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: number; avatarUrl: string | null; lastSeenAt: string; online: boolean; vip: boolean; team: Team | null }

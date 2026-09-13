@@ -34,10 +34,12 @@ export function PartyScreen() {
     try {
       const r = await api.party();
       // a roda do pack tem a primeira fatia centrada no topo; gira até a fatia sorteada ficar sob a seta
-      const target = 360 * 5 + (360 - r.segment * step);
-      const from = rot % 360;
-      await ctrl.start({ rotate: [from, from + target], transition: { duration: 3.8, ease: [0.15, 0.85, 0.25, 1] } });
-      setRot(from + target);
+      // ângulo ABSOLUTO em que a fatia sorteada fica sob a seta (fatia 0 centrada no topo,
+      // fatia i centrada em i*step no sentido horário) + 5 voltas a partir do giro atual
+      const finalAbs = (360 - r.segment * step) % 360;
+      const to = Math.ceil(rot / 360) * 360 + 360 * 4 + finalAbs;
+      await ctrl.start({ rotate: [rot, to], transition: { duration: 3.8, ease: [0.15, 0.85, 0.25, 1] } });
+      setRot(to);
       setResult({ win: r.win, prize: r.prize });
       await refresh();
       setTimeout(() => setOverlay(true), 250);
@@ -55,7 +57,7 @@ export function PartyScreen() {
         <div className="ribbon ribbon-yellow">PARTY GOL</div>
         <div className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</div>
       </div>
-      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">O cassino do BRGOL. Aposta de <span className="t-gold t-display">{fmt(bet)}</span>, acertou leva <span className="t-green t-display">{fmt(prize)}</span>. Só dinheiro virtual!</p>
+      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">A roleta do BRGOL: aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire. Parou em <span className="t-gold t-display">GOL</span> ({segs.filter((s) => s === 'GOL').length} de {n} casas), você recebe <span className="t-green t-display">{fmt(prize)}</span>; em ERROU, perde a aposta. Só dinheiro virtual!</p>
 
       <div className="relative mx-auto mt-4 w-[320px]">
         <img src="/ui/roulette-bg.png" alt="" className="absolute inset-0 h-full w-full" />

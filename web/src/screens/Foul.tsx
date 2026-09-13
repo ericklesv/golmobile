@@ -8,6 +8,7 @@ import type { KickResult } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Countdown, Spinner, useCountdown } from '../components/ui';
 import { toast } from '../components/Toast';
+import { KickArrowButton } from '../components/KickArrows';
 import { ease, clamp01 } from '../scenes/common';
 import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, preloadModels, type KeeperHandle } from '../scenes/models';
 
@@ -138,10 +139,11 @@ export function FoulScreen() {
         <p className="t-display t-out relative text-center text-[13px] uppercase tracking-widest">
           {shot ? (result?.goal ? 'É GOL!' : 'Não foi dessa vez…') : `Escolha a cobrança · ${Math.round((0.5 + me.dexterity / 100) * 100)}% de acerto`}
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          <button onClick={() => kick('left')} disabled={!ready || busy || !!shot} className="btn btn-sky btn-lg relative text-[16px]">{busy && !shot ? <Spinner /> : 'Por fora ‹'}</button>
-          <button onClick={() => kick('over')} disabled={!ready || busy || !!shot} className="btn btn-sky btn-lg relative text-[16px]">{busy && !shot ? <Spinner /> : 'Por cima'}</button>
-          <button onClick={() => kick('right')} disabled={!ready || busy || !!shot} className="btn btn-sky btn-lg relative text-[16px]">{busy && !shot ? <Spinner /> : '› Por fora'}</button>
+        <div className="relative flex items-end justify-around px-2">
+          <KickArrowButton dir="left" label="Por fora" onClick={() => kick('left')} disabled={!ready || busy || !!shot} />
+          <KickArrowButton dir="up" label="Por cima" onClick={() => kick('over')} disabled={!ready || busy || !!shot} />
+          <KickArrowButton dir="right" label="Por fora" onClick={() => kick('right')} disabled={!ready || busy || !!shot} />
+          {busy && !shot && <div className="absolute inset-0 flex items-center justify-center"><Spinner /></div>}
         </div>
         {!me.cooldowns.FOUL.unlocked && <p className="t-display t-red relative text-center text-[13px]">Falta libera no nível 1 (Pintinho, 22 gols).</p>}
       </div>

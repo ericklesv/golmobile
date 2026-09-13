@@ -21,6 +21,9 @@ import { ProfileScreen } from './screens/Profile';
 import { PlayerScreen } from './screens/Player';
 import { RulesScreen } from './screens/Rules';
 import { LandingScreen } from './screens/Landing';
+import { ShopScreen } from './screens/Shop';
+import { ActiveScreen } from './screens/Active';
+import { installDragScroll } from './lib/dragScroll';
 
 function Splash() {
   return (
@@ -46,7 +49,7 @@ export default function App() {
   const boot = useAuth((s) => s.boot);
   const loading = useAuth((s) => s.loading);
   const me = useAuth((s) => s.me);
-  useEffect(() => { boot(); }, []);
+  useEffect(() => { boot(); return installDragScroll(); }, []);
   if (loading) return <Splash />;
   return (
     <>
@@ -62,6 +65,8 @@ export default function App() {
           <Route path="/time" element={<TeamScreen />} />
           <Route path="/time/:slug" element={<TeamScreen />} />
           <Route path="/perfil" element={<ProfileScreen />} />
+          <Route path="/loja" element={<ShopScreen />} />
+          <Route path="/ativos" element={<ActiveScreen />} />
           <Route path="/jogador/:nick" element={<PlayerScreen />} />
           <Route path="/regras" element={<RulesScreen />} />
         </Route>

@@ -8,6 +8,7 @@ import type { KickResult } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Countdown, Spinner, useCountdown } from '../components/ui';
 import { toast } from '../components/Toast';
+import { KickArrowButton } from '../components/KickArrows';
 import { ease, clamp01 } from '../scenes/common';
 import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, preloadModels, type KeeperHandle } from '../scenes/models';
 
@@ -129,12 +130,11 @@ export function PenaltyScreen() {
         <p className="t-display t-out relative text-center text-[13px] uppercase tracking-widest">
           {shot ? (result?.goal ? 'É GOL!' : 'O goleiro foi no canto certo…') : `Escolha o canto · destreza ${me.dexterity} · ${Math.round((2 / 3 + me.dexterity / 100) * 100)}% de acerto`}
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          {(['left', 'center', 'right'] as Dir[]).map((d) => (
-            <button key={d} onClick={() => kick(d)} disabled={!ready || busy || !!shot} className="btn btn-orange btn-lg relative text-[19px]">
-              {busy && !shot ? <Spinner /> : d === 'left' ? 'Esquerda' : d === 'center' ? 'Meio' : 'Direita'}
-            </button>
-          ))}
+        <div className="relative flex items-end justify-around px-2">
+          <KickArrowButton dir="left" label="Esquerda" onClick={() => kick('left')} disabled={!ready || busy || !!shot} />
+          <KickArrowButton dir="up" label="Meio" onClick={() => kick('center')} disabled={!ready || busy || !!shot} />
+          <KickArrowButton dir="right" label="Direita" onClick={() => kick('right')} disabled={!ready || busy || !!shot} />
+          {busy && !shot && <div className="absolute inset-0 flex items-center justify-center"><Spinner /></div>}
         </div>
         {!ready && me.cooldowns.PENALTY.unlocked && !shot && <p className="t-display t-out relative text-center text-[12px]">Recarga: {me.vip ? '5 min (VIP)' : '10 min · VIP bate a cada 5'}</p>}
       </div>

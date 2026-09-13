@@ -23,7 +23,7 @@ export function cooldownsView(user, now = Date.now()) {
 export function meView(user, now = Date.now()) {
   const level = levelOf(user);
   return {
-    id: user.id, nick: user.nick, email: user.email, gender: user.gender, bio: user.bio,
+    id: user.id, nick: user.nick, email: user.email, gender: user.gender, bio: user.bio, avatarUrl: user.avatarUrl ?? null,
     isAdmin: user.isAdmin, createdAt: user.createdAt,
     team: teamView(user.team),
     money: user.money, vipDays: user.vipDays, vipUntil: user.vipUntil, vip: isVip(user, now),
@@ -49,7 +49,7 @@ export function meView(user, now = Date.now()) {
 export function publicView(user, now = Date.now()) {
   const level = levelOf(user);
   return {
-    id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, createdAt: user.createdAt,
+    id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, avatarUrl: user.avatarUrl ?? null, createdAt: user.createdAt,
     team: teamView(user.team), vip: isVip(user, now), dexterity: user.dexterity,
     goalsTotal: user.goalsTotal, goalsSeason: user.goalsSeason, goalsRound: user.goalsRound, goalsHour: user.goalsHour,
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,

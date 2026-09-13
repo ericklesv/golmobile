@@ -16,4 +16,6 @@ export const config = {
   roundCloseHour: Number(process.env.ROUND_CLOSE_HOUR ?? 19),
   totalRounds: Number(process.env.TOTAL_ROUNDS || 30),
   tz: 'America/Sao_Paulo',
+  // Fotos de perfil etc. (fora do repo; na VPS = /var/www/brgol/uploads)
+  uploadsDir: process.env.UPLOADS_DIR || new URL('../uploads/', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'),
 };

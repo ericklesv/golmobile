@@ -2,19 +2,30 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## Próximos passos (combinados em 13/09/2026 — fazer nesta ordem)
-1. **Uniformes reais nas cenas 3D**: vestir goleiro e barreira com as texturas do pack
-   *Soccer Players Uniforms* (430 camisas em `player/texture/uniform_up`, skins, meiões) —
-   barreira com a camisa do adversário da rodada, goleiro com camisa contrastante.
-   Pipeline: `tools/3d/README.md`. Validar em `/debug3d`.
-2. **Recuperação de senha por e-mail** (SMTP Brevo já usado no Managol; envs SMTP_* na VPS).
-3. **Captcha/anti-bot nos chutes manuais** (o original exigia captcha em pênalti/falta/trilha).
-4. **Cargos do time** (Presidente/Diretor/Capitão/Auxiliar, só VIP) e caixa do time em VIPs.
-5. **Ordem de chute / Secar / Seguir ordem** (mecânica original de ajudar outro jogo).
-6. **Mensagens privadas + amigos online + chat do time.**
-7. Limpeza antes do lançamento: apagar contas de teste `craque_g88qn` e `craque_warvl`
-   (criadas pelos scripts de screenshot) e zerar a temporada (`POST /api/admin/...` a criar).
-Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas do `keeper.glb`.
+## Próximos passos (atualizado 13/09/2026 — fazer nesta ordem)
+Feitos hoje: header (foto · nick/xp · nível → /perfil), foto de perfil (PNG/JPG/WEBP/GIF ≤ 5 MB),
+aba **Loja**, moeda VIP no header, texto pessoal no perfil público, lista de jogadores ativos
+(24 h) clicável, rolagem por arraste no PC, roleta calibrada, setas de chute no pênalti/falta.
+1. **Loja de verdade** (itens listados em "Em breve" na tela `/loja`, regras em
+   `CONCORRENTE_BRGOL_ONLINE.md`): Energia do chute nv 1–5 (28 h), Boost Auto (−60 s, 28 h),
+   Caneleira (última linha da trilha), Chuteiras por nível **sem nome de jogador** (+2 % a +10 %,
+   30 dias), troca de nome/cor do nick. Servidor: tabela `Item`/`UserItem` com validade;
+   `cooldownFor`/chances passam a considerar itens ativos.
+2. **VIP pago** (pacotes de dias via AbacatePay Pix, mesmo fluxo do Managol) e **auto-chute
+   offline para VIP** (scheduler marca o gol a cada 5 min mesmo sem app aberto).
+3. **Uniformes reais nas cenas 3D** (pack Soccer Players Uniforms) — pipeline em `tools/3d/README.md`.
+4. **Recuperação de senha por e-mail** (SMTP Brevo; envs SMTP_* na VPS).
+5. **Captcha/anti-bot nos chutes manuais** + regras/proibições na tela de regras (proxy, flood,
+   auto-penalty, 1 login por IP fixo).
+6. **Cargos do time** (Presidente/Diretor/Capitão/Auxiliar, só VIP), caixa do time (R$ e VIP),
+   **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
+   adversário atual, boosts Gatorade/Energético comprados pelo presidente).
+7. **Missões** de rodada/temporada em tiers com resgate manual + ranking.
+8. **Desafio 1x1** com aposta (dinheiro/VIP), modo hora atual, ELO.
+9. Mensagens privadas, amigos, chat do time; "à frente/atrás" no ranking geral no perfil.
+10. Limpeza pré-lançamento: apagar contas de teste `craque_g88qn` / `craque_warvl` e zerar temporada.
+Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas do `keeper.glb`;
+empate por diferença < 5 % nas copas.
 
 ## Fase 1 — Núcleo 1:1 em produção (brgol.managol.com.br)
 - [x] API Node/Express/Prisma/Postgres na VPS do Managol (porta 4100, PM2 `brgol-api`)

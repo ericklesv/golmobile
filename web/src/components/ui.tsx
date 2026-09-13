@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield } from './Shield';
+import { Avatar } from './Avatar';
 import type { TopRow } from '../lib/types';
 import { countdown } from '../lib/format';
 import { useAuth } from '../store/auth';
@@ -33,7 +34,8 @@ export function TopList({ rows, empty = 'Ninguém marcou ainda.', highlight }: {
           <span className="flex w-7 shrink-0 items-center justify-center">
             {r.position <= 3 ? <img src={medal[r.position - 1]} className="ico h-7 w-7" alt="" /> : <span className="font-display text-base text-muted">{r.position}</span>}
           </span>
-          <Shield team={r.team} size={24} />
+          <Avatar url={r.avatarUrl} size={26} />
+          <Shield team={r.team} size={22} />
           <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className={`min-w-0 flex-1 truncate text-[15px] font-extrabold ${r.vip ? 'text-sky-deep' : 'text-navy-ink'}`}>
             {r.nick}{r.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}
           </Link>

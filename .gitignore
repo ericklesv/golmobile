@@ -10,3 +10,4 @@ Thumbs.db
 .expo/
 .firebase/
 legacy-expo/node_modules/
+api/uploads/

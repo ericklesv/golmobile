@@ -13,6 +13,7 @@ import { play } from './routes/play.js';
 import { game } from './routes/game.js';
 import { admin } from './routes/admin.js';
 import { daily } from './routes/daily.js';
+import { uploads } from './routes/uploads.js';
 import { ensureSeason } from './services/league.js';
 import { startScheduler } from './services/scheduler.js';
 
@@ -37,6 +38,7 @@ app.use('/api/me', me);
 app.use('/api/play', play);
 app.use('/api/admin', admin);
 app.use('/api/daily', daily);
+app.use('/api/uploads', uploads);
 app.use('/api', game);
 
 app.use((_req, res) => res.status(404).json({ error: 'not-found', message: 'Rota não encontrada.' }));

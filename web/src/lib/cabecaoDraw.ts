@@ -32,11 +32,13 @@ function crowdLayer(w: number, h: number) {
     for (let i = 0; i < n; i++) {
       const x = i * 13 + (r % 2) * 6 + rnd() * 3, y = r * rh + rh * 0.55 + rnd() * 3;
       c.fillStyle = cols[Math.floor(rnd() * cols.length)];
-      c.beginPath(); c.arc(x, y - 6, 4.2, 0, Math.PI * 2); c.fill(); // cabeça
+      c.beginPath(); c.arc(x, y - 6, 3.6, 0, Math.PI * 2); c.fill(); // cabeça
       c.fillStyle = cols[Math.floor(rnd() * cols.length)];
-      c.fillRect(x - 5, y - 1, 10, 7); // corpo
+      c.fillRect(x - 4, y - 1, 8, 6); // corpo
     }
   }
+  const shade = c.createLinearGradient(0, 0, 0, h); shade.addColorStop(0, 'rgba(10,25,60,0.45)'); shade.addColorStop(1, 'rgba(10,25,60,0.1)');
+  c.fillStyle = shade; c.fillRect(0, 0, w, h);
   return crowd;
 }
 
@@ -116,27 +118,27 @@ function drawPlayer(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: 
   // pernas + chuteiras (a de trás fica parada; a da frente estica no chute)
   const legOff = p.kick ? 0.6 * R * face : 0;
   ctx.fillStyle = '#F2C9A0';
-  ctx.fillRect(-R * 0.3, -R * 0.26, R * 0.2, R * 0.2);
-  ctx.fillRect(R * 0.1 + legOff * 0.35, -R * 0.26, R * 0.2, R * 0.2);
+  ctx.fillRect(-R * 0.28, -R * 0.24, R * 0.18, R * 0.16);
+  ctx.fillRect(R * 0.1 + legOff * 0.35, -R * 0.24, R * 0.18, R * 0.16);
   ctx.fillStyle = '#1B1B1B';
-  roundRect(ctx, -R * 0.4 - (face < 0 ? R * 0.08 : 0), -R * 0.11, R * 0.4, R * 0.13, 3); ctx.fill();
-  roundRect(ctx, R * 0.02 + legOff, -R * 0.15, R * 0.5, R * 0.15, 3); ctx.fill();
+  roundRect(ctx, -R * 0.38 - (face < 0 ? R * 0.08 : 0), -R * 0.1, R * 0.38, R * 0.12, 3); ctx.fill();
+  roundRect(ctx, R * 0.02 + legOff, -R * 0.13, R * 0.46, R * 0.13, 3); ctx.fill();
   // calção
   ctx.fillStyle = '#F5F5F5';
-  roundRect(ctx, -R * 0.42, -R * 0.48, R * 0.84, R * 0.26, 4); ctx.fill();
+  roundRect(ctx, -R * 0.4, -R * 0.44, R * 0.8, R * 0.24, 4); ctx.fill();
   // camisa (cores do time) com faixa e escudo
   ctx.fillStyle = p.team.colorPrimary;
-  roundRect(ctx, -R * 0.5, -R * 1.02, R, R * 0.6, 8); ctx.fill();
+  roundRect(ctx, -R * 0.5, -R * 0.9, R, R * 0.52, 8); ctx.fill();
   ctx.fillStyle = p.team.colorSecondary;
-  ctx.fillRect(-R * 0.5, -R * 1.02 + R * 0.2, R, R * 0.12);
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2; roundRect(ctx, -R * 0.5, -R * 1.02, R, R * 0.6, 8); ctx.stroke();
+  ctx.fillRect(-R * 0.5, -R * 0.9 + R * 0.16, R, R * 0.1);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2; roundRect(ctx, -R * 0.5, -R * 0.9, R, R * 0.52, 8); ctx.stroke();
   const im = crest(p.team.slug);
-  if (im) ctx.drawImage(im, -R * 0.16, -R * 0.94, R * 0.32, R * 0.32);
+  if (im) ctx.drawImage(im, -R * 0.15, -R * 0.82, R * 0.3, R * 0.3);
   // braço
   ctx.fillStyle = '#F2C9A0';
-  ctx.beginPath(); ctx.arc(face * R * 0.56, -R * 0.66, R * 0.13, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(face * R * 0.56, -R * 0.62, R * 0.12, 0, Math.PI * 2); ctx.fill();
   // cabeça grande (o círculo físico de raio R vai de 0 a 2R; a cabeça ocupa a parte de cima)
-  const hy = -R * 1.12, hr = R * 0.8;
+  const hy = -R * 1.32, hr = R * 0.7;
   ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.arc(3, hy + 4, hr, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0, hy, hr, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.stroke();

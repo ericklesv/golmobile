@@ -26,6 +26,7 @@ import { ActiveScreen } from './screens/Active';
 import { installDragScroll } from './lib/dragScroll';
 import { installClickSounds } from './lib/sound';
 import { LevelsScreen } from './screens/Levels';
+import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
 
 function Splash() {
   return (
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />
+        <Route path="/esqueci-senha" element={me ? <Navigate to="/" replace /> : <EsqueciSenhaScreen />} /><Route path="/redefinir-senha" element={<RedefinirSenhaScreen />} />
         <Route path="*" element={<Navigate to={me ? '/' : '/bem-vindo'} replace />} />
       </Routes>
     </>

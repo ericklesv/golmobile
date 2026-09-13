@@ -85,4 +85,7 @@ export const api = {
   shopEquip: (key: string) => req<Me>('POST', '/api/shop/equip', { key }),
   shopNick: (nick: string) => req<Me>('POST', '/api/shop/nick', { nick }),
   shopNickColor: (color: string | null) => req<Me>('POST', '/api/shop/nick-color', { color }),
+  // recuperação de senha
+  forgotPassword: (email: string) => req<{ ok: boolean; message: string }>('POST', '/api/auth/forgot', { email }),
+  resetPassword: (token: string, password: string) => req<{ ok: boolean; nick: string; message: string }>('POST', '/api/auth/reset', { token, password }),
 };

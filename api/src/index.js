@@ -14,6 +14,7 @@ import { game } from './routes/game.js';
 import { admin } from './routes/admin.js';
 import { daily } from './routes/daily.js';
 import { shop } from './routes/shop.js';
+import { password } from './routes/password.js';
 import { uploads } from './routes/uploads.js';
 import { ensureSeason } from './services/league.js';
 import { startScheduler } from './services/scheduler.js';
@@ -40,6 +41,7 @@ app.use('/api/play', play);
 app.use('/api/admin', admin);
 app.use('/api/daily', daily);
 app.use('/api/shop', shop);
+app.use('/api/auth', password); // forgot / reset (recuperação de senha por e-mail)
 app.use('/api/uploads', uploads);
 app.use('/api', game);
 

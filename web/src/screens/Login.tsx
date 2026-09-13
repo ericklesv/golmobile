@@ -36,6 +36,7 @@ export function LoginScreen() {
           <input className="field" type="password" value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password" required />
         </label>
         <button className="btn btn-green btn-lg mt-2 w-full" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        <p className="text-center text-sm font-bold text-muted"><Link to="/esqueci-senha" className="text-sky-deep">Esqueci minha senha</Link></p>
         <p className="text-center text-sm font-bold text-muted">Novo por aqui? <Link to="/cadastro" className="text-orange-deep">Crie seu jogador</Link></p>
       </form>
     </div>

@@ -107,6 +107,7 @@ model User {
   dailyGames  DailyGame[]
   items       UserItem[]
   shopLogs    ShopLog[]
+  passwordResets PasswordReset[]
 
   @@index([teamId])
   @@index([goalsTotal])
@@ -182,6 +183,19 @@ model ShopLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// Recuperação de senha por e-mail: token de uso único (guardado como hash SHA-256) com validade.
+model PasswordReset {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Season {

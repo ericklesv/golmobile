@@ -43,10 +43,12 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Minigames diários** (`services/daily.js`, tabela `DailyGame`): 1 partida por jogador,
   por jogo, por dia. Cada um vira num horário: **Termo à meia-noite**, **Quiz ao meio-dia**
   (Brasília; `dayNumber`/`nextMidnight` e `quizDayNumber`/`nextNoon` em `time.js`), a
-  **Memória dos Escudos à meia-noite**. A Home mostra o **slider horizontal de minigames**
+  **Memória dos Escudos à meia-noite**, as **Estatísticas às 13h** (`statsDayNumber`/
+  `nextStatsReset`). A Home mostra o **slider horizontal de minigames**
   (`MinigameSlider.tsx`, dados de `GET /api/daily/hub`): catálogo em `MINIGAMES` (`rules.js`)
-  com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, De que time é? 4,
-  Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` = card "EM BREVE".
+  com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, Estatísticas 3,
+  De que time é? 4, Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
+  card "EM BREVE". O nível também é conferido no servidor ao começar (403 `locked`).
   Minigame novo: entrada em `MINIGAMES` (tirar o `soon`) + `DAILY_GAMES` + `calendar()` +
   serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regras do
   dono (13/09/2026): um minigame por vez, perfeito e funcional antes do próximo; TODO
@@ -80,6 +82,18 @@ depois que o novo estiver estável. Não instalar nada dele.
   não dá dinheiro. Respostas em `answers.js` (a lista do Termo do Corujão, 46 dias à frente,
   + 21 palavras do dono intercaladas): **palavra nova entra no fim**, antes do dia #114
   (03/01/2027). Dicionário em `palavras.txt` (resposta fora do léxico entra lá, à mão).
+- **Estatísticas** (`services/stats.js`, `lib/stats/`; nível 3): "quem tem mais X?" entre dois
+  jogadores do **Brasileirão 2024** (dados reais da API-Football em
+  `lib/stats/brasileirao-2024.json`; o jogo NÃO chama a API) + **duelos do dono**
+  (`lib/stats/curated.js`: história do Brasileirão, torcidas etc., ~30% dos pares; `better:
+  'low'` quando o menor vence; `note` = linha de fonte/temporada). Acertou, segue; errou,
+  acaba. **Uma partida por dia**, sem jogar pelo recorde (decisão do dono): +3 de nível por
+  acerto (até +30) e 5 seguidos = 1 gol (kind `STATS`); a maior sequência fica em
+  `User.statsBest`. Par e números ficam no servidor; a tela só recebe os números depois de
+  escolher. Filtro de confiança em `data.js` (8+ jogos, 180+ min, sem dado zerado; fora quem
+  aparece em 2 times). Atualizar dados: `node scripts/import-stats.js <temporada>` na pasta
+  api/ com `API_FOOTBALL_KEY` no `api/.env` **local** (nunca no git/VPS). Plano grátis: 100
+  req/dia, só 2022–2024 e 3 páginas por consulta (por isso vai time por time, ~65 req).
 
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
@@ -87,7 +101,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
-`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/next{day}|daily/alvo/hit{index,day}` (minigames)
+`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/next{day}|daily/alvo/hit{index,day}|daily/stats/start|daily/stats/pick{side}` (minigames)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|ban` (header `x-admin-key`)

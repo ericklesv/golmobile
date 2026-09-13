@@ -31,6 +31,7 @@ import { MemoriaScreen } from './screens/Memoria';
 import { QualtimeScreen } from './screens/Qualtime';
 import { AlvoScreen } from './screens/Alvo';
 import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
+import { StatsScreen } from './screens/Stats';
 
 function Splash() {
   return (
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/memoria" element={<Private><MemoriaScreen /></Private>} />
         <Route path="/qualtime" element={<Private><QualtimeScreen /></Private>} />
         <Route path="/alvo" element={<Private><AlvoScreen /></Private>} />
+        <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />

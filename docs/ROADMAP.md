@@ -75,6 +75,7 @@ empate por diferença < 5 % nas copas.
 - [x] **De que time é?** (nível 4, vira à meia-noite): 8 pistas (estádio, estado, apelido, ídolo) com 4 escudos, 10 s cada; +4 de nível por acerto, 6 acertos = 1 gol; banco em `api/src/lib/qualtime/bank.js` (13/09/2026)
 - [x] Regra: todo minigame vencido = 1 gol + bônus; Party GoL dá o gol na 1ª vitória do dia; slider ordenado por disponibilidade (13/09/2026)
 - [x] **Alvo no Gol** (nível 6, vira à meia-noite): 10 alvos acendem um a um no gol por 1,5 s (relógio no servidor); +3 de nível por acerto, 7 acertos = 1 gol (13/09/2026)
+- [x] **Estatísticas** (nível 3, vira às 13h): "quem tem mais?" entre dois jogadores do Brasileirão 2024 (dados reais da API-Football, com fotos) + 22 duelos escritos pelo dono; sequência até errar; uma partida por dia: +3 por acerto (até +30) e 5 seguidos = gol (13/09/2026)
 - [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP
 - [ ] **Embaixadinhas** (nível 12): ritmo, não deixar a bola cair
 - [ ] **Disputa de pênaltis 1x1** (nível 15): 5 pênaltis contra outro craque (assíncrono)
@@ -88,6 +89,7 @@ empate por diferença < 5 % nas copas.
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável
 
 ## Dívidas / ideias
+- [ ] Estatísticas: trocar para o Brasileirão 2025 quando o plano grátis da API-Football liberar a temporada (ou assinando 1 mês); faltam ~20 jogadores por time que ficaram na 4ª página da API; mais duelos do dono em `api/src/lib/stats/curated.js` (hoje 22)
 - [ ] **Quiz: o banco (172 perguntas) cobre 34 dias, até 16/10/2026** — depois as perguntas se repetem; acrescentar em `api/src/lib/quiz/q-*.js` e no fim de `ORDER`
 - [ ] **Termo: a lista de respostas acaba no dia #114 (03/01/2027)** — acrescentar palavras no fim de `api/src/lib/termo/answers.js` antes disso (depois o calendário dá a volta)
 - [ ] Socket.IO para placar/feed em tempo real (hoje polling 15 s)

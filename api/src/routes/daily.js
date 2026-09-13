@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { handle } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, minigamesHub, memoriaState, memoriaFlip, qualtimeState, qualtimeNext, qualtimeAnswer, alvoState, alvoNext, alvoHit } from '../services/daily.js';
+import { statsState, statsStart, statsPick } from '../services/stats.js';
 
 /**
  * Minigames diários (1x por dia): GET /api/daily · Termo: GET /api/daily/termo,
@@ -26,3 +27,7 @@ daily.post('/termo/guess', handle((req) => termoGuess(req.user.id, req.body?.wor
 daily.get('/quiz', handle((req) => quizState(req.user.id)));
 daily.post('/quiz/next', handle((req) => quizNext(req.user.id, req.body?.day)));
 daily.post('/quiz/answer', handle((req) => quizAnswer(req.user.id, Number(req.body?.index), Number(req.body?.choice), req.body?.day)));
+// Estatísticas: GET /api/daily/stats, POST /api/daily/stats/start, POST /api/daily/stats/pick {side: 'a'|'b'}
+daily.get('/stats', handle((req) => statsState(req.user.id)));
+daily.post('/stats/start', handle((req) => statsStart(req.user.id)));
+daily.post('/stats/pick', handle((req) => statsPick(req.user.id, req.body?.side)));

@@ -83,6 +83,7 @@ export interface Meta {
   partySegments: string[];
   termo: { letters: number; tries: number; levelPoints: number[] };
   quiz: { questions: number; seconds: number; pointsPerHit: number; goalAt: number };
+  stats: { pointsPerHit: number; maxPoints: number; goalAt: number; season: string };
   teams: Team[];
   items: ShopItemDef[];
 }
@@ -192,4 +193,20 @@ export interface AlvoState {
   current: { index: number; x: number; y: number; servedAt: number; deadline: number } | null;
   finished: boolean; hits: number; reward: { goal: boolean; levelPoints: number; hits: number; total: number; text: string | null } | null;
   windowMs: number; pointsPerHit: number; goalAt: number; nextAt: number; serverTime: number;
+}
+
+// ─── Estatísticas ("quem tem mais?") ───────────────────────────────────────
+export interface StatsPlayer {
+  id: number | string; name: string; position: string; subtitle: string; photo: string | null;
+  team: { slug: string | null; name: string; abbr: string; colorPrimary: string; colorSecondary: string };
+  /** Só depois de escolher: o número e como mostrar ("2º (1967)", "43 anos e 6 meses"…). */
+  value?: number; show?: string;
+}
+/** `category: 'curated'` = duelo do dono (história do Brasileirão). `winner` só vem na revelação. */
+export interface StatsPair { category: string; label: string; question: string; note?: string; a: StatsPlayer; b: StatsPlayer; winner?: 'a' | 'b' }
+export interface StatsState {
+  day: number; nextAt: number; season: string;
+  daily: { finished: boolean; score: number | null; reward: { goal: boolean; levelPoints: number; streak: number; text: string | null } | null };
+  run: { mode: 'daily'; streak: number; over: boolean; pair: StatsPair | null } | null;
+  best: number;
 }

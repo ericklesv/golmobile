@@ -27,6 +27,7 @@ enum KickKind {
   MEMORIA
   QUALTIME
   ALVO
+  STATS
 }
 
 enum SeasonStatus {
@@ -80,6 +81,8 @@ model User {
 
   // Pontos de nível extras (minigames diários). Nível = goalsTotal + levelBonus.
   levelBonus  Int     @default(0)
+  // Recorde de sequência no minigame Estatísticas
+  statsBest   Int     @default(0)
 
   // Estatísticas por modo (acertos / tentativas)
   autoGoals    Int @default(0)

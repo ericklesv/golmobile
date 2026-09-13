@@ -195,6 +195,7 @@ export const MINIGAMES = [
   { id: 'QUIZ', name: 'Quiz do dia', unlock: 0, daily: true, route: '/quiz', icon: '/ui/ico-chesticon_gold01_l.png', desc: '5 perguntas de futebol, 20 s cada.', reward: 'gol + até 30 de nível' },
   { id: 'PARTY', name: 'Party GoL', unlock: 1, daily: false, route: '/partygol', icon: '/ui/ico-coin02.png', desc: 'Aposte R$ 50 na roleta e leve R$ 150. Primeira vitória do dia vale gol.', reward: 'gol + R$ 150' },
   { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: 'gol + até 30 de nível' },
+  { id: 'STATS', name: 'Estatísticas', unlock: 3, daily: true, route: '/estatisticas', icon: '/ui/ico-ranking.png', desc: 'Quem tem mais? Acertou, segue; errou, acaba. 5 seguidos é gol.', reward: 'gol + até 30 de nível' },
   { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Estádio, apelido ou ídolo: qual é o time? 8 rodadas, 10 s cada.', reward: 'gol + até 32 de nível' },
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: '10 alvos acendem no gol, 1,5 s cada. Toque rápido!', reward: 'gol + até 30 de nível' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
@@ -216,3 +217,11 @@ KIND_LABEL.QUALTIME = 'De que time é?';
 export const ALVO = { targets: 10, windowMs: 1500, pointsPerHit: 3, goalAt: 7, toleranceMs: 400 };
 DAILY_GAMES.push('ALVO');
 KIND_LABEL.ALVO = 'Alvo no Gol';
+// Estatísticas: "quem tem mais X?" entre dois jogadores do Brasileirão 2024 (dados reais da
+// API-Football; o plano grátis só libera 2022–2024) + duelos históricos escritos pelo dono.
+// Acertou, segue; errou, acaba. Vira às 13h de Brasília. UMA partida por dia, valendo: +3 de
+// nível por acerto (até +30) e sequência de 5 = 1 gol; sem partida livre pelo recorde (poucos
+// duelos do dono). (Decisões do dono em 13/09/2026.)
+export const STATS = { pointsPerHit: 3, maxPoints: 30, goalAt: 5, season: 'Brasileirão 2024' };
+DAILY_GAMES.push('STATS');
+KIND_LABEL.STATS = 'Estatísticas';

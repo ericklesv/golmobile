@@ -6,7 +6,8 @@
 import { createHash } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { GameError, badRequest } from '../lib/errors.js';
-import { dayNumber, nextMidnight, quizDayNumber, nextNoon } from '../lib/time.js';
+import { dayNumber, nextMidnight, quizDayNumber, nextNoon, statsDayNumber, nextStatsReset } from '../lib/time.js';
+import { statsReady } from '../lib/stats/data.js';
 import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, ALVO, levelOf } from '../lib/rules.js';
 import { questionsOfDay as qualtimeQuestions } from '../lib/qualtime/bank.js';
 import { teamView } from './view.js';
@@ -24,6 +25,8 @@ function calendar(now) {
     MEMORIA: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     QUALTIME: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     ALVO: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
+    // Estatísticas viram às 13h; sem os dados baixados, ficam de fora
+    ...(statsReady() ? { STATS: { day: statsDayNumber(now), nextAt: nextStatsReset(now).getTime() } } : {}),
   };
 }
 
@@ -33,8 +36,9 @@ function calendar(now) {
  */
 export async function dailyStatus(userId, now = new Date()) {
   const cal = calendar(now);
-  const rows = await prisma.dailyGame.findMany({ where: { userId, OR: DAILY_GAMES.map((g) => ({ game: g, day: cal[g].day })) } });
-  const games = DAILY_GAMES.map((id) => {
+  const ids = DAILY_GAMES.filter((g) => cal[g]); // um jogo sem calendário (ex.: sem dados) fica de fora
+  const rows = await prisma.dailyGame.findMany({ where: { userId, OR: ids.map((g) => ({ game: g, day: cal[g].day })) } });
+  const games = ids.map((id) => {
     const row = rows.find((r) => r.game === id);
     const finished = !!row?.finishedAt;
     return { id, day: cal[id].day, nextAt: cal[id].nextAt, available: !finished, started: !!row && !finished, finished, won: !!row?.won };

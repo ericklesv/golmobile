@@ -96,4 +96,22 @@ export function nextNoon(date = new Date()) {
   return fromTz(y, m, h < 12 ? d : d + 1, 12, 0);
 }
 
+const STATS_HOUR = 13; // as Estatísticas viram às 13h (decisão do dono em 13/09/2026)
+
+/** Dia das Estatísticas: vira às 13h de Brasília (#1 = 12/09/2026 13:00). STATS_DAY força outro fora de produção. */
+export function statsDayNumber(date = new Date()) {
+  if (process.env.NODE_ENV !== 'production') {
+    const forced = Number(process.env.STATS_DAY);
+    if (Number.isInteger(forced) && forced > 0) return forced;
+  }
+  const { y, m, d } = tzParts(new Date(date.getTime() - STATS_HOUR * 3600_000));
+  return Math.round((Date.UTC(y, m - 1, d) - DAY_ONE) / 86_400_000) + 1;
+}
+
+/** As próximas 13h de Brasília (quando as Estatísticas renovam). */
+export function nextStatsReset(date = new Date()) {
+  const { y, m, d, h } = tzParts(date);
+  return fromTz(y, m, h < STATS_HOUR ? d : d + 1, STATS_HOUR, 0);
+}
+
 export const MIN = 60_000;

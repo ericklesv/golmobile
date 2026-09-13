@@ -85,6 +85,8 @@ export interface Meta {
   quiz: { questions: number; seconds: number; pointsPerHit: number; goalAt: number };
   stats: { pointsPerHit: number; maxPoints: number; goalAt: number; season: string };
   camisas?: { shirts: number; min: number; max: number; pointsPerHit: number; maxPoints: number };
+  /** Hora (Brasília) em que cada minigame diário renova. */
+  resetHour?: Record<string, number>;
   teams: Team[];
   items: ShopItemDef[];
 }

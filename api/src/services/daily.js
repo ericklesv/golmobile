@@ -1,14 +1,14 @@
 /**
- * Minigames diários — 1 partida por jogador, por jogo, por dia (o dia vira à
- * meia-noite de Brasília). Hoje: o Termo do dia. Como nos chutes, toda a lógica
+ * Minigames diários — 1 partida por jogador, por jogo, por dia (cada jogo vira numa
+ * hora própria de Brasília: RESET_HOUR em rules.js). Como nos chutes, toda a lógica
  * roda aqui; a tela recebe cores, e a palavra só quando o jogo dela acabou.
  */
 import { createHash } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { GameError, badRequest } from '../lib/errors.js';
-import { dayNumber, nextMidnight, quizDayNumber, nextNoon, statsDayNumber, nextStatsReset } from '../lib/time.js';
+import { dayNumber, nextMidnight, quizDayNumber, nextNoon, statsDayNumber, nextStatsReset, dayNumberAt, nextResetAt } from '../lib/time.js';
 import { statsReady } from '../lib/stats/data.js';
-import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, ALVO, levelOf } from '../lib/rules.js';
+import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, ALVO, RESET_HOUR, resetLabel, levelOf } from '../lib/rules.js';
 import { layoutFor, applyShot, summarize, rewardFor } from '../lib/alvo.js';
 import { questionsOfDay as qualtimeQuestions } from '../lib/qualtime/bank.js';
 import { teamView } from './view.js';
@@ -19,15 +19,15 @@ import { BANK, questionsOfDay } from '../lib/quiz/questions.js';
 import { applyResult, loadUser } from './play.js';
 import { liveMatchForTeam } from './league.js';
 
-/** Calendário de cada minigame: o Termo vira à meia-noite; o Quiz, ao meio-dia. */
+/** Calendário de cada minigame: cada um vira numa hora própria (RESET_HOUR em rules.js). */
 function calendar(now) {
   return {
     TERMO: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     QUIZ: { day: quizDayNumber(now), nextAt: nextNoon(now).getTime() },
-    MEMORIA: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
-    QUALTIME: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
-    ALVO: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
-    CAMISAS: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
+    MEMORIA: { day: dayNumberAt(RESET_HOUR.MEMORIA, now), nextAt: nextResetAt(RESET_HOUR.MEMORIA, now).getTime() },
+    QUALTIME: { day: dayNumberAt(RESET_HOUR.QUALTIME, now), nextAt: nextResetAt(RESET_HOUR.QUALTIME, now).getTime() },
+    ALVO: { day: dayNumberAt(RESET_HOUR.ALVO, now), nextAt: nextResetAt(RESET_HOUR.ALVO, now).getTime() },
+    CAMISAS: { day: dayNumberAt(RESET_HOUR.CAMISAS, now), nextAt: nextResetAt(RESET_HOUR.CAMISAS, now).getTime() },
     // Estatísticas viram às 13h; sem os dados baixados, ficam de fora
     ...(statsReady() ? { STATS: { day: statsDayNumber(now), nextAt: nextStatsReset(now).getTime() } } : {}),
   };
@@ -240,7 +240,7 @@ export function quizNext(userId, clientDay) {
 /** Responde a pergunta da vez. choice = posição mostrada (0..3); -1 = acabou o tempo. */
 export function quizAnswer(userId, index, choice, clientDay) {
   return withQuiz(userId, clientDay, async ({ st, row, day, expired }) => {
-    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o Quiz de hoje. Volte amanhã, ao meio-dia!');
+    if (row.finishedAt) throw new GameError(409, 'finished', `Você já jogou o Quiz. Ele renova ${resetLabel('QUIZ')}!`);
     if (!Number.isInteger(index) || index !== st.answers.length) throw new GameError(409, 'out-of-sync', 'Essa pergunta já passou.');
     if (!st.servedAt) throw new GameError(409, 'not-served', 'Peça a pergunta antes de responder.');
     const q = BANK.get(st.ids[index]);
@@ -322,7 +322,7 @@ function memoriaView(userId, day, row, teams, now = new Date()) {
     day, pairs: MEMORIA.pairs, goalAtMoves: MEMORIA.goalAtMoves,
     levelPoints: MEMORIA.levelPoints.map(([max, pts]) => [max === Infinity ? null : max, pts]),
     cards, open: st.open ?? null, moves: st.moves ?? 0, matchedPairs: matched.size / 2,
-    finished, won: !!row?.won, reward: row?.reward ?? null, nextAt: nextMidnight(now).getTime(),
+    finished, won: !!row?.won, reward: row?.reward ?? null, nextAt: nextResetAt(RESET_HOUR.MEMORIA, now).getTime(),
   };
 }
 
@@ -334,7 +334,7 @@ function memoriaUnlock(user) {
 export async function memoriaState(userId, now = new Date()) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   memoriaUnlock(user);
-  const day = dayNumber(now);
+  const day = dayNumberAt(RESET_HOUR.MEMORIA, now);
   const [row, teams] = await Promise.all([
     prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'MEMORIA', day } } }),
     allTeams(),
@@ -349,7 +349,7 @@ export async function memoriaState(userId, now = new Date()) {
  */
 export async function memoriaFlip(userId, rawIndex, clientDay) {
   const now = new Date();
-  const day = dayNumber(now);
+  const day = dayNumberAt(RESET_HOUR.MEMORIA, now);
   if (clientDay !== undefined && Number(clientDay) !== day) throw new GameError(409, 'day-changed', 'Virou o dia: já tem baralho novo. Recarregue a Memória.');
   const index = Number(rawIndex);
   if (!Number.isInteger(index) || index < 0 || index >= MEMORIA.pairs * 2) throw badRequest('Carta inválida.');
@@ -366,7 +366,7 @@ export async function memoriaFlip(userId, rawIndex, clientDay) {
     const [row] = await tx.$queryRaw`
       SELECT id, state, won, reward, "finishedAt" FROM "DailyGame"
        WHERE "userId" = ${userId} AND game = 'MEMORIA' AND day = ${day} FOR UPDATE`;
-    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou a Memória de hoje. Volte amanhã!');
+    if (row.finishedAt) throw new GameError(409, 'finished', `Você já jogou a Memória. Ela renova ${resetLabel('MEMORIA')}!`);
     const st = { deck: row.state.deck, matched: [...(row.state.matched ?? [])], open: row.state.open ?? null, moves: row.state.moves ?? 0 };
     if (st.matched.includes(index)) throw badRequest('Essa carta já formou par.');
     const byId = new Map(teams.map((t) => [t.id, teamView(t)]));
@@ -462,7 +462,7 @@ function qualtimeView(userId, day, row, teams, now = new Date()) {
     hits: answers.filter((a) => a.correct).length, streak: qualtimeStreak(answers), reward: row?.reward ?? null,
     seconds: QUALTIME.seconds, minSeconds: QUALTIME.minSeconds, streakStep: QUALTIME.streakStep,
     pointsPerHit: QUALTIME.pointsPerHit, goalAt: QUALTIME.goalAt,
-    nextAt: nextMidnight(now).getTime(), serverTime: now.getTime(),
+    nextAt: nextResetAt(RESET_HOUR.QUALTIME, now).getTime(), serverTime: now.getTime(),
   };
 }
 
@@ -474,7 +474,7 @@ function qualtimeUnlock(user) {
 /** Tranca a partida do dia (cria se não existe); pergunta que estourou o tempo vira erro. */
 async function withQualtime(userId, clientDay, fn) {
   const now = new Date();
-  const day = dayNumber(now);
+  const day = dayNumberAt(RESET_HOUR.QUALTIME, now);
   if (clientDay !== undefined && clientDay !== null && Number(clientDay) !== day) {
     throw new GameError(409, 'day-changed', 'Virou o dia: já tem perguntas novas. Recarregue.');
   }
@@ -529,7 +529,7 @@ export function qualtimeNext(userId, clientDay) {
 /** Responde a pergunta da vez. choice = posição da opção (0..3); -1 = acabou o tempo. */
 export function qualtimeAnswer(userId, index, choice, clientDay) {
   return withQualtime(userId, clientDay, async ({ st, row, day, expired, teams }) => {
-    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o "De que time é?" de hoje. Volte amanhã!');
+    if (row.finishedAt) throw new GameError(409, 'finished', `Você já jogou o "De que time é?". Ele renova ${resetLabel('QUALTIME')}!`);
     if (!Number.isInteger(index) || index !== st.answers.length) throw new GameError(409, 'out-of-sync', 'Essa pergunta já passou.');
     if (!st.servedAt) throw new GameError(409, 'not-served', 'Peça a pergunta antes de responder.');
     const q = qualtimeQuestions(day, QUALTIME.questions)[index];
@@ -563,7 +563,7 @@ function alvoView(day, row, now = new Date()) {
     hits: sum.hits, occupied: sum.occupied, sunkCount: sum.sunkCount, finished,
     reward: row?.reward ?? null,
     pointsPerHit: ALVO.pointsPerHit, sinkAllPoints: ALVO.sinkAllPoints, goalAt: ALVO.goalAt,
-    nextAt: nextMidnight(now).getTime(), serverTime: now.getTime(),
+    nextAt: nextResetAt(RESET_HOUR.ALVO, now).getTime(), serverTime: now.getTime(),
   };
 }
 
@@ -575,7 +575,7 @@ function alvoUnlock(user) {
 /** Tranca a partida do dia (cria com o tabuleiro sorteado se não existe) e fecha quando acaba. */
 async function withAlvo(userId, clientDay, fn) {
   const now = new Date();
-  const day = dayNumber(now);
+  const day = dayNumberAt(RESET_HOUR.ALVO, now);
   if (clientDay !== undefined && clientDay !== null && Number(clientDay) !== day) {
     throw new GameError(409, 'day-changed', 'Virou o dia: o gol foi remontado. Recarregue.');
   }
@@ -618,7 +618,7 @@ export function alvoState(userId) { return withAlvo(userId, undefined, async () 
 /** Chuta numa casa da grade. Resposta: { hit, sunk (peça que caiu, com as casas) | null, state }. */
 export function alvoShot(userId, index, clientDay) {
   return withAlvo(userId, clientDay, async ({ st, row }) => {
-    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o Alvo no Gol de hoje. Volte amanhã!');
+    if (row.finishedAt) throw new GameError(409, 'finished', `Você já jogou o Alvo no Gol. Ele renova ${resetLabel('ALVO')}!`);
     let res;
     try { res = applyShot(st.pieces, st.shots, index); } catch (e) {
       if (e.code === 'repeated') throw new GameError(409, 'repeated', e.message);

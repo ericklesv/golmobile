@@ -1,7 +1,7 @@
 /**
  * Minigame Camisas — maior ou menor. Uma sequência de 4 camisas numeradas de 1 a 11 (sem repetir
  * número): a 1ª aparece e o jogador diz se a próxima é maior ou menor. Acertou as 4 = 1 gol do time
- * e vem outra sequência; errou, acaba o jogo do dia (vira à meia-noite). Vários gols por dia enquanto
+ * e vem outra sequência; errou, acaba o jogo do dia (vira às 16h: RESET_HOUR). Vários gols por dia enquanto
  * não errar — EXCEÇÃO à regra de 1 gol por minigame (decisão do dono, 13/09/2026). +3 de nível por
  * acerto (até +30).
  *
@@ -12,10 +12,13 @@
 import { randomInt } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { GameError } from '../lib/errors.js';
-import { dayNumber, nextMidnight } from '../lib/time.js';
-import { CAMISAS, MINIGAMES, levelOf } from '../lib/rules.js';
+import { dayNumberAt, nextResetAt } from '../lib/time.js';
+import { CAMISAS, MINIGAMES, RESET_HOUR, resetLabel, levelOf } from '../lib/rules.js';
 import { applyResult, loadUser } from './play.js';
 import { liveMatchForTeam } from './league.js';
+
+const HOUR = RESET_HOUR.CAMISAS; // vira às 16h (cada minigame numa hora própria)
+const DONE = () => `Você já jogou o Camisas. Ele renova ${resetLabel('CAMISAS')}!`;
 
 /** 4 números diferentes de 1 a 11, embaralhados com sorteio criptográfico (não dá para prever). */
 function newSeq() {
@@ -28,7 +31,7 @@ function view(row, now) {
   const st = row?.state ?? {};
   const playing = !!st.seq && !st.over;
   return {
-    day: dayNumber(now), nextAt: nextMidnight(now).getTime(),
+    day: dayNumberAt(HOUR, now), nextAt: nextResetAt(HOUR, now).getTime(),
     shirts: CAMISAS.shirts, min: CAMISAS.min, max: CAMISAS.max, pointsPerHit: CAMISAS.pointsPerHit, maxPoints: CAMISAS.maxPoints,
     playing, finished: !!row?.finishedAt,
     shown: playing ? st.seq.slice(0, st.pos + 1) : [], // só as camisas já viradas da sequência aberta
@@ -40,13 +43,13 @@ function view(row, now) {
 /** Só leitura: abrir a tela não "começa" o jogo (o hub não mostra CONTINUAR à toa). */
 export async function camisasState(userId) {
   const now = new Date();
-  const row = await prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'CAMISAS', day: dayNumber(now) } } });
+  const row = await prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'CAMISAS', day: dayNumberAt(HOUR, now) } } });
   return { state: view(row, now) };
 }
 
 async function withCamisas(userId, fn) {
   const now = new Date();
-  const day = dayNumber(now);
+  const day = dayNumberAt(HOUR, now);
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`
       INSERT INTO "DailyGame" ("userId", game, day, state, won, "createdAt", "updatedAt")
@@ -62,11 +65,11 @@ async function withCamisas(userId, fn) {
   });
 }
 
-/** Começa o jogo do dia (ou devolve o que está aberto). Acabou, só amanhã. */
+/** Começa o jogo do dia (ou devolve o que está aberto). Acabou, só na próxima virada. */
 export function camisasStart(userId) {
   return withCamisas(userId, async ({ st, row, tx }) => {
     if (st.seq && !st.over) return {};
-    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o Camisas hoje. Volte amanhã!');
+    if (row.finishedAt) throw new GameError(409, 'finished', DONE());
     const g = MINIGAMES.find((m) => m.id === 'CAMISAS');
     const user = await tx.user.findUnique({ where: { id: userId } });
     if (g && levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `Camisas libera no nível ${g.unlock}.`);
@@ -83,7 +86,7 @@ export function camisasGuess(userId, guess) {
   if (guess !== 'maior' && guess !== 'menor') throw new GameError(400, 'bad-guess', 'Escolha maior ou menor.');
   return withCamisas(userId, async (ctx) => {
     const { st, tx, now } = ctx;
-    if (!st.seq || st.over) throw new GameError(409, 'no-run', ctx.row.finishedAt ? 'Você já jogou o Camisas hoje. Volte amanhã!' : 'Comece o Camisas de hoje.');
+    if (!st.seq || st.over) throw new GameError(409, 'no-run', ctx.row.finishedAt ? DONE() : 'Comece o Camisas.');
     const cur = st.seq[st.pos], next = st.seq[st.pos + 1];
     const correct = guess === 'maior' ? next > cur : next < cur;
     if (!correct) {

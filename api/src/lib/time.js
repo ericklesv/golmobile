@@ -114,4 +114,23 @@ export function nextStatsReset(date = new Date()) {
   return fromTz(y, m, h < STATS_HOUR ? d : d + 1, STATS_HOUR, 0);
 }
 
+// ─── Minigames com hora própria de virada (RESET_HOUR em rules.js; hora de 1 a 23) ──────────────
+// Cada jogo vira numa hora diferente (decisão do dono, 13/09/2026). O nº do dia é a data em que a
+// janela TERMINA: com virada às 14h, das 14h de ontem às 14h de hoje é o dia de hoje. Assim a troca
+// da meia-noite para a hora nova não tira nem dá partida a ninguém: quem jogou hoje cedo continua
+// com a de hoje valendo até a nova virada. (Quiz e Estatísticas, mais antigos, contam pela data em
+// que a janela começa — não mexer, o dia deles mudaria de número.)
+
+/** Nº do dia de um minigame que vira às `hour` h de Brasília. */
+export function dayNumberAt(hour, date = new Date()) {
+  const { y, m, d } = tzParts(new Date(date.getTime() + (24 - hour) * 3600_000));
+  return Math.round((Date.UTC(y, m - 1, d) - DAY_ONE) / 86_400_000) + 1;
+}
+
+/** A próxima virada às `hour` h de Brasília. */
+export function nextResetAt(hour, date = new Date()) {
+  const { y, m, d, h } = tzParts(date);
+  return fromTz(y, m, h < hour ? d : d + 1, hour, 0);
+}
+
 export const MIN = 60_000;

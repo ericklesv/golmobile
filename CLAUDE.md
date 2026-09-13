@@ -53,10 +53,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   senão o bônus some (desbloqueios, rebote, nerf, recarga da trilha). O front mostra
   `me.levelPoints` na barra de nível.
 - **Minigames diários** (`services/daily.js`, tabela `DailyGame`): 1 partida por jogador,
-  por jogo, por dia. Cada um vira num horário: **Termo à meia-noite**, **Quiz ao meio-dia**
-  (Brasília; `dayNumber`/`nextMidnight` e `quizDayNumber`/`nextNoon` em `time.js`), a
-  **Memória dos Escudos à meia-noite**, as **Estatísticas às 13h** (`statsDayNumber`/
-  `nextStatsReset`). A Home mostra o **slider horizontal de minigames**
+  por jogo, por dia. **Cada minigame vira numa hora própria** (decisão do dono, 13/09/2026: sempre
+  ter algum renovando) — `RESET_HOUR` em `rules.js`: **Termo 0h, Quiz 12h, Estatísticas 13h,
+  Memória 14h, De que time é? 15h, Camisas 16h, Alvo no Gol 17h**; jogo novo pega a próxima hora
+  livre (18h…), nunca repetir hora. Termo/Quiz/Estatísticas usam `dayNumber`/`quizDayNumber`/
+  `statsDayNumber`; os outros, `dayNumberAt(hora)`/`nextResetAt(hora)` (`time.js`: o nº do dia é
+  a data em que a janela TERMINA — por isso a troca da meia-noite para a hora nova não tirou nem
+  deu partida a ninguém). Textos de "já jogou" usam `resetLabel(jogo)` ("renova às 14h"). A Home mostra o **slider horizontal de minigames**
   (`MinigameSlider.tsx`, dados de `GET /api/daily/hub`): catálogo em `MINIGAMES` (`rules.js`)
   com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, Estatísticas 3,
   De que time é? 4, Camisas 5, Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
@@ -113,7 +116,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   api/ com `API_FOOTBALL_KEY` no `api/.env` **local** (nunca no git/VPS). Plano grátis: 100
   req/dia, só 2022–2024 e 3 páginas por consulta (por isso vai time por time, ~65 req).
 - **Camisas** (`services/camisas.js`, tela `Camisas.tsx`, camisa desenhada em `Jersey.tsx` nas
-  cores do time; nível 5, vira à meia-noite): maior ou menor. Sequência de 4 camisas de 1 a 11
+  cores do time; nível 5, vira às 16h): maior ou menor. Sequência de 4 camisas de 1 a 11
   sem repetir (sorteio `crypto.randomInt`); a 1ª aparece, o jogador diz se a próxima é maior
   ou menor. Acertou as 4 = 1 gol (kind `CAMISAS`) e começa outra sequência; errou, acaba o
   dia. **Vários gols no dia** (exceção do dono à regra de 1 gol). +3 de nível por acerto (até

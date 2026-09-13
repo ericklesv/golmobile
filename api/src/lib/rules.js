@@ -175,7 +175,7 @@ export const KIND_LABEL = {
   TERMO: 'Termo',
 };
 
-// ─── Minigames diários (1x por dia; o dia vira à meia-noite de Brasília) ────
+// ─── Minigames diários (1x por dia; cada um vira numa hora própria: RESET_HOUR) ────
 // Termo do dia: 5 letras, 6 tentativas. Acertar = 1 gol normal (placar do time,
 // artilharia e lances) + pontos de nível pela tentativa em que acertou
 // (1ª +30 … 6ª +5 — decisão do dono em 12/09/2026). Não dá dinheiro.
@@ -186,6 +186,13 @@ export const TERMO = { letters: 5, tries: 6, levelPoints: [30, 25, 20, 15, 10, 5
 export const QUIZ = { questions: 5, seconds: 20, pointsPerHit: 6, goalAt: 3, toleranceMs: 2500 };
 export const DAILY_GAMES = ['TERMO', 'QUIZ'];
 KIND_LABEL.QUIZ = 'Quiz';
+
+// Hora de virada de cada minigame diário (Brasília): uma por jogo, para sempre ter algum renovando
+// (decisão do dono, 13/09/2026). Minigame novo pega a próxima hora livre (18h, 19h…). Termo, Quiz e
+// Estatísticas usam as funções próprias em time.js; os demais, dayNumberAt/nextResetAt.
+export const RESET_HOUR = { TERMO: 0, QUIZ: 12, STATS: 13, MEMORIA: 14, QUALTIME: 15, CAMISAS: 16, ALVO: 17 };
+/** "às 14h" / "ao meio-dia" / "à meia-noite" — para os textos de "volte …". */
+export const resetLabel = (game) => ({ 0: 'à meia-noite', 12: 'ao meio-dia' }[RESET_HOUR[game]] ?? `às ${RESET_HOUR[game]}h`);
 
 // ─── Hub de minigames (slider da Home) ─────────────────────────────────────
 // Ordem do slider e nível que libera cada um. `soon` = ainda não implementado
@@ -204,19 +211,19 @@ export const MINIGAMES = [
   { id: 'CABECAO', name: 'Cabeção', unlock: 0, daily: false, route: '/cabecao', icon: '/ui/ico-member.png', desc: 'Head soccer 1x1 ao vivo contra outro craque. Vencedor marca 1 gol.', reward: 'gol', soon: true }, // escondido: fica "para depois" (decisão do dono, 13/09/2026)
   { id: 'DISPUTA', name: 'Disputa de pênaltis', unlock: 15, daily: false, route: '/disputa', icon: '/ui/ico-trophy_m.png', desc: 'Cinco pênaltis contra outro craque.', reward: 'gol + dinheiro', soon: true },
 ];
-// Memória dos Escudos: 8 pares (16 cartas) sorteados por jogador/dia. Fechar em até
+// Memória dos Escudos (vira às 14h): 8 pares (16 cartas) sorteados por jogador/dia. Fechar em até
 // `goalAtMoves` jogadas = 1 gol; os pontos de nível caem conforme o nº de jogadas.
 export const MEMORIA = { pairs: 8, goalAtMoves: 14, levelPoints: [[8, 30], [10, 25], [12, 20], [14, 15], [18, 10], [Infinity, 5]] };
 DAILY_GAMES.push('MEMORIA');
 KIND_LABEL.MEMORIA = 'Memória dos Escudos';
-// De que time é?: vira à meia-noite. 10 pistas alternando "pista → 4 escudos" e "escudo → 4 pistas"
+// De que time é?: vira às 15h. 10 pistas alternando "pista → 4 escudos" e "escudo → 4 pistas"
 // (estádio, cidade, fundação, cores+estado, apelido, mascote, ídolo, clássico; distratores
 // parecidos). 7 s por pista, −0,5 s a cada acerto seguido (mínimo 5 s), relógio no servidor.
 // +3 de nível por acerto (até +30); 8 acertos = 1 gol. (Refeito em 13/09/2026: estava fácil demais.)
 export const QUALTIME = { questions: 10, seconds: 7, minSeconds: 5, streakStep: 0.5, pointsPerHit: 3, goalAt: 8, toleranceMs: 2500 };
 DAILY_GAMES.push('QUALTIME');
 KIND_LABEL.QUALTIME = 'De que time é?';
-// Alvo no Gol (batalha naval no gol): vira à meia-noite. O gol é uma grade de 6 x 4 casas; o
+// Alvo no Gol (batalha naval no gol): vira às 17h. O gol é uma grade de 6 x 4 casas; o
 // servidor esconde, por jogador/dia (sha256 userId:day), 1 goleiro (3 casas), 2 zagueiros (2) e
 // 3 cones (1) = 10 casas ocupadas, sem sobreposição. O jogador tem 12 chutes; cada chute revela
 // vazio / acertou / derrubou (todas as casas da peça). Acaba quando os chutes terminam ou tudo
@@ -247,7 +254,7 @@ KIND_LABEL.STATS = 'Estatísticas';
 // dia, nunca dois no dia contra o mesmo adversário, W.O. antes de 20 s de jogo não vale gol.
 export const CABECAO = { maxGoalWinsPerDay: 3, woMinSec: 20 };
 KIND_LABEL.CABECAO = 'Cabeção';
-// Camisas (maior ou menor): vira à meia-noite. Uma sequência de 4 camisas numeradas de 1 a 11,
+// Camisas (maior ou menor): vira às 16h. Uma sequência de 4 camisas numeradas de 1 a 11,
 // sem repetir número: a 1ª aparece e o jogador diz se a próxima é maior ou menor. Acertou as 4 =
 // 1 gol e começa outra sequência; errou, acaba o jogo do dia. EXCEÇÃO à regra de "1 gol por
 // minigame" (decisão do dono, 13/09/2026): aqui dá para marcar vários gols enquanto não errar.

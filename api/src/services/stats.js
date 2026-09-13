@@ -101,12 +101,12 @@ export const statsState = (userId) => withStats(userId, () => ({}));
 
 /**
  * Começa a partida do dia. Só existe UMA por dia, valendo gol — sem partida livre pelo recorde
- * (poucos duelos do dono; decisão de 13/09/2026). Acabou, volta amanhã às 13h.
+ * (poucos duelos do dono; decisão de 13/09/2026). Acabou, só na próxima virada (13h).
  */
 export function statsStart(userId) {
   return withStats(userId, async ({ st, row, tx }) => {
     if (st.run && !st.run.over) return {}; // já tem uma em andamento: continua nela
-    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou as Estatísticas de hoje. Volte amanhã às 13h!');
+    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou as Estatísticas. Elas renovam às 13h!');
     // nível que libera (catálogo do hub de minigames), conferido no servidor como nos outros
     const g = MINIGAMES.find((m) => m.id === 'STATS');
     const user = await tx.user.findUnique({ where: { id: userId } });

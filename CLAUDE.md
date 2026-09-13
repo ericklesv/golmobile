@@ -47,8 +47,9 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
   cliente antes do fim (nem no JSON). Acertar = 1 gol normal (`applyResult` com kind `TERMO`:
   placar, artilharia, lances) + pontos de nível pela tentativa (`TERMO.levelPoints`, 30→5);
-  não dá dinheiro. Respostas em `answers.js` (a lista do Termo do Corujão, 46 dias à frente):
-  **palavra nova entra no fim**, antes do dia #93 (13/12/2026). Dicionário em `palavras.txt`.
+  não dá dinheiro. Respostas em `answers.js` (a lista do Termo do Corujão, 46 dias à frente,
+  + 15 palavras do dono intercaladas): **palavra nova entra no fim**, antes do dia #108
+  (28/12/2026). Dicionário em `palavras.txt` (resposta fora do léxico entra lá, à mão).
 
 ## Endpoints
 `POST /api/auth/register|login` · `GET /api/me` · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`

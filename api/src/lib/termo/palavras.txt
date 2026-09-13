@@ -10524,3 +10524,6 @@ zurra
 zurre
 zurro
 zuruó
+# Acréscimos do BRGOL (13/09/2026): nomes de time que o léxico não traz.
+bahia
+inter

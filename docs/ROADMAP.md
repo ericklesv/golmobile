@@ -27,7 +27,7 @@ aba **Loja**, moeda VIP no header, texto pessoal no perfil público, lista de jo
 Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas do `keeper.glb`;
 empate por diferença < 5 % nas copas.
 
-## Fase 1 — Núcleo 1:1 em produção (brgol.managol.com.br)
+## Fase 1 — Núcleo 1:1 em produção (jogagol.com.br)
 - [x] API Node/Express/Prisma/Postgres na VPS do Managol (porta 4100, PM2 `brgol-api`)
 - [x] Cadastro (nick único, e-mail, senha, sexo, time em A/B/C) e login (JWT)
 - [x] 48 clubes em 3 séries; escudos gerados
@@ -56,18 +56,25 @@ empate por diferença < 5 % nas copas.
 - [ ] Cargos do time: Presidente, Diretor, Capitão, Auxiliar (só VIP) e caixa do time em VIPs
 - [ ] Ordem de chute / Secar / Seguir ordem
 - [ ] Mensagens privadas (400 chars), amigos online, bloquear, mensagem em massa
-- [ ] Chat do time
+- [x] Chat: salas Geral e Torcida do time, nível/VIP/escudo em cada mensagem, mensagens coloridas a partir do nível 8, botão flutuante com contador (13/09/2026)
 - [ ] Movimentações (troca de time com regras), Divisão de Jogadores
 - [ ] Copa do Brasil (mata-mata), Copa BRGOL (inscrição paga), Estaduais, Amistosos
 - [ ] Títulos/histórico de temporadas com página própria; Bola Prateada/Dourada
 - [ ] Avatar de corpo inteiro com uniforme do time (o pack Soccer Players Uniforms tem 430 uniformes/1650 skins texturizados), foto de perfil
 - [ ] Uniformes reais nas cenas 3D (goleiro/barreira com camisa do adversário) e cabelo
-- [ ] Som de alerta (lvl 2) e mensagens coloridas (lvl 8)
+- [ ] Som de alerta (lvl 2) — mensagens coloridas (lvl 8) já estão no chat
 
 ## Fase 3 — Novidades (inspiradas no revival brgol.online)
 - [x] Minigames diários (1x por dia, vira à meia-noite): **Termo do dia** — palavra de futebol, 6 tentativas; acertar = 1 gol pro time + pontos de nível (+30 na 1ª … +5 na 6ª); faixa roxa na Home enquanto disponível (12/09/2026)
 - [x] **Quiz do dia** (vira ao meio-dia): 5 perguntas de futebol, 4 alternativas, 20 s cada; +6 de nível por acerto e 3 acertos = 1 gol; a Home mostra só uma faixa (o minigame que vence primeiro) (13/09/2026)
-- [ ] Próximos minigames diários (a estrutura `DailyGame` já aceita — ver CLAUDE.md)
+- [x] **Hub de minigames**: slider horizontal na Home, cada card com o nível que libera, PRONTO/CONTINUAR/JOGADO/EM BREVE (13/09/2026)
+- [x] **Memória dos Escudos** (nível 2, vira à meia-noite): 16 cartas/8 pares sorteados por jogador; até 14 jogadas = 1 gol; nível +30 (≤8), +25 (≤10), +20 (≤12), +15 (≤14), +10 (≤18), +5 (13/09/2026)
+- [ ] **De que time é?** (nível 4): jogador/escudo/estádio → qual time, com tempo
+- [ ] **Alvo no Gol** (nível 6): alvos aparecem no gol 3D, toque rápido
+- [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP
+- [ ] **Embaixadinhas** (nível 12): ritmo, não deixar a bola cair
+- [ ] **Disputa de pênaltis 1x1** (nível 15): 5 pênaltis contra outro craque (assíncrono)
+- [ ] Domínio jogagol.com.br no ar (nginx + certbot + redirects) — feito 13/09/2026; sugestão: renomear o repo do GitHub para `jogagol`
 - [ ] Bola de Ouro da temporada (fórmula do dossiê) + Top Chutadores
 - [ ] Hora Premiada, Giro Premiado diário, Ranking de Fama
 - [ ] Desafios X1 e Torneio X1

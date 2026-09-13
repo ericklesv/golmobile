@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { MemoriaState, Team } from '../lib/types';
-import { Shield } from '../components/Shield';
+import { Shield, crestUrl } from '../components/Shield';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Countdown } from '../components/ui';
 import { toast } from '../components/Toast';
@@ -21,6 +21,7 @@ type Face = { team: Team | null; up: boolean; matched: boolean };
 
 export function MemoriaScreen() {
   const me = useAuth((s) => s.me)!;
+  const meta = useAuth((s) => s.meta);
   const refresh = useAuth((s) => s.refresh);
   const nav = useNavigate();
   const [game, setGame] = useState<MemoriaState | null>(null);
@@ -38,6 +39,9 @@ export function MemoriaScreen() {
     });
     return () => { if (hideTimer.current) window.clearTimeout(hideTimer.current); };
   }, []);
+
+  // pré-carrega todos os escudos: a carta vira e o escudo já está lá
+  useEffect(() => { for (const t of meta?.teams ?? []) { const im = new Image(); im.src = crestUrl(t.slug); } }, [meta]);
 
   async function flip(i: number) {
     if (!game || busy || game.finished) return;

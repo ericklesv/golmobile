@@ -1,7 +1,7 @@
 # JogaGol (antigo BRGOL) — CLAUDE.md
 
 ## O que é
-**Nome do jogo: JogaGol** (logo em `web/public/brand/logo-{v,h}.webp`; domínio futuro jogagol.com.br).
+**Nome do jogo: JogaGol** (logo em `web/public/brand/logo-{v,h}.webp`; domínio **jogagol.com.br**).
 Port 1:1 do **BRGOL** (jogo de navegador brasileiro de 2008–2013, falido) para os tempos
 modernos: mobile-first, PWA, "cara de jogo". Você escolhe um clube, faz gols (chute direto
 automático, pênalti, falta, trilha), cada gol soma no placar do time na rodada de 24h, e
@@ -9,7 +9,7 @@ disputa a artilharia da hora/rodada/temporada. Todas as regras originais estão 
 **`docs/BRGOL_ORIGINAL.md`** (fonte da verdade — consultar antes de mudar qualquer número).
 Roadmap em `docs/ROADMAP.md`.
 
-Produção: **https://brgol.managol.com.br** (VPS do Managol; subdomínio já apontado).
+Produção: **https://jogagol.com.br** (VPS do Managol; `www.` e `brgol.managol.com.br` redirecionam 301 para lá).
 Repo: https://github.com/ericklesv/golmobile (branch `main` = prod; deploy manual via SSH, **sem GitHub Actions**).
 
 ## Stack
@@ -42,10 +42,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   `me.levelPoints` na barra de nível.
 - **Minigames diários** (`services/daily.js`, tabela `DailyGame`): 1 partida por jogador,
   por jogo, por dia. Cada um vira num horário: **Termo à meia-noite**, **Quiz ao meio-dia**
-  (Brasília; `dayNumber`/`nextMidnight` e `quizDayNumber`/`nextNoon` em `time.js`). A Home
-  mostra **uma faixa só** (`featured` de `GET /api/daily`): a do jogo disponível que vence
-  primeiro; terminou, aparece o outro. Minigame novo: `DAILY_GAMES` + `calendar()` + serviço
-  + tela; o gol dele pede um valor novo no enum `KickKind` (migração). Fora de produção,
+  (Brasília; `dayNumber`/`nextMidnight` e `quizDayNumber`/`nextNoon` em `time.js`), a
+  **Memória dos Escudos à meia-noite**. A Home mostra o **slider horizontal de minigames**
+  (`MinigameSlider.tsx`, dados de `GET /api/daily/hub`): catálogo em `MINIGAMES` (`rules.js`)
+  com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, De que time é? 4,
+  Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` = card "EM BREVE".
+  Minigame novo: entrada em `MINIGAMES` (tirar o `soon`) + `DAILY_GAMES` + `calendar()` +
+  serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regra do
+  dono: um minigame por vez, perfeito e funcional antes do próximo.** Fora de produção,
   `TERMO_DAY=<n>` / `QUIZ_DAY=<n>` forçam o dia (teste da virada).
 - **Quiz do dia** (`lib/quiz/`): 5 perguntas de 4 alternativas, 20 s cada. O relógio é do
   servidor (começa no `POST next`; estourou + 2,5 s de tolerância = erro); alternativas
@@ -65,9 +69,10 @@ depois que o novo estiver estável. Não instalar nada dele.
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party`
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
-`GET /api/daily|daily/termo|daily/quiz` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}` (minigames diários)
+`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}` (minigames)
+`GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
-`POST /api/admin/advance-round|close-hour|vip|money|ban` (header `x-admin-key`)
+`POST /api/admin/advance-round|close-hour|vip|money|level|ban` (header `x-admin-key`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.
 
 ## Comandos
@@ -110,7 +115,7 @@ servidos pelo próprio Express em `/api/uploads/`.
   `tools/3d/README.md` gera os `.glb` que entram no repo.
 - **Não usamos GitHub Actions** (removido em 13/09/2026). Deploy é sempre manual, pela VPS:
   `ssh -i <chave> root@187.127.17.121 'bash /usr/local/bin/brgol-deploy.sh'` — depois conferir
-  `https://brgol.managol.com.br/api/health`. Push no git **não** publica nada sozinho.
+  `https://jogagol.com.br/api/health`. Push no git **não** publica nada sozinho.
 - **Acesso à VPS (necessário para deployar; precisa da intervenção do Guilherme):**
   1. Gerar uma chave: `ssh-keygen -t ed25519 -C "erick-brgol" -f ~/.ssh/id_ed25519_brgol`
   2. Enviar para o Guilherme SOMENTE o conteúdo de `~/.ssh/id_ed25519_brgol.pub`

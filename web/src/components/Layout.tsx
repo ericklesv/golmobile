@@ -12,7 +12,7 @@ const tabs = [
   { to: '/rankings', label: 'Rankings', icon: '/ui/ico-ranking.png' },
   { to: '/loja', label: 'Loja', icon: '/ui/ico-goldpouch.png' },
   { to: '/time', label: 'Time', icon: '/ui/ico-clan.png' },
-  { to: '/perfil', label: 'Perfil', icon: '/ui/ico-userthumbnail.png' },
+  { to: '/perfil', label: 'Perfil', icon: 'avatar' },
 ];
 
 export function Layout() {
@@ -48,10 +48,10 @@ export function Layout() {
                 <span style={{ fontSize: 9 }}>{me.levelPoints}/{me.level.next?.goals ?? me.levelPoints}</span>
               </div>
             </div>
-            <div className="relative shrink-0">
-              <img src="/ui/lvl-badge-blue.png" alt="" className="h-10 w-10" />
-              <span className="t-display t-out absolute inset-0 flex items-center justify-center pb-1 text-base">{me.level.lvl}</span>
-            </div>
+          </button>
+          <button onClick={() => nav('/niveis')} className="relative shrink-0" aria-label="Níveis">
+            <img src="/ui/lvl-badge-blue.png" alt="" className="h-10 w-10" />
+            <span className="t-display t-out absolute inset-0 flex items-center justify-center pb-1 text-base">{me.level.lvl}</span>
           </button>
           <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
             <button onClick={() => nav('/loja')} className="resbar text-[14px]" aria-label="Dinheiro"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-7 w-7" alt="" />{money(me.money)}</button>
@@ -72,7 +72,7 @@ export function Layout() {
             <li key={t.to} className="min-w-0 flex-1">
               <NavLink to={t.to} end={t.end} className={({ isActive }) => `menu-btn flex flex-col items-center justify-center gap-0.5 py-0.5 transition ${isActive ? '' : 'opacity-80'}`}>
                 {({ isActive }) => (<>
-                  <img src={t.icon} alt="" className={`h-7 w-7 object-contain ${isActive ? 'animate-bob' : ''}`} />
+                  {t.icon === 'avatar' ? <Avatar url={me.avatarUrl} size={28} className={isActive ? 'animate-bob' : ''} /> : <img src={t.icon} alt="" className={`h-7 w-7 object-contain ${isActive ? 'animate-bob' : ''}`} />}
                   <span className={`t-display text-[9px] uppercase tracking-wide ${isActive ? 'text-orange-deep' : 'text-navy-ink'}`}>{t.label}</span>
                 </>)}
               </NavLink>

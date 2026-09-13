@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Shield } from './Shield';
 import type { Team } from '../lib/types';
 import { money as fmtMoney } from '../lib/format';
+import { sound } from '../lib/sound';
 
 interface Props {
   open: boolean;
@@ -21,6 +22,7 @@ interface Props {
 export function GoalOverlay({ open, goal, title, text, money = 0, levelPoints = 0, team, onClose, autoClose = 4500 }: Props) {
   useEffect(() => {
     if (!open) return;
+    sound.play(goal ? 'goal' : 'error');
     const t = setTimeout(onClose, autoClose);
     return () => clearTimeout(t);
   }, [open]);

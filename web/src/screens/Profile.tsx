@@ -7,6 +7,7 @@ import { Avatar } from '../components/Avatar';
 import { Panel, Bar } from '../components/ui';
 import { toast } from '../components/Toast';
 import { money as fmt, num } from '../lib/format';
+import { sound } from '../lib/sound';
 
 function Stat({ label, value, sub, icon }: { label: string; value: React.ReactNode; sub?: string; icon?: string }) {
   return (
@@ -32,6 +33,7 @@ export function ProfileScreen() {
   const [found, setFound] = useState<{ nick: string; team: any }[]>([]);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [som, setSom] = useState(sound.enabled());
   async function pickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; e.target.value = '';
     if (!f) return;
@@ -106,8 +108,9 @@ export function ProfileScreen() {
         </div>
       </Panel>
 
+      <button onClick={() => { sound.setEnabled(!som); setSom(!som); }} className={`btn btn-md w-full ${som ? 'btn-sky' : 'btn-gray'}`}><img src={som ? '/ui/pi-sound_on.png' : '/ui/pi-sound_off.png'} className="h-6 w-6" alt="" /> Sons da interface: {som ? 'ligados' : 'desligados'}</button>
       <Link to="/loja" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-goldpouch.png" className="h-6 w-6" alt="" /> Loja: destreza, VIP e itens</Link>
-      <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL} · <Link to="/regras" className="t-gold t-display">níveis e regras</Link></p>
+      <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL} · <Link to="/niveis" className="t-gold t-display">níveis</Link> · <Link to="/regras" className="t-gold t-display">regras</Link></p>
 
       <Panel title="TEXTO PESSOAL" ribbon="green">
         <textarea className="field min-h-[80px] text-sm" maxLength={400} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Grite para a torcida (máx. 400 caracteres)" />

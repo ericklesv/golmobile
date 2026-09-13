@@ -24,6 +24,8 @@ import { LandingScreen } from './screens/Landing';
 import { ShopScreen } from './screens/Shop';
 import { ActiveScreen } from './screens/Active';
 import { installDragScroll } from './lib/dragScroll';
+import { installClickSounds } from './lib/sound';
+import { LevelsScreen } from './screens/Levels';
 
 function Splash() {
   return (
@@ -49,7 +51,7 @@ export default function App() {
   const boot = useAuth((s) => s.boot);
   const loading = useAuth((s) => s.loading);
   const me = useAuth((s) => s.me);
-  useEffect(() => { boot(); return installDragScroll(); }, []);
+  useEffect(() => { boot(); const a = installDragScroll(); const b = installClickSounds(); return () => { a(); b(); }; }, []);
   if (loading) return <Splash />;
   return (
     <>
@@ -66,6 +68,7 @@ export default function App() {
           <Route path="/time/:slug" element={<TeamScreen />} />
           <Route path="/perfil" element={<ProfileScreen />} />
           <Route path="/loja" element={<ShopScreen />} />
+          <Route path="/niveis" element={<LevelsScreen />} />
           <Route path="/ativos" element={<ActiveScreen />} />
           <Route path="/jogador/:nick" element={<PlayerScreen />} />
           <Route path="/regras" element={<RulesScreen />} />

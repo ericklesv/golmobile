@@ -1,35 +1,20 @@
-/** Setas de chute (esquerda curva / cima / direita curva) em SVG cartoon, com brilho e contorno. */
+/** Setas de chute em SVG cartoon: uma seta reta com gradiente e contorno; esquerda/direita são a mesma seta inclinada. */
 type Dir = 'left' | 'up' | 'right';
+const ROT: Record<Dir, number> = { left: -38, up: 0, right: 38 };
+// seta reta apontando para cima (cabeça larga + haste), centrada em (50,50)
+const ARROW = 'M50 6 L88 44 L66 44 L66 94 L34 94 L34 44 L12 44 Z';
 
-const SHAFT: Record<Dir, string> = {
-  left: 'M52 92 C52 66 38 54 26 38',
-  up: 'M50 92 L50 36',
-  right: 'M48 92 C48 66 62 54 74 38',
-};
-// cabeça da seta (triângulo) já orientada
-const HEAD: Record<Dir, string> = {
-  left: 'M6 30 L36 12 L38 46 Z',
-  up: 'M28 40 L50 6 L72 40 Z',
-  right: 'M94 30 L64 12 L62 46 Z',
-};
-
-export function KickArrow({ dir, color = '#3ddc4a', dark = '#0d5a1f', size = 88, className = '' }: { dir: Dir; color?: string; dark?: string; size?: number; className?: string }) {
-  const id = `ka-${dir}-${color.replace('#', '')}`;
+export function KickArrow({ dir, size = 88, className = '' }: { dir: Dir; size?: number; className?: string }) {
+  const id = `ka-${dir}`;
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={className} aria-hidden>
       <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#b9ffb0" /><stop offset="0.35" stopColor={color} /><stop offset="1" stopColor="#1f9a30" /></linearGradient>
-        <filter id={`${id}-sh`} x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="2" floodColor="#000" floodOpacity="0.45" /></filter>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8dff7a" /><stop offset="0.45" stopColor="#38d143" /><stop offset="1" stopColor="#1c9a2c" /></linearGradient>
+        <filter id={`${id}-sh`} x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="4" stdDeviation="2.5" floodColor="#04101b" floodOpacity="0.5" /></filter>
       </defs>
-      <g filter={`url(#${id}-sh)`}>
-        {/* contorno */}
-        <path d={SHAFT[dir]} stroke={dark} strokeWidth="30" strokeLinecap="round" fill="none" />
-        <path d={HEAD[dir]} fill={dark} stroke={dark} strokeWidth="10" strokeLinejoin="round" />
-        {/* corpo */}
-        <path d={SHAFT[dir]} stroke={`url(#${id})`} strokeWidth="20" strokeLinecap="round" fill="none" />
-        <path d={HEAD[dir]} fill={`url(#${id})`} stroke={`url(#${id})`} strokeWidth="2" strokeLinejoin="round" />
-        {/* brilho */}
-        <path d={SHAFT[dir]} stroke="#ffffff" strokeOpacity="0.55" strokeWidth="6" strokeLinecap="round" fill="none" transform="translate(-3 -2)" />
+      <g transform={`rotate(${ROT[dir]} 50 50)`} filter={`url(#${id}-sh)`}>
+        <path d={ARROW} fill={`url(#${id})`} stroke="#0d5a1f" strokeWidth="7" strokeLinejoin="round" />
+        <path d={ARROW} fill="none" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="2" strokeLinejoin="round" transform="translate(0 2) scale(0.94) translate(3 3)" />
       </g>
     </svg>
   );
@@ -37,8 +22,8 @@ export function KickArrow({ dir, color = '#3ddc4a', dark = '#0d5a1f', size = 88,
 
 export function KickArrowButton({ dir, onClick, disabled, label }: { dir: Dir; onClick: () => void; disabled?: boolean; label: string }) {
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={label} className="no-drag group flex flex-col items-center gap-0.5 transition active:scale-90 disabled:opacity-40 disabled:grayscale">
-      <KickArrow dir={dir} className="drop-shadow-[0_0_10px_rgba(61,220,74,0.45)] group-active:brightness-110" />
+    <button onClick={onClick} disabled={disabled} aria-label={label} className="no-drag group flex flex-col items-center gap-1 transition active:scale-90 disabled:opacity-40 disabled:grayscale">
+      <KickArrow dir={dir} className="drop-shadow-[0_0_12px_rgba(61,220,74,0.5)] group-active:brightness-110" />
       <span className="t-display t-out text-[11px] uppercase tracking-wide">{label}</span>
     </button>
   );

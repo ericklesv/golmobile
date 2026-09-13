@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AnimatePresence, motion } from 'framer-motion';
+import { sound } from '../lib/sound';
 
 type ToastType = 'info' | 'success' | 'error';
 interface T { id: number; msg: string; type: ToastType }
@@ -9,6 +10,7 @@ export const useToast = create<ToastState>((set) => ({
   items: [],
   push: (msg, type = 'info') => {
     const id = Date.now() + Math.random();
+    if (type === 'error') sound.play('error');
     set((s) => ({ items: [...s.items.slice(-2), { id, msg, type }] }));
     setTimeout(() => set((s) => ({ items: s.items.filter((t) => t.id !== id) })), 3200);
   },

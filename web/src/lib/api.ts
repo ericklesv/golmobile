@@ -1,4 +1,4 @@
-import type { ActivePlayer, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AlvoState, ActivePlayer, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -56,6 +56,9 @@ export const api = {
   daily: () => req<DailyStatus>('GET', '/api/daily'),
   minigames: () => req<{ level: number; games: MinigameCard[] }>('GET', '/api/daily/hub'),
   memoria: () => req<MemoriaState>('GET', '/api/daily/memoria'),
+  alvo: () => req<{ state: AlvoState }>('GET', '/api/daily/alvo'),
+  alvoNext: (day: number) => req<{ state: AlvoState }>('POST', '/api/daily/alvo/next', { day }),
+  alvoHit: (index: number, day: number) => req<{ state: AlvoState; hit: boolean }>('POST', '/api/daily/alvo/hit', { index, day }),
   qualtime: () => req<{ state: QualtimeState }>('GET', '/api/daily/qualtime'),
   qualtimeNext: (day: number) => req<{ state: QualtimeState }>('POST', '/api/daily/qualtime/next', { day }),
   qualtimeAnswer: (index: number, choice: number, day: number) => req<{ state: QualtimeState; correct: boolean; timeout: boolean; correctChoice: number }>('POST', '/api/daily/qualtime/answer', { index, choice, day }),

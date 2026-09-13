@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { handle } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
-import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, minigamesHub, memoriaState, memoriaFlip, qualtimeState, qualtimeNext, qualtimeAnswer } from '../services/daily.js';
+import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, minigamesHub, memoriaState, memoriaFlip, qualtimeState, qualtimeNext, qualtimeAnswer, alvoState, alvoNext, alvoHit } from '../services/daily.js';
 
 /**
  * Minigames diários (1x por dia): GET /api/daily · Termo: GET /api/daily/termo,
@@ -17,6 +17,9 @@ daily.get('/memoria', handle((req) => memoriaState(req.user.id)));
 daily.post('/memoria/flip', handle((req) => memoriaFlip(req.user.id, req.body?.index, req.body?.day)));
 daily.get('/qualtime', handle((req) => qualtimeState(req.user.id)));
 daily.post('/qualtime/next', handle((req) => qualtimeNext(req.user.id, req.body?.day)));
+daily.get('/alvo', handle((req) => alvoState(req.user.id)));
+daily.post('/alvo/next', handle((req) => alvoNext(req.user.id, req.body?.day)));
+daily.post('/alvo/hit', handle((req) => alvoHit(req.user.id, Number(req.body?.index), req.body?.day)));
 daily.post('/qualtime/answer', handle((req) => qualtimeAnswer(req.user.id, Number(req.body?.index), Number(req.body?.choice), req.body?.day)));
 daily.get('/termo', handle((req) => termoState(req.user.id)));
 daily.post('/termo/guess', handle((req) => termoGuess(req.user.id, req.body?.word, req.body?.day)));

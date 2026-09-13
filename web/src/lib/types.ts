@@ -187,3 +187,9 @@ export interface ShopView {
 
 // ─── Captcha dos chutes manuais ─────────────────────────────────────────────
 export interface CaptchaPayload { captchaId: string; answer: string }
+export interface AlvoState {
+  day: number; total: number; index: number; results: { hit: boolean; ms?: number }[];
+  current: { index: number; x: number; y: number; servedAt: number; deadline: number } | null;
+  finished: boolean; hits: number; reward: { goal: boolean; levelPoints: number; hits: number; total: number; text: string | null } | null;
+  windowMs: number; pointsPerHit: number; goalAt: number; nextAt: number; serverTime: number;
+}

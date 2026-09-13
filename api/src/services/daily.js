@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { GameError, badRequest } from '../lib/errors.js';
 import { dayNumber, nextMidnight, quizDayNumber, nextNoon } from '../lib/time.js';
-import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, levelOf } from '../lib/rules.js';
+import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, ALVO, levelOf } from '../lib/rules.js';
 import { questionsOfDay as qualtimeQuestions } from '../lib/qualtime/bank.js';
 import { teamView } from './view.js';
 import { evaluate, keyOf, loadDictionary } from '../lib/termo/rules.js';
@@ -23,6 +23,7 @@ function calendar(now) {
     QUIZ: { day: quizDayNumber(now), nextAt: nextNoon(now).getTime() },
     MEMORIA: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     QUALTIME: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
+    ALVO: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
   };
 }
 
@@ -502,5 +503,112 @@ export function qualtimeAnswer(userId, index, choice, clientDay) {
     st.answers.push({ choice: c, correct });
     st.servedAt = null;
     return { correct, timeout: c === -1, correctChoice, handledTimeout: true };
+  });
+}
+
+// ─── Alvo no Gol ───────────────────────────────────────────────────────────
+// 10 alvos, um por vez: o servidor "acende" o alvo (POST next: posição + prazo) e o toque
+// (POST hit) só vale dentro da janela. Posições sorteadas por jogador/dia/alvo, sem repetir a
+// anterior. Estado: { results: [{ hit }], servedAt }. ≥ goalAt acertos = 1 gol; +pontos por acerto.
+
+function alvoSpot(userId, day, index) {
+  const r = rng(`alvo:${userId}:${day}:${index}`);
+  const prev = index > 0 ? alvoSpotRaw(userId, day, index - 1) : null;
+  let spot = alvoSpotRaw(userId, day, index);
+  // não repete a zona do alvo anterior
+  if (prev && prev.zone === spot.zone) spot = { ...spot, zone: (spot.zone + 1 + Math.floor(r() * 8)) % 9 };
+  const col = spot.zone % 3, row = Math.floor(spot.zone / 3);
+  return { x: 0.18 + col * 0.32 + (spot.jx - 0.5) * 0.12, y: 0.22 + row * 0.28 + (spot.jy - 0.5) * 0.1, zone: spot.zone };
+}
+function alvoSpotRaw(userId, day, index) {
+  const r = rng(`alvo:${userId}:${day}:${index}:raw`);
+  return { zone: Math.floor(r() * 9), jx: r(), jy: r() };
+}
+
+function alvoView(userId, day, row, now = new Date()) {
+  const st = row?.state ?? {};
+  const results = st.results ?? [];
+  const finished = !!row?.finishedAt;
+  let current = null;
+  if (!finished && st.servedAt && results.length < ALVO.targets) {
+    const { x, y } = alvoSpot(userId, day, results.length);
+    current = { index: results.length, x, y, servedAt: st.servedAt, deadline: st.servedAt + ALVO.windowMs };
+  }
+  return {
+    day, total: ALVO.targets, index: results.length, results, current, finished,
+    hits: results.filter((a) => a.hit).length, reward: row?.reward ?? null,
+    windowMs: ALVO.windowMs, pointsPerHit: ALVO.pointsPerHit, goalAt: ALVO.goalAt,
+    nextAt: nextMidnight(now).getTime(), serverTime: now.getTime(),
+  };
+}
+
+function alvoUnlock(user) {
+  const g = MINIGAMES.find((x) => x.id === 'ALVO');
+  if (levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `Alvo no Gol libera no nível ${g.unlock}.`);
+}
+
+async function withAlvo(userId, clientDay, fn) {
+  const now = new Date();
+  const day = dayNumber(now);
+  if (clientDay !== undefined && clientDay !== null && Number(clientDay) !== day) {
+    throw new GameError(409, 'day-changed', 'Virou o dia: já tem alvos novos. Recarregue.');
+  }
+  return prisma.$transaction(async (tx) => {
+    const user = await loadUser(tx, userId);
+    alvoUnlock(user);
+    const fresh = JSON.stringify({ results: [], servedAt: null });
+    await tx.$executeRaw`
+      INSERT INTO "DailyGame" ("userId", game, day, state, won, "createdAt", "updatedAt")
+      VALUES (${userId}, 'ALVO', ${day}, ${fresh}::jsonb, false, now(), now())
+      ON CONFLICT ("userId", game, day) DO NOTHING`;
+    const [row] = await tx.$queryRaw`
+      SELECT id, state, won, reward, "finishedAt" FROM "DailyGame"
+       WHERE "userId" = ${userId} AND game = 'ALVO' AND day = ${day} FOR UPDATE`;
+    const st = { results: [...(row.state.results ?? [])], servedAt: row.state.servedAt ?? null };
+    const expired = !row.finishedAt && st.servedAt && now.getTime() - st.servedAt > ALVO.windowMs + ALVO.toleranceMs;
+    const extra = await fn({ st, row, day, now, expired, user });
+    if (expired && !extra?.handledTimeout) { st.results.push({ hit: false }); st.servedAt = null; }
+    let reward = row.reward ?? null;
+    let finishedAt = row.finishedAt;
+    if (!finishedAt && st.results.length >= ALVO.targets) {
+      const hits = st.results.filter((a) => a.hit).length;
+      const levelPoints = hits * ALVO.pointsPerHit;
+      reward = { goal: false, levelPoints, hits, total: ALVO.targets, text: null };
+      if (hits >= ALVO.goalAt) {
+        const match = await liveMatchForTeam(user.teamId, tx);
+        const { text } = await applyResult(tx, user, { kind: 'ALVO', goal: true, now, match, money: 0, phrase: `acertou ${hits} de ${ALVO.targets} alvos no gol` });
+        Object.assign(reward, { goal: true, text });
+      }
+      if (levelPoints) await tx.user.update({ where: { id: userId }, data: { levelBonus: { increment: levelPoints } } });
+      finishedAt = now;
+    }
+    const saved = await tx.dailyGame.update({ where: { id: row.id }, data: { state: st, won: !!reward?.goal, reward: reward ?? undefined, finishedAt } });
+    const { handledTimeout, ...out } = extra ?? {};
+    return { ...out, state: alvoView(userId, day, saved, now) };
+  });
+}
+
+export function alvoState(userId) { return withAlvo(userId, undefined, async () => ({})); }
+
+/** Acende o próximo alvo (idempotente enquanto ele estiver aceso). Alvo que apagou sem toque = erro. */
+export function alvoNext(userId, clientDay) {
+  return withAlvo(userId, clientDay, async ({ st, row, expired, now }) => {
+    if (row.finishedAt) return {};
+    if (expired) { st.results.push({ hit: false }); st.servedAt = null; }
+    if (!st.servedAt && st.results.length < ALVO.targets) st.servedAt = now.getTime();
+    return { handledTimeout: true };
+  });
+}
+
+/** Toque no alvo da vez: dentro da janela = acerto; fora = erro. */
+export function alvoHit(userId, index, clientDay) {
+  return withAlvo(userId, clientDay, async ({ st, row, expired, now }) => {
+    if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o Alvo no Gol de hoje. Volte amanhã!');
+    if (!Number.isInteger(index) || index !== st.results.length) throw new GameError(409, 'out-of-sync', 'Esse alvo já apagou.');
+    if (!st.servedAt) throw new GameError(409, 'not-served', 'Espere o alvo acender.');
+    const hit = !expired && now.getTime() - st.servedAt <= ALVO.windowMs + ALVO.toleranceMs;
+    st.results.push({ hit, ms: now.getTime() - st.servedAt });
+    st.servedAt = null;
+    return { hit, handledTimeout: true };
   });
 }

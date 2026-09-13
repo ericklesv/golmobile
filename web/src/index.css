@@ -19,7 +19,7 @@
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: #0d3a8c;
+  background: #050D1F;
   color: var(--ink);
   font-family: Nunito, system-ui, sans-serif;
   font-weight: 700;
@@ -34,6 +34,7 @@ img { -webkit-user-drag: none; }
 /* Moldura de app: celular centralizado no desktop */
 .app-frame {
   position: relative;
+  z-index: 1;
   margin: 0 auto;
   min-height: 100%;
   max-width: 480px;

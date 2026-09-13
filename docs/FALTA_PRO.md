@@ -40,8 +40,8 @@ desenhando um arco no gesto (como a curveball do Pokémon GO).
 ### Recompensa (regra do 1 gol)
 - 3+ gols nas 5 cobranças = **1 gol** (enum `KickKind` novo `FALTAPRO`) — nunca mais de 1.
 - Bônus: +4 pontos de nível por cobrança convertida (máx. +20); acertar alvo bônus = +R$ 50.
-- Slider: entrada em `MINIGAMES` (rules.js) — liberação sugerida nível 7 (entre Alvo 6 e
-  Baú 9); reset às **18h** (próxima hora livre — regra "cada minigame numa hora própria").
+- Slider: entrada em `MINIGAMES` (rules.js) — liberação sugerida nível 8 (o 7 ficou com o
+  Hat Trick); reset às **19h** (próxima hora livre — o Hat Trick pegou as 18h).
 
 ### Fases de implementação
 1. Protótipo do gesto + voo com curva numa rota `/debug-faltapro` (só visual).

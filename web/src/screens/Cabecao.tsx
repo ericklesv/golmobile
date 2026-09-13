@@ -24,6 +24,7 @@ const HAIRS = ['#2B1B10', '#5A3A1E', '#111111', '#C98A2B', '#7A2A1A'];
 
 export function CabecaoScreen() {
   const me = useAuth((s) => s.me)!;
+  const meta = useAuth((s) => s.meta);
   const refresh = useAuth((s) => s.refresh);
   const nav = useNavigate();
   const [status, setStatus] = useState<{ queue: number; playing: number; rules?: { matchSec: number; goldenSec: number; maxGoalWinsPerDay: number } } | null>(null);
@@ -40,8 +41,20 @@ export function CabecaoScreen() {
   const input = useRef({ l: 0, r: 0, j: 0, k: 0 });
   const lastScore = useRef<[number, number]>([0, 0]);
 
+  // ?demo=1 — cena parada só pra conferir a arte (sem servidor)
+  const demo = new URLSearchParams(location.search).get('demo');
+  useEffect(() => {
+    if (!demo) return;
+    const opp = (meta?.teams ?? []).find((t) => t.slug !== me.team.slug) ?? me.team;
+    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'adversario', avatarUrl: null, team: opp }], field: { w: 1000, h: 500, goalW: 64, goalH: 175, barH: 12, playerR: 40, ballR: 18 } };
+    matchRef.current = mm; setMatch(mm);
+    const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[300, 0, 0, 0, 1, 1], [700, 90, 0, 0, -1, 0]], b: [520, 140, 0, 0] };
+    snapRef.current = { s: sn, at: performance.now() }; setSnap(sn);
+  }, [demo]);
+
   // conexão
   useEffect(() => {
+    if (demo) return;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}/api/ws/cabecao?token=${encodeURIComponent(token.get() ?? '')}`);
     wsRef.current = ws;

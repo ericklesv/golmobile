@@ -16,15 +16,17 @@ import { nextMidnight } from '../lib/time.js';
 import { CABECAO } from '../lib/rules.js';
 
 const TICK_MS = 1000 / 30;
+const BOT_AFTER_MS = 15_000; // ninguém na fila em 15 s → entra um bot (partida de treino, não vale gol)
+const BOT_NAMES = ['Zagalinho', 'Pé de Pano', 'Perna Longa', 'Cabeça de Bagre', 'Canhotinha', 'Bicudo', 'Matador', 'Camisa 10'];
 const queue = [];          // [{ conn }]
 const matches = new Map(); // id -> match
 const conns = new Set();   // todas as conexões vivas
 let nextMatchId = 1;
 
-function send(ws, msg) { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); }
+function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); }
 
 export function cabecaoStatus() {
-  return { queue: queue.length, playing: matches.size * 2, rules: { matchSec: FIELD.matchSec, goldenSec: FIELD.goldenSec, maxGoalWinsPerDay: CABECAO.maxGoalWinsPerDay } };
+  return { queue: queue.length, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0), rules: { matchSec: FIELD.matchSec, goldenSec: FIELD.goldenSec, maxGoalWinsPerDay: CABECAO.maxGoalWinsPerDay, botAfterSec: BOT_AFTER_MS / 1000 } };
 }
 
 function broadcastQueue() {
@@ -81,7 +83,38 @@ function onMessage(conn, m) {
 
 function leaveQueue(conn) {
   const i = queue.findIndex((q) => q.conn === conn);
-  if (i >= 0) { queue.splice(i, 1); broadcastQueue(); }
+  if (i >= 0) { clearTimeout(queue[i].botTimer); queue.splice(i, 1); broadcastQueue(); }
+}
+
+let teamsCache = { at: 0, list: [] };
+async function randomTeamExcept(teamId) {
+  if (Date.now() - teamsCache.at > 5 * 60_000) teamsCache = { at: Date.now(), list: await prisma.team.findMany() };
+  const pool = teamsCache.list.filter((t) => t.id !== teamId);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/** Ninguém apareceu: cria um adversário bot (time aleatório, nick com "BOT"). */
+async function startBotMatch(conn) {
+  if (conn.match || !queue.some((q) => q.conn === conn)) return;
+  const team = await randomTeamExcept(conn.user.teamId);
+  if (!team) return;
+  leaveQueue(conn);
+  const nick = `BOT ${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]}`;
+  const bot = { ws: null, user: { id: -1, nick, avatarUrl: null, team, teamId: team.id }, ip: 'bot', match: null, side: -1, bot: true };
+  startMatch(conn, bot);
+}
+
+/** IA simples do bot: fica um pouco atrás da bola, pula quando ela está alta e chuta quando está perto. */
+function botInput(sim, side) {
+  const p = sim.p[side], b = sim.b, dir = side === 0 ? 1 : -1;
+  const behind = b.x - dir * 34;
+  const near = Math.abs(b.x - p.x) < 95 && b.y < 170;
+  const ownGoalSide = (p.x - b.x) * dir > 0; // bola atrás do bot (entre ele e o gol dele)
+  return {
+    l: behind < p.x - 10, r: behind > p.x + 10,
+    j: near && b.y > 80 && Math.random() < 0.35,
+    k: near && !ownGoalSide && Math.random() < 0.5,
+  };
 }
 
 function joinQueue(conn) {
@@ -89,28 +122,30 @@ function joinQueue(conn) {
   if (!conn.user.teamId) return send(conn.ws, { t: 'error', message: 'Escolha um time antes de jogar.' });
   // parceiro compatível: outro jogador, outro time, outro IP
   const idx = queue.findIndex((q) => q.conn.user.id !== conn.user.id && q.conn.user.teamId !== conn.user.teamId && q.conn.ip !== conn.ip);
-  if (idx < 0) { queue.push({ conn, at: Date.now() }); broadcastQueue(); return; }
+  if (idx < 0) { queue.push({ conn, at: Date.now(), botTimer: setTimeout(() => startBotMatch(conn).catch((e) => console.error('[cabecao] bot', e)), BOT_AFTER_MS) }); broadcastQueue(); return; }
   const [other] = queue.splice(idx, 1);
+  clearTimeout(other.botTimer);
   broadcastQueue();
   startMatch(other.conn, conn);
 }
 
 function playerView(conn) {
   const u = conn.user;
-  return { id: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, team: teamView(u.team) };
+  return { id: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, team: teamView(u.team), bot: !!conn.bot };
 }
 
 function startMatch(a, b) {
   const id = nextMatchId++;
-  const m = { id, sim: createSim(), conns: [a, b], done: false, startedAt: Date.now(), lastSent: 0 };
+  const m = { id, sim: createSim(), conns: [a, b], done: false, startedAt: Date.now(), lastSent: 0, bot: !!(a.bot || b.bot) };
   a.match = m; a.side = 0; b.match = m; b.side = 1;
   matches.set(id, m);
   const players = [playerView(a), playerView(b)];
-  for (const c of [a, b]) send(c.ws, { t: 'match', id, side: c.side, players, field: FIELD });
+  for (const c of [a, b]) send(c.ws, { t: 'match', id, side: c.side, players, field: FIELD, training: m.bot });
   let last = Date.now();
   m.timer = setInterval(() => {
     const now = Date.now();
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    for (const c of m.conns) if (c.bot && m.sim.tick % 2 === 0) setInput(m.sim, c.side, botInput(m.sim, c.side));
     step(m.sim, dt);
     const snap = snapshot(m.sim);
     for (const c of m.conns) send(c.ws, snap);
@@ -134,9 +169,11 @@ async function finishMatch(m, result) {
   const sc = m.sim.score;
   const winnerConn = result.winner == null ? null : m.conns[result.winner];
   let award = null;
-  try {
-    award = await recordMatch(m, result, winnerConn);
-  } catch (e) { console.error('[cabecao] falha ao registrar partida', e); }
+  if (m.bot) award = { goal: false, why: 'bot', text: 'Treino contra bot não vale gol. Entre na fila de novo para pegar um craque de verdade!' };
+  else {
+    try { award = await recordMatch(m, result, winnerConn); }
+    catch (e) { console.error('[cabecao] falha ao registrar partida', e); }
+  }
   for (const c of m.conns) {
     send(c.ws, { t: 'over', score: sc, winner: result.winner, reason: result.reason, you: c.side, award: award && winnerConn === c ? award : null });
     c.match = null; c.side = -1;

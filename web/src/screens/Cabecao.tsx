@@ -16,7 +16,7 @@ import { draw, preloadArena, ASPECT, type Field } from '../lib/cabecaoDraw';
  * pela velocidade entre pacotes). Vencedor marca 1 gol (limites no servidor).
  */
 type Snap = { k: number; ph: string; cd: number; tm: number; sc: [number, number]; g: boolean; ls: number | null; p: [number, number, number, number, number, number][]; b: [number, number, number, number] };
-type Player = { id: number; nick: string; avatarUrl: string | null; team: Team };
+type Player = { id: number; nick: string; avatarUrl: string | null; team: Team; bot?: boolean };
 type Over = { score: [number, number]; winner: number | null; reason: string; you: number; award: { goal: boolean; text?: string; why?: string; remaining?: number } | null };
 
 const SKINS = ['#F6CBA6', '#E0A87A', '#B97A4B', '#7A4A2B'];
@@ -27,9 +27,9 @@ export function CabecaoScreen() {
   const meta = useAuth((s) => s.meta);
   const refresh = useAuth((s) => s.refresh);
   const nav = useNavigate();
-  const [status, setStatus] = useState<{ queue: number; playing: number; rules?: { matchSec: number; goldenSec: number; maxGoalWinsPerDay: number } } | null>(null);
+  const [status, setStatus] = useState<{ queue: number; playing: number; rules?: { matchSec: number; goldenSec: number; maxGoalWinsPerDay: number; botAfterSec?: number } } | null>(null);
   const [inQueue, setInQueue] = useState(false);
-  const [match, setMatch] = useState<{ side: number; players: Player[]; field: Field } | null>(null);
+  const [match, setMatch] = useState<{ side: number; players: Player[]; field: Field; training?: boolean } | null>(null);
   const [snap, setSnap] = useState<Snap | null>(null);
   const [over, setOver] = useState<Over | null>(null);
   const [overlay, setOverlay] = useState(false);
@@ -48,7 +48,7 @@ export function CabecaoScreen() {
   useEffect(() => {
     if (!demo) return;
     const opp = (meta?.teams ?? []).find((t) => t.slug !== me.team.slug) ?? me.team;
-    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'adversario', avatarUrl: null, team: opp }], field: { w: 800, h: 400, goalW: 112, goalH: 206, barH: 10, playerR: 50, ballR: 17 } };
+    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'BOT Zagalinho', avatarUrl: null, team: opp, bot: true }], field: { w: 800, h: 400, goalW: 112, goalH: 206, barH: 10, playerR: 50, ballR: 17 } };
     matchRef.current = mm; setMatch(mm);
     const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[260, 0, 200, 0, 1, 1], [560, 70, 0, 0, -1, 0]], b: [420, 120, 0, 0] };
     snapRef.current = { s: sn, at: performance.now() }; setSnap(sn);
@@ -67,7 +67,7 @@ export function CabecaoScreen() {
       const m = JSON.parse(ev.data);
       if (m.t === 'hello' || m.t === 'queue') setStatus({ queue: m.queue, playing: m.playing, rules: m.rules });
       else if (m.t === 'left') setInQueue(false);
-      else if (m.t === 'match') { setInQueue(false); setOver(null); lastScore.current = [0, 0]; const mm = { side: m.side, players: m.players, field: m.field }; matchRef.current = mm; setMatch(mm); sound.play('pop'); }
+      else if (m.t === 'match') { setInQueue(false); setOver(null); lastScore.current = [0, 0]; const mm = { side: m.side, players: m.players, field: m.field, training: !!m.training }; matchRef.current = mm; setMatch(mm); sound.play('pop'); }
       else if (m.t === 's') {
         snapRef.current = { s: m, at: performance.now() };
         if (m.sc[0] !== lastScore.current[0] || m.sc[1] !== lastScore.current[1]) { lastScore.current = [m.sc[0], m.sc[1]]; sound.play(m.ls === matchRef.current?.side ? 'goal' : 'error'); }
@@ -87,7 +87,7 @@ export function CabecaoScreen() {
   // entradas: teclado (PC) + botões (toque); manda a cada mudança e a cada 100 ms
   useEffect(() => {
     if (!match) return;
-    const map: Record<string, keyof typeof input.current> = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'j', w: 'j', W: 'j', ' ': 'j', k: 'k', K: 'k', s: 'k', S: 'k', Enter: 'k', ArrowDown: 'k' };
+    const map: Record<string, keyof typeof input.current> = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'j', w: 'j', W: 'j', ' ': 'k', k: 'k', K: 'k', s: 'k', S: 'k', Enter: 'k', ArrowDown: 'k' };
     const down = (e: KeyboardEvent) => { const key = map[e.key]; if (!key) return; e.preventDefault(); if (!input.current[key]) { input.current[key] = 1; send({ t: 'in', ...input.current }); } };
     const up = (e: KeyboardEvent) => { const key = map[e.key]; if (!key) return; input.current[key] = 0; send({ t: 'in', ...input.current }); };
     window.addEventListener('keydown', down); window.addEventListener('keyup', up);
@@ -115,7 +115,7 @@ export function CabecaoScreen() {
       const players = match.players.map((pl, i) => {
         const p = cur?.s.p[i] ?? [i === 0 ? 180 : 620, 0, 0, 0, i === 0 ? 1 : -1, 0];
         const k = moving ? ex : 0;
-        return { x: p[0] + p[2] * k, y: Math.max(0, p[1] + p[3] * k), vx: p[2], face: p[4], kick: !!p[5], grounded: p[1] <= 0.5, team: pl.team, skin: SKINS[pl.id % SKINS.length], hair: HAIRS[pl.id % HAIRS.length] };
+        return { x: p[0] + p[2] * k, y: Math.max(0, p[1] + p[3] * k), vx: p[2], face: p[4], kick: !!p[5], grounded: p[1] <= 0.5, team: pl.team, skin: SKINS[Math.abs(pl.id) % SKINS.length], hair: HAIRS[Math.abs(pl.id) % HAIRS.length], hairStyle: Math.abs(pl.id * 7 + 3) % 3 };
       });
       const b = cur?.s.b ?? [400, 260, 0, 0];
       const k = moving ? ex : 0;
@@ -171,7 +171,8 @@ export function CabecaoScreen() {
           )}
           <div className="card-white text-[12px] font-bold text-navy-ink">
             <div className="t-display text-[14px]">Controles</div>
-            <p className="mt-1">Celular: botões na tela. PC: <b>A/D</b> ou <b>← →</b> andam, <b>W/↑/Espaço</b> pula, <b>K/S/Enter</b> chuta. A cabeça também rebate a bola.</p>
+            <p className="mt-1">Celular: botões na tela. PC: <b>A/D</b> ou <b>← →</b> andam, <b>W/↑</b> pula, <b>ESPAÇO</b> (ou K) chuta. A cabeça também rebate a bola.</p>
+            <p className="mt-1 text-muted">Ninguém na fila em {rules?.botAfterSec ?? 15} s? Entra um <b>BOT</b> de time aleatório para treinar (treino não vale gol).</p>
           </div>
         </div>
       ) : (
@@ -188,7 +189,22 @@ export function CabecaoScreen() {
           </div>
           <div className="relative w-full overflow-hidden rounded-xl border-4 border-white/80 shadow-[0_6px_0_rgba(0,0,0,0.3)]" style={{ aspectRatio: '16 / 10' }}>
             <canvas ref={canvasRef} className="block touch-none" />
-            {ph === 'countdown' && snap && <div className="absolute inset-0 flex items-center justify-center"><span className="t-display t-out text-[64px] drop-shadow">{snap.g && snap.cd > 1.2 ? 'GOL DE OURO' : Math.ceil(snap.cd) || 'VAI!'}</span></div>}
+            {ph === 'countdown' && snap && (snap.sc[0] + snap.sc[1] > 0 || snap.g) && <div className="absolute inset-0 flex items-center justify-center"><span className="t-display t-out text-[64px] drop-shadow">{snap.g && snap.cd > 1.2 ? 'GOL DE OURO' : Math.ceil(snap.cd) || 'VAI!'}</span></div>}
+            {ph === 'countdown' && snap && snap.sc[0] + snap.sc[1] === 0 && !snap.g && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-navy-deep/75">
+                <div className="flex w-full items-center justify-around px-2">
+                  {[match.players[0], match.players[1]].map((pl, i) => (
+                    <div key={i} className={`flex w-[42%] flex-col items-center gap-0.5 ${i === match.side ? '' : 'opacity-95'}`}>
+                      <Avatar url={pl.avatarUrl} size={40} />
+                      <span className="t-display t-out max-w-full break-all text-center text-[13px] leading-tight">{pl.nick}</span>
+                      <span className="flex items-center gap-1 text-[10px] font-extrabold text-white/90"><Shield team={pl.team} size={16} />{pl.team.name}</span>
+                      <span className={`trap ${i === match.side ? 'trap-green' : pl.bot ? 'trap-orange' : 'trap-blue'} text-[9px]`}>{i === match.side ? 'VOCÊ' : pl.bot ? 'BOT (treino)' : 'ADVERSÁRIO'}</span>
+                    </div>
+                  ))}
+                </div>
+                <span className="t-display t-gold text-[40px] leading-none">{Math.ceil(snap.cd) || 'VAI!'}</span>
+              </div>
+            )}
             {ph === 'goal' && snap && <div className="absolute inset-0 flex items-center justify-center"><span className={`t-display text-[52px] ${snap.ls === match.side ? 't-gold' : 't-red'}`}>{snap.ls === match.side ? 'GOOOL!' : 'GOL DELE…'}</span></div>}
             {over && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-navy-deep/80 p-3 text-center">
@@ -203,8 +219,8 @@ export function CabecaoScreen() {
             )}
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] font-extrabold text-white">
-            <span className="flex items-center gap-1"><Avatar url={mine?.avatarUrl ?? null} size={22} /> você: {mine?.nick}</span>
-            <span className="flex items-center gap-1">{opp?.nick} <Avatar url={opp?.avatarUrl ?? null} size={22} /></span>
+            <span className="flex items-center gap-1"><Avatar url={mine?.avatarUrl ?? null} size={22} /> <Shield team={mine?.team} size={18} /> você</span>
+            <span className="flex items-center gap-1">{opp?.bot ? 'treino vs ' : 'contra '}{opp?.nick} <Shield team={opp?.team} size={18} /> <Avatar url={opp?.avatarUrl ?? null} size={22} /></span>
           </div>
           {/* controles de toque */}
           <div className="mt-auto flex items-end justify-between pt-3 select-none" style={{ touchAction: 'none' }}>

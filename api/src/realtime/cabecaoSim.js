@@ -5,12 +5,12 @@
  * Puro (sem I/O): recebe entradas, avança `step(dt)`, devolve estado serializável.
  */
 export const FIELD = {
-  w: 1000, h: 500,
-  goalW: 64, goalH: 175, barH: 12,       // boca do gol (profundidade), altura, espessura do travessão
-  playerR: 40, ballR: 18,
-  speed: 330, jump: 640, gravity: 1500,  // jogador
-  ballGravity: 1150, ballMax: 1150, bounce: 0.78, groundFriction: 0.985,
-  kickRange: 96, kickVx: 700, kickVy: 430, headBoost: 1.05,
+  w: 800, h: 400,
+  goalW: 56, goalH: 168, barH: 10,       // boca do gol (profundidade), altura, espessura do travessão
+  playerR: 50, ballR: 17,                // jogador = círculo de raio R (cabeça grande) apoiado no chão
+  speed: 290, jump: 560, gravity: 1400,  // jogador
+  ballGravity: 1000, ballMax: 950, bounce: 0.78, groundFriction: 0.985,
+  kickRange: 100, kickVx: 560, kickVy: 380, headBoost: 1.05,
   matchSec: 60, goldenSec: 20, goalPauseSec: 1.3, countdownSec: 3,
 };
 
@@ -27,9 +27,9 @@ export function createSim() {
 }
 
 function mkPlayer(i) {
-  return { x: i === 0 ? 220 : 780, y: 0, vx: 0, vy: 0, face: i === 0 ? 1 : -1, kick: 0, grounded: true };
+  return { x: i === 0 ? 180 : 620, y: 0, vx: 0, vy: 0, face: i === 0 ? 1 : -1, kick: 0, grounded: true };
 }
-function mkBall() { return { x: 500, y: 300, vx: 0, vy: 0 }; }
+function mkBall() { return { x: 400, y: 260, vx: 0, vy: 0 }; }
 function blankInput() { return { l: 0, r: 0, j: 0, k: 0, jEdge: 0, kEdge: 0 }; }
 
 /** Entrada do jogador i: {l, r, j, k} (0/1). Pulo e chute contam na borda de subida. */
@@ -133,7 +133,7 @@ export function step(s, dt) {
 
 function kickBall(s, i) {
   const p = s.p[i], b = s.b;
-  const footX = p.x + p.face * 30, footY = p.y + 18;
+  const footX = p.x + p.face * 34, footY = p.y + 16;
   const d = Math.hypot(b.x - footX, b.y - footY);
   if (d > FIELD.kickRange) return;
   b.vx = p.face * FIELD.kickVx + p.vx * 0.3;

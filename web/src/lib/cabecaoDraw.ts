@@ -8,7 +8,8 @@ export interface Field { w: number; h: number; goalW: number; goalH: number; bar
 export interface DrawPlayer { x: number; y: number; face: number; kick: boolean; team: { slug: string; colorPrimary: string; colorSecondary: string }; skin: string; hair: string }
 export interface DrawBall { x: number; y: number; vx: number }
 
-const GROUND = 0.86; // fração da altura do canvas onde fica o chão
+const GROUND = 0.88; // fração da altura do canvas onde fica o chão
+export const ASPECT = 16 / 10; // canvas largura/altura
 const crests = new Map<string, HTMLImageElement>();
 function crest(slug: string) {
   let im = crests.get(slug);
@@ -42,7 +43,7 @@ function crowdLayer(w: number, h: number) {
 export function draw(ctx: CanvasRenderingContext2D, W: number, H: number, f: Field, players: DrawPlayer[], ball: DrawBall, t: number) {
   const sx = W / f.w;                     // escala horizontal
   const gy = H * GROUND;                  // y do chão no canvas
-  const sy = (gy - H * 0.06) / f.h;       // escala vertical (teto lógico fica perto do topo)
+  const sy = sx;                          // mesma escala nos dois eixos (círculos continuam círculos)
   const X = (x: number) => x * sx;
   const Y = (y: number) => gy - y * sy;
 
@@ -112,43 +113,45 @@ function drawPlayer(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: 
   const face = p.face;
   ctx.save();
   ctx.translate(cx, base);
-  // pernas + chuteiras
-  const legOff = p.kick ? 0.55 * R * face : 0;
+  // pernas + chuteiras (a de trás fica parada; a da frente estica no chute)
+  const legOff = p.kick ? 0.6 * R * face : 0;
   ctx.fillStyle = '#F2C9A0';
-  ctx.fillRect(-R * 0.32, -R * 0.22, R * 0.2, R * 0.22);
-  ctx.fillRect(R * 0.12 + legOff * 0.3, -R * 0.22, R * 0.2, R * 0.22);
+  ctx.fillRect(-R * 0.3, -R * 0.26, R * 0.2, R * 0.2);
+  ctx.fillRect(R * 0.1 + legOff * 0.35, -R * 0.26, R * 0.2, R * 0.2);
   ctx.fillStyle = '#1B1B1B';
-  roundRect(ctx, -R * 0.42, -R * 0.1, R * 0.4, R * 0.12, 3); ctx.fill();
-  roundRect(ctx, R * 0.05 + legOff, -R * 0.14, R * 0.46, R * 0.14, 3); ctx.fill();
+  roundRect(ctx, -R * 0.4 - (face < 0 ? R * 0.08 : 0), -R * 0.11, R * 0.4, R * 0.13, 3); ctx.fill();
+  roundRect(ctx, R * 0.02 + legOff, -R * 0.15, R * 0.5, R * 0.15, 3); ctx.fill();
   // calção
   ctx.fillStyle = '#F5F5F5';
-  roundRect(ctx, -R * 0.42, -R * 0.42, R * 0.84, R * 0.24, 4); ctx.fill();
-  // camisa (cores do time) com faixa
+  roundRect(ctx, -R * 0.42, -R * 0.48, R * 0.84, R * 0.26, 4); ctx.fill();
+  // camisa (cores do time) com faixa e escudo
   ctx.fillStyle = p.team.colorPrimary;
-  roundRect(ctx, -R * 0.5, -R * 0.98, R, R * 0.62, 8); ctx.fill();
+  roundRect(ctx, -R * 0.5, -R * 1.02, R, R * 0.6, 8); ctx.fill();
   ctx.fillStyle = p.team.colorSecondary;
-  ctx.fillRect(-R * 0.5, -R * 0.98 + R * 0.2, R, R * 0.12);
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2; roundRect(ctx, -R * 0.5, -R * 0.98, R, R * 0.62, 8); ctx.stroke();
+  ctx.fillRect(-R * 0.5, -R * 1.02 + R * 0.2, R, R * 0.12);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2; roundRect(ctx, -R * 0.5, -R * 1.02, R, R * 0.6, 8); ctx.stroke();
   const im = crest(p.team.slug);
-  if (im) ctx.drawImage(im, -R * 0.15, -R * 0.9, R * 0.3, R * 0.3);
+  if (im) ctx.drawImage(im, -R * 0.16, -R * 0.94, R * 0.32, R * 0.32);
   // braço
   ctx.fillStyle = '#F2C9A0';
-  ctx.beginPath(); ctx.arc(face * R * 0.55, -R * 0.62, R * 0.12, 0, Math.PI * 2); ctx.fill();
-  // cabeça (grande)
-  const hy = -R * 1.1 - R * 0.55;
-  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.arc(2, hy + 3, R * 0.72, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0, hy, R * 0.72, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(face * R * 0.56, -R * 0.66, R * 0.13, 0, Math.PI * 2); ctx.fill();
+  // cabeça grande (o círculo físico de raio R vai de 0 a 2R; a cabeça ocupa a parte de cima)
+  const hy = -R * 1.12, hr = R * 0.8;
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.arc(3, hy + 4, hr, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0, hy, hr, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.stroke();
-  // cabelo
+  // cabelo (topo + costeleta atrás)
   ctx.fillStyle = p.hair;
-  ctx.beginPath(); ctx.arc(0, hy, R * 0.72, Math.PI * 1.05, Math.PI * 1.95); ctx.lineTo(face * R * 0.2, hy - R * 0.3); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-face * R * 0.7, hy - R * 0.15); ctx.lineTo(-face * R * 0.85, hy + R * 0.35); ctx.lineTo(-face * R * 0.55, hy + R * 0.1); ctx.closePath(); ctx.fill();
-  // olhos + sobrancelha + boca
-  const ex = face * R * 0.3;
-  ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.ellipse(ex, hy - R * 0.05, R * 0.17, R * 0.2, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1B2A4A'; ctx.beginPath(); ctx.arc(ex + face * R * 0.06, hy - R * 0.03, R * 0.08, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = p.hair; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ex - R * 0.18, hy - R * 0.3); ctx.lineTo(ex + R * 0.18, hy - R * 0.34); ctx.stroke();
-  ctx.strokeStyle = '#8A4B3B'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(face * R * 0.25, hy + R * 0.3, R * 0.12, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, hy, hr, Math.PI * 1.02, Math.PI * 1.98); ctx.lineTo(face * hr * 0.3, hy - hr * 0.45); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-face * hr * 0.98, hy - hr * 0.1); ctx.lineTo(-face * hr * 1.1, hy + hr * 0.5); ctx.lineTo(-face * hr * 0.75, hy + hr * 0.15); ctx.closePath(); ctx.fill();
+  // olho, sobrancelha, orelha, boca
+  const ex = face * hr * 0.42;
+  ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(-face * hr * 0.95, hy + hr * 0.05, hr * 0.16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.ellipse(ex, hy - hr * 0.02, hr * 0.22, hr * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1B2A4A'; ctx.beginPath(); ctx.arc(ex + face * hr * 0.08, hy, hr * 0.11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(ex + face * hr * 0.12, hy - hr * 0.05, hr * 0.035, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = p.hair; ctx.lineWidth = Math.max(2, hr * 0.09); ctx.beginPath(); ctx.moveTo(ex - hr * 0.22, hy - hr * 0.36); ctx.lineTo(ex + hr * 0.22, hy - hr * 0.42); ctx.stroke();
+  ctx.strokeStyle = '#8A4B3B'; ctx.lineWidth = Math.max(2, hr * 0.07); ctx.beginPath(); ctx.arc(face * hr * 0.32, hy + hr * 0.4, hr * 0.16, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
   ctx.restore();
 }
 

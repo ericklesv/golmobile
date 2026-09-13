@@ -8,7 +8,7 @@ import { Avatar } from '../components/Avatar';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { toast } from '../components/Toast';
 import { sound } from '../lib/sound';
-import { draw, type Field } from '../lib/cabecaoDraw';
+import { draw, ASPECT, type Field } from '../lib/cabecaoDraw';
 
 /**
  * Cabeção — head soccer 1x1 ao vivo. Fila por WebSocket; a simulação roda no servidor
@@ -46,9 +46,9 @@ export function CabecaoScreen() {
   useEffect(() => {
     if (!demo) return;
     const opp = (meta?.teams ?? []).find((t) => t.slug !== me.team.slug) ?? me.team;
-    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'adversario', avatarUrl: null, team: opp }], field: { w: 1000, h: 500, goalW: 64, goalH: 175, barH: 12, playerR: 40, ballR: 18 } };
+    const mm = { side: 0, players: [{ id: me.id, nick: me.nick, avatarUrl: me.avatarUrl ?? null, team: me.team }, { id: 7, nick: 'adversario', avatarUrl: null, team: opp }], field: { w: 800, h: 400, goalW: 56, goalH: 168, barH: 10, playerR: 50, ballR: 17 } };
     matchRef.current = mm; setMatch(mm);
-    const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[300, 0, 0, 0, 1, 1], [700, 90, 0, 0, -1, 0]], b: [520, 140, 0, 0] };
+    const sn: Snap = { k: 1, ph: 'play', cd: 0, tm: 41, sc: [1, 0], g: false, ls: null, p: [[250, 0, 0, 0, 1, 1], [560, 70, 0, 0, -1, 0]], b: [420, 120, 0, 0] };
     snapRef.current = { s: sn, at: performance.now() }; setSnap(sn);
   }, [demo]);
 
@@ -103,7 +103,7 @@ export function CabecaoScreen() {
       raf = requestAnimationFrame(loop);
       const box = canvas.parentElement!.getBoundingClientRect();
       const dpr = Math.min(2, devicePixelRatio || 1);
-      const W = Math.round(box.width), H = Math.round(box.width / 2);
+      const W = Math.round(box.width), H = Math.round(box.width / ASPECT);
       if (canvas.width !== W * dpr || canvas.height !== H * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = `${W}px`; canvas.style.height = `${H}px`; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const cur = snapRef.current;
@@ -111,11 +111,11 @@ export function CabecaoScreen() {
       const ex = cur ? Math.min(0.12, (performance.now() - cur.at) / 1000) : 0; // extrapolação curta
       const moving = cur && (cur.s.ph === 'play' || cur.s.ph === 'golden');
       const players = match.players.map((pl, i) => {
-        const p = cur?.s.p[i] ?? [i === 0 ? 220 : 780, 0, 0, 0, i === 0 ? 1 : -1, 0];
+        const p = cur?.s.p[i] ?? [i === 0 ? 180 : 620, 0, 0, 0, i === 0 ? 1 : -1, 0];
         const k = moving ? ex : 0;
         return { x: p[0] + p[2] * k, y: Math.max(0, p[1] + p[3] * k), face: p[4], kick: !!p[5], team: pl.team, skin: SKINS[pl.id % SKINS.length], hair: HAIRS[pl.id % HAIRS.length] };
       });
-      const b = cur?.s.b ?? [500, 300, 0, 0];
+      const b = cur?.s.b ?? [400, 260, 0, 0];
       const k = moving ? ex : 0;
       draw(ctx, W, H, f, players, { x: b[0] + b[2] * k, y: Math.max(f.ballR, b[1] + b[3] * k), vx: b[2] }, performance.now());
     };
@@ -184,7 +184,7 @@ export function CabecaoScreen() {
             </div>
             <div className="flex min-w-0 items-center gap-1.5"><span className="t-display t-out truncate text-[12px]">{match.players[1].nick}</span><Shield team={match.players[1].team} size={26} /></div>
           </div>
-          <div className="relative w-full overflow-hidden rounded-xl border-4 border-white/80 shadow-[0_6px_0_rgba(0,0,0,0.3)]" style={{ aspectRatio: '2 / 1' }}>
+          <div className="relative w-full overflow-hidden rounded-xl border-4 border-white/80 shadow-[0_6px_0_rgba(0,0,0,0.3)]" style={{ aspectRatio: '16 / 10' }}>
             <canvas ref={canvasRef} className="block touch-none" />
             {ph === 'countdown' && snap && <div className="absolute inset-0 flex items-center justify-center"><span className="t-display t-out text-[64px] drop-shadow">{snap.g && snap.cd > 1.2 ? 'GOL DE OURO' : Math.ceil(snap.cd) || 'VAI!'}</span></div>}
             {ph === 'goal' && snap && <div className="absolute inset-0 flex items-center justify-center"><span className={`t-display text-[52px] ${snap.ls === match.side ? 't-gold' : 't-red'}`}>{snap.ls === match.side ? 'GOOOL!' : 'GOL DELE…'}</span></div>}

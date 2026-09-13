@@ -405,13 +405,36 @@ export async function memoriaFlip(userId, rawIndex, clientDay) {
 }
 
 // ─── De que time é? ────────────────────────────────────────────────────────
-// Mesma mecânica do Quiz (relógio no servidor, pergunta só quando pedida), mas as opções são
-// 4 escudos. Perguntas do dia iguais para todos (lib/qualtime/bank.js); a ordem dos escudos é
-// embaralhada por jogador. Estado: { answers: [{ choice, correct }], servedAt }.
+// Mesma mecânica do Quiz (relógio no servidor, pergunta só quando pedida). Dois formatos
+// alternados: `crest` (pista → 4 escudos) e `name` (escudo → 4 pistas do mesmo tipo).
+// Perguntas do dia iguais para todos (lib/qualtime/bank.js); a ordem das opções é
+// embaralhada por jogador. O tempo cai a cada acerto seguido (QUALTIME.streakStep) até
+// QUALTIME.minSeconds. O tipo da pista só vai ao cliente depois da resposta.
+// Estado: { answers: [{ choice, correct }], servedAt }.
 
+/** Só o que o escudo precisa — sem estádio/estado/série, que entregariam a resposta pelo devtools. */
+function qualtimeTeam(t) {
+  return t ? { id: t.id, slug: t.slug, name: t.name, abbr: t.abbr, colorPrimary: t.colorPrimary, colorSecondary: t.colorSecondary } : null;
+}
+
+/** Opções na ordem do jogador: { team, text } (crest: só team; name: só text). p[k] = índice em q.options (0 = resposta). */
 function qualtimeOptions(userId, day, q, teamsBySlug) {
-  const p = permFor(userId, day, q.key); // p[k] = índice em q.options (0 = resposta)
-  return { options: p.map((k) => teamView(teamsBySlug.get(q.options[k])) ?? null), correctChoice: p.indexOf(0) };
+  const p = permFor(userId, day, q.key);
+  const options = p.map((k) => {
+    const o = q.options[k];
+    return q.mode === 'crest' ? { team: qualtimeTeam(teamsBySlug.get(o)), text: null } : { team: null, text: o.text };
+  });
+  return { options, correctChoice: p.indexOf(0) };
+}
+
+/** Acertos seguidos no fim da lista — quanto mais, menos tempo na próxima pista. */
+function qualtimeStreak(answers) {
+  let n = 0;
+  for (let i = answers.length - 1; i >= 0 && answers[i].correct; i--) n++;
+  return n;
+}
+function qualtimeSeconds(answers) {
+  return Math.max(QUALTIME.minSeconds, QUALTIME.seconds - QUALTIME.streakStep * qualtimeStreak(answers));
 }
 
 function qualtimeView(userId, day, row, teams, now = new Date()) {
@@ -422,17 +445,22 @@ function qualtimeView(userId, day, row, teams, now = new Date()) {
   const finished = !!row?.finishedAt;
   const results = answers.map((ans, k) => {
     const q = qs[k]; const { options, correctChoice } = qualtimeOptions(userId, day, q, bySlug);
-    return { text: q.text, type: q.type, options, choice: ans.choice, correctChoice, correct: ans.correct };
+    return { mode: q.mode, type: q.type, text: q.text, team: q.mode === 'name' ? qualtimeTeam(bySlug.get(q.answer)) : null, options, choice: ans.choice, correctChoice, correct: ans.correct };
   });
   let current = null;
   if (!finished && st.servedAt && answers.length < qs.length) {
     const q = qs[answers.length];
-    current = { index: answers.length, text: q.text, type: q.type, options: qualtimeOptions(userId, day, q, bySlug).options, deadline: st.servedAt + QUALTIME.seconds * 1000 };
+    const seconds = qualtimeSeconds(answers);
+    current = {
+      index: answers.length, mode: q.mode, text: q.text, team: q.mode === 'name' ? qualtimeTeam(bySlug.get(q.answer)) : null,
+      options: qualtimeOptions(userId, day, q, bySlug).options, seconds, deadline: st.servedAt + seconds * 1000,
+    };
   }
   return {
     day, total: qs.length, index: answers.length, results, current, finished,
-    hits: answers.filter((a) => a.correct).length, reward: row?.reward ?? null,
-    seconds: QUALTIME.seconds, pointsPerHit: QUALTIME.pointsPerHit, goalAt: QUALTIME.goalAt,
+    hits: answers.filter((a) => a.correct).length, streak: qualtimeStreak(answers), reward: row?.reward ?? null,
+    seconds: QUALTIME.seconds, minSeconds: QUALTIME.minSeconds, streakStep: QUALTIME.streakStep,
+    pointsPerHit: QUALTIME.pointsPerHit, goalAt: QUALTIME.goalAt,
     nextAt: nextMidnight(now).getTime(), serverTime: now.getTime(),
   };
 }
@@ -462,8 +490,8 @@ async function withQualtime(userId, clientDay, fn) {
       SELECT id, state, won, reward, "finishedAt" FROM "DailyGame"
        WHERE "userId" = ${userId} AND game = 'QUALTIME' AND day = ${day} FOR UPDATE`;
     const st = { answers: [...(row.state.answers ?? [])], servedAt: row.state.servedAt ?? null };
-    const total = QUALTIME.questions;
-    const expired = !row.finishedAt && st.servedAt && now.getTime() - st.servedAt > QUALTIME.seconds * 1000 + QUALTIME.toleranceMs;
+    const total = qualtimeQuestions(day, QUALTIME.questions).length;
+    const expired = !row.finishedAt && st.servedAt && now.getTime() - st.servedAt > qualtimeSeconds(st.answers) * 1000 + QUALTIME.toleranceMs;
     const extra = await fn({ st, row, day, now, expired, user, teams });
     if (expired && !extra?.handledTimeout) { st.answers.push({ choice: -1, correct: false }); st.servedAt = null; }
     let reward = row.reward ?? null;
@@ -497,7 +525,7 @@ export function qualtimeNext(userId, clientDay) {
   });
 }
 
-/** Responde a pergunta da vez. choice = posição do escudo (0..3); -1 = acabou o tempo. */
+/** Responde a pergunta da vez. choice = posição da opção (0..3); -1 = acabou o tempo. */
 export function qualtimeAnswer(userId, index, choice, clientDay) {
   return withQualtime(userId, clientDay, async ({ st, row, day, expired, teams }) => {
     if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o "De que time é?" de hoje. Volte amanhã!');
@@ -509,7 +537,7 @@ export function qualtimeAnswer(userId, index, choice, clientDay) {
     const correct = c >= 0 && c === correctChoice;
     st.answers.push({ choice: c, correct });
     st.servedAt = null;
-    return { correct, timeout: c === -1, correctChoice, handledTimeout: true };
+    return { correct, timeout: c === -1, correctChoice, type: q.type, handledTimeout: true };
   });
 }
 

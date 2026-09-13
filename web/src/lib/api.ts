@@ -51,6 +51,7 @@ export const api = {
   foul: (direction: 'left' | 'over' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/foul', { direction, ...(captcha ?? {}) }),
   trail: (index: number, captcha?: CaptchaPayload | null) => req<TrailResult>('POST', '/api/play/trail', { index, ...(captcha ?? {}) }),
   captcha: (fresh = false) => req<{ id: string; question: string; expiresAt: number }>('GET', `/api/play/captcha${fresh ? '?nova=1' : ''}`),
+  captchaSolve: (captchaId: string, answer: string) => req<{ ok: boolean; reason?: string; message?: string; captcha?: { id: string; question: string; expiresAt: number } }>('POST', '/api/play/captcha', { captchaId, answer }),
   party: () => req<PartyResult>('POST', '/api/play/party'),
   // minigames diários
   daily: () => req<DailyStatus>('GET', '/api/daily'),

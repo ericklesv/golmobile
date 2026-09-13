@@ -16,8 +16,20 @@ function guardCaptcha(req) {
   if (r === 'expired') throw new GameError(428, 'captcha', 'A conta expirou. Responda a nova.');
 }
 
-// ?nova=1 troca a conta (botão "outra conta"); sem isso, devolve a que o jogador já tem aberta
+// ?nova=1 troca a conta; sem isso, devolve a que o jogador já tem aberta
 play.get('/captcha', handle((req) => newCaptcha(req.user.id, { fresh: req.query.nova === '1' })));
+// Botão "Enviar" (dono, 13/09/2026: com a resposta indo junto do chute, jogador ficava perdido):
+// acertou, libera o chute pendente; errou ou expirou, já devolve a próxima conta.
+play.post('/captcha', handle((req) => {
+  if (!captchaRequired(req.user)) return { ok: true };
+  const r = checkCaptcha(req.user, req.body?.captchaId, req.body?.answer);
+  if (r === 'ok') return { ok: true };
+  return {
+    ok: false, reason: r,
+    message: r === 'wrong' ? 'Resposta errada. Tente esta outra conta.' : 'A conta expirou. Responda esta nova.',
+    captcha: newCaptcha(req.user.id, { fresh: true }),
+  };
+}));
 play.post('/auto', handle((req) => autoKick(req.user.id)));
 play.post('/penalty', handle((req) => { guardCaptcha(req); return penalty(req.user.id, req.body?.direction); }));
 play.post('/foul', handle((req) => { guardCaptcha(req); return foul(req.user.id, req.body?.direction); }));

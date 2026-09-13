@@ -97,6 +97,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   jogador** (pedir de novo devolve a mesma; `?nova=1` troca), vale **30 min** (a recarga é 10) e,
   acertou, o chute pendente fica liberado mesmo se for recusado (recarga) — não voltar a
   "gastar" a conta antes do chute sair (era o bug de a conta se repetir mesmo acertando).
+  Tela: o jogador responde e toca em **ENVIAR** (`POST /api/play/captcha {captchaId, answer}` →
+  `{ok}` ou `{ok:false, message, captcha: próxima}`); acertou, a caixa some; errou, vem outra conta.
+  Não voltar a ter botão "Outra" (jogador achava que era confirmar e ficava trocando de conta).
 - **Senha** (`routes/password.js`): `forgot` sempre 200; token SHA-256 de uso único (1 h) em
   `PasswordReset`; e-mail via Nodemailer (`SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`); sem SMTP, loga o link.
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
@@ -127,7 +130,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
-`POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha`
+`POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)

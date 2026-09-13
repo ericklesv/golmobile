@@ -1,19 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useAnimation } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { toast } from '../components/Toast';
 import { money as fmt } from '../lib/format';
 
-const SEGS_DEFAULT = ['GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'ERROU'];
+const SEGS_DEFAULT = ['GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'GOL', 'ERROU', 'ERROU'];
 
-function polar(cx: number, cy: number, r: number, a: number) {
-  return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
-}
-
+/** Roleta do Party GoL: aro/roda do pack (8 fatias) com rótulos GOL/ERROU por cima. */
 export function PartyScreen() {
   const me = useAuth((s) => s.me)!;
   const meta = useAuth((s) => s.meta);
@@ -37,10 +33,10 @@ export function PartyScreen() {
     setResult(null);
     try {
       const r = await api.party();
-      // gira até o segmento sorteado ficar sob o ponteiro (topo)
-      const target = 360 * 5 + (360 - (r.segment * step + step / 2));
+      // a roda do pack tem a primeira fatia centrada no topo; gira até a fatia sorteada ficar sob a seta
+      const target = 360 * 5 + (360 - r.segment * step);
       const from = rot % 360;
-      await ctrl.start({ rotate: [from, from + target], transition: { duration: 3.6, ease: [0.15, 0.85, 0.25, 1] } });
+      await ctrl.start({ rotate: [from, from + target], transition: { duration: 3.8, ease: [0.15, 0.85, 0.25, 1] } });
       setRot(from + target);
       setResult({ win: r.win, prize: r.prize });
       await refresh();
@@ -50,41 +46,41 @@ export function PartyScreen() {
     } finally { setSpinning(false); }
   }
 
-  const R = 140, C = 150;
   return (
-    <div className="app-frame relative flex min-h-full flex-col bg-night-0">
+    <div className="app-frame relative flex min-h-full flex-col">
+      <div className="stadium-bg" />
       <GoalOverlay open={overlay} goal={!!result?.win} title={result?.win ? 'GOOOL!!' : 'ERROU!'} text={result?.win ? `Você acertou no Party GoL e faturou ${fmt(prize)}!` : `Perdeu a aposta de ${fmt(bet)}. Tenta de novo?`} money={result?.prize ?? 0} team={me.team} onClose={() => setOverlay(false)} autoClose={3000} />
-      <div className="flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
-        <button onClick={() => nav('/')} className="rounded-full bg-night-2 p-2 text-chalk"><ArrowLeft className="h-5 w-5" /></button>
-        <div className="font-poster text-lg tracking-wide text-flood">PARTY GOL</div>
-        <div className="rounded-full bg-night-2 px-3 py-1 font-score text-sm font-bold text-flood">{fmt(me.money)}</div>
+      <div className="relative flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
+        <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
+        <div className="ribbon ribbon-yellow">PARTY GOL</div>
+        <div className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</div>
       </div>
-      <p className="px-6 text-center text-xs text-haze">O cassino do BRGOL. Aposta de <b className="text-chalk">{fmt(bet)}</b>, acertou leva <b className="text-turf">{fmt(prize)}</b>. Só dinheiro virtual!</p>
+      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">O cassino do BRGOL. Aposta de <span className="t-gold t-display">{fmt(bet)}</span>, acertou leva <span className="t-green t-display">{fmt(prize)}</span>. Só dinheiro virtual!</p>
 
-      <div className="relative mx-auto mt-4 w-[300px]">
-        <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-2 text-3xl drop-shadow">🔻</div>
-        <motion.svg viewBox="0 0 300 300" className="w-full drop-shadow-[0_10px_30px_rgba(0,0,0,0.6)]" animate={ctrl} initial={{ rotate: 0 }} style={{ originX: '50%', originY: '50%' }}>
-          {segs.map((s, i) => {
-            const a0 = (i * step - 90) * (Math.PI / 180), a1 = ((i + 1) * step - 90) * (Math.PI / 180);
-            const [x0, y0] = polar(C, C, R, a0), [x1, y1] = polar(C, C, R, a1);
-            const [tx, ty] = polar(C, C, R * 0.68, (a0 + a1) / 2);
-            const win = s === 'GOL';
-            return (
-              <g key={i}>
-                <path d={`M${C},${C} L${x0},${y0} A${R},${R} 0 0,1 ${x1},${y1} Z`} fill={win ? '#22E58A' : i % 2 ? '#FF5470' : '#E11D48'} stroke="#04101B" strokeWidth="2" />
-                <text x={tx} y={ty} textAnchor="middle" dominantBaseline="middle" fontSize="13" fontWeight="900" fill={win ? '#04101B' : '#fff'} fontFamily="Anton, Impact, sans-serif" transform={`rotate(${(i + 0.5) * step} ${tx} ${ty})`}>{s}</text>
-              </g>
-            );
-          })}
-          <circle cx={C} cy={C} r={R} fill="none" stroke="#FFC24B" strokeWidth="6" />
-          <circle cx={C} cy={C} r="26" fill="#04101B" stroke="#FFC24B" strokeWidth="4" />
-          <text x={C} y={C + 6} textAnchor="middle" fontSize="18">⚽</text>
-        </motion.svg>
+      <div className="relative mx-auto mt-4 w-[320px]">
+        <img src="/ui/roulette-bg.png" alt="" className="absolute inset-0 h-full w-full" />
+        <div className="relative m-[7%]">
+          <motion.div animate={ctrl} initial={{ rotate: 0 }} className="relative">
+            <img src="/ui/roulette-wheel.png" alt="" className="h-full w-full" />
+            {segs.map((s, i) => {
+              const a = i * step;
+              return (
+                <div key={i} className="absolute left-1/2 top-1/2 flex justify-center" style={{ width: 0, height: 0, transform: `rotate(${a}deg)` }}>
+                  <span className={`t-display absolute -translate-x-1/2 whitespace-nowrap text-[17px] ${s === 'GOL' ? 't-gold' : 't-out'}`} style={{ top: '-42%', left: '50%', transform: 'translate(-50%, -110px)' }}>{s === 'GOL' ? 'GOL' : 'ERROU'}</span>
+                </div>
+              );
+            })}
+          </motion.div>
+        </div>
+        <img src="/ui/roulette-arrow.png" alt="" className="absolute left-1/2 top-[3%] h-12 -translate-x-1/2" />
+        <button onClick={spin} disabled={spinning} className="absolute left-1/2 top-1/2 h-[22%] w-[22%] -translate-x-1/2 -translate-y-1/2 active:scale-95 disabled:opacity-80">
+          <img src="/ui/roulette-spin.png" alt="girar" className="h-full w-full object-contain" />
+        </button>
       </div>
 
-      <div className="mt-6 px-6">
-        <button onClick={spin} disabled={spinning} className="btn-flood w-full py-4 text-lg">{spinning ? 'Girando…' : `Chutar por ${fmt(bet)}`}</button>
-        <p className="mt-3 text-center text-[11px] text-hazedim">Acertos: {me.stats.party.wins} / {me.stats.party.tries}</p>
+      <div className="relative mt-5 px-6">
+        <button onClick={spin} disabled={spinning} className="btn btn-orange btn-lg w-full">{spinning ? 'Girando…' : `Chutar por ${fmt(bet)}`}</button>
+        <p className="t-display t-out mt-3 text-center text-[12px]">Acertos: {me.stats.party.wins} / {me.stats.party.tries}</p>
       </div>
     </div>
   );

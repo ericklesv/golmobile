@@ -15,49 +15,51 @@ interface Props {
   autoClose?: number;
 }
 
-/** "GOOOL!!" de tela cheia — igual ao original, com narração e bandeira do time. */
-export function GoalOverlay({ open, goal, title, text, money = 0, team, onClose, autoClose = 4200 }: Props) {
+/** Tela de resultado estilo "Stage Clear": ribbon, estrelas, prêmio em moedas, narração. */
+export function GoalOverlay({ open, goal, title, text, money = 0, team, onClose, autoClose = 4500 }: Props) {
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(onClose, autoClose);
     return () => clearTimeout(t);
   }, [open]);
-  const confetti = useMemo(() => Array.from({ length: 42 }, (_, i) => ({
+  const confetti = useMemo(() => Array.from({ length: 40 }, (_, i) => ({
     x: Math.random() * 100, delay: Math.random() * 0.6, dur: 1.8 + Math.random() * 1.4, rot: Math.random() * 720 - 360,
-    color: i % 3 === 0 ? (team?.colorPrimary ?? '#22E58A') : i % 3 === 1 ? (team?.colorSecondary ?? '#FFC24B') : '#EDF4F3', size: 6 + Math.random() * 8,
+    color: i % 3 === 0 ? (team?.colorPrimary ?? '#FFC63D') : i % 3 === 1 ? (team?.colorSecondary ?? '#FF8A2A') : '#FFFFFF', size: 6 + Math.random() * 8,
   })), [open]);
 
   return (
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}
-          className="fixed inset-0 z-[90] flex items-center justify-center overflow-hidden bg-night-0/85 backdrop-blur-sm">
+          className="fixed inset-0 z-[90] flex items-center justify-center overflow-hidden bg-navy-deep/80 backdrop-blur-[2px]">
+          {goal && <img src="/ui/screen-glow.png" alt="" className="pointer-events-none absolute left-1/2 top-1/2 w-[130%] max-w-none -translate-x-1/2 -translate-y-1/2 opacity-70 animate-spinSlow" />}
           {goal && confetti.map((c, i) => (
             <motion.span key={i} initial={{ y: -40, x: `${c.x}vw`, rotate: 0, opacity: 1 }} animate={{ y: '110vh', rotate: c.rot, opacity: [1, 1, 0.6] }}
-              transition={{ duration: c.dur, delay: c.delay, ease: 'easeIn' }} className="absolute top-0 rounded-sm"
-              style={{ width: c.size, height: c.size * 0.6, background: c.color }} />
+              transition={{ duration: c.dur, delay: c.delay, ease: 'easeIn' }} className="absolute top-0 rounded-sm" style={{ width: c.size, height: c.size * 0.6, background: c.color }} />
           ))}
-          {goal && team && (
-            <motion.div initial={{ scaleX: 0.6, opacity: 0 }} animate={{ scaleX: 1, opacity: 0.35 }} className="absolute inset-x-0 top-[28%] h-32"
-              style={{ background: `repeating-linear-gradient(180deg, ${team.colorPrimary} 0 18px, ${team.colorSecondary} 18px 36px)`, maskImage: 'linear-gradient(90deg, transparent, black 15%, black 85%, transparent)' }} />
-          )}
-          <div className="relative mx-6 flex max-w-sm flex-col items-center text-center">
-            {team && <Shield team={team} size={64} className="mb-3 drop-shadow-lg" />}
-            <motion.h1 initial={{ scale: 0.4, rotate: -6 }} animate={{ scale: [0.4, 1.25, 1], rotate: [-6, 3, 0] }} transition={{ duration: 0.6, ease: 'easeOut' }}
-              className={`font-poster text-6xl uppercase leading-none drop-shadow-[0_6px_0_rgba(0,0,0,0.5)] ${goal ? 'text-turf' : 'text-card'}`}>
+          <div className="relative mx-5 flex w-full max-w-sm flex-col items-center text-center">
+            <motion.div initial={{ scale: 0.3, rotate: -8 }} animate={{ scale: [0.3, 1.15, 1], rotate: [-8, 3, 0] }} transition={{ duration: 0.55, ease: 'easeOut' }}
+              className={`ribbon ribbon-lg ${goal ? 'ribbon-orange' : 'ribbon-blue'} w-full`}>
               {title ?? (goal ? 'GOOOOL!!' : 'ERROU!')}
-            </motion.h1>
+            </motion.div>
+            <div className="-mt-1 flex items-end gap-1">
+              {[0, 1, 2].map((i) => (
+                <motion.img key={i} src={goal ? '/ui/ico-stargrade_l_on.png' : '/ui/ico-stargrade_l_off.png'} alt="" initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ delay: 0.35 + i * 0.12, type: 'spring', stiffness: 300, damping: 14 }}
+                  className={i === 1 ? 'h-20 w-20' : 'h-14 w-14'} />
+              ))}
+            </div>
+            {team && <Shield team={team} size={64} className="mt-2" />}
             {goal && money > 0 && (
-              <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="mt-3 rounded-full bg-flood px-4 py-1 font-score text-lg font-bold text-night-0 shadow-flood">
-                +{fmtMoney(money)}
+              <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="resbar mt-3 text-lg">
+                <img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-9 w-9" alt="" /> +{fmtMoney(money)}
               </motion.div>
             )}
             {text && (
-              <motion.p initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.55 }} className="mt-4 text-sm leading-relaxed text-chalk/90">
+              <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }} className="panel mt-4 w-full text-[14px] font-extrabold leading-snug text-navy-ink">
                 {text}
-              </motion.p>
+              </motion.div>
             )}
-            <p className="mt-6 text-[10px] uppercase tracking-widest text-hazedim">toque para continuar</p>
+            <p className="mt-5 font-display text-xs uppercase tracking-widest text-white/70">toque para continuar</p>
           </div>
         </motion.div>
       )}

@@ -247,7 +247,7 @@ export async function trailPick(userId, pickIndex) {
 }
 
 // ─── Party GoL (roleta) ─────────────────────────────────────────────────────
-export const PARTY_SEGMENTS = ['GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'ERROU'];
+export const PARTY_SEGMENTS = ['GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'GOL', 'ERROU', 'ERROU'];
 export async function partySpin(userId) {
   return prisma.$transaction(async (tx) => {
     const res = await tx.user.updateMany({

@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Crown, Syringe } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { PublicPlayer } from '../lib/types';
 import { Shield } from '../components/Shield';
-import { Section, Spinner, Empty } from '../components/ui';
+import { Panel, Spinner, Empty } from '../components/ui';
 import { toast } from '../components/Toast';
 import { num, timeAgo } from '../lib/format';
 
@@ -28,52 +27,45 @@ export function PlayerScreen() {
     try { const r = await api.nerf(p!.nick); setMe(r.me); setP(await api.player(p!.nick)); toast(`${p!.nick} foi nerfado!`, 'success'); }
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
-
   const rate = (g: number, t: number) => (t ? `${Math.round((g / t) * 100)}%` : '—');
   return (
-    <div className="flex flex-col gap-3">
-      <section className="card p-4">
+    <div className="flex flex-col gap-4">
+      <section className="panel-navy">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border-2" style={{ borderColor: p.team.colorPrimary, background: `linear-gradient(135deg, ${p.team.colorPrimary}, ${p.team.colorSecondary})` }}>
-              <span className="font-poster text-2xl text-white drop-shadow">{p.nick.slice(0, 2).toUpperCase()}</span>
-            </div>
-            <Shield team={p.team} size={26} className="absolute -bottom-1 -right-1" />
-          </div>
+          <div className="relative"><img src="/ui/ico-userthumbnail.png" alt="" className="h-16 w-16" /><Shield team={p.team} size={28} className="absolute -bottom-1 -right-1" /></div>
           <div className="min-w-0 flex-1">
-            <div className={`truncate font-poster text-2xl ${p.vip ? 'text-sky-300' : 'text-chalk'}`}>{p.nick} {p.vip && <Crown className="inline h-4 w-4 text-flood" />}</div>
-            <div className="text-xs text-haze"><Link to={`/time/${p.team.slug}`} className="font-bold text-chalk">{p.team.name}</Link> · {p.online ? <span className="text-turf">online</span> : 'offline'}</div>
-            <div className="mt-1 text-[11px] uppercase tracking-wider text-flood">Lvl {p.level.lvl} · {p.level.name}</div>
+            <div className={`t-display truncate text-3xl ${p.vip ? 'text-sky-light' : 't-out'}`}>{p.nick} {p.vip && <img src="/ui/ico-crown_silver.png" className="ico h-5 w-5" alt="VIP" />}</div>
+            <div className="text-[12px] font-extrabold text-white/90"><Link to={`/time/${p.team.slug}`} className="t-gold t-display">{p.team.name}</Link> · {p.online ? <span className="t-green">online</span> : 'offline'}</div>
+            <div className="trap trap-orange mt-1 text-[11px] uppercase">Lvl {p.level.lvl} · {p.level.name}</div>
           </div>
         </div>
-        {p.bio && <p className="mt-3 rounded-xl bg-night-1 p-3 text-sm text-chalk/90">{p.bio}</p>}
+        {p.bio && <p className="mt-3 rounded-xl bg-white/15 p-2 text-[13px] font-bold">{p.bio}</p>}
       </section>
 
       <div className="grid grid-cols-4 gap-2 text-center">
         {(['geral', 'penal', 'falta', 'trilha'] as const).map((k) => (
-          <div key={k} className="rounded-xl bg-night-1 p-2"><div className="font-score text-lg font-bold text-chalk">{num(p.positions[k])}º</div><div className="text-[10px] uppercase text-haze">{k}</div></div>
+          <div key={k} className="item-blue"><div className="t-display t-out text-xl">{num(p.positions[k])}º</div><div className="t-display text-[10px] uppercase text-white/80">{k}</div></div>
         ))}
       </div>
 
-      <Section title="Números">
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="rounded-xl bg-night-1 p-2"><div className="font-score text-xl font-bold text-turf">{num(p.goalsTotal)}</div><div className="text-[10px] uppercase text-haze">gols na carreira</div></div>
-          <div className="rounded-xl bg-night-1 p-2"><div className="font-score text-xl font-bold text-chalk">{p.dexterity}</div><div className="text-[10px] uppercase text-haze">destreza</div></div>
-          <div className="rounded-xl bg-night-1 p-2"><div className="font-score text-xl font-bold text-chalk">{p.stats.penalty.goals}/{p.stats.penalty.tries}</div><div className="text-[10px] uppercase text-haze">pênaltis · {rate(p.stats.penalty.goals, p.stats.penalty.tries)}</div></div>
-          <div className="rounded-xl bg-night-1 p-2"><div className="font-score text-xl font-bold text-chalk">{p.stats.foul.goals}/{p.stats.foul.tries}</div><div className="text-[10px] uppercase text-haze">faltas · {rate(p.stats.foul.goals, p.stats.foul.tries)}</div></div>
-          <div className="rounded-xl bg-night-1 p-2"><div className="font-score text-xl font-bold text-chalk">{p.stats.trail.goals}/{p.stats.trail.tries}</div><div className="text-[10px] uppercase text-haze">trilha · {rate(p.stats.trail.goals, p.stats.trail.tries)}</div></div>
-          <div className="rounded-xl bg-night-1 p-2"><div className="font-score text-xl font-bold text-chalk">{p.goalsSeason}</div><div className="text-[10px] uppercase text-haze">gols na temporada</div></div>
+      <Panel title="NÚMEROS" ribbon="blue">
+        <div className="grid grid-cols-2 gap-2 text-center">
+          {[
+            ['gols na carreira', num(p.goalsTotal)], ['destreza', p.dexterity],
+            [`pênaltis · ${rate(p.stats.penalty.goals, p.stats.penalty.tries)}`, `${p.stats.penalty.goals}/${p.stats.penalty.tries}`],
+            [`faltas · ${rate(p.stats.foul.goals, p.stats.foul.tries)}`, `${p.stats.foul.goals}/${p.stats.foul.tries}`],
+            [`trilha · ${rate(p.stats.trail.goals, p.stats.trail.tries)}`, `${p.stats.trail.goals}/${p.stats.trail.tries}`],
+            ['gols na temporada', p.goalsSeason],
+          ].map(([l, v]) => <div key={l as string} className="rounded-xl bg-sky/10 py-2"><div className="font-display text-xl text-navy-ink">{v}</div><div className="label">{l}</div></div>)}
         </div>
-      </Section>
+      </Panel>
 
-      {canNerf && (
-        <button onClick={nerf} disabled={busy} className="btn-red w-full py-3 text-sm"><Syringe className="h-4 w-4" /> Nerfar destreza (R$ 1.000)</button>
-      )}
+      {canNerf && <button onClick={nerf} disabled={busy} className="btn btn-red btn-md w-full">Nerfar destreza (R$ 1.000)</button>}
 
-      <Section title="Últimos lances">
-        {p.recent.length ? <ul className="flex flex-col gap-1.5 text-xs">{p.recent.map((r) => <li key={r.id} className="flex gap-2"><span className={`flex-1 ${r.goal ? 'text-chalk' : 'text-haze'}`}>{r.text}</span><span className="text-hazedim">{timeAgo(r.at)}</span></li>)}</ul> : <p className="text-xs text-hazedim">Nenhum lance ainda.</p>}
-      </Section>
-      <p className="text-center text-[10px] text-hazedim">No BRGOL desde {new Date(p.createdAt).toLocaleDateString('pt-BR')}</p>
+      <Panel title="ÚLTIMOS LANCES" ribbon="green">
+        {p.recent.length ? <ul className="flex flex-col gap-1.5 text-[12px] font-bold">{p.recent.map((r) => <li key={r.id} className="flex gap-2"><span className={`flex-1 ${r.goal ? 'text-navy-ink' : 'text-muted'}`}>{r.text}</span><span className="text-muted">{timeAgo(r.at)}</span></li>)}</ul> : <p className="text-xs font-bold text-muted">Nenhum lance ainda.</p>}
+      </Panel>
+      <p className="t-display t-out text-center text-[11px]">No BRGOL desde {new Date(p.createdAt).toLocaleDateString('pt-BR')}</p>
     </div>
   );
 }

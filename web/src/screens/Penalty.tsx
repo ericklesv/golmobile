@@ -2,7 +2,6 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { ArrowLeft } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { KickResult } from '../lib/types';
@@ -69,7 +68,7 @@ function Scene({ shot, teamColor }: { shot: Shot | null; teamColor: string }) {
       <Goal />
       <group ref={keeper}><Player color="#111827" arms={0.5} gloves /></group>
       <group ref={ball}><Ball position={[0, 0, 0]} /></group>
-      <fog attach="fog" args={['#0A1B2B', 30, 70]} />
+      <fog attach="fog" args={['#7fc5ff', 30, 70]} />
     </>
   );
 }
@@ -112,32 +111,32 @@ export function PenaltyScreen() {
   });
 
   return (
-    <div className="app-frame relative flex min-h-full flex-col bg-night-0">
+    <div className="app-frame relative flex min-h-full flex-col">
       <GoalOverlay open={overlay} goal={!!result?.goal} title={result?.goal ? (result.rebound ? 'NO REBOTE!' : 'GOOOOL!!') : 'DEFENDEU!'} text={result?.text} money={result?.money} team={me.team}
         onClose={() => { setOverlay(false); nav('/'); }} />
       <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-3" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
-        <button onClick={() => nav('/')} className="rounded-full bg-night-0/70 p-2 text-chalk backdrop-blur"><ArrowLeft className="h-5 w-5" /></button>
-        <div className="rounded-full bg-night-0/70 px-3 py-1 font-poster text-lg tracking-wide text-flood backdrop-blur">PÊNALTI</div>
-        <div className="rounded-full bg-night-0/70 px-3 py-1 text-xs text-chalk backdrop-blur">{ready ? <span className="text-turf">PRONTO</span> : <Countdown readyAt={me.cooldowns.PENALTY.readyAt} />}</div>
+        <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
+        <div className="ribbon ribbon-yellow">PÊNALTI</div>
+        <div className="trap trap-blue text-[12px]">{ready ? <span className="t-green">PRONTO</span> : <Countdown readyAt={me.cooldowns.PENALTY.readyAt} />}</div>
       </div>
       <div className="h-[62vh] w-full">
-        <Canvas shadows camera={{ position: [0, 1.6, 15], fov: 48 }} dpr={[1, 1.75]} gl={{ antialias: true }} style={{ background: 'linear-gradient(#04101B, #0A1B2B)' }}>
+        <Canvas shadows camera={{ position: [0, 1.6, 15], fov: 48 }} dpr={[1, 1.75]} gl={{ antialias: true }} style={{ background: 'linear-gradient(#46b4ff, #1f7ae6)' }}>
           <Suspense fallback={null}><Scene shot={shot} teamColor={me.team.colorPrimary} /></Suspense>
         </Canvas>
       </div>
       <div className="relative flex flex-1 flex-col justify-center gap-3 px-4 pb-6">
-        <p className="text-center text-xs uppercase tracking-widest text-haze">
+        <div className="stadium-bg" />
+        <p className="t-display t-out relative text-center text-[13px] uppercase tracking-widest">
           {shot ? (result?.goal ? 'É GOL!' : 'O goleiro foi no canto certo…') : `Escolha o canto · destreza ${me.dexterity} · ${Math.round((2 / 3 + me.dexterity / 100) * 100)}% de acerto`}
         </p>
         <div className="grid grid-cols-3 gap-2">
           {(['left', 'center', 'right'] as Dir[]).map((d) => (
-            <button key={d} onClick={() => kick(d)} disabled={!ready || busy || !!shot} className="btn-flood py-5 text-base">
+            <button key={d} onClick={() => kick(d)} disabled={!ready || busy || !!shot} className="btn btn-orange btn-lg relative text-[19px]">
               {busy && !shot ? <Spinner /> : d === 'left' ? 'Esquerda' : d === 'center' ? 'Meio' : 'Direita'}
             </button>
           ))}
         </div>
-        {!me.cooldowns.PENALTY.unlocked && <p className="text-center text-xs text-card">Pênalti libera no nível 0.</p>}
-        {!ready && me.cooldowns.PENALTY.unlocked && !shot && <p className="text-center text-xs text-haze">Recarga: {me.vip ? '5 min (VIP)' : '10 min · VIP bate a cada 5'}</p>}
+        {!ready && me.cooldowns.PENALTY.unlocked && !shot && <p className="t-display t-out relative text-center text-[12px]">Recarga: {me.vip ? '5 min (VIP)' : '10 min · VIP bate a cada 5'}</p>}
       </div>
     </div>
   );

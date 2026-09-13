@@ -4,8 +4,14 @@ import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { TeamPage } from '../lib/types';
 import { Shield } from '../components/Shield';
-import { Section, TopList, Spinner, Tabs } from '../components/ui';
+import { Panel, TopList, Spinner, Tabs } from '../components/ui';
 import { num, pct } from '../lib/format';
+
+function Stat({ label, value, gold = false }: { label: string; value: React.ReactNode; gold?: boolean }) {
+  return (
+    <div className="text-center"><div className={`t-display text-2xl ${gold ? 't-gold' : 't-out'}`}>{value}</div><div className="t-display text-[10px] uppercase tracking-wider text-white/80">{label}</div></div>
+  );
+}
 
 export function TeamScreen() {
   const me = useAuth((s) => s.me)!;
@@ -21,53 +27,49 @@ export function TeamScreen() {
   const mine = m ? (m.home.slug === t.slug ? 'home' : 'away') : null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <section className="card overflow-hidden">
-        <div className="h-14" style={{ background: `linear-gradient(135deg, ${t.colorPrimary}, ${t.colorSecondary})`, opacity: 0.85 }} />
-        <div className="-mt-7 flex items-end gap-3 px-3 pb-3">
-          <Shield team={t} size={76} className="drop-shadow-lg" />
-          <div className="min-w-0 flex-1 pt-8">
-            <h1 className="truncate font-poster text-2xl uppercase text-chalk drop-shadow-[0_2px_0_rgba(0,0,0,0.6)]">{t.name}</h1>
-            <div className="text-[11px] uppercase tracking-wider text-haze">{t.state} · {t.stadium} · Série {t.serie}</div>
+    <div className="flex flex-col gap-4">
+      <section className="panel-navy relative">
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl bg-white/90 p-2 shadow-lg"><Shield team={t} size={72} /></div>
+          <div className="min-w-0 flex-1">
+            <h1 className="t-display t-out truncate text-3xl">{t.name}</h1>
+            <div className="trap trap-blue mt-1 text-[10px] uppercase">{t.state} · {t.stadium} · Série {t.serie}</div>
           </div>
         </div>
-        <div className="grid grid-cols-4 divide-x divide-line/60 border-t border-line/60 text-center">
-          <div className="py-2"><div className="font-score text-lg font-bold text-chalk">{page.standing?.position ?? '-'}º</div><div className="text-[10px] uppercase text-haze">posição</div></div>
-          <div className="py-2"><div className="font-score text-lg font-bold text-flood">{page.standing?.points ?? 0}</div><div className="text-[10px] uppercase text-haze">pontos</div></div>
-          <div className="py-2"><div className="font-score text-lg font-bold text-chalk">{num(page.members)}</div><div className="text-[10px] uppercase text-haze">torcida</div></div>
-          <div className="py-2"><div className="font-score text-lg font-bold text-turf">{page.online.length}</div><div className="text-[10px] uppercase text-haze">online</div></div>
+        <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-white/10 py-2">
+          <Stat label="posição" value={`${page.standing?.position ?? '-'}º`} />
+          <Stat label="pontos" value={page.standing?.points ?? 0} gold />
+          <Stat label="torcida" value={num(page.members)} />
+          <Stat label="online" value={page.online.length} />
         </div>
-        {page.standing && <div className="border-t border-line/60 px-3 py-2 text-center text-xs text-haze">Campanha: <b className="text-chalk">{page.standing.wins}V {page.standing.draws}E {page.standing.losses}D</b> · SG {page.standing.diff} · {num(page.totalGoals)} gols na história</div>}
+        {page.standing && <div className="mt-2 text-center text-[12px] font-extrabold text-white/90">Campanha {page.standing.wins}V {page.standing.draws}E {page.standing.losses}D · SG {page.standing.diff} · {num(page.totalGoals)} gols na história</div>}
       </section>
 
       {m && (
-        <section className="card p-3">
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-haze">Jogo da rodada {m.round?.number}</div>
+        <Panel title={`JOGO DA RODADA ${m.round?.number ?? ''}`} ribbon="orange">
           <div className="flex items-center justify-between">
-            <Link to={`/time/${m.home.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.home} size={44} /><span className="text-center text-[11px] font-bold text-chalk">{m.home.name}</span></Link>
-            <div className="font-score text-3xl font-extrabold tabular-nums text-chalk"><span className={mine === 'home' ? 'text-turf' : ''}>{m.homeGoals}</span> <span className="text-hazedim">x</span> <span className={mine === 'away' ? 'text-turf' : ''}>{m.awayGoals}</span></div>
-            <Link to={`/time/${m.away.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.away} size={44} /><span className="text-center text-[11px] font-bold text-chalk">{m.away.name}</span></Link>
+            <Link to={`/time/${m.home.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.home} size={48} /><span className="text-center text-[11px] font-extrabold text-navy-ink">{m.home.name}</span></Link>
+            <div className="font-display text-4xl tabular-nums text-navy-ink"><span className={mine === 'home' ? 'text-orange-deep' : ''}>{m.homeGoals}</span> <span className="text-muted">x</span> <span className={mine === 'away' ? 'text-orange-deep' : ''}>{m.awayGoals}</span></div>
+            <Link to={`/time/${m.away.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.away} size={48} /><span className="text-center text-[11px] font-extrabold text-navy-ink">{m.away.name}</span></Link>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-night-1"><div className="h-full" style={{ width: `${m.pct}%`, background: m.home.colorPrimary }} /></div>
-          <div className="mt-1 flex justify-between text-[10px] text-haze"><span>{pct(m.pct)}</span><span>{pct(100 - m.pct)}</span></div>
-        </section>
+          <div className="bar mt-2" style={{ height: 16 }}><i style={{ width: `calc(${m.pct}% + 6px)` }} /><span style={{ fontSize: 10 }}>{pct(m.pct)} · {pct(100 - m.pct)}</span></div>
+        </Panel>
       )}
 
-      <Section title="Artilheiros da torcida">
+      <Panel title="ARTILHEIROS DA TORCIDA" ribbon="blue">
         <Tabs value={tab} onChange={setTab} items={[{ id: 'hour', label: 'Hora' }, { id: 'round', label: 'Rodada' }, { id: 'season', label: 'Temporada' }]} />
         <div className="mt-2"><TopList rows={page.tops[tab]} highlight={me.nick} empty="Ninguém marcou ainda." /></div>
-      </Section>
+      </Panel>
 
       {page.titles.length > 0 && (
-        <Section title="Títulos">
-          <ul className="flex flex-wrap gap-2">{page.titles.map((tt, i) => <li key={i} className={`rounded-full px-3 py-1 text-xs font-bold ${tt.place === 1 ? 'bg-flood/15 text-flood' : 'bg-night-1 text-haze'}`}>{tt.place === 1 ? '🏆' : '🥈'} {tt.competition} · T{tt.season}</li>)}</ul>
-        </Section>
+        <Panel title="TÍTULOS" ribbon="yellow">
+          <ul className="flex flex-wrap gap-2">{page.titles.map((tt, i) => <li key={i} className={`trap ${tt.place === 1 ? 'trap-orange' : 'trap-blue'} text-[11px]`}><img src={tt.place === 1 ? '/ui/ico-trophy_s.png' : '/ui/ico-medal_silver.png'} className="mr-1 h-5 w-5" alt="" />{tt.competition} · T{tt.season}</li>)}</ul>
+        </Panel>
       )}
 
-      <Section title="Torcedores online">
-        {page.online.length ? <ul className="flex flex-wrap gap-2">{page.online.map((u) => <li key={u.nick}><Link to={`/jogador/${encodeURIComponent(u.nick)}`} className="rounded-full bg-night-1 px-3 py-1 text-xs font-semibold text-chalk"><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-turf" />{u.nick}</Link></li>)}</ul> : <p className="text-xs text-hazedim">Ninguém online agora.</p>}
-      </Section>
-      {t.slug !== me.team.slug && <Link to="/liga" className="btn-ghost w-full py-2 text-sm">Ver classificação</Link>}
+      <Panel title="TORCEDORES ONLINE" ribbon="green">
+        {page.online.length ? <ul className="flex flex-wrap gap-2">{page.online.map((u) => <li key={u.nick}><Link to={`/jogador/${encodeURIComponent(u.nick)}`} className="pill-blue text-[12px] font-extrabold text-white">{u.nick}</Link></li>)}</ul> : <p className="text-xs font-bold text-muted">Ninguém online agora.</p>}
+      </Panel>
     </div>
   );
 }

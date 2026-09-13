@@ -26,7 +26,7 @@ export const MONEY = {
 };
 export const DEXTERITY_MAX = 30;
 export const NERF_MIN_LEVEL = 14;
-export const PARTY_WIN_CHANCE = 1 / 3;
+export const PARTY_WIN_CHANCE = 3 / 8; // roleta de 8 fatias, 3 de GOL
 
 // ─── Chances ────────────────────────────────────────────────────────────────
 // Pênalti: goleiro escolhe 1 de 3 cantos → 66,6% base. Destreza soma +1%/ponto,

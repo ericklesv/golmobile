@@ -22,9 +22,11 @@ import { LandingScreen } from './screens/Landing';
 function Splash() {
   return (
     <div className="app-frame flex min-h-full items-center justify-center">
-      <div className="text-center">
-        <div className="font-poster text-5xl tracking-wide text-turf drop-shadow-[0_0_24px_rgba(34,229,138,0.5)]">BRGOL</div>
-        <div className="mt-2 text-[11px] uppercase tracking-[0.3em] text-haze">carregando o estádio…</div>
+      <div className="stadium-bg" />
+      <div className="relative text-center">
+        <img src="/ui/ico-coin01_s.png" alt="" className="mx-auto h-12 w-12 animate-spin" />
+        <div className="t-display t-out mt-2 text-6xl tracking-wide">BRGOL</div>
+        <div className="t-display t-out mt-1 text-[12px] uppercase tracking-[0.3em]">carregando o estádio…</div>
       </div>
     </div>
   );

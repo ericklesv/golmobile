@@ -2,60 +2,150 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Kit de UI "BRGOL Casual" — sprites 9-slice do pack Layer Lab GUI Pro
+   Casual Game (licenciado). Fatias vêm dos .meta do Unity (top right bottom left).
+   Regra: nada com cara de site — botão é sprite, painel é sprite, título é ribbon.
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
+  --ink: #14335F;
+  --navy: #0B2D6B;
+  --muted: #6B86B3;
 }
 
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  background: #02080F;
-  color: #EDF4F3;
-  font-family: Inter, system-ui, sans-serif;
+  background: #0d3a8c;
+  color: var(--ink);
+  font-family: Nunito, system-ui, sans-serif;
+  font-weight: 700;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 input, textarea { user-select: text; }
+img { -webkit-user-drag: none; }
 
-/* Moldura de app: no desktop fica centralizado como um celular */
+/* Moldura de app: celular centralizado no desktop */
 .app-frame {
   position: relative;
   margin: 0 auto;
   min-height: 100%;
   max-width: 480px;
-  background: linear-gradient(180deg, #04101B 0%, #0A1B2B 100%);
-  box-shadow: 0 0 0 1px #22405F, 0 0 80px rgba(0,0,0,0.6);
   overflow-x: hidden;
-}
-
-.stadium-bg {
-  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-}
-.stadium-bg::before {
-  content: ''; position: absolute; inset: -40% -20% auto -20%; height: 90%;
   background:
-    radial-gradient(60% 45% at 30% 20%, rgba(255,194,75,0.14) 0%, transparent 60%),
-    radial-gradient(60% 45% at 75% 15%, rgba(34,229,138,0.14) 0%, transparent 60%);
+    radial-gradient(120% 60% at 50% -10%, #8fdcff 0%, rgba(143,220,255,0) 60%),
+    linear-gradient(180deg, #46b4ff 0%, #1f7ae6 45%, #1258c4 100%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 0 80px rgba(0,0,0,0.5);
+}
+/* gramado no rodapé + nuvens */
+.stadium-bg { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.stadium-bg::before {
+  content: ''; position: absolute; left: -10%; right: -10%; top: 6%; height: 22%;
+  background:
+    radial-gradient(120px 44px at 20% 40%, rgba(255,255,255,0.55), transparent 70%),
+    radial-gradient(160px 56px at 62% 30%, rgba(255,255,255,0.5), transparent 70%),
+    radial-gradient(110px 40px at 88% 60%, rgba(255,255,255,0.45), transparent 70%);
+  filter: blur(2px);
 }
 .stadium-bg::after {
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 46%;
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
   background:
-    repeating-linear-gradient(180deg, rgba(34,229,138,0.05) 0 18px, rgba(34,229,138,0.02) 18px 36px),
-    linear-gradient(180deg, transparent, rgba(34,229,138,0.08));
-  mask-image: linear-gradient(180deg, transparent, black 40%);
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 40px, rgba(0,0,0,0.05) 40px 80px),
+    linear-gradient(180deg, #5fdc4a 0%, #37b73a 40%, #23933a 100%);
+  clip-path: ellipse(120% 100% at 50% 100%);
+  opacity: 0.95;
 }
 
-.btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl font-score font-bold uppercase tracking-wide transition active:scale-95 disabled:opacity-40 disabled:active:scale-100; }
-.btn-turf { @apply btn bg-turf text-night-0 shadow-glow; }
-.btn-flood { @apply btn bg-flood text-night-0 shadow-flood; }
-.btn-ghost { @apply btn bg-night-2 text-chalk border border-line; }
-.btn-red { @apply btn bg-card text-white shadow-red; }
-.card { @apply rounded-2xl border border-line bg-night-2/80 backdrop-blur-sm; }
-.field { @apply w-full rounded-xl border border-line bg-night-1 px-4 py-3 text-chalk placeholder:text-hazedim outline-none focus:border-turf; }
-.label { @apply text-[11px] font-bold uppercase tracking-widest text-haze; }
+/* ── 9-slice ─────────────────────────────────────────────────────────── */
+.ui, .btn, .btn-sq, .panel, .panel-navy, .panel-full, .card-blue, .card-green, .card-orange, .card-purple, .card-white, .pill-blue, .pill-white, .item-blue, .item-yellow, .item-green, .item-empty, .ribbon, .trap, .resbar, .bar, .bar > i, .field, .toast, .menu-btn { border-style: solid; border-color: transparent; border-image-repeat: stretch; box-sizing: border-box; }
+
+/* Botões (Button01_195_*: 64x195; fatias 30 31 70 33 em escala 1/3) */
+.btn { @apply inline-flex items-center justify-center gap-2 font-display text-white tracking-wide transition select-none; border-width: 10px 10px 23px 11px; text-shadow: 0 2px 0 rgba(0,0,0,0.35); line-height: 1; }
+.btn:active { transform: translateY(3px); filter: brightness(0.95); }
+.btn:disabled { filter: grayscale(0.9) brightness(0.85); opacity: 0.85; transform: none; }
+.btn-orange { border-image: url(/ui/btn-orange.png) 30 31 70 33 fill; }
+.btn-green  { border-image: url(/ui/btn-green.png) 30 32 70 32 fill; }
+.btn-blue   { border-image: url(/ui/btn-blue.png) 30 31 70 33 fill; }
+.btn-sky    { border-image: url(/ui/btn-sky.png) 30 31 70 33 fill; }
+.btn-yellow { border-image: url(/ui/btn-yellow.png) 30 32 70 32 fill; color: #5a3200; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
+.btn-red    { border-image: url(/ui/btn-red.png) 30 32 70 31 fill; }
+.btn-gray   { border-image: url(/ui/btn-gray.png) 30 32 70 32 fill; }
+.btn-white  { border-image: url(/ui/btn-white.png) 30 31 70 33 fill; color: var(--ink); text-shadow: none; }
+.btn-lg { font-size: 22px; min-height: 64px; padding: 6px 16px 2px; }
+.btn-md { font-size: 17px; min-height: 52px; padding: 4px 12px 0; border-width: 8px 9px 19px 9px; }
+.btn-sm { font-size: 13px; min-height: 38px; padding: 2px 8px 0; border-width: 6px 7px 14px 7px; }
+
+/* Botão quadrado (ícone) */
+.btn-sq { @apply inline-flex items-center justify-center; border-width: 14px 15px 22px 15px; }
+.btn-sq-sky { border-image: url(/ui/btn-sq-sky.png) 28 30 44 30 fill; }
+.btn-sq-white { border-image: url(/ui/btn-sq-white.png) 28 30 44 30 fill; }
+
+/* Painéis */
+.panel {  border-width: 14px 14px 20px 14px; border-image: url(/ui/panel-white.png) 27 28 39 28 fill; color: var(--ink); }
+.panel-navy { @apply text-white; border-width: 12px 12px 18px 12px; border-image: url(/ui/panel-navy.png) 20 22 30 22 fill; }
+.panel-full { @apply text-white; border-width: 8px 4px 10px 4px; border-image: url(/ui/panel-full-navy.png) 20 5 27 5 fill; }
+.card-blue { @apply text-white; border-width: 15px 11px 25px 11px; border-image: url(/ui/card-blue.png) 30 22 50 22 fill; }
+.card-green { @apply text-white; border-width: 15px 11px 25px 11px; border-image: url(/ui/card-green.png) 30 22 50 22 fill; }
+.card-orange { @apply text-white; border-width: 15px 11px 25px 11px; border-image: url(/ui/card-orange.png) 30 22 50 22 fill; }
+.card-purple { @apply text-white; border-width: 15px 11px 25px 11px; border-image: url(/ui/card-purple.png) 30 22 50 22 fill; }
+.card-white {  border-width: 10px 10px 20px 10px; border-image: url(/ui/card-white.png) 19 19 40 19 fill; color: var(--ink); }
+.pill-blue {  border-width: 6px; border-image: url(/ui/frame-border-blue.png) 12 fill; }
+.pill-white {  border-width: 6px; border-image: url(/ui/frame-border-white.png) 11 fill; }
+.item-blue {  border-width: 12px; border-image: url(/ui/item-blue.png) 24 fill; }
+.item-yellow {  border-width: 12px; border-image: url(/ui/item-yellow.png) 24 fill; }
+.item-green {  border-width: 12px; border-image: url(/ui/item-green.png) 24 fill; }
+.item-empty {  border-width: 12px; border-image: url(/ui/item-empty.png) 24 fill; }
+
+/* Ribbon de título (257x142, fatias laterais 100) */
+.ribbon { @apply inline-flex items-center justify-center font-display text-white; border-width: 0 40px; height: 58px; min-width: 200px; padding: 0 4px 6px; font-size: 22px; text-shadow: 0 2px 0 rgba(0,0,0,0.35); letter-spacing: 0.5px; }
+.ribbon-orange { border-image: url(/ui/ribbon-orange.png) 0 100 fill; }
+.ribbon-green { border-image: url(/ui/ribbon-green.png) 0 100 fill; }
+.ribbon-blue { border-image: url(/ui/ribbon-blue.png) 0 100 fill; }
+.ribbon-yellow { border-image: url(/ui/ribbon-yellow.png) 0 100 fill; color: #5a3200; text-shadow: none; }
+.ribbon-lg { height: 76px; font-size: 32px; border-width: 0 52px; }
+
+/* Etiqueta trapézio (34x60, fatias 11 esq / 23 dir) */
+.trap { @apply inline-flex items-center font-display text-white; border-width: 0 12px 0 6px; height: 30px; padding: 0 2px; font-size: 13px; text-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+.trap-blue { border-image: url(/ui/trap-blue.png) 0 23 0 11 fill; }
+.trap-orange { border-image: url(/ui/trap-orange.png) 0 23 0 11 fill; }
+.trap-green { border-image: url(/ui/trap-green.png) 0 23 0 11 fill; }
+
+/* Barra de recurso (dinheiro): 31x64, fatias 16 / 15 */
+.resbar { @apply inline-flex items-center font-display text-white; border-width: 0 8px; height: 32px; padding: 0 10px 0 4px; font-size: 16px; text-shadow: 0 1px 0 rgba(0,0,0,0.4); border-image: url(/ui/resbar.png) 0 15 0 16 fill; }
+
+/* Barra de progresso (Slider_Level01): fundo 30x29 fatia 10 / preenchimento 37x63 fatias 19/18 */
+.bar { @apply relative; border-width: 6px; border-image: url(/ui/lvl-bg.png) 10 fill; height: 22px; }
+.bar > i { @apply absolute block; inset: -3px; border-width: 0 9px; border-image: url(/ui/lvl-fill-blue.png) 0 18 0 19 fill; min-width: 22px; transition: width 0.4s ease; }
+.bar > i.yellow { border-image: url(/ui/lvl-fill-yellow.png) 0 19 0 18 fill; }
+.bar > span { @apply absolute inset-0 flex items-center justify-center font-display text-white; font-size: 12px; text-shadow: 0 1px 0 rgba(0,0,0,0.5); z-index: 1; }
+
+/* Campo de texto (50x57, fatias 20 22 28 22) */
+.field { @apply w-full outline-none; border-width: 10px 11px 14px 11px; border-image: url(/ui/input.png) 20 22 28 22 fill; color: var(--ink); font-weight: 800; font-size: 16px; background: transparent; padding: 2px 4px; }
+.field:focus { border-image: url(/ui/input-focus.png) 20 22 28 22 fill; }
+.field::placeholder { color: #9fb2d3; font-weight: 700; }
+
+/* Toast (10x44, fatias 10 5 7 5) */
+.toast { @apply text-left; border-width: 10px 5px 7px 5px; border-image: url(/ui/toast.png) 10 5 7 5 fill; color: var(--ink); padding: 4px 10px; }
+
+/* Botão de menu (50x57) */
+.menu-btn {  border-width: 9px 12px 15px 12px; border-image: url(/ui/menu-btn.png) 15 20 25 20 fill; }
+
+/* Texto de jogo */
+.t-display { font-family: 'Lilita One', Impact, sans-serif; letter-spacing: 0.3px; }
+.t-out { color: #fff; text-shadow: 0 2px 0 #0b2d6b, -1px 0 0 #0b2d6b, 1px 0 0 #0b2d6b, 0 -1px 0 #0b2d6b, 0 3px 0 rgba(0,0,0,0.25); }
+.t-out-dark { text-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+.t-gold { color: #ffd54a; text-shadow: 0 2px 0 #8a4b00, -1px 0 0 #8a4b00, 1px 0 0 #8a4b00, 0 -1px 0 #8a4b00; }
+.t-green { color: #7dff5c; text-shadow: 0 2px 0 #145a1a, -1px 0 0 #145a1a, 1px 0 0 #145a1a, 0 -1px 0 #145a1a; }
+.t-red { color: #ff6b5a; text-shadow: 0 2px 0 #6a1010, -1px 0 0 #6a1010, 1px 0 0 #6a1010, 0 -1px 0 #6a1010; }
+.label { @apply font-display uppercase; font-size: 11px; letter-spacing: 1px; color: var(--muted); }
+.ico { display: inline-block; vertical-align: middle; object-fit: contain; }
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+[hidden] { display: none !important; }

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { TrailResult } from '../lib/types';
@@ -80,16 +79,17 @@ export function TrailScreen() {
   useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(null), 1800); return () => clearTimeout(t); }, [msg]);
 
   return (
-    <div className="app-frame relative flex min-h-full flex-col bg-night-0">
+    <div className="app-frame relative flex min-h-full flex-col">
+      <div className="stadium-bg" />
       <GoalOverlay open={overlay} goal={!!result?.goal} title={result?.goal ? 'GOOOL!!!' : 'PERDEU A BOLA!'} text={result?.text} money={result?.money} team={me.team}
         onClose={() => { setOverlay(false); nav('/'); }} />
-      <div className="flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
-        <button onClick={() => nav('/')} className="rounded-full bg-night-2 p-2 text-chalk"><ArrowLeft className="h-5 w-5" /></button>
-        <div className="font-poster text-lg tracking-wide text-orange-400">TRILHA</div>
-        <div className="rounded-full bg-night-2 px-3 py-1 text-xs text-chalk">{!me.cooldowns.TRAIL.unlocked ? <span className="text-card">LVL 3</span> : active ? <span className="text-orange-400">EM JOGO</span> : ready ? <span className="text-turf">PRONTO</span> : <Countdown readyAt={me.cooldowns.TRAIL.readyAt} />}</div>
+      <div className="relative flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
+        <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
+        <div className="ribbon ribbon-orange">TRILHA</div>
+        <div className="trap trap-blue text-[12px]">{!me.cooldowns.TRAIL.unlocked ? <span className="t-red">LVL 3</span> : active ? <span className="t-gold">EM JOGO</span> : ready ? <span className="t-green">PRONTO</span> : <Countdown readyAt={me.cooldowns.TRAIL.readyAt} />}</div>
       </div>
 
-      <div className="relative mx-auto w-full max-w-[340px] px-3">
+      <div className="relative mx-auto w-full max-w-[340px] px-3 pt-1">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
           <defs>
             <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#25a75b" /><stop offset="1" stopColor="#187a42" /></linearGradient>
@@ -146,11 +146,11 @@ export function TrailScreen() {
         </svg>
       </div>
 
-      <div className="px-4 pb-6 pt-3 text-center text-xs text-haze">
-        {!me.cooldowns.TRAIL.unlocked ? <span className="text-card">A Trilha libera no nível 3 (Sub-12, 88 gols).</span>
-          : !ready ? <>Recarga: <Countdown readyAt={me.cooldowns.TRAIL.readyAt} className="text-chalk" /> · níveis reduzem o tempo</>
+      <div className="panel relative mx-3 mb-6 mt-3 text-center text-[13px] font-extrabold text-navy-ink">
+        {!me.cooldowns.TRAIL.unlocked ? <span className="text-danger">A Trilha libera no nível 3 (Sub-12, 88 gols).</span>
+          : !ready ? <>Recarga: <Countdown readyAt={me.cooldowns.TRAIL.readyAt} className="text-orange-deep" /> · níveis reduzem o tempo</>
           : result?.finished ? (result.goal ? 'Gol de trilha! +R$ 40' : 'A defesa levou a melhor.')
-          : <>Toque em um jogador da linha <b className="text-chalk">{LINES[phase]?.name}</b> para driblar. Um deles rouba a bola.</>}
+          : <>Toque em um jogador da linha <b className="text-orange-deep">{LINES[phase]?.name}</b> para driblar. Um deles rouba a bola.</>}
       </div>
     </div>
   );

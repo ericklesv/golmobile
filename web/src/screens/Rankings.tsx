@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { TopRow } from '../lib/types';
-import { Tabs, TopList, Spinner } from '../components/ui';
+import { Tabs, TopList, Spinner, Panel } from '../components/ui';
 import { hourLabel } from '../lib/format';
 
 type Scope = 'hora' | 'rodada' | 'temporada' | 'geral' | 'penal' | 'falta' | 'trilha';
@@ -24,17 +24,16 @@ export function RankingsScreen() {
     return () => { alive = false; };
   }, [scope]);
 
-  const sub = scope === 'hora' && key ? `Hora ${hourLabel(key)}` : scope === 'rodada' ? `Rodada ${key ?? ''}` : scope === 'temporada' ? `Temporada ${key ?? ''}` : scope === 'geral' ? 'Todos os tempos' : `Gols de ${ITEMS.find((i) => i.id === scope)?.label.toLowerCase()}`;
+  const sub = scope === 'hora' && key ? `HORA ${hourLabel(key)}` : scope === 'rodada' ? `RODADA ${key ?? ''}` : scope === 'temporada' ? `TEMPORADA ${key ?? ''}` : scope === 'geral' ? 'TODOS OS TEMPOS' : `GOLS DE ${ITEMS.find((i) => i.id === scope)?.label.toUpperCase()}`;
 
   return (
     <div className="flex flex-col gap-3">
-      <h1 className="font-poster text-3xl uppercase text-chalk">Artilharia</h1>
+      <div className="flex justify-center"><div className="ribbon ribbon-orange ribbon-lg"><img src="/ui/ico-trophy_s.png" className="mr-2 h-9 w-9" alt="" />ARTILHARIA</div></div>
       <Tabs value={scope} onChange={setScope} items={ITEMS} />
-      <section className="card p-3">
-        <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-haze">{sub}</div>
+      <Panel title={sub} ribbon="blue">
         {rows === null ? <div className="flex justify-center py-8"><Spinner /></div> : <TopList rows={rows} highlight={me.nick} empty="Ninguém pontuou aqui ainda. Vai lá e chuta!" />}
-      </section>
-      <p className="px-1 text-[11px] text-hazedim">A artilharia da hora fecha em toda hora cheia; a da rodada às 19:00. Prêmios: 1º da rodada R$ 30 mil + 5 VIP · 1º da temporada R$ 300 mil + 40 VIP.</p>
+      </Panel>
+      <div className="panel-full text-center text-[12px] font-extrabold">A artilharia da hora fecha em toda hora cheia; a da rodada às 19:00. 1º da rodada: R$ 30 mil + 5 VIP · 1º da temporada: R$ 300 mil + 40 VIP.</div>
     </div>
   );
 }

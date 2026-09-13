@@ -65,8 +65,33 @@ async function createSeason(tx, number, now) {
   return season;
 }
 
+// Rodada viva guardada em memória (boot, cada volta do relógio e cada fechamento): a tela usa para
+// zerar os contadores "da rodada/temporada" na virada sem consultar o banco a cada /me (view.js).
+let liveNow = null;
+export const liveRound = () => liveNow;
+export async function refreshLiveRound() {
+  const r = await prisma.round.findFirst({ where: { status: 'LIVE' }, orderBy: { number: 'desc' }, select: { id: true, seasonId: true, endsAt: true } });
+  liveNow = r ? { roundId: r.id, seasonId: r.seasonId, endsAt: r.endsAt.getTime() } : null;
+  return liveNow;
+}
+
+/** Ordem da tabela — a MESMA na tela, na página do time e no fechamento (título, acesso e
+ *  rebaixamento): pontos, saldo, gols pró e, empatado em tudo, o nome do time. */
+export function standingOrder(x, y) {
+  return y.points - x.points
+    || (y.goalsFor - y.goalsAgainst) - (x.goalsFor - x.goalsAgainst)
+    || y.goalsFor - x.goalsFor
+    || x.team.name.localeCompare(y.team.name);
+}
+
 /** Garante temporada ativa com rodada viva (chamado no boot). */
 export async function ensureSeason() {
+  const season = await openSeason();
+  await refreshLiveRound();
+  return season;
+}
+
+async function openSeason() {
   const active = await prisma.season.findFirst({ where: { status: 'ACTIVE' } });
   if (active) {
     const live = await prisma.round.findFirst({ where: { seasonId: active.id, status: 'LIVE' } });
@@ -169,15 +194,21 @@ export async function settleDueRounds(now = new Date()) {
     const r = await prisma.$transaction(async (tx) => settleRound(tx, round, now), { timeout: 60_000 });
     results.push(r);
   }
+  if (due.length) await refreshLiveRound();
   return results;
 }
 
 async function settleRound(tx, round, now) {
   const season = round.season;
-  const matches = await tx.match.findMany({ where: { roundId: round.id, status: 'LIVE' } });
+  // Encerra as partidas e lê o placar FINAL no mesmo comando (trava as linhas): um gol que já estava
+  // entrando termina antes e conta aqui; um que chegar depois vai para a rodada nova (applyResult).
+  // Antes, lendo e encerrando em passos separados, esse gol ficava no placar e fora da tabela.
+  const matches = await tx.$queryRaw`
+    UPDATE "Match" SET status = 'FINISHED'
+    WHERE "roundId" = ${round.id} AND status = 'LIVE'
+    RETURNING "homeTeamId", "awayTeamId", "homeGoals", "awayGoals"`;
   for (const m of matches) {
     const res = outcome(m.homeGoals, m.awayGoals);
-    await tx.match.update({ where: { id: m.id }, data: { status: 'FINISHED' } });
     const upd = (team, gf, ga, o) =>
       tx.standing.update({
         where: { seasonId_teamId: { seasonId: season.id, teamId: team } },
@@ -217,15 +248,10 @@ async function settleRound(tx, round, now) {
 
 async function finishSeason(tx, season, now) {
   const standings = await tx.standing.findMany({ where: { seasonId: season.id }, include: { team: true } });
-  const sortFn = (x, y) =>
-    y.points - x.points ||
-    (y.goalsFor - y.goalsAgainst) - (x.goalsFor - x.goalsAgainst) ||
-    y.goalsFor - x.goalsFor ||
-    x.teamId - y.teamId;
   const promote = [];
   const relegate = [];
   for (const serie of SERIES) {
-    const table = standings.filter((s) => s.serie === serie).sort(sortFn);
+    const table = standings.filter((s) => s.serie === serie).sort(standingOrder);
     if (!table.length) continue;
     await tx.title.create({ data: { seasonId: season.id, teamId: table[0].teamId, competition: `Série ${serie}`, place: 1 } });
     if (table[1]) {

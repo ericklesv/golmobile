@@ -59,9 +59,22 @@ function requireUnlocked(user, kind) {
   }
 }
 
+/** Soma o gol no placar só se a partida ainda estiver ao vivo; se a rodada fechou no meio do chute
+ *  (o fechamento já leu o placar final), o gol vai para a partida do time na rodada nova. */
+async function scoreOnLiveMatch(tx, teamId, match) {
+  for (let i = 0; match && i < 3; i++) {
+    const side = match.homeTeamId === teamId ? 'homeGoals' : 'awayGoals';
+    const { count } = await tx.match.updateMany({ where: { id: match.id, status: 'LIVE' }, data: { [side]: { increment: 1 } } });
+    if (count) { match[side] += 1; return match; }
+    match = await liveMatchForTeam(teamId, tx);
+  }
+  return null;
+}
+
 /** Aplica gol/erro: contadores, Goal, Activity, placar da partida. (Os minigames diários também usam.) */
 export async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) {
   const hk = hourKey(now);
+  if (goal && match) match = await scoreOnLiveMatch(tx, user.teamId, match); // o placar primeiro: define a rodada do gol
   const seasonId = match?.round?.seasonId ?? null;
   const roundId = match?.roundId ?? null;
   const data = {};
@@ -82,11 +95,6 @@ export async function applyResult(tx, user, { kind, goal, now, match, phrase, mo
     await tx.goal.create({
       data: { userId: user.id, teamId: user.teamId, matchId: match?.id ?? null, roundId, seasonId, hourKey: hk, kind, money },
     });
-    if (match) {
-      const side = match.homeTeamId === user.teamId ? 'homeGoals' : 'awayGoals';
-      await tx.match.update({ where: { id: match.id }, data: { [side]: { increment: 1 } } });
-      match[side] += 1;
-    }
     text = goalText(user, match, kind, phrase);
   } else {
     text = `${phrase} ${user.nick} (${user.team?.name ?? ''}) errou ${KIND_LABEL[kind] === 'falta' ? 'a falta' : KIND_LABEL[kind] === 'trilha' ? 'na trilha' : 'o pênalti'}.`;

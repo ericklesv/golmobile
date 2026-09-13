@@ -31,7 +31,17 @@ depois que o novo estiver estável. Não instalar nada dele.
 - Liga: `api/src/services/league.js` — temporada, rodadas de 24h que fecham às **19:00
   (America/Sao_Paulo)**, round-robin determinístico por série, fechamento de hora/rodada
   com prêmios e recordes, acesso/rebaixamento (2 sobem/2 caem), nova temporada automática.
-  Agendador: `scheduler.js` (tick a cada 30 s; 1 instância PM2 só).
+  Agendador: `scheduler.js` (tick a cada 30 s + disparo extra no segundo exato do fechamento;
+  1 instância PM2 só). **Fechamento sem corrida:** `settleRound` encerra as partidas e lê o
+  placar final num único `UPDATE … RETURNING`; `applyResult` só soma gol em partida `LIVE`
+  (se fechou no meio do chute, o gol vai para a rodada nova) — não voltar a ler e encerrar
+  em passos separados (o gol do instante do fechamento ficava no placar e fora da tabela).
+  **Ordem da tabela = `standingOrder`** (pontos, saldo, gols pró, nome), a MESMA na tela, na
+  página do time e no título/acesso/rebaixamento. Gols da hora/rodada/temporada do jogador
+  ficam gravados até o próximo gol dele: na tela, sempre via `periodGoals` (`view.js`).
+  **Mexeu na liga? Rode `node scripts/sim-liga.js`** (pasta api/, só banco LOCAL, schema
+  `liga_sim` criado e apagado por ele): temporada inteira de 30 rodadas + virada, com gols no
+  instante do fechamento; ~7 mil conferências, tem de dar 0 falha.
 - Auto-chute: o cliente dispara `POST /api/play/auto` quando o timer zera com a aba aberta
   (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no

@@ -3,8 +3,8 @@ import { Router } from 'express';
 import { prisma } from '../prisma.js';
 import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
-import { currentRound, liveMatchForTeam, topScorers, records, matchPct } from '../services/league.js';
-import { teamView, publicView } from '../services/view.js';
+import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
+import { teamView, publicView, periodGoals } from '../services/view.js';
 import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView } from '../lib/items.js';
@@ -90,10 +90,9 @@ game.get('/league', handle(async () => {
   const round = await currentRound();
   if (!round) return { season: null, round: null, standings: {} };
   const rows = await prisma.standing.findMany({ where: { seasonId: round.seasonId }, include: { team: teamSel } });
-  const sortFn = (x, y) => y.points - x.points || (y.goalsFor - y.goalsAgainst) - (x.goalsFor - x.goalsAgainst) || y.goalsFor - x.goalsFor || x.team.name.localeCompare(y.team.name);
   const standings = {};
   for (const s of ['A', 'B', 'C']) {
-    standings[s] = rows.filter((r) => r.serie === s).sort(sortFn).map((r, i) => ({
+    standings[s] = rows.filter((r) => r.serie === s).sort(standingOrder).map((r, i) => ({
       position: i + 1, team: teamView(r.team), points: r.points, played: r.played, wins: r.wins, draws: r.draws, losses: r.losses,
       goalsFor: r.goalsFor, goalsAgainst: r.goalsAgainst, diff: r.goalsFor - r.goalsAgainst,
     }));
@@ -141,10 +140,9 @@ game.get('/teams/:slug', handle(async (req) => {
     round ? topScorers({ seasonId: round.seasonId, teamId: team.id }, 10) : [],
     topScorers({ hourKey: hourKey(now), teamId: team.id }, 10),
     prisma.title.findMany({ where: { teamId: team.id }, include: { season: { select: { number: true } } }, orderBy: { seasonId: 'desc' } }),
-    round ? prisma.standing.findMany({ where: { seasonId: round.seasonId, serie: team.serie } }) : [],
+    round ? prisma.standing.findMany({ where: { seasonId: round.seasonId, serie: team.serie }, include: { team: { select: { name: true } } } }) : [],
   ]);
-  const sortFn = (x, y) => y.points - x.points || (y.goalsFor - y.goalsAgainst) - (x.goalsFor - x.goalsAgainst) || y.goalsFor - x.goalsFor || x.teamId - y.teamId;
-  const position = standing ? allInSerie.sort(sortFn).findIndex((s) => s.teamId === team.id) + 1 : null;
+  const position = standing ? allInSerie.sort(standingOrder).findIndex((s) => s.teamId === team.id) + 1 : null;
   const totalGoals = await prisma.goal.count({ where: { teamId: team.id } });
   return {
     team: teamView(team), slogan: team.slogan,
@@ -163,9 +161,9 @@ game.get('/players/active', handle(async () => {
   const users = await prisma.user.findMany({
     where: { lastSeenAt: { gt: new Date(now - 24 * 3600_000) } },
     orderBy: { lastSeenAt: 'desc' }, take: 300,
-    select: { nick: true, goalsTotal: true, goalsRound: true, lastSeenAt: true, avatarUrl: true, vipUntil: true, team: teamSel },
+    select: { nick: true, goalsTotal: true, goalsRound: true, roundId: true, lastSeenAt: true, avatarUrl: true, vipUntil: true, team: teamSel },
   });
-  return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, goalsRound: u.goalsRound, avatarUrl: u.avatarUrl, lastSeenAt: u.lastSeenAt, online: u.lastSeenAt.getTime() > now - 2 * 60_000, vip: !!(u.vipUntil && u.vipUntil.getTime() > now), team: teamView(u.team) }));
+  return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, goalsRound: periodGoals(u).goalsRound, avatarUrl: u.avatarUrl, lastSeenAt: u.lastSeenAt, online: u.lastSeenAt.getTime() > now - 2 * 60_000, vip: !!(u.vipUntil && u.vipUntil.getTime() > now), team: teamView(u.team) }));
 }));
 
 game.get('/players/search', handle(async (req) => {

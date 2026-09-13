@@ -1,6 +1,19 @@
 /** Projeções de dados para o cliente (nunca expõe hash, e-mail alheio, layout da trilha). */
 import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel } from '../lib/rules.js';
 import { itemsView } from '../lib/items.js';
+import { hourKey } from '../lib/time.js';
+import { liveRound } from './league.js';
+
+/** Gols da hora/rodada/temporada: ficam gravados no jogador e só zeram no próximo gol dele, então
+ *  na tela valem só enquanto forem do período atual (senão, depois das 19:00, aparecia a rodada velha). */
+export function periodGoals(user, now = Date.now()) {
+  const live = liveRound();
+  return {
+    goalsHour: user.hourKey === hourKey(new Date(now)) ? user.goalsHour : 0,
+    goalsRound: !live || user.roundId === live.roundId ? user.goalsRound : 0,
+    goalsSeason: !live || user.seasonId === live.seasonId ? user.goalsSeason : 0,
+  };
+}
 
 export function teamView(t) {
   if (!t) return null;
@@ -29,7 +42,7 @@ export function meView(user, now = Date.now()) {
     team: teamView(user.team),
     money: user.money, vipDays: user.vipDays, vipUntil: user.vipUntil, vip: isVip(user, now),
     dexterity: user.dexterity,
-    goalsTotal: user.goalsTotal, goalsSeason: user.goalsSeason, goalsRound: user.goalsRound, goalsHour: user.goalsHour,
+    goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     levelBonus: user.levelBonus ?? 0, levelPoints: levelPoints(user),
     stats: {
@@ -53,7 +66,7 @@ export function publicView(user, now = Date.now()) {
   return {
     id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, avatarUrl: user.avatarUrl ?? null, createdAt: user.createdAt,
     team: teamView(user.team), vip: isVip(user, now), dexterity: user.dexterity,
-    goalsTotal: user.goalsTotal, goalsSeason: user.goalsSeason, goalsRound: user.goalsRound, goalsHour: user.goalsHour,
+    goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     stats: {
       auto: { goals: user.autoGoals },

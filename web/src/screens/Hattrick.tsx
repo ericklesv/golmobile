@@ -198,8 +198,18 @@ export function HattrickScreen() {
               <div className="text-center">
                 <div className="t-display text-[24px]">{game.goals >= 3 ? 'HAT TRICK!' : game.goals > 0 ? `${game.goals} ${game.goals === 1 ? 'gol' : 'gols'} do ${team.name}!` : 'Não foi dessa vez'}</div>
                 <p className="mt-1 text-[14px] font-extrabold">{game.goals} {game.goals === 1 ? 'gol' : 'gols'}: +{game.points} de nível.</p>
-                <p className="mt-2 text-[13px] font-bold text-muted">Novo Hat Trick em <Countdown readyAt={game.nextAt} className="text-orange-deep" />.</p>
-                <button onClick={() => nav('/')} className="btn btn-orange btn-md mt-4 w-full">Voltar ao jogo</button>
+                {game.freePlay ? (
+                  <>
+                    <p className="mt-2 text-[12px] font-bold text-muted">Modo de teste: pode jogar de novo quantas vezes quiser.</p>
+                    <button onClick={start} disabled={busy} className="btn btn-green btn-lg mt-4 w-full">Jogar de novo</button>
+                    <button onClick={() => nav('/')} className="btn btn-orange btn-md mt-2 w-full">Voltar ao jogo</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-[13px] font-bold text-muted">Novo Hat Trick em <Countdown readyAt={game.nextAt} className="text-orange-deep" />.</p>
+                    <button onClick={() => nav('/')} className="btn btn-orange btn-md mt-4 w-full">Voltar ao jogo</button>
+                  </>
+                )}
               </div>
             ) : (
               <>

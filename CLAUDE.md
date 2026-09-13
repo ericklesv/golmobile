@@ -139,6 +139,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   alcance é menor. 3 vidas; gol = 1 gol do time (kind `HATTRICK`) + 5 de nível (até 30); o 3º gol é o
   hat trick. O servidor decide e devolve o voo (amostras [x, y, z] a 30/s) para a tela animar.
   Calibrar: `node scripts/hattrick-balance.js` (bom ~34% de gol, médio ~15%, iniciante ~7%).
+  Teste local sem limite: `MINIGAMES_LIVRES=1` no `api/.env` do PC (ignorado com NODE_ENV=production) —
+  acabou, aparece "Jogar de novo". Nunca pôr no .env da VPS.
 
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`

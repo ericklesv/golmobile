@@ -251,6 +251,8 @@ export type HattrickResult = 'goal' | 'saved' | 'wide' | 'post' | 'bar' | 'over'
 export interface HattrickState {
   day: number; nextAt: number; maxLives: number; pointsPerGoal: number; maxPoints: number;
   playing: boolean; finished: boolean; lives: number; goals: number; points: number;
+  /** Só no teste local (MINIGAMES_LIVRES=1): acabou, pode jogar de novo na hora. */
+  freePlay?: boolean;
   shot: HattrickShot | null;
   last: { i: number; result: HattrickResult; ball: { x: number; y: number }; wind: { speed: number; angle: number }; cross: { x: number; z: number } | null } | null;
 }

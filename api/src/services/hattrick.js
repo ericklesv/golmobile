@@ -19,6 +19,9 @@ import { liveMatchForTeam } from './league.js';
 const HOUR = RESET_HOUR.HATTRICK;
 const DONE = () => `Você já jogou o Hat Trick. Ele renova ${resetLabel('HATTRICK')}!`;
 const rand = () => randomInt(0, 2 ** 32) / 2 ** 32; // sorteio criptográfico (não dá para prever o lance)
+// Teste local (dono, 13/09/2026): com MINIGAMES_LIVRES=1 no api/.env — e NUNCA em produção — dá para
+// jogar quantas vezes quiser: acabou, "Jogar de novo" recomeça na hora (sem esperar a virada das 18h).
+const FREE = process.env.NODE_ENV !== 'production' && process.env.MINIGAMES_LIVRES === '1';
 
 function view(row, now) {
   const st = row?.state ?? {};
@@ -26,7 +29,7 @@ function view(row, now) {
   return {
     day: dayNumberAt(HOUR, now), nextAt: nextResetAt(HOUR, now).getTime(),
     maxLives: C.lives, pointsPerGoal: C.pointsPerGoal, maxPoints: C.maxPoints,
-    playing, finished: !!row?.finishedAt,
+    playing, finished: !!row?.finishedAt, freePlay: FREE,
     lives: st.lives ?? C.lives, goals: st.goals ?? 0, points: st.points ?? 0,
     shot: playing ? { i: st.shot.i, ball: st.shot.ball, wind: st.shot.wind } : null, // sem o goleiro
     last: st.last ?? null,
@@ -60,9 +63,11 @@ async function withHattrick(userId, fn) {
 
 /** Começa o jogo do dia (ou devolve o que está aberto). */
 export function hattrickStart(userId) {
-  return withHattrick(userId, async ({ st, row, tx }) => {
+  return withHattrick(userId, async (ctx) => {
+    const { st, row, tx } = ctx;
     if (st.shot && !st.over) return {};
-    if (row.finishedAt) throw new GameError(409, 'finished', DONE());
+    if (row.finishedAt && !FREE) throw new GameError(409, 'finished', DONE());
+    if (row.finishedAt) ctx.patch = { finishedAt: null, won: false }; // teste local: recomeça
     const g = MINIGAMES.find((m) => m.id === 'HATTRICK');
     const user = await tx.user.findUnique({ where: { id: userId } });
     if (g && levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `Hat Trick libera no nível ${g.unlock}.`);

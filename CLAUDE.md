@@ -108,7 +108,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   O aviso da Efí (`POST /api/pay/efi/<EFI_WEBHOOK_SECRET>/pix`) só dispara a conferência. 3 caminhos
   de confirmação: aviso, a tela perguntando a cada 4 s e `vipReconcile` no scheduler (2 min).
   Credenciais `EFI_*` só no `api/.env` da VPS (ver `.env.example`); aviso registrado com
-  `node scripts/efi-webhook.js`. Sem credenciais, a tela mostra "A compra por PIX abre em breve".
+  `node scripts/efi-webhook.js`. **A chave PIX (`EFI_PIX_KEY`) tem de ser só do JogaGol**: a Efí guarda
+  UM aviso por chave, e registrar o nosso numa chave de outro projeto (Rifa Express) derruba o de lá.
+  Sem credenciais, a tela mostra "A compra por PIX abre em breve".
   Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
   **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do
   scheduler): quem tem `vipUntil` no futuro e não está suspenso chuta sozinho quando a recarga do

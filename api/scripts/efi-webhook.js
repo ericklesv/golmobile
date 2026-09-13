@@ -5,6 +5,8 @@
  * Uso (na pasta api/ da VPS, depois de preencher os EFI_* no api/.env):  node scripts/efi-webhook.js
  * Rodar de novo só se trocar a chave PIX, o domínio ou o segredo. O aviso só apressa a confirmação:
  * sem ele, a tela (a cada 4 s) e a conferência do agendador (a cada 2 min) confirmam do mesmo jeito.
+ * ATENÇÃO: cada chave PIX tem UM aviso só na Efí. A EFI_PIX_KEY do JogaGol tem de ser só dele — se
+ * for a mesma chave de outro projeto (ex.: Rifa Express), este comando toma o lugar do aviso de lá.
  */
 import 'dotenv/config';
 import { configureWebhook } from '../src/lib/efi.js';

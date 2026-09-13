@@ -9,14 +9,14 @@ disputa a artilharia da hora/rodada/temporada. Todas as regras originais estão 
 Roadmap em `docs/ROADMAP.md`.
 
 Produção: **https://brgol.managol.com.br** (VPS do Managol; subdomínio já apontado).
-Repo: https://github.com/ericklesv/golmobile (branch `main` = prod, deploy automático).
+Repo: https://github.com/ericklesv/golmobile (branch `main` = prod; deploy manual via SSH, **sem GitHub Actions**).
 
 ## Stack
 | Camada | Tecnologia |
 |---|---|
 | `api/` | Node 20 ESM · Express 5 · Prisma 6 · PostgreSQL (banco `brgol`, mesmo servidor PG do Managol) |
 | `web/` | Vite 5 · React 18 · TypeScript · Tailwind 3 · framer-motion · react-three-fiber/three (cenas 3D do pênalti e da falta) · zustand · vite-plugin-pwa |
-| Infra | Nginx (site `brgol`) · PM2 (`brgol-api`, porta 4310, usuário `brgol`) · Certbot · GitHub Actions → `/usr/local/bin/brgol-deploy.sh` |
+| Infra | Nginx (site `brgol`) · PM2 (`brgol-api`, porta 4310, usuário `brgol`) · Certbot · deploy = `ssh root@VPS 'bash /usr/local/bin/brgol-deploy.sh'` |
 
 `legacy-expo/` = esqueleto antigo (Expo + Firebase + Railway). Não é usado; será apagado
 depois que o novo estiver estável. Não instalar nada dele.
@@ -60,8 +60,9 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
   outro colaborador precisa sempre ter a versão atual pelo git. Commits em PT-BR.
 - **O jogo roda SOMENTE na VPS do Managol** (`root@187.127.17.121`, projeto em
   `/var/www/brgol/app`). Não existe ambiente local nem outra hospedagem. Todo deploy é
-  `bash /usr/local/bin/brgol-deploy.sh` na VPS (faz `git reset --hard origin/main`, `npm ci`,
-  `prisma migrate deploy`, build do web e `pm2 restart brgol-api`).
+  `bash /usr/local/bin/brgol-deploy.sh` na VPS, rodado manualmente via SSH (faz `git reset --hard
+  origin/main`, `npm ci`, `prisma migrate deploy`, build do web e `pm2 restart brgol-api`).
+  Não há CI: push no GitHub não dispara nada.
 - Antes de qualquer comando na VPS: mostrar o comando e pedir autorização.
 - Verificação visual = build (`cd web && npm run build`) + screenshot de produção com Edge
   headless/puppeteer-core (ver `tools/`); se não der para ver, dizer que não viu.
@@ -74,11 +75,10 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
   privado; senão distribuída por fora e gitignored) — receita de recorte 9-slice e tabela de
   fatias em `docs/SPRITES_LAYERLAB.md`. Packs 3D da Unity ficam só na máquina do Guilherme;
   `tools/3d/README.md` gera os `.glb` que entram no repo.
-- **Deploy sem acesso à VPS (caminho recomendado):** o repo tem `.github/workflows/deploy.yml`.
-  Quando o secret `VPS_SSH_KEY` estiver configurado no GitHub (Guilherme faz isso em
-  Settings → Secrets → Actions), **todo push em `main` deploya sozinho** em ~1 min. Acompanhe em
-  https://github.com/ericklesv/golmobile/actions e confira `https://brgol.managol.com.br/api/health`.
-- **Acesso direto à VPS (opcional, precisa da intervenção do Guilherme):**
+- **Não usamos GitHub Actions** (removido em 13/09/2026). Deploy é sempre manual, pela VPS:
+  `ssh -i <chave> root@187.127.17.121 'bash /usr/local/bin/brgol-deploy.sh'` — depois conferir
+  `https://brgol.managol.com.br/api/health`. Push no git **não** publica nada sozinho.
+- **Acesso à VPS (necessário para deployar; precisa da intervenção do Guilherme):**
   1. Gerar uma chave: `ssh-keygen -t ed25519 -C "erick-brgol" -f ~/.ssh/id_ed25519_brgol`
   2. Enviar para o Guilherme SOMENTE o conteúdo de `~/.ssh/id_ed25519_brgol.pub`
      (nunca a chave privada).
@@ -86,6 +86,7 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
   4. Testar: `ssh -i ~/.ssh/id_ed25519_brgol root@187.127.17.121 'bash /usr/local/bin/brgol-deploy.sh'`
   A VPS é compartilhada com o Managol e outros projetos (nginx, PM2, Postgres): mexer só em
   `/var/www/brgol`, `/etc/nginx/sites-available/brgol`, PM2 `brgol-api` e banco `brgol`.
+  Enquanto não tiver acesso, faça o push e peça ao Guilherme para rodar o deploy.
 - Segredos da API (`api/.env` na VPS) nunca vão para o git; `ADMIN_KEY` está lá para os
   endpoints `/api/admin/*`.
 

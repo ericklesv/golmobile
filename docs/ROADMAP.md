@@ -34,7 +34,7 @@ Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas
 - [x] Home com placar ao vivo, tops, feed de lances narrados, online
 - [x] Perfil (números por modo, loja, texto pessoal), perfil público, página do time, regras/níveis
 - [x] PWA instalável (manifest + service worker), layout mobile-first
-- [x] Deploy automático (GitHub Actions → VPS)
+- [x] Script de deploy na VPS (`brgol-deploy.sh`, manual via SSH — GitHub Actions removido em 13/09)
 - [x] Verificação visual em produção (screenshots via Edge headless, 12/09/2026) — todas as telas OK
 - [x] Cenas 3D com modelos reais dos packs comprados: estádio st_080 com torcida, trave/rede, bola e jogador (goleiro/barreira) com poses procedurais — `tools/3d/`
 - [ ] Recuperação de senha por e-mail (SMTP Brevo do Managol)

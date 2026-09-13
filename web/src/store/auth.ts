@@ -7,6 +7,7 @@ interface AuthState {
   meta: Meta | null;
   loading: boolean;
   online: number;
+  active: number;
   offset: number; // serverTime - Date.now()
   boot: () => Promise<void>;
   setMe: (me: Me) => void;
@@ -22,6 +23,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   meta: null,
   loading: true,
   online: 0,
+  active: 0,
   offset: 0,
   now: () => Date.now() + get().offset,
   setMe: (me) => set({ me, offset: me.serverTime ? me.serverTime - Date.now() : get().offset }),

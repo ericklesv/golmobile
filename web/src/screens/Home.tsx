@@ -147,6 +147,7 @@ export function HomeScreen() {
 
       {/* Lances */}
       <Panel title="LANCES AO VIVO" ribbon="blue">
+        <p className="mb-1 text-center text-[11px] font-bold text-muted">{home?.active ?? 0} {(home?.active ?? 0) === 1 ? 'jogador ativo' : 'jogadores ativos'} nas últimas 24 h</p>
         <ul className="flex flex-col gap-1.5">
           {(home?.feed ?? []).slice(0, 12).map((f) => (
             <li key={f.id} className="flex items-start gap-2 text-[12px] font-bold">

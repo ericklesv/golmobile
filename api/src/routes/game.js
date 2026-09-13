@@ -37,7 +37,7 @@ game.get('/home', handle(async (req) => {
   const round = await currentRound();
   const teamSlug = req.query.team ? String(req.query.team) : null;
   const team = teamSlug ? await prisma.team.findUnique({ where: { slug: teamSlug } }) : null;
-  const [hour, roundTop, seasonTop, feed, online, recs, hourResult] = await Promise.all([
+  const [hour, roundTop, seasonTop, feed, online, recs, hourResult, active] = await Promise.all([
     topScorers({ hourKey: hourKey(now) }, 10),
     round ? topScorers({ roundId: round.id }, 10) : [],
     round ? topScorers({ seasonId: round.seasonId }, 10) : [],
@@ -45,6 +45,7 @@ game.get('/home', handle(async (req) => {
     prisma.user.count({ where: { lastSeenAt: { gt: new Date(now.getTime() - 2 * 60_000) } } }),
     round ? records(round.seasonId) : {},
     prisma.hourResult.findFirst({ orderBy: { closedAt: 'desc' }, include: { winner: { select: { nick: true, team: teamSel } } } }),
+    prisma.user.count({ where: { lastSeenAt: { gt: new Date(now.getTime() - 24 * 3600_000) } } }),
   ]);
   const myMatch = team ? await liveMatchForTeam(team.id) : null;
   return {
@@ -57,7 +58,7 @@ game.get('/home', handle(async (req) => {
     records: recs,
     lastHour: hourResult ? { hourKey: hourResult.hourKey, nick: hourResult.winner?.nick ?? null, goals: hourResult.winnerGoals, team: hourResult.winner?.team ?? null } : null,
     feed: feed.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt, team: teamView(a.team) })),
-    online,
+    online, active,
   };
 }));
 

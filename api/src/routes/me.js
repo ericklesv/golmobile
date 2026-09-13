@@ -19,7 +19,8 @@ me.get('/', handle(async (req) => meView(await fresh(req.user.id))));
 me.post('/heartbeat', handle(async (req) => {
   await prisma.user.update({ where: { id: req.user.id }, data: { lastSeenAt: new Date() } });
   const online = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) } } });
-  return { ok: true, online, serverTime: Date.now() };
+  const active = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 24 * 3600_000) } } });
+  return { ok: true, online, active, serverTime: Date.now() };
 }));
 
 me.put('/bio', handle(async (req) => {

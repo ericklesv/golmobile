@@ -48,6 +48,7 @@ export interface Home {
   lastHour: { hourKey: string; nick: string | null; goals: number; team: any } | null;
   feed: FeedItem[];
   online: number;
+  active: number;
 }
 
 export interface KickResult {

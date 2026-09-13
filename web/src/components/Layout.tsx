@@ -15,13 +15,13 @@ const tabs = [
 
 export function Layout() {
   const me = useAuth((s) => s.me);
-  const online = useAuth((s) => s.online);
+  const active = useAuth((s) => s.active);
   const nav = useNavigate();
 
   // Presença: heartbeat a cada 60 s enquanto a aba está aberta
   useEffect(() => {
     let alive = true;
-    const beat = () => api.heartbeat().then((r) => alive && useAuth.setState({ online: r.online, offset: r.serverTime - Date.now() })).catch(() => {});
+    const beat = () => api.heartbeat().then((r) => alive && useAuth.setState({ online: r.online, active: r.active, offset: r.serverTime - Date.now() })).catch(() => {});
     beat();
     const iv = setInterval(beat, 60_000);
     const vis = () => { if (document.visibilityState === 'visible') { beat(); useAuth.getState().refresh(); } };
@@ -75,7 +75,7 @@ export function Layout() {
             </li>
           ))}
         </ul>
-        <div className="mt-0.5 text-center text-[9px] font-extrabold uppercase tracking-widest text-white/50">{online} online</div>
+        <div className="mt-0.5 text-center text-[9px] font-extrabold uppercase tracking-widest text-white/50">{active} {active === 1 ? 'jogador ativo' : 'jogadores ativos'} nas últimas 24h</div>
       </nav>
     </div>
   );

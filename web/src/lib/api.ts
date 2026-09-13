@@ -39,7 +39,7 @@ export const api = {
   login: (b: { login: string; password: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/login', b),
   // me
   me: () => req<Me>('GET', '/api/me'),
-  heartbeat: () => req<{ ok: boolean; online: number; serverTime: number }>('POST', '/api/me/heartbeat'),
+  heartbeat: () => req<{ ok: boolean; online: number; active: number; serverTime: number }>('POST', '/api/me/heartbeat'),
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
   buyDexterity: (qty = 1) => req<Me>('POST', '/api/me/buy-dexterity', { qty }),
   nerf: (nick: string) => req<{ ok: boolean; me: Me }>('POST', `/api/me/nerf/${encodeURIComponent(nick)}`),

@@ -68,5 +68,8 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
   (glassmorphism escuro, gradientes neon): botão é sprite, título é ribbon, ícone é PNG do pack.
 - Escudos reais em `web/public/escudos/<slug>.svg|png` (projeto privado para amigos);
   `Shield.tsx` renderiza `<img>` com fallback de sigla.
+- 3D: modelos glTF em `web/public/3d/` gerados dos packs comprados via `tools/3d/` (README lá).
+  `scenes/models.tsx` (estádio, trave, bola) e `scenes/keeper.tsx` (jogador com poses
+  procedurais). Rota oculta `/debug3d?view=&pose=` para conferir por screenshot.
 - Antes de mexer em produção/servidor: mostrar o comando e pedir autorização.
 - Ao concluir itens, atualizar `docs/ROADMAP.md` e este arquivo.

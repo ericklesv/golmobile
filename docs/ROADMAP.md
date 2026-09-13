@@ -22,7 +22,7 @@ Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIG
 - [x] PWA instalável (manifest + service worker), layout mobile-first
 - [x] Deploy automático (GitHub Actions → VPS)
 - [x] Verificação visual em produção (screenshots via Edge headless, 12/09/2026) — todas as telas OK
-- [ ] Ajustes finos de animação 3D (câmera do pênalti mais alta/afastada, torcida menos "confete")
+- [x] Cenas 3D com modelos reais dos packs comprados: estádio st_080 com torcida, trave/rede, bola e jogador (goleiro/barreira) com poses procedurais — `tools/3d/`
 - [ ] Recuperação de senha por e-mail (SMTP Brevo do Managol)
 - [ ] Captcha/anti-bot nos chutes manuais (o original tinha; hoje só rate-limit + heartbeat)
 
@@ -34,7 +34,8 @@ Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIG
 - [ ] Movimentações (troca de time com regras), Divisão de Jogadores
 - [ ] Copa do Brasil (mata-mata), Copa BRGOL (inscrição paga), Estaduais, Amistosos
 - [ ] Títulos/histórico de temporadas com página própria; Bola Prateada/Dourada
-- [ ] Avatar de corpo inteiro com uniforme do time (chibi), foto de perfil
+- [ ] Avatar de corpo inteiro com uniforme do time (o pack Soccer Players Uniforms tem 430 uniformes/1650 skins texturizados), foto de perfil
+- [ ] Uniformes reais nas cenas 3D (goleiro/barreira com camisa do adversário) e cabelo
 - [ ] Som de alerta (lvl 2) e mensagens coloridas (lvl 8)
 
 ## Fase 3 — Novidades (inspiradas no revival brgol.online)

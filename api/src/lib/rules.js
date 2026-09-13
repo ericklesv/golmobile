@@ -197,6 +197,7 @@ export const MINIGAMES = [
   { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: 'gol + até 30 de nível' },
   { id: 'STATS', name: 'Estatísticas', unlock: 3, daily: true, route: '/estatisticas', icon: '/ui/ico-ranking.png', desc: 'Quem tem mais? Acertou, segue; errou, acaba. 5 seguidos é gol.', reward: 'gol + até 30 de nível' },
   { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Pista → escudo e escudo → pista. 10 rodadas, 7 s cada; 8 acertos é gol.', reward: 'gol + até 30 de nível' },
+  { id: 'CAMISAS', name: 'Camisas', unlock: 5, daily: true, route: '/camisas', icon: '/ui/ico-camisa.svg', desc: 'Maior ou menor? Cada 4 camisas certas é um gol.', reward: '1 gol a cada 4 camisas + até 30 de nível' },
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: 'gol + até 30 de nível' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'EMBAIXADINHAS', name: 'Embaixadinhas', unlock: 12, daily: true, route: '/embaixadinhas', icon: '/ui/ico-energy.png', desc: 'Toque no ritmo e não deixe a bola cair.', reward: 'gol + nível', soon: true },
@@ -246,3 +247,11 @@ KIND_LABEL.STATS = 'Estatísticas';
 // dia, nunca dois no dia contra o mesmo adversário, W.O. antes de 20 s de jogo não vale gol.
 export const CABECAO = { maxGoalWinsPerDay: 3, woMinSec: 20 };
 KIND_LABEL.CABECAO = 'Cabeção';
+// Camisas (maior ou menor): vira à meia-noite. Uma sequência de 4 camisas numeradas de 1 a 11,
+// sem repetir número: a 1ª aparece e o jogador diz se a próxima é maior ou menor. Acertou as 4 =
+// 1 gol e começa outra sequência; errou, acaba o jogo do dia. EXCEÇÃO à regra de "1 gol por
+// minigame" (decisão do dono, 13/09/2026): aqui dá para marcar vários gols enquanto não errar.
+// +3 de nível por acerto (até +30).
+export const CAMISAS = { shirts: 4, min: 1, max: 11, pointsPerHit: 3, maxPoints: 30 };
+DAILY_GAMES.push('CAMISAS');
+KIND_LABEL.CAMISAS = 'Camisas';

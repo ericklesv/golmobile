@@ -3,6 +3,7 @@ import { handle } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, minigamesHub, memoriaState, memoriaFlip, qualtimeState, qualtimeNext, qualtimeAnswer, alvoState, alvoShot } from '../services/daily.js';
 import { statsState, statsStart, statsPick } from '../services/stats.js';
+import { camisasState, camisasStart, camisasGuess } from '../services/camisas.js';
 
 /**
  * Minigames diários (1x por dia): GET /api/daily · Termo: GET /api/daily/termo,
@@ -31,3 +32,6 @@ daily.post('/quiz/answer', handle((req) => quizAnswer(req.user.id, Number(req.bo
 daily.get('/stats', handle((req) => statsState(req.user.id)));
 daily.post('/stats/start', handle((req) => statsStart(req.user.id)));
 daily.post('/stats/pick', handle((req) => statsPick(req.user.id, req.body?.side)));
+daily.get('/camisas', handle((req) => camisasState(req.user.id)));
+daily.post('/camisas/start', handle((req) => camisasStart(req.user.id)));
+daily.post('/camisas/guess', handle((req) => camisasGuess(req.user.id, req.body?.guess)));

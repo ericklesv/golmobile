@@ -76,6 +76,7 @@ empate por diferença < 5 % nas copas.
 - [x] Regra: todo minigame vencido = 1 gol + bônus; Party GoL dá o gol na 1ª vitória do dia; slider ordenado por disponibilidade (13/09/2026)
 - [x] **Alvo no Gol** (nível 6, vira à meia-noite): batalha naval no gol — grade 6x4 com goleiro (3), 2 zagueiros (2) e 3 cones (1) escondidos por jogador/dia (`api/src/lib/alvo.js`); 12 chutes (eram 14, dono achou fácil); +2 de nível por casa, 8 casas = 1 gol, derrubar tudo = gol +30. Substituiu a versão "10 alvos de 1,5 s", que estava fácil demais (13/09/2026)
 - [x] **Estatísticas** (nível 3, vira às 13h): "quem tem mais?" entre dois jogadores do Brasileirão 2024 (dados reais da API-Football, com fotos) + 22 duelos escritos pelo dono; sequência até errar; uma partida por dia: +3 por acerto (até +30) e 5 seguidos = gol (13/09/2026)
+- [x] **Camisas** (nível 5, vira à meia-noite): maior ou menor com 4 camisas de 1 a 11 nas cores do time; 4 certas = 1 gol e segue valendo até errar (vários gols no dia, exceção do dono); +3 de nível por acerto (até +30) (13/09/2026)
 - [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP
 - [ ] **Embaixadinhas** (nível 12): ritmo, não deixar a bola cair
 - [ ] **Disputa de pênaltis 1x1** (nível 15): 5 pênaltis contra outro craque (assíncrono)

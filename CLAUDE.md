@@ -59,12 +59,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   `nextStatsReset`). A Home mostra o **slider horizontal de minigames**
   (`MinigameSlider.tsx`, dados de `GET /api/daily/hub`): catálogo em `MINIGAMES` (`rules.js`)
   com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, Estatísticas 3,
-  De que time é? 4, Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
+  De que time é? 4, Camisas 5, Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
   card "EM BREVE". O nível também é conferido no servidor ao começar (403 `locked`).
   Minigame novo: entrada em `MINIGAMES` (tirar o `soon`) + `DAILY_GAMES` + `calendar()` +
   serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regras do
   dono (13/09/2026): um minigame por vez, perfeito e funcional antes do próximo; TODO
   minigame vencido dá exatamente 1 gol + outro bônus (nível, dinheiro…), nunca mais de 1 gol;**
+  **EXCEÇÃO de propósito: o Camisas** (decisão do dono, 13/09/2026) dá 1 gol a cada 4 camisas
+  certas e segue valendo até errar — vários gols no dia; não "corrigir" para 1 gol.
   o slider vem ordenado do servidor: disponíveis primeiro (começado na frente), depois os já
   jogados pelo que volta antes, depois bloqueados por nível, por fim "em breve". Party GoL:
   R$ 150 por vitória e o gol só na primeira vitória do dia (senão dinheiro compraria gols). Fora de produção,
@@ -110,6 +112,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   aparece em 2 times). Atualizar dados: `node scripts/import-stats.js <temporada>` na pasta
   api/ com `API_FOOTBALL_KEY` no `api/.env` **local** (nunca no git/VPS). Plano grátis: 100
   req/dia, só 2022–2024 e 3 páginas por consulta (por isso vai time por time, ~65 req).
+- **Camisas** (`services/camisas.js`, tela `Camisas.tsx`, camisa desenhada em `Jersey.tsx` nas
+  cores do time; nível 5, vira à meia-noite): maior ou menor. Sequência de 4 camisas de 1 a 11
+  sem repetir (sorteio `crypto.randomInt`); a 1ª aparece, o jogador diz se a próxima é maior
+  ou menor. Acertou as 4 = 1 gol (kind `CAMISAS`) e começa outra sequência; errou, acaba o
+  dia. **Vários gols no dia** (exceção do dono à regra de 1 gol). +3 de nível por acerto (até
+  +30). Gol e nível entram na hora; as camisas escondidas ficam só no servidor; abrir a tela
+  (GET) não cria o registro do dia (o hub só mostra CONTINUAR depois de começar).
 
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
@@ -117,7 +126,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
-`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}` (minigames)
+`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}` (minigames)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)

@@ -29,6 +29,7 @@ enum KickKind {
   ALVO
   STATS
   CABECAO
+  CAMISAS
 }
 
 enum SeasonStatus {

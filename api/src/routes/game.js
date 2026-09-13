@@ -5,7 +5,7 @@ import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView } from '../lib/items.js';
 
@@ -32,6 +32,7 @@ game.get('/meta', handle(async () => {
     termo: TERMO,
     quiz: { questions: QUIZ.questions, seconds: QUIZ.seconds, pointsPerHit: QUIZ.pointsPerHit, goalAt: QUIZ.goalAt },
     stats: STATS,
+    camisas: CAMISAS,
     teams: teams.map(teamView),
     items: catalogView(), // catálogo da loja (lib/items.js)
   };

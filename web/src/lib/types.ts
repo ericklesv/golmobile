@@ -84,6 +84,7 @@ export interface Meta {
   termo: { letters: number; tries: number; levelPoints: number[] };
   quiz: { questions: number; seconds: number; pointsPerHit: number; goalAt: number };
   stats: { pointsPerHit: number; maxPoints: number; goalAt: number; season: string };
+  camisas?: { shirts: number; min: number; max: number; pointsPerHit: number; maxPoints: number };
   teams: Team[];
   items: ShopItemDef[];
 }
@@ -222,4 +223,19 @@ export interface StatsState {
   daily: { finished: boolean; score: number | null; reward: { goal: boolean; levelPoints: number; streak: number; text: string | null } | null };
   run: { mode: 'daily'; streak: number; over: boolean; pair: StatsPair | null } | null;
   best: number;
+}
+
+// ─── Camisas (maior ou menor) ───────────────────────────────────────────────
+export interface CamisasState {
+  day: number; nextAt: number; shirts: number; min: number; max: number; pointsPerHit: number; maxPoints: number;
+  playing: boolean; finished: boolean;
+  /** Camisas já viradas da sequência aberta (a última é a do palpite). As escondidas ficam no servidor. */
+  shown: number[];
+  goals: number; hits: number; points: number;
+  /** A última sequência fechada: a do gol ou, no fim do dia, a do erro. */
+  last: { seq: number[]; miss: boolean } | null;
+}
+export interface CamisasGuess {
+  state: CamisasState; correct: boolean; number: number; levelPoints: number;
+  goal: { text: string; seq: number[]; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
 }

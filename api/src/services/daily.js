@@ -27,6 +27,7 @@ function calendar(now) {
     MEMORIA: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     QUALTIME: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     ALVO: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
+    CAMISAS: { day: dayNumber(now), nextAt: nextMidnight(now).getTime() },
     // Estatísticas viram às 13h; sem os dados baixados, ficam de fora
     ...(statsReady() ? { STATS: { day: statsDayNumber(now), nextAt: nextStatsReset(now).getTime() } } : {}),
   };

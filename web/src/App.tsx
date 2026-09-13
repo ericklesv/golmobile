@@ -33,6 +33,7 @@ import { AlvoScreen } from './screens/Alvo';
 import { CabecaoScreen } from './screens/Cabecao';
 import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
 import { StatsScreen } from './screens/Stats';
+import { CamisasScreen } from './screens/Camisas';
 
 function Splash() {
   return (
@@ -89,6 +90,7 @@ export default function App() {
         <Route path="/alvo" element={<Private><AlvoScreen /></Private>} />
         <Route path="/cabecao" element={<Private><CabecaoScreen /></Private>} />
         <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
+        <Route path="/camisas" element={<Private><CamisasScreen /></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />

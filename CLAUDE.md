@@ -57,6 +57,19 @@ depois que o novo estiver estável. Não instalar nada dele.
   nível; 3+ acertos = 1 gol normal (kind `QUIZ`); não dá dinheiro. Perguntas em `q-*.js`
   (`a[0]` é a correta — só fatos certos e estáveis); o calendário é `ORDER` em
   `questions.js`: **pergunta nova entra no fim de `ORDER`**. 172 perguntas = 34 dias.
+- **Loja** (`lib/items.js` = catálogo estático + efeitos; `services/shop.js`; tabelas `UserItem`
+  com validade/nível/equipada/consumida e `ShopLog`): Energia do chute nv 1–5 (−10 %/nível na
+  recarga de pênalti/falta/trilha, 28 h), Boost Auto (−60 s no chute direto, 28 h), Caneleira
+  (última linha da trilha; gasta quando a trilha termina na última linha), Chuteiras (+2 % a +10 %
+  em pênalti/falta, 30 dias, só uma equipada), troca de nick, cor do nick (`User.nickColor`, nível 8+).
+  Os efeitos entram por `cooldownFor` (rules.js → `applyItemCooldown`), `bootBonus` nas chances e
+  `shinGuard` no layout da trilha — **o usuário precisa vir com `items`**: carregue com
+  `meInclude()` (items.js) em tudo que vira `meView`. Preços/regras: só em `items.js`.
+- **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
+  o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
+  `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).
+- **Senha** (`routes/password.js`): `forgot` sempre 200; token SHA-256 de uso único (1 h) em
+  `PasswordReset`; e-mail via Nodemailer (`SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`); sem SMTP, loga o link.
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
   cliente antes do fim (nem no JSON). Acertar = 1 gol normal (`applyResult` com kind `TERMO`:
   placar, artilharia, lances) + pontos de nível pela tentativa (`TERMO.levelPoints`, 30→5);
@@ -65,8 +78,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   (03/01/2027). Dicionário em `palavras.txt` (resposta fora do léxico entra lá, à mão).
 
 ## Endpoints
-`POST /api/auth/register|login` · `GET /api/me` · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
-`POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party`
+`POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
+`POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha`
+`GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}` (minigames)

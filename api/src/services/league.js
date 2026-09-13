@@ -119,6 +119,7 @@ export async function topScorers(where, take = 10, tx = prisma) {
       userId: g.userId,
       nick: u?.nick,
       avatarUrl: u?.avatarUrl ?? null,
+      nickColor: u?.nickColor ?? null,
       goals: g._count._all,
       team: u?.team,
       vip: !!(u?.vipUntil && u.vipUntil > new Date()),

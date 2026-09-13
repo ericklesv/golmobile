@@ -1,5 +1,6 @@
 /** Projeções de dados para o cliente (nunca expõe hash, e-mail alheio, layout da trilha). */
 import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel } from '../lib/rules.js';
+import { itemsView } from '../lib/items.js';
 
 export function teamView(t) {
   if (!t) return null;
@@ -42,6 +43,7 @@ export function meView(user, now = Date.now()) {
     rebound: { PENALTY: reboundLevel(level.lvl, 'PENALTY'), FOUL: reboundLevel(level.lvl, 'FOUL'), TRAIL: reboundLevel(level.lvl, 'TRAIL') },
     cooldowns: cooldownsView(user, now),
     trail: user.trailState?.active ? { active: true, phase: user.trailState.phase, revealed: user.trailState.revealed || [] } : { active: false, phase: 0, revealed: [] },
+    items: itemsView(user, now), nickColor: user.nickColor ?? null, // itens da loja ativos (carregar o usuário com meInclude() de items.js)
     serverTime: now,
   };
 }

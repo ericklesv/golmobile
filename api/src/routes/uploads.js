@@ -14,6 +14,7 @@ import { config } from '../config.js';
 import { handle, badRequest } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { meView } from '../services/view.js';
+import { meInclude } from '../lib/items.js';
 
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
@@ -61,14 +62,14 @@ uploads.post('/avatar', requireAuth, (req, res, next) => {
   writeFileSync(join(AVATARS, name), buffer);
   const url = `/api/uploads/avatars/${name}`;
   const prev = await prisma.user.findUnique({ where: { id: req.user.id }, select: { avatarUrl: true } });
-  const user = await prisma.user.update({ where: { id: req.user.id }, data: { avatarUrl: url }, include: { team: true } });
+  const user = await prisma.user.update({ where: { id: req.user.id }, data: { avatarUrl: url }, include: meInclude() });
   removeOld(prev?.avatarUrl);
   return meView(user);
 }));
 
 uploads.delete('/avatar', requireAuth, handle(async (req) => {
   const prev = await prisma.user.findUnique({ where: { id: req.user.id }, select: { avatarUrl: true } });
-  const user = await prisma.user.update({ where: { id: req.user.id }, data: { avatarUrl: null }, include: { team: true } });
+  const user = await prisma.user.update({ where: { id: req.user.id }, data: { avatarUrl: null }, include: meInclude() });
   removeOld(prev?.avatarUrl);
   return meView(user);
 }));

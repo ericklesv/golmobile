@@ -1,6 +1,7 @@
 // Regras do jogo — porta 1:1 do BRGOL original (ver docs/BRGOL_ORIGINAL.md).
 // Este arquivo é a fonte da verdade; o cliente recebe os valores via /api/meta.
 import { MIN } from './time.js';
+import { applyItemCooldown } from './items.js';
 
 // ─── Recargas (não-VIP / VIP) ───────────────────────────────────────────────
 export const COOLDOWNS = {
@@ -138,8 +139,16 @@ export function isVip(user, now = Date.now()) {
   return !!user.vipUntil && new Date(user.vipUntil).getTime() > now;
 }
 
-/** Recarga efetiva (ms) de um modo para um usuário. */
+/**
+ * Recarga efetiva (ms) de um modo para um usuário. Se o usuário veio com `items`
+ * (UserItem ativos — ver items.js), a Energia do chute e o Boost Auto entram aqui.
+ */
 export function cooldownFor(user, kind, now = Date.now()) {
+  return applyItemCooldown(user, kind, baseCooldownFor(user, kind, now), now);
+}
+
+/** Recarga sem itens da loja (VIP + níveis da trilha). */
+export function baseCooldownFor(user, kind, now = Date.now()) {
   const vip = isVip(user, now);
   const base = COOLDOWNS[kind][vip ? 'vip' : 'normal'];
   if (kind !== 'TRAIL') return base;

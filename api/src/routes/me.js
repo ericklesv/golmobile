@@ -5,15 +5,20 @@ import { handle, GameError, notFound, badRequest } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { meView, publicView } from '../services/view.js';
 import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf } from '../lib/rules.js';
+import { meInclude } from '../lib/items.js';
+import { captchaRequired } from '../lib/captcha.js';
 
 export const me = Router();
 me.use(requireAuth);
 
 async function fresh(id) {
-  return prisma.user.findUnique({ where: { id }, include: { team: true } });
+  return prisma.user.findUnique({ where: { id }, include: meInclude() });
 }
 
-me.get('/', handle(async (req) => meView(await fresh(req.user.id))));
+me.get('/', handle(async (req) => {
+  const u = await fresh(req.user.id);
+  return { ...meView(u), captchaRequired: captchaRequired(u) }; // captcha dos chutes manuais (lib/captcha.js)
+}));
 
 // Presença: o cliente chama a cada 60 s enquanto está aberto (necessário p/ auto-chute)
 me.post('/heartbeat', handle(async (req) => {
@@ -25,7 +30,7 @@ me.post('/heartbeat', handle(async (req) => {
 
 me.put('/bio', handle(async (req) => {
   const bio = z.string().max(400, 'Máximo de 400 caracteres.').parse(req.body?.bio ?? '');
-  const u = await prisma.user.update({ where: { id: req.user.id }, data: { bio }, include: { team: true } });
+  const u = await prisma.user.update({ where: { id: req.user.id }, data: { bio }, include: meInclude() });
   return meView(u);
 }));
 
@@ -71,7 +76,7 @@ me.post('/activate-vip', handle(async (req) => {
     if (res.count === 0) throw badRequest('Você não tem unidades de VIP suficientes.');
     const cur = await tx.user.findUnique({ where: { id: req.user.id } });
     const base = cur.vipUntil && cur.vipUntil > new Date() ? cur.vipUntil.getTime() : Date.now();
-    return tx.user.update({ where: { id: req.user.id }, data: { vipUntil: new Date(base + days * 86_400_000) }, include: { team: true } });
+    return tx.user.update({ where: { id: req.user.id }, data: { vipUntil: new Date(base + days * 86_400_000) }, include: meInclude() });
   });
   return meView(u);
 }));
@@ -81,7 +86,7 @@ me.post('/change-team', handle(async (req) => {
   if (!team) throw badRequest('Time inválido.');
   if (team.id === req.user.teamId) throw badRequest('Você já é desse time.');
   // Movimentação: zera contadores de rodada (gols já feitos ficam com o time antigo)
-  const u = await prisma.user.update({ where: { id: req.user.id }, data: { teamId: team.id, goalsRound: 0, roundId: null }, include: { team: true } });
+  const u = await prisma.user.update({ where: { id: req.user.id }, data: { teamId: team.id, goalsRound: 0, roundId: null }, include: meInclude() });
   await prisma.activity.create({ data: { userId: u.id, teamId: team.id, kind: 'AUTO', goal: false, text: `${u.nick} agora joga pelo ${team.name}.` } });
   return meView(u);
 }));

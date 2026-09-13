@@ -11,6 +11,7 @@ import {
   cooldownFor, levelOf, reboundLevel,
 } from '../lib/rules.js';
 import { liveMatchForTeam } from './league.js';
+import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines } from '../lib/items.js';
 
 const rnd = Math.random;
 
@@ -96,7 +97,8 @@ export async function applyResult(tx, user, { kind, goal, now, match, phrase, mo
 }
 
 export function loadUser(tx, id) {
-  return tx.user.findUnique({ where: { id }, include: { team: true } });
+  // `items` = itens da loja ativos (cooldownFor / chances / caneleira leem daqui)
+  return tx.user.findUnique({ where: { id }, include: { team: true, items: activeItemsWhere() } });
 }
 
 function summary(user, match, kind, cooldownMs, now) {
@@ -129,7 +131,7 @@ export async function penalty(userId, direction) {
     requireUnlocked(user, 'PENALTY');
     const cd = await claimCooldown(tx, user, 'PENALTY', now);
     const match = await liveMatchForTeam(user.teamId, tx);
-    const chance = 2 / 3 + user.dexterity * DEXTERITY_BONUS_PER_POINT;
+    const chance = 2 / 3 + user.dexterity * DEXTERITY_BONUS_PER_POINT + bootBonus(user, now.getTime()); // chuteira da loja
     const lvl = levelOf(user).lvl;
     let goal = rnd() < chance;
     let rebound = false;
@@ -155,7 +157,7 @@ export async function foul(userId, direction) {
     requireUnlocked(user, 'FOUL');
     const cd = await claimCooldown(tx, user, 'FOUL', now);
     const match = await liveMatchForTeam(user.teamId, tx);
-    const chance = FOUL_BASE_CHANCE + user.dexterity * DEXTERITY_BONUS_PER_POINT;
+    const chance = FOUL_BASE_CHANCE + user.dexterity * DEXTERITY_BONUS_PER_POINT + bootBonus(user, now.getTime()); // chuteira da loja
     const lvl = levelOf(user).lvl;
     let goal = rnd() < chance;
     let rebound = false;
@@ -196,6 +198,13 @@ export async function trailPick(userId, pickIndex) {
     if (!state) {
       cd = await claimCooldown(tx, user, 'TRAIL', now);
       state = { active: true, phase: 0, layout: TRAIL_LINES.map(shuffledLine), revealed: [], startedAt: now.getTime() };
+      // Caneleira (loja): sorteia menos ladrões na última linha; é consumida quando esta trilha termina
+      const guard = shinGuard(user, now.getTime());
+      if (guard) {
+        const last = TRAIL_LINES.length - 1;
+        state.layout[last] = shuffledLine({ total: TRAIL_LINES[last].total, mines: rollShinGuardMines(rnd) });
+        state.shinGuardId = guard.id;
+      }
     }
     const line = state.phase;
     const cfg = TRAIL_LINES[line];
@@ -234,6 +243,8 @@ export async function trailPick(userId, pickIndex) {
 
     const newState = finished ? { active: false, endedAt: now.getTime() } : { ...state, phase: nextPhase };
     await tx.user.update({ where: { id: user.id }, data: { trailState: newState } });
+    // Caneleira: consumida quando a trilha termina na última linha (onde ela agiu); perder antes não gasta
+    if (finished && state.shinGuardId && line === TRAIL_LINES.length - 1) await tx.userItem.updateMany({ where: { id: state.shinGuardId, usedAt: null }, data: { usedAt: now } });
     return {
       mine, goal, finished, rebound,
       phase: nextPhase,

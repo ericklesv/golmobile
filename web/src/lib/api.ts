@@ -1,4 +1,4 @@
-import type { QualtimeState, MinigameCard, MemoriaState, MemoriaCard, MemoriaReward, ChatMessage, ChatPage, ChatRoom, ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
+import type { ActivePlayer, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -47,9 +47,10 @@ export const api = {
   changeTeam: (teamSlug: string) => req<Me>('POST', '/api/me/change-team', { teamSlug }),
   // play
   autoKick: () => req<KickResult>('POST', '/api/play/auto'),
-  penalty: (direction: 'left' | 'center' | 'right') => req<KickResult>('POST', '/api/play/penalty', { direction }),
-  foul: (direction: 'left' | 'over' | 'right') => req<KickResult>('POST', '/api/play/foul', { direction }),
-  trail: (index: number) => req<TrailResult>('POST', '/api/play/trail', { index }),
+  penalty: (direction: 'left' | 'center' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/penalty', { direction, ...(captcha ?? {}) }),
+  foul: (direction: 'left' | 'over' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/foul', { direction, ...(captcha ?? {}) }),
+  trail: (index: number, captcha?: CaptchaPayload | null) => req<TrailResult>('POST', '/api/play/trail', { index, ...(captcha ?? {}) }),
+  captcha: () => req<{ id: string; question: string; expiresAt: number }>('GET', '/api/play/captcha'),
   party: () => req<PartyResult>('POST', '/api/play/party'),
   // minigames diários
   daily: () => req<DailyStatus>('GET', '/api/daily'),
@@ -87,4 +88,13 @@ export const api = {
   removeAvatar: () => req<Me>('DELETE', '/api/uploads/avatar'),
   search: (q: string) => req<{ nick: string; goalsTotal: number; team: any }[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
   feed: (team?: string) => req<any[]>('GET', `/api/feed${team ? `?team=${team}` : ''}`),
+  // loja
+  shop: () => req<ShopView>('GET', '/api/shop'),
+  shopBuy: (key: string, currency: 'money' | 'vip' = 'money') => req<{ me: Me; item: UserItemView }>('POST', '/api/shop/buy', { key, currency }),
+  shopEquip: (key: string) => req<Me>('POST', '/api/shop/equip', { key }),
+  shopNick: (nick: string) => req<Me>('POST', '/api/shop/nick', { nick }),
+  shopNickColor: (color: string | null) => req<Me>('POST', '/api/shop/nick-color', { color }),
+  // recuperação de senha
+  forgotPassword: (email: string) => req<{ ok: boolean; message: string }>('POST', '/api/auth/forgot', { email }),
+  resetPassword: (token: string, password: string) => req<{ ok: boolean; nick: string; message: string }>('POST', '/api/auth/reset', { token, password }),
 };

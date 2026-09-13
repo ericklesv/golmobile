@@ -91,7 +91,7 @@ export function ChatScreen() {
                   </Link>
                   <div className={`max-w-[78%] rounded-2xl px-3 py-1.5 ${mine ? 'rounded-tr-sm bg-sky/25' : 'rounded-tl-sm bg-sky/10'}`}>
                     <div className="flex items-center gap-1 text-[11px] font-extrabold">
-                      <Link to={`/jogador/${encodeURIComponent(m.user.nick)}`} className={m.user.vip ? 'text-sky-deep' : 'text-navy-ink'} style={m.user.nickColor ? { color: m.user.nickColor } : undefined}>{m.user.nick}</Link>
+                      <Link to={`/jogador/${encodeURIComponent(m.user.nick)}`} className={m.user.nickColor ? `nick-${m.user.nickColor}` : m.user.vip ? 'text-sky-deep' : 'text-navy-ink'}>{m.user.nick}</Link>
                       {m.user.vip && <img src="/ui/ico-crown_silver.png" className="ico h-3.5 w-3.5" alt="VIP" />}
                       {m.user.team && <Link to={`/time/${m.user.team.slug}`}><Shield team={m.user.team} size={14} /></Link>}
                       <span className="text-[9px] font-bold uppercase text-muted">lvl {m.user.level} · {m.user.levelName}</span>

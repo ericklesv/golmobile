@@ -29,6 +29,7 @@ import { LevelsScreen } from './screens/Levels';
 import { ChatScreen } from './screens/Chat';
 import { MemoriaScreen } from './screens/Memoria';
 import { QualtimeScreen } from './screens/Qualtime';
+import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
 
 function Splash() {
   return (
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />
         <Route path="/chat" element={<Private><ChatScreen /></Private>} />
+        <Route path="/esqueci-senha" element={me ? <Navigate to="/" replace /> : <EsqueciSenhaScreen />} /><Route path="/redefinir-senha" element={<RedefinirSenhaScreen />} />
         <Route path="*" element={<Navigate to={me ? '/' : '/bem-vindo'} replace />} />
       </Routes>
     </>

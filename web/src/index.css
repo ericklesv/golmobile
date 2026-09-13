@@ -181,3 +181,13 @@ img { -webkit-user-drag: none; }
 [hidden] { display: none !important; }
 /* opção errada escolhida no "De que time é?": o item amarelo puxado pro vermelho */
 .hue-wrong { filter: hue-rotate(-32deg) saturate(1.6); }
+
+/* Cor do nick (item da loja "Cor do nick", paleta em api/src/lib/items.js) */
+.nick-vermelho { color: #E5322D; }
+.nick-laranja { color: #E8641A; }
+.nick-dourado { color: #D19A00; }
+.nick-verde { color: #2BA83A; }
+.nick-roxo { color: #8E44AD; }
+.nick-rosa { color: #E0479E; }
+.nick-marrom { color: #8B5A2B; }
+.nick-preto { color: #1E1E1E; }

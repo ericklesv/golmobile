@@ -191,3 +191,4 @@ img { -webkit-user-drag: none; }
 .nick-rosa { color: #E0479E; }
 .nick-marrom { color: #8B5A2B; }
 .nick-preto { color: #1E1E1E; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }

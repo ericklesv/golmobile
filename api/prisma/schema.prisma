@@ -28,6 +28,7 @@ enum KickKind {
   QUALTIME
   ALVO
   STATS
+  CABECAO
 }
 
 enum SeasonStatus {
@@ -373,4 +374,26 @@ model ChatMessage {
   createdAt DateTime @default(now())
 
   @@index([room, id])
+}
+
+// Cabeção (head soccer 1x1 ao vivo): histórico das partidas + antifraude (IP, gol por dia).
+model CabecaoMatch {
+  id          Int      @id @default(autoincrement())
+  aId         Int
+  bId         Int
+  aTeamId     Int
+  bTeamId     Int
+  aIp         String
+  bIp         String
+  scoreA      Int
+  scoreB      Int
+  winnerId    Int?
+  reason      String   // time | golden | wo
+  seconds     Int
+  goalAwarded Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([winnerId, createdAt])
+  @@index([aId, createdAt])
+  @@index([bId, createdAt])
 }

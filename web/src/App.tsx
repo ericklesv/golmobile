@@ -30,6 +30,7 @@ import { ChatScreen } from './screens/Chat';
 import { MemoriaScreen } from './screens/Memoria';
 import { QualtimeScreen } from './screens/Qualtime';
 import { AlvoScreen } from './screens/Alvo';
+import { CabecaoScreen } from './screens/Cabecao';
 import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
 import { StatsScreen } from './screens/Stats';
 
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="/memoria" element={<Private><MemoriaScreen /></Private>} />
         <Route path="/qualtime" element={<Private><QualtimeScreen /></Private>} />
         <Route path="/alvo" element={<Private><AlvoScreen /></Private>} />
+        <Route path="/cabecao" element={<Private><CabecaoScreen /></Private>} />
         <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />

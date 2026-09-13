@@ -155,6 +155,7 @@ export interface MinigameCard {
   id: string; name: string; desc: string; icon: string; route: string; rewardLabel: string; daily: boolean;
   unlockLevel: number; unlocked: boolean; soon: boolean;
   available: boolean; started: boolean; finished: boolean; won: boolean; nextAt: number | null;
+  live?: { queue: number; playing: number };
 }
 export interface MemoriaCard { i: number; team: Team | null; matched: boolean }
 export interface MemoriaReward { goal: boolean; levelPoints: number; moves: number; text: string | null }

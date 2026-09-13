@@ -71,9 +71,9 @@ export function prizeFor(table, position) {
 // ─── Níveis (tabela oficial de 2009, por gols) ──────────────────────────────
 export const LEVELS = [
   { lvl: 0, name: 'Iniciante', goals: 0, skill: null },
-  { lvl: 1, name: 'Pintinho', goals: 22, skill: 'Libera a Falta' },
+  { lvl: 1, name: 'Pintinho', goals: 22, skill: 'Libera o Party GoL' },
   { lvl: 2, name: 'Frango', goals: 49, skill: 'Som de alerta' },
-  { lvl: 3, name: 'Sub-12', goals: 88, skill: 'Libera a Trilha' },
+  { lvl: 3, name: 'Sub-12', goals: 88, skill: 'Libera as Estatísticas' },
   { lvl: 4, name: 'Sub-16', goals: 140, skill: '-25 s na Trilha', trail: 25 },
   { lvl: 5, name: 'Juvenil', goals: 200, skill: '-20 s na Trilha', trail: 20 },
   { lvl: 6, name: 'Profissional em Teste', goals: 273, skill: '-15 s na Trilha', trail: 15 },
@@ -164,7 +164,9 @@ export const LAST_FIELD = {
   TRAIL: 'lastTrailAt',
 };
 
-export const UNLOCK_LEVEL = { AUTO: 0, PENALTY: 0, FOUL: 1, TRAIL: 3 };
+// Chutes liberados para todos desde o nível 0 (decisão do dono, 13/09/2026: ter que subir de nível
+// para bater falta/trilha desanimava). Só os minigames travam por nível (MINIGAMES.unlock).
+export const UNLOCK_LEVEL = { AUTO: 0, PENALTY: 0, FOUL: 0, TRAIL: 0 };
 
 export const KIND_LABEL = {
   AUTO: 'chute direto',

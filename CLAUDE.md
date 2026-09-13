@@ -27,6 +27,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   (reserva atômica via `updateMany` — sem corrida), dinheiro, rankings, placar da partida.
   O cliente só anima o resultado. Nunca reintroduzir `Math.random()` de gol no front.
 - Regras/números: `api/src/lib/rules.js` (recargas, dinheiro, chances, níveis, prêmios).
+  **Chutes (direto, pênalti, falta, trilha) liberados para todos desde o nível 0** (decisão do
+  dono, 13/09/2026: travar desanimava); **só os minigames travam por nível** (`MINIGAMES.unlock`).
   O front lê tudo via `GET /api/meta` — **não duplicar constantes no `web/`**.
 - Liga: `api/src/services/league.js` — temporada, rodadas de 24h que fecham às **19:00
   (America/Sao_Paulo)**, round-robin determinístico por série, fechamento de hora/rodada

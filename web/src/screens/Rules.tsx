@@ -20,8 +20,8 @@ export function RulesScreen() {
         <ul className="flex flex-col gap-2 text-[13px] font-bold text-navy-ink">
           <li><b className="text-grass-deep">Chute direto</b> — com o app aberto, sai sozinho quando recarrega. Sempre gol: +{fmt(meta?.money.AUTO ?? 10)}.</li>
           <li><b className="text-gold-deep">Pênalti</b> — escolha esquerda, meio ou direita. O goleiro pula pra um canto. +{fmt(meta?.money.PENALTY ?? 20)}.</li>
-          <li><b className="text-sky-deep">Falta</b> — por fora da barreira ou por cima. Libera no nível 1. +{fmt(meta?.money.FOUL ?? 30)}.</li>
-          <li><b className="text-orange-deep">Trilha</b> — drible a defesa, o meio e o ataque tocando em um jogador por linha. {thieves ? `Roubam a bola: ${thieves}.` : 'Em cada linha, alguém rouba a bola.'} Libera no nível 3. +{fmt(meta?.money.TRAIL ?? 40)}.</li>
+          <li><b className="text-sky-deep">Falta</b> — por fora da barreira ou por cima. +{fmt(meta?.money.FOUL ?? 30)}.</li>
+          <li><b className="text-orange-deep">Trilha</b> — drible a defesa, o meio e o ataque tocando em um jogador por linha. {thieves ? `Roubam a bola: ${thieves}.` : 'Em cada linha, alguém rouba a bola.'} +{fmt(meta?.money.TRAIL ?? 40)}.</li>
           <li><b className="text-gold-deep">Party GoL</b> — a roleta: aposta {fmt(meta?.money.PARTY_BET ?? 50)}, acertou leva {fmt(meta?.money.PARTY_PRIZE ?? 150)}.</li>
           <li><b className="text-grass-deep">Termo do dia</b> — uma palavra de futebol por dia (renova à meia-noite), {meta?.termo.tries ?? 6} tentativas. Acertou, é gol do seu time e ganha pontos de nível: {termoPoints}.</li>
           <li><b className="text-orange-deep">Estatísticas</b> — quem tem mais? Jogadores do {meta?.stats.season ?? 'Brasileirão 2024'} e duelos da história do Brasileirão. Acertou, segue; errou, acaba. Uma partida por dia (renova às 13h, libera no nível 3): +{meta?.stats.pointsPerHit ?? 3} de nível por acerto (até +{meta?.stats.maxPoints ?? 30}); {meta?.stats.goalAt ?? 5} seguidos é gol.</li>

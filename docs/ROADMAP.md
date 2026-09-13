@@ -74,7 +74,7 @@ empate por diferença < 5 % nas copas.
 - [x] **Memória dos Escudos** (nível 2, vira à meia-noite): 16 cartas/8 pares sorteados por jogador; até 14 jogadas = 1 gol; nível +30 (≤8), +25 (≤10), +20 (≤12), +15 (≤14), +10 (≤18), +5 (13/09/2026)
 - [x] **De que time é?** (nível 4, vira à meia-noite): 8 pistas (estádio, estado, apelido, ídolo) com 4 escudos, 10 s cada; +4 de nível por acerto, 6 acertos = 1 gol; banco em `api/src/lib/qualtime/bank.js` (13/09/2026)
 - [x] Regra: todo minigame vencido = 1 gol + bônus; Party GoL dá o gol na 1ª vitória do dia; slider ordenado por disponibilidade (13/09/2026)
-- [ ] **Alvo no Gol** (nível 6): alvos aparecem no gol 3D, toque rápido
+- [x] **Alvo no Gol** (nível 6, vira à meia-noite): 10 alvos acendem um a um no gol por 1,5 s (relógio no servidor); +3 de nível por acerto, 7 acertos = 1 gol (13/09/2026)
 - [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP
 - [ ] **Embaixadinhas** (nível 12): ritmo, não deixar a bola cair
 - [ ] **Disputa de pênaltis 1x1** (nível 15): 5 pênaltis contra outro craque (assíncrono)

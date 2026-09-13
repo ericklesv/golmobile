@@ -4,12 +4,13 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, type KeeperPose } from '../scenes/models';
 
-/** Rota oculta /debug3d?view=penalty|foul|top|goal|keeper&pose=idle|wall|dive|jump|miss|save_low|celebrate&flip=1 — só para conferir escala/orientação. */
+/** Rota oculta /debug3d?view=penalty|foul|top|goal|keeper&pose=idle|wall|dive|jump|miss|save_low|celebrate&flip=1&at=0.4 — só para conferir escala/orientação; `at` congela o clipe naquele segundo. */
 export function Debug3DScreen() {
   const [q] = useSearchParams();
   const view = q.get('view') ?? 'penalty';
   const pose = (q.get('pose') ?? 'idle') as KeeperPose;
   const flip = q.get('flip') === '1';
+  const at = q.get('at') ? Number(q.get('at')) : undefined;
   // ?bones=LeftArm:0,-60,30;RightArm:0,60,-30 → pose customizada (graus) para iterar sem redeploy
   const custom = q.get('bones') ? Object.fromEntries(q.get('bones')!.split(';').map((t) => { const [b, v] = t.split(':'); return [b, v.split(',').map(Number) as [number, number, number]]; })) : undefined;
   const cams: Record<string, { pos: [number, number, number]; look: [number, number, number]; fov: number }> = {
@@ -28,7 +29,7 @@ export function Debug3DScreen() {
           <StadiumModel />
           <GoalModel />
           <group position={[0, 0.21, 11]}><BallModel /></group>
-          <KeeperModel color="#f2c200" pose={pose} flip={flip} position={[0, 0, 0.4]} custom={custom} />
+          <KeeperModel color="#f2c200" pose={pose} flip={flip} position={[0, 0, 0.4]} custom={custom} sampleAt={at} />
           <KeeperModel color="#c3131a" pose="wall" position={[-1.2, 0, 10.5]} seed={1} />
           <KeeperModel color="#c3131a" pose="wall" position={[-0.4, 0, 10.5]} seed={2} />
           <gridHelper args={[40, 40]} position={[0, 0.02, 20]} />

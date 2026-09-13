@@ -72,7 +72,8 @@ function Scene({ shot, keeperColor, wallColor }: { shot: Shot | null; keeperColo
     w.position.y = jump;
     const kp = clamp01((e - 0.35) / 0.55);
     const kdir = shot.outcome === 'goal' ? (shot.dir === 'left' ? 1 : -1) : (shot.dir === 'left' ? -1 : shot.dir === 'right' ? 1 : 0);
-    k.position.set(kdir * 1.2 * ease.out(kp), 0, 0.5);
+    // o clipe do mergulho já desloca o corpo; o grupo só complementa o alcance
+    k.position.set(kdir * 1.0 * ease.out(kp), 0, 0.5);
     camera.position.lerp(new THREE.Vector3(2 + tgt.x * 0.2, 2.6, 17), 0.03);
     camera.lookAt(tgt.x * 0.5, 1.5, 2);
   });

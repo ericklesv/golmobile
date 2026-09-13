@@ -35,7 +35,9 @@ function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }
     }
     if (started.current !== shot.t0) {
       started.current = shot.t0;
-      kh.current?.pose(shot.keeperDir === 'center' ? 'jump' : 'dive');
+      // pequeno atraso = tempo de reação; o clipe faz o salto em arco completo
+      const pose = shot.keeperDir === 'center' ? 'jump' : 'dive';
+      setTimeout(() => kh.current?.pose(pose), pose === 'jump' ? 100 : 150);
     }
     const e = (performance.now() - shot.t0) / 1000;
     const flight = 0.8;
@@ -54,9 +56,9 @@ function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }
       const q = clamp01((e - flight) / 0.7);
       b.position.z = 0.6 + 7 * q; b.position.y = 0.21 + Math.sin(q * Math.PI) * 1.8; b.position.x = tx * (1 - q * 0.5);
     }
-    // goleiro desliza para o canto que escolheu (a animação faz o mergulho)
-    const kp = clamp01((e - 0.1) / 0.6);
-    k.position.set(X[shot.keeperDir] * 0.35 * ease.out(kp), 0, 0.5);
+    // o clipe do mergulho já leva o corpo ~1,8 m para o lado; o grupo só complementa o alcance
+    const kp = clamp01((e - 0.25) / 0.5);
+    k.position.set(X[shot.keeperDir] * 0.2 * ease.out(kp), 0, 0.5);
     camera.position.lerp(new THREE.Vector3(tx * 0.25, 1.9, 9.5), 0.04);
     camera.lookAt(tx * 0.5, 1.3, 0);
   });

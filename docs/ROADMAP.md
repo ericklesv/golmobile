@@ -5,7 +5,10 @@ Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIG
 ## Próximos passos (atualizado 13/09/2026 — fazer nesta ordem)
 Feitos hoje: header (foto · nick/xp · nível → /perfil), foto de perfil (PNG/JPG/WEBP/GIF ≤ 5 MB),
 aba **Loja**, moeda VIP no header, texto pessoal no perfil público, lista de jogadores ativos
-(24 h) clicável, rolagem por arraste no PC, roleta calibrada, setas de chute no pênalti/falta.
+(24 h) clicável, rolagem por arraste no PC, roleta calibrada, setas de chute no pênalti/falta,
+**menções @nick no chat** (autocomplete ao digitar @, link com avatar; mensagens antigas também
+viram link) e **goleiro com salto em arco de verdade** (clipes com keyframes em `keeper.tsx`:
+agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` congela o clipe).
 1. [x] **Loja de verdade** (13/09/2026): Energia do chute nv 1–5 (28 h), Boost Auto (−60 s, 28 h),
    Caneleira (última linha da trilha; R$ 80 mil ou 1 VIP), Chuteiras Couro/Bronze/Prata/Ouro/Diamante
    (+2 % a +10 %, 30 dias, só uma equipada), troca de nick e cor do nick (nível 8+). Catálogo em

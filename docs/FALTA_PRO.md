@@ -49,18 +49,38 @@ desenhando um arco no gesto (como a curveball do Pokémon GO).
 3. Telas (Layout, slider, overlay de recompensa) + migração do enum.
 4. Polimento: som, câmera acompanhando a bola, rede reagindo, replays.
 
-## Frangalho (transposto do Managol — MECÂNICA A CONFIRMAR)
+## Frangaço (transposto do Managol — é "Frangaço", não "Frangalho")
 
-**Atenção:** não existe "Frangalho" em nenhum repo do Managol (procurei em
-`Managol/src`, `managol-frontend`, `managol-backend`, `managol-discord-bot` e
-`Managol2.0` — nada). Antes de implementar, o Guilherme precisa descrever a mecânica
-original. Proposta adaptada ao JogaGol enquanto isso (tema "frango"):
+O original vive no Managol Flutter (managol.com.br): lobby em
+`Managol2.0/lib/features/minigames/frangaco/`, jogo 3D em **Unity WebGL**
+(`ManagolTV`, aberto em `/tv/?mode=penalty`), regras no backend (`/frangaco/*`).
+**Os packs 3D são os MESMOS do JogaGol** (FootballSimulator + Soccer Stadiums +
+Soccer Players Uniforms) — lá o Unity toca as animações originais dos .fbx
+(gkMergulho, gkRasteira, gkCentro, gkFalhou, gkPegou, comemoração + sons do pack).
 
-- **Você é o goleiro** (o inverso do pênalti): câmera atrás do gol, chutes vêm em
-  sequência; uma dica visual rápida (olhar do batedor/posição do corpo) sugere o canto.
-- Toque/arraste para o canto = mergulho (os clipes de salto em arco do `keeper.tsx`
-  servem direto, com a câmera invertida).
-- Cada defesa soma; levar um **frango** (bola fraca no meio que você não segurou)
-  encerra na hora. Dificuldade sobe: chutes mais rápidos, fintas.
-- 1 partida/dia; N defesas seguidas = **1 gol** + pontos de nível por defesa.
-- Reaproveita: cena do pênalti, clipes do goleiro, Trionda, kit do adversário no batedor.
+### Mecânica original (frangaco_models.dart)
+- **Duelo de pênaltis alternado**: você BATE e você DEFENDE, contra clubes reais
+  sorteados, em **torneio mata-mata** (~4 fases). Só o campeão pontua; ranking por
+  títulos; temporada de ~6 meses com prêmio e reset.
+- **Cobrança**: mira contínua 0..1 no gol, com **finta** — existe `xAnunciado` e
+  `xReal` (você anuncia um canto e pode bater no outro); a precisão do batedor
+  espalha a bola (`xBola/yBola`); o goleiro IA pula (`xGk`).
+- **Defesa**: um **alvo** aparece numa posição do gol e você tem uma **janela de
+  reação em ms** (reflexo do goleiro) para tocar nele; não clicou ou errou = gol.
+- Batedor/goleiro têm índices 0..1 (precisão / reflexo).
+
+### Transposição para o JogaGol
+- No JogaGol não há elenco: o próprio jogador é o batedor E o goleiro — os índices
+  viram atributos do craque (destreza já existe; reflexo pode vir do nível).
+- Cena: pênalti 3D atual (three.js) dos dois lados — cobrando (câmera atual) e
+  defendendo (câmera atrás do gol); goleiro/batedor com kit do adversário; Trionda.
+- Duelo de 5+5 alternado contra clube IA da mesma série; mata-mata de 4 fases;
+  campeão = **1 gol** + prêmio em dinheiro; ranking de títulos por temporada da liga.
+- Servidor manda o alvo/janela e valida o clique (timestamp servidor), como o resto.
+- Nome no JogaGol: **Frangaço** mesmo (marca já conhecida dos jogadores do Managol).
+
+### Bônus descoberto no caminho
+As animações originais do pack funcionam no Unity (ManagolTV). Dá para **exportar
+os clipes bakeados de lá para glb** (script Editor no projeto ManagolTV) e fazer o
+goleiro do JogaGol usar as MESMAS animações do Frangaço 3D — próximo passo natural
+se os clipes procedurais atuais não agradarem.

@@ -30,6 +30,7 @@ enum KickKind {
   STATS
   CABECAO
   CAMISAS
+  HATTRICK
 }
 
 enum SeasonStatus {

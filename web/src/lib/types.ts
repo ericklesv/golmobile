@@ -87,6 +87,7 @@ export interface Meta {
   camisas?: { shirts: number; min: number; max: number; pointsPerHit: number; maxPoints: number };
   /** Hora (Brasília) em que cada minigame diário renova. */
   resetHour?: Record<string, number>;
+  hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   teams: Team[];
   items: ShopItemDef[];
 }
@@ -241,4 +242,23 @@ export interface CamisasState {
 export interface CamisasGuess {
   state: CamisasState; correct: boolean; number: number; levelPoints: number;
   goal: { text: string; seq: number[]; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
+}
+
+// ─── Hat Trick (chute de longe) ─────────────────────────────────────────────
+/** Posições em metros: gol em y = 0 (x = 0 no meio), campo crescendo para baixo. */
+export interface HattrickShot { i: number; ball: { x: number; y: number }; wind: { speed: number; angle: number } }
+export type HattrickResult = 'goal' | 'saved' | 'wide' | 'post' | 'bar' | 'over' | 'whiff';
+export interface HattrickState {
+  day: number; nextAt: number; maxLives: number; pointsPerGoal: number; maxPoints: number;
+  playing: boolean; finished: boolean; lives: number; goals: number; points: number;
+  shot: HattrickShot | null;
+  last: { i: number; result: HattrickResult; ball: { x: number; y: number }; wind: { speed: number; angle: number }; cross: { x: number; z: number } | null } | null;
+}
+export interface HattrickFlight {
+  T: number; samples: [number, number, number][]; cross: { x: number; z: number } | null;
+  keeper: { react: number; speed: number; to: number; save: boolean } | null;
+}
+export interface HattrickShootResponse {
+  state: HattrickState; result: HattrickResult; levelPoints: number; flight: HattrickFlight; shot: HattrickShot;
+  goal: { text: string; hatTrick: boolean; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
 }

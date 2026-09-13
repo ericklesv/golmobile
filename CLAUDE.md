@@ -57,21 +57,22 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Minigames diários** (`services/daily.js`, tabela `DailyGame`): 1 partida por jogador,
   por jogo, por dia. **Cada minigame vira numa hora própria** (decisão do dono, 13/09/2026: sempre
   ter algum renovando) — `RESET_HOUR` em `rules.js`: **Termo 0h, Quiz 12h, Estatísticas 13h,
-  Memória 14h, De que time é? 15h, Camisas 16h, Alvo no Gol 17h**; jogo novo pega a próxima hora
-  livre (18h…), nunca repetir hora. Termo/Quiz/Estatísticas usam `dayNumber`/`quizDayNumber`/
+  Memória 14h, De que time é? 15h, Camisas 16h, Alvo no Gol 17h, Hat Trick 18h**; jogo novo pega a
+  próxima hora livre (19h…), nunca repetir hora. Termo/Quiz/Estatísticas usam `dayNumber`/`quizDayNumber`/
   `statsDayNumber`; os outros, `dayNumberAt(hora)`/`nextResetAt(hora)` (`time.js`: o nº do dia é
   a data em que a janela TERMINA — por isso a troca da meia-noite para a hora nova não tirou nem
   deu partida a ninguém). Textos de "já jogou" usam `resetLabel(jogo)` ("renova às 14h"). A Home mostra o **slider horizontal de minigames**
   (`MinigameSlider.tsx`, dados de `GET /api/daily/hub`): catálogo em `MINIGAMES` (`rules.js`)
   com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, Estatísticas 3,
-  De que time é? 4, Camisas 5, Alvo no Gol 6, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
+  De que time é? 4, Camisas 5, Alvo no Gol 6, Hat Trick 7, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
   card "EM BREVE". O nível também é conferido no servidor ao começar (403 `locked`).
   Minigame novo: entrada em `MINIGAMES` (tirar o `soon`) + `DAILY_GAMES` + `calendar()` +
   serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regras do
   dono (13/09/2026): um minigame por vez, perfeito e funcional antes do próximo; TODO
   minigame vencido dá exatamente 1 gol + outro bônus (nível, dinheiro…), nunca mais de 1 gol;**
-  **EXCEÇÃO de propósito: o Camisas** (decisão do dono, 13/09/2026) dá 1 gol a cada 4 camisas
-  certas e segue valendo até errar — vários gols no dia; não "corrigir" para 1 gol.
+  **EXCEÇÕES de propósito: o Camisas e o Hat Trick** (decisões do dono, 13/09/2026): o Camisas dá
+  1 gol a cada 4 camisas certas e segue até errar; no Hat Trick cada gol é gol do time até perder as
+  3 vidas — vários gols no dia; não "corrigir" para 1 gol.
   o slider vem ordenado do servidor: disponíveis primeiro (começado na frente), depois os já
   jogados pelo que volta antes, depois bloqueados por nível, por fim "em breve". Party GoL:
   R$ 150 por vitória e o gol só na primeira vitória do dia (senão dinheiro compraria gols). Fora de produção,
@@ -128,13 +129,24 @@ depois que o novo estiver estável. Não instalar nada dele.
   +30). Gol e nível entram na hora; as camisas escondidas ficam só no servidor; abrir a tela
   (GET) não cria o registro do dia (o hub só mostra CONTINUAR depois de começar).
 
+- **Hat Trick** (`lib/hattrick.js` = física pura; `services/hattrick.js`; tela `Hattrick.tsx`; nível 7,
+  vira às 18h): chute de longe visto de cima (metros; gol em y = 0). A bola aparece fora da área
+  (20–34 m), com vento de 0–5 m/s. Mira = estilingue (toca na bola e puxa pra trás); a **força só muda a
+  velocidade** (bola lenta sofre mais vento e dá tempo pro goleiro). Batida = tela de lado com a bola
+  grande quicando: toque NA bola — lado esquerdo vai pra direita e vice-versa (desvio + curva), embaixo
+  sobe (muito embaixo = por cima; mais longe sobe mais), fora da bola = furou. Goleiro (reação,
+  velocidade, leitura e "frango" sorteados no servidor por lance, nunca vão à tela) pula; no ângulo o
+  alcance é menor. 3 vidas; gol = 1 gol do time (kind `HATTRICK`) + 5 de nível (até 30); o 3º gol é o
+  hat trick. O servidor decide e devolve o voo (amostras [x, y, z] a 30/s) para a tela animar.
+  Calibrar: `node scripts/hattrick-balance.js` (bom ~34% de gol, médio ~15%, iniciante ~7%).
+
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
-`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}` (minigames)
+`GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}` (minigames)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)

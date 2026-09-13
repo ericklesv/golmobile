@@ -35,6 +35,7 @@ import { CabecaoScreen } from './screens/Cabecao';
 import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
 import { StatsScreen } from './screens/Stats';
 import { CamisasScreen } from './screens/Camisas';
+import { HattrickScreen } from './screens/Hattrick';
 
 function Splash() {
   return (
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="/cabecao" element={<Private><CabecaoScreen /></Private>} />
         <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
         <Route path="/camisas" element={<Private><CamisasScreen /></Private>} />
+        <Route path="/hat-trick" element={<Private><HattrickScreen /></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />

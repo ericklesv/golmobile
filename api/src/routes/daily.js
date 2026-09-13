@@ -4,6 +4,7 @@ import { requireAuth } from '../lib/auth.js';
 import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, minigamesHub, memoriaState, memoriaFlip, qualtimeState, qualtimeNext, qualtimeAnswer, alvoState, alvoShot } from '../services/daily.js';
 import { statsState, statsStart, statsPick } from '../services/stats.js';
 import { camisasState, camisasStart, camisasGuess } from '../services/camisas.js';
+import { hattrickState, hattrickStart, hattrickShoot } from '../services/hattrick.js';
 
 /**
  * Minigames diários (1x por dia): GET /api/daily · Termo: GET /api/daily/termo,
@@ -35,3 +36,6 @@ daily.post('/stats/pick', handle((req) => statsPick(req.user.id, req.body?.side)
 daily.get('/camisas', handle((req) => camisasState(req.user.id)));
 daily.post('/camisas/start', handle((req) => camisasStart(req.user.id)));
 daily.post('/camisas/guess', handle((req) => camisasGuess(req.user.id, req.body?.guess)));
+daily.get('/hattrick', handle((req) => hattrickState(req.user.id)));
+daily.post('/hattrick/start', handle((req) => hattrickStart(req.user.id)));
+daily.post('/hattrick/shoot', handle((req) => hattrickShoot(req.user.id, req.body)));

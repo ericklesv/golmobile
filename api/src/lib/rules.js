@@ -192,7 +192,7 @@ KIND_LABEL.QUIZ = 'Quiz';
 // Hora de virada de cada minigame diário (Brasília): uma por jogo, para sempre ter algum renovando
 // (decisão do dono, 13/09/2026). Minigame novo pega a próxima hora livre (18h, 19h…). Termo, Quiz e
 // Estatísticas usam as funções próprias em time.js; os demais, dayNumberAt/nextResetAt.
-export const RESET_HOUR = { TERMO: 0, QUIZ: 12, STATS: 13, MEMORIA: 14, QUALTIME: 15, CAMISAS: 16, ALVO: 17 };
+export const RESET_HOUR = { TERMO: 0, QUIZ: 12, STATS: 13, MEMORIA: 14, QUALTIME: 15, CAMISAS: 16, ALVO: 17, HATTRICK: 18 };
 /** "às 14h" / "ao meio-dia" / "à meia-noite" — para os textos de "volte …". */
 export const resetLabel = (game) => ({ 0: 'à meia-noite', 12: 'ao meio-dia' }[RESET_HOUR[game]] ?? `às ${RESET_HOUR[game]}h`);
 
@@ -208,6 +208,7 @@ export const MINIGAMES = [
   { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Pista → escudo e escudo → pista. 10 rodadas, 7 s cada; 8 acertos é gol.', reward: 'gol + até 30 de nível' },
   { id: 'CAMISAS', name: 'Camisas', unlock: 5, daily: true, route: '/camisas', icon: '/ui/ico-camisa.svg', desc: 'Maior ou menor? Cada 4 camisas certas é um gol.', reward: '1 gol a cada 4 camisas + até 30 de nível' },
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: 'gol + até 30 de nível' },
+  { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: '1 gol a cada gol + até 30 de nível' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'EMBAIXADINHAS', name: 'Embaixadinhas', unlock: 12, daily: true, route: '/embaixadinhas', icon: '/ui/ico-energy.png', desc: 'Toque no ritmo e não deixe a bola cair.', reward: 'gol + nível', soon: true },
   { id: 'CABECAO', name: 'Cabeção', unlock: 0, daily: false, route: '/cabecao', icon: '/ui/ico-member.png', desc: 'Head soccer 1x1 ao vivo contra outro craque. Vencedor marca 1 gol.', reward: 'gol', soon: true }, // escondido: fica "para depois" (decisão do dono, 13/09/2026)
@@ -264,3 +265,8 @@ KIND_LABEL.CABECAO = 'Cabeção';
 export const CAMISAS = { shirts: 4, min: 1, max: 11, pointsPerHit: 3, maxPoints: 30 };
 DAILY_GAMES.push('CAMISAS');
 KIND_LABEL.CAMISAS = 'Camisas';
+// Hat Trick (chute de longe; vira às 18h): física em lib/hattrick.js. 3 vidas; cada gol no minigame
+// é 1 gol do time (EXCEÇÃO à regra de 1 gol, como o Camisas — decisão do dono, 13/09/2026); errou,
+// o goleiro pegou ou furou = perde 1 vida. +5 de nível por gol (até +30). O 3º gol é o hat trick.
+DAILY_GAMES.push('HATTRICK');
+KIND_LABEL.HATTRICK = 'Hat Trick';

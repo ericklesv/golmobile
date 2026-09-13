@@ -1,4 +1,4 @@
-import type { AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, HattrickShootResponse, HattrickState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -74,6 +74,9 @@ export const api = {
   camisas: () => req<{ state: CamisasState }>('GET', '/api/daily/camisas'),
   camisasStart: () => req<{ state: CamisasState }>('POST', '/api/daily/camisas/start'),
   camisasGuess: (guess: 'maior' | 'menor') => req<CamisasGuess>('POST', '/api/daily/camisas/guess', { guess }),
+  hattrick: () => req<{ state: HattrickState }>('GET', '/api/daily/hattrick'),
+  hattrickStart: () => req<{ state: HattrickState }>('POST', '/api/daily/hattrick/start'),
+  hattrickShoot: (b: { i: number; dirX: number; dirY: number; power: number; strike: { sx: number; sy: number } | null }) => req<HattrickShootResponse>('POST', '/api/daily/hattrick/shoot', b),
   // leitura
   meta: () => req<Meta>('GET', '/api/meta'),
   home: (team?: string) => req<Home>('GET', `/api/home${team ? `?team=${encodeURIComponent(team)}` : ''}`),

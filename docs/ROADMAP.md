@@ -65,7 +65,7 @@ Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável
 
 ## Dívidas / ideias
-- [ ] **Termo: a lista de respostas acaba no dia #108 (28/12/2026)** — acrescentar palavras no fim de `api/src/lib/termo/answers.js` antes disso (depois o calendário dá a volta)
+- [ ] **Termo: a lista de respostas acaba no dia #114 (03/01/2027)** — acrescentar palavras no fim de `api/src/lib/termo/answers.js` antes disso (depois o calendário dá a volta)
 - [ ] Socket.IO para placar/feed em tempo real (hoje polling 15 s)
 - [ ] Painel admin web (hoje só endpoints com `x-admin-key`)
 - [ ] Apagar `legacy-expo/` quando o novo estiver validado

@@ -24,6 +24,7 @@ enum KickKind {
   PARTY
   TERMO
   QUIZ
+  MEMORIA
 }
 
 enum SeasonStatus {

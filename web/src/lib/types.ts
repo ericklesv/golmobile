@@ -144,3 +144,16 @@ export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: nu
 export type ChatRoom = 'geral' | 'time';
 export interface ChatMessage { id: number; text: string; color: string | null; at: string; user: { id: number; nick: string; avatarUrl: string | null; level: number; levelName: string; vip: boolean; nickColor: string | null; team: Team | null } }
 export interface ChatPage { room: string; messages: ChatMessage[]; online: number; colorLevel: number; colors: string[]; canColor: boolean }
+
+export interface MinigameCard {
+  id: string; name: string; desc: string; icon: string; route: string; rewardLabel: string; daily: boolean;
+  unlockLevel: number; unlocked: boolean; soon: boolean;
+  available: boolean; started: boolean; finished: boolean; won: boolean; nextAt: number | null;
+}
+export interface MemoriaCard { i: number; team: Team | null; matched: boolean }
+export interface MemoriaReward { goal: boolean; levelPoints: number; moves: number; text: string | null }
+export interface MemoriaState {
+  day: number; pairs: number; goalAtMoves: number; levelPoints: [number | null, number][];
+  cards: MemoriaCard[]; open: number | null; moves: number; matchedPairs: number;
+  finished: boolean; won: boolean; reward: MemoriaReward | null; nextAt: number;
+}

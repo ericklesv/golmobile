@@ -6,6 +6,7 @@ import { useAuth } from '../store/auth';
 import type { DailyStatus, Home, Kind } from '../lib/types';
 import { Shield } from '../components/Shield';
 import { GoalOverlay } from '../components/GoalOverlay';
+import { MinigameSlider } from '../components/MinigameSlider';
 import { Panel, TopList, ProgressRing, useCountdown, Countdown } from '../components/ui';
 import { countdown, hourLabel, timeAgo, pct } from '../lib/format';
 import { toast } from '../components/Toast';
@@ -45,49 +46,6 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
         {!cd.unlocked ? `lvl ${unlockLvl}` : trailActive ? 'EM JOGO' : ready ? 'PRONTO' : countdown(rem)}
       </span>
     </motion.button>
-  );
-}
-
-/**
- * Minigames do dia (1x por dia cada). Mostra UMA faixa só — a do jogo disponível que vence
- * primeiro (o Termo vira à meia-noite, o Quiz ao meio-dia); terminou esse, aparece o outro.
- */
-function DailyStrip() {
-  const me = useAuth((s) => s.me)!;
-  const meta = useAuth((s) => s.meta);
-  const [status, setStatus] = useState<DailyStatus | null>(null);
-  const load = useCallback(() => api.daily().then(setStatus).catch(() => {}), []);
-  useEffect(() => { load(); }, [load]);
-  // quando um dos jogos renova, a faixa reaparece sem precisar recarregar a Home
-  const soonest = status ? Math.min(...status.games.map((g) => g.nextAt)) : null;
-  useEffect(() => {
-    if (!soonest) return;
-    const t = setTimeout(load, Math.max(1_000, soonest - Date.now() + 2_000));
-    return () => clearTimeout(t);
-  }, [soonest, load]);
-
-  const game = status?.games.find((g) => g.id === status.featured);
-  if (!game) return null;
-  const quiz = game.id === 'QUIZ';
-  const top = quiz ? (meta?.quiz.pointsPerHit ?? 6) * (meta?.quiz.questions ?? 5) : meta?.termo.levelPoints[0] ?? 30;
-  const text = game.started ? 'Continue de onde parou.'
-    : quiz ? `${meta?.quiz.questions ?? 5} perguntas, ${meta?.quiz.seconds ?? 20} s cada. Acertou ${meta?.quiz.goalAt ?? 3}, é gol do ${me.team.name}.`
-    : `Acerte a palavra de futebol e marque 1 gol pro ${me.team.name}.`;
-  return (
-    <motion.div key={game.id} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-      <Link to={quiz ? '/quiz' : '/termo'} className="card-purple flex items-center gap-3 transition-transform active:translate-y-[2px]">
-        <img src={quiz ? '/ui/ico-chesticon_gold01_l.png' : '/ui/ico-gift_purple.png'} alt="" className="h-11 w-11 shrink-0 object-contain animate-bob" />
-        <div className="min-w-0 flex-1">
-          <div className="t-display t-out text-[18px] leading-tight">{quiz ? 'Quiz do dia' : 'Termo do dia'}</div>
-          <div className="text-[12px] font-extrabold leading-snug text-white/90">{text}</div>
-        </div>
-        <div className="flex shrink-0 flex-col items-end leading-none">
-          <span className="text-[10px] font-extrabold text-white/80">até</span>
-          <span className="t-display t-gold text-[20px]">+{top}</span>
-          <span className="text-[10px] font-extrabold text-white/80">de nível</span>
-        </div>
-      </Link>
-    </motion.div>
   );
 }
 
@@ -162,16 +120,13 @@ export function HomeScreen() {
         )}
       </section>
 
-      <DailyStrip />
+      <MinigameSlider />
 
       {/* Alvos de chute */}
       <section className="grid grid-cols-4 gap-2">
         {TARGETS.map((t) => <KickTarget key={t.id} t={t} onAuto={autoKick} />)}
       </section>
-      <div className="flex items-center justify-between">
-        <span className="t-display t-out text-[13px]">Rodada: {me.goalsRound} gols · Hora: {me.goalsHour}</span>
-        <Link to="/partygol" className="btn btn-yellow btn-sm"><img src="/ui/ico-coin02.png" className="h-5 w-5" alt="" /> Party GoL</Link>
-      </div>
+      <div className="text-center"><span className="t-display t-out text-[13px]">Rodada: {me.goalsRound} gols · Hora: {me.goalsHour}</span></div>
 
       {/* Artilheiros */}
       <Panel title={`TOP HORA ${home ? hourLabel(home.hourKey) : ''}`} ribbon="orange">

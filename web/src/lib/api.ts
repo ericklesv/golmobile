@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatPage, ChatRoom, ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
+import type { MinigameCard, MemoriaState, MemoriaCard, MemoriaReward, ChatMessage, ChatPage, ChatRoom, ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -53,6 +53,9 @@ export const api = {
   party: () => req<PartyResult>('POST', '/api/play/party'),
   // minigames diários
   daily: () => req<DailyStatus>('GET', '/api/daily'),
+  minigames: () => req<{ level: number; games: MinigameCard[] }>('GET', '/api/daily/hub'),
+  memoria: () => req<MemoriaState>('GET', '/api/daily/memoria'),
+  memoriaFlip: (index: number, day: number) => req<{ state: MemoriaState; revealed: MemoriaCard[]; match: boolean | null; reward: MemoriaReward | null }>('POST', '/api/daily/memoria/flip', { index, day }),
   termo: () => req<TermoState>('GET', '/api/daily/termo'),
   termoGuess: (word: string, day: number) => req<{ state: TermoState; reward: TermoReward | null }>('POST', '/api/daily/termo/guess', { word, day }),
   quiz: () => req<{ state: QuizState }>('GET', '/api/daily/quiz'),

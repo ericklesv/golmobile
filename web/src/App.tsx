@@ -27,6 +27,7 @@ import { installDragScroll } from './lib/dragScroll';
 import { installClickSounds } from './lib/sound';
 import { LevelsScreen } from './screens/Levels';
 import { ChatScreen } from './screens/Chat';
+import { MemoriaScreen } from './screens/Memoria';
 
 function Splash() {
   return (
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="/falta" element={<Private><Suspense fallback={<Splash />}><FoulScreen /></Suspense></Private>} />
         <Route path="/trilha" element={<Private><TrailScreen /></Private>} />
         <Route path="/termo" element={<Private><TermoScreen /></Private>} />
+        <Route path="/memoria" element={<Private><MemoriaScreen /></Private>} />
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />

@@ -51,7 +51,7 @@ export function PartyScreen() {
   return (
     <div className="app-frame relative flex min-h-full flex-col">
       <div className="stadium-bg" />
-      <GoalOverlay open={overlay} goal={!!result?.win} title={result?.win ? 'GOOOL!!' : 'ERROU!'} text={result?.win ? (result.goal ? `Você acertou no Party GoL, faturou ${fmt(prize)} e ainda marcou 1 gol pro ${me.team.name}!` : `Você acertou no Party GoL e faturou ${fmt(prize)}! (o gol da roleta é só na primeira vitória do dia)`) : `Perdeu a aposta de ${fmt(bet)}. Tenta de novo?`} money={result?.prize ?? 0} team={me.team} onClose={() => setOverlay(false)} autoClose={3000} />
+      <GoalOverlay open={overlay} goal={!!result?.win} title={result?.win ? (result.goal ? 'GOOOL!!' : 'ACERTOU!') : 'ERROU!'} text={result?.win ? (result.goal ? `Você acertou no Party GoL, faturou ${fmt(prize)} e ainda marcou 1 gol pro ${me.team.name}!` : `Você acertou no Party GoL e faturou ${fmt(prize)}! (o gol da roleta é só na primeira vitória do dia)`) : `Perdeu a aposta de ${fmt(bet)}. Tenta de novo?`} money={result?.prize ?? 0} team={me.team} onClose={() => setOverlay(false)} autoClose={3000} />
       <div className="relative flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
         <div className="ribbon ribbon-yellow">PARTY GOL</div>

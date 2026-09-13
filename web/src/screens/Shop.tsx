@@ -1,53 +1,173 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { Panel } from '../components/ui';
 import { toast } from '../components/Toast';
 import { money as fmt } from '../lib/format';
+import type { Me, ShopItemDef, ShopView, UserItemView } from '../lib/types';
 
-interface Item { icon: string; title: string; desc: string; price: string; action?: () => Promise<void>; disabled?: boolean; cta?: string; soon?: boolean }
+/** "27 h 12 min" / "29 d 3 h" / "vencido" */
+function remaining(ms: number) {
+  if (ms <= 0) return 'vencido';
+  const m = Math.ceil(ms / 60_000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d >= 1) return `${d} d ${h % 24} h`;
+  if (h >= 1) return `${h} h ${m % 60} min`;
+  return `${m} min`;
+}
+
+const NICK_RULE = /^[a-zA-Z0-9_.\-]{3,14}$/;
+const CATEGORY: Record<ShopItemDef['category'], { title: string; ribbon: 'blue' | 'orange' | 'green' | 'yellow' }> = {
+  chutes: { title: 'CHUTES', ribbon: 'green' },
+  chuteiras: { title: 'CHUTEIRAS', ribbon: 'orange' },
+  perfil: { title: 'PERFIL', ribbon: 'blue' },
+};
+
+interface RowProps {
+  icon: string; title: string; desc: string; sub?: React.ReactNode; badge?: React.ReactNode; active?: boolean;
+  price?: string; cta?: string; busyKey?: string; disabled?: boolean; onClick?: () => void;
+  children?: React.ReactNode; extra?: React.ReactNode; busy: string | null;
+}
+/** Linha de item: ícone do kit, título, descrição, preço (trap) e botão (sprite). */
+function Row({ icon, title, desc, sub, badge, active, price, cta, busyKey, disabled, onClick, children, extra, busy }: RowProps) {
+  return (
+    <div className={`flex items-center gap-3 rounded-xl p-2 ${active ? 'bg-grass/15' : 'bg-sky/10'}`}>
+      <img src={`/ui/${icon}.png`} className="h-10 w-10 shrink-0 object-contain" alt="" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5"><span className="t-display text-[14px] text-navy-ink">{title}</span>{badge}</div>
+        <div className="text-[11px] font-bold leading-snug text-muted">{desc}</div>
+        {sub && <div className="text-[11px] font-extrabold text-grass-deep">{sub}</div>}
+        {children}
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {price && <span className="trap trap-orange text-[11px]">{price}</span>}
+        {cta && onClick && <button onClick={onClick} disabled={disabled || busy !== null} className="btn btn-green btn-sm min-w-[64px]">{busy && busy === busyKey ? '…' : cta}</button>}
+        {extra}
+      </div>
+    </div>
+  );
+}
 
 export function ShopScreen() {
   const me = useAuth((s) => s.me)!;
   const meta = useAuth((s) => s.meta);
   const setMe = useAuth((s) => s.setMe);
+  const now = useAuth((s) => s.now);
   const [busy, setBusy] = useState<string | null>(null);
+  const [shop, setShop] = useState<ShopView | null>(null);
+  const [nick, setNick] = useState('');
+  const [, tick] = useState(0);
   const dexPrice = meta?.money.DEXTERITY_PRICE ?? 1000;
   const dexMax = meta?.dexterityMax ?? 30;
+  const catalog = shop?.catalog ?? meta?.items ?? [];
 
-  async function run(key: string, fn: () => Promise<void>) {
+  const loadShop = useCallback(() => { api.shop().then(setShop).catch(() => {}); }, []);
+  useEffect(() => { loadShop(); }, [loadShop]);
+  // validade dos itens ("vence em …") atualiza a cada 30 s
+  useEffect(() => { const iv = setInterval(() => tick((t) => t + 1), 30_000); return () => clearInterval(iv); }, []);
+
+  const mine = useMemo(() => {
+    const m = new Map<string, UserItemView>();
+    for (const it of me.items ?? []) if (it.expiresAt > now()) m.set(it.key, it);
+    return m;
+  }, [me.items, now]);
+
+  async function run(key: string, fn: () => Promise<Me | void>) {
     if (busy) return; setBusy(key);
-    try { await fn(); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(null); }
+    try { const r = await fn(); if (r) setMe(r); loadShop(); }
+    catch (e) { toast((e as Error).message, 'error'); }
+    finally { setBusy(null); }
   }
+  const buy = (def: ShopItemDef, currency: 'money' | 'vip' = 'money') => run(`${def.key}:${currency}`, async () => {
+    const r = await api.shopBuy(def.key, currency);
+    toast(`${def.name} ativo!`, 'success');
+    return r.me;
+  });
 
-  const player: Item[] = [
-    { icon: '/ui/ico-energy.png', title: 'Destreza', desc: `+1% de acerto em pênaltis e faltas por ponto (você tem ${me.dexterity}/${dexMax}).`, price: fmt(dexPrice), cta: '+1',
-      disabled: me.dexterity >= dexMax || me.money < dexPrice, action: async () => { setMe(await api.buyDexterity(1)); toast('+1 destreza!', 'success'); } },
-    { icon: '/ui/ico-crown_silver.png', title: 'Ativar VIP (1 dia)', desc: `Recargas pela metade e nick azul. Você tem ${me.vipDays} unidade(s) de VIP${me.vip ? ' · VIP ativo' : ''}.`, price: '1 VIP', cta: 'Ativar',
-      disabled: me.vipDays < 1, action: async () => { setMe(await api.activateVip(1)); toast('VIP ativado por 1 dia!', 'success'); } },
-  ];
-  const soon: Item[] = [
-    { icon: '/ui/ico-energy.png', title: 'Energia do chute', desc: 'Níveis 1 a 5: reduz a recarga dos chutes por 28 h.', price: 'em breve', soon: true },
-    { icon: '/ui/ico-clearstamp_l.png', title: 'Boost Auto', desc: 'Tira 60 s do chute direto por 28 h.', price: 'em breve', soon: true },
-    { icon: '/ui/ico-badge.png', title: 'Caneleira', desc: 'Libera mais casas seguras na última linha da trilha.', price: 'em breve', soon: true },
-    { icon: '/ui/ico-star01_s.png', title: 'Chuteiras', desc: 'Bronze → Dourada: +2% a +10% de acerto por 30 dias.', price: 'em breve', soon: true },
-    { icon: '/ui/ico-gift_blue.png', title: 'Comprar VIP', desc: 'Pacotes de dias de VIP (Pix).', price: 'em breve', soon: true },
-  ];
+  // ─── Linhas por tipo de item ──────────────────────────────────────────────
+  const energyRow = (def: ShopItemDef) => {
+    const cur = mine.get('ENERGY');
+    const lvl = cur?.level ?? 0;
+    const next = def.levels?.find((l) => l.level === Math.min(5, lvl + 1)) ?? def.levels![0];
+    return (
+      <Row key={def.key} icon={def.icon} title={def.name} desc={def.desc} active={!!cur} busy={busy}
+        sub={cur ? `Nível ${lvl} (-${lvl * 10}% de recarga) · vence em ${remaining(cur.expiresAt - now())}` : undefined}
+        price={fmt(next.price)} cta={lvl >= 5 ? 'Renovar' : `Nível ${next.level}`} busyKey={`${def.key}:money`} disabled={me.money < next.price} onClick={() => buy(def)}>
+        <div className="mt-1 flex gap-0.5">
+          {[1, 2, 3, 4, 5].map((n) => <img key={n} src={`/ui/ico-stargrade_l_${n <= lvl ? 'on' : 'off'}.png`} className="h-5 w-5" alt="" />)}
+        </div>
+      </Row>
+    );
+  };
 
-  const Row = ({ it }: { it: Item }) => (
-    <div className={`flex items-center gap-3 rounded-xl bg-sky/10 p-2 ${it.soon ? 'opacity-70' : ''}`}>
-      <img src={it.icon} className="h-10 w-10 shrink-0 object-contain" alt="" />
-      <div className="min-w-0 flex-1">
-        <div className="t-display text-[14px] text-navy-ink">{it.title}</div>
-        <div className="text-[11px] font-bold leading-snug text-muted">{it.desc}</div>
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className="trap trap-orange text-[11px]">{it.price}</span>
-        {it.action && <button onClick={() => run(it.title, it.action!)} disabled={it.disabled || busy !== null} className="btn btn-green btn-sm min-w-[64px]">{busy === it.title ? '…' : it.cta}</button>}
-      </div>
-    </div>
-  );
+  const boostRow = (def: ShopItemDef) => {
+    const cur = mine.get(def.key);
+    const canMoney = def.price != null && me.money >= def.price;
+    const canVip = def.priceVip != null && me.vipDays >= def.priceVip;
+    const blocked = def.single && !!cur;
+    return (
+      <Row key={def.key} icon={def.icon} title={def.name} desc={def.desc} active={!!cur} busy={busy}
+        sub={cur ? `Ativo · vence em ${remaining(cur.expiresAt - now())}` : undefined}
+        price={def.price != null ? fmt(def.price) : undefined} cta={blocked ? 'Ativo' : cur ? '+28 h' : 'Comprar'} busyKey={`${def.key}:money`} disabled={blocked || !canMoney} onClick={() => buy(def)}
+        extra={def.priceVip != null && !blocked ? (
+          <button onClick={() => buy(def, 'vip')} disabled={busy !== null || !canVip} className="btn btn-sky btn-sm min-w-[64px]">{busy === `${def.key}:vip` ? '…' : `${def.priceVip} VIP`}</button>
+        ) : null} />
+    );
+  };
+
+  const bootRow = (def: ShopItemDef) => {
+    const cur = mine.get(def.key);
+    return (
+      <Row key={def.key} icon={def.icon} title={def.name} desc={def.desc} active={!!cur} busy={busy}
+        sub={cur ? `${cur.equipped ? 'Equipada' : 'Guardada'} · vence em ${remaining(cur.expiresAt - now())}` : undefined}
+        badge={cur?.equipped ? <span className="trap trap-green text-[11px]">EQUIPADA</span> : null}
+        price={fmt(def.price ?? 0)} cta={cur ? '+30 d' : 'Comprar'} busyKey={`${def.key}:money`} disabled={me.money < (def.price ?? 0)} onClick={() => buy(def)}
+        extra={cur && !cur.equipped ? (
+          <button onClick={() => run(`equip:${def.key}`, () => api.shopEquip(def.key))} disabled={busy !== null} className="btn btn-blue btn-sm min-w-[64px]">{busy === `equip:${def.key}` ? '…' : 'Equipar'}</button>
+        ) : null} />
+    );
+  };
+
+  const nickRow = (def: ShopItemDef) => {
+    const ok = NICK_RULE.test(nick) && nick !== me.nick;
+    return (
+      <Row key={def.key} icon={def.icon} title={def.name} desc={def.desc} busy={busy}
+        price={fmt(def.price ?? 0)} cta="Trocar" busyKey="nick" disabled={!ok || me.money < (def.price ?? 0)}
+        onClick={() => run('nick', async () => { const r = await api.shopNick(nick); toast(`Agora você é ${nick}!`, 'success'); setNick(''); return r; })}>
+        <input className="field mt-1 text-[14px]" placeholder={`Novo nick (hoje: ${me.nick})`} value={nick} onChange={(e) => setNick(e.target.value.trim())} maxLength={14} autoCapitalize="none" />
+      </Row>
+    );
+  };
+
+  const colorRow = (def: ShopItemDef) => {
+    const locked = me.level.lvl < (def.minLevel ?? 0);
+    const current = me.nickColor;
+    return (
+      <Row key={def.key} icon={def.icon} title={def.name} desc={def.desc} active={!!current} busy={busy}
+        badge={locked ? <span className="trap trap-blue text-[11px]"><img src="/ui/ico-lock01_s.png" className="mr-1 h-4 w-4" alt="" />NÍVEL {def.minLevel}</span> : null}
+        sub={current ? <>Cor atual: <b className={`nick-${current}`}>{me.nick}</b></> : undefined}
+        price={fmt(def.price ?? 0)} cta={current ? 'Padrão' : undefined} busyKey="color:none" disabled={!current}
+        onClick={() => run('color:none', () => api.shopNickColor(null))}>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {(def.colors ?? []).map((c) => (
+            <button key={c.key} type="button" disabled={locked || busy !== null || current === c.key || me.money < (def.price ?? 0)} title={c.name} aria-label={c.name}
+              onClick={() => run(`color:${c.key}`, async () => { const r = await api.shopNickColor(c.key); toast(`Nick ${c.name.toLowerCase()}!`, 'success'); return r; })}
+              className={`no-drag h-8 w-8 rounded-full border-4 shadow disabled:opacity-40 ${current === c.key ? 'border-gold' : 'border-white'}`} style={{ background: c.hex }} />
+          ))}
+        </div>
+      </Row>
+    );
+  };
+
+  const render = (def: ShopItemDef) => {
+    if (def.key === 'ENERGY') return energyRow(def);
+    if (def.key === 'NICK_CHANGE') return nickRow(def);
+    if (def.key === 'NICK_COLOR') return colorRow(def);
+    if (def.kind === 'boot') return bootRow(def);
+    return boostRow(def);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -56,8 +176,41 @@ export function ShopScreen() {
         <span className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</span>
         <span className="resbar"><img src="/ui/ico-crown_silver.png" className="ico -ml-3 h-8 w-8" alt="" />{me.vipDays} VIP</span>
       </div>
-      <Panel title="JOGADOR" ribbon="blue"><div className="flex flex-col gap-2">{player.map((it) => <Row key={it.title} it={it} />)}</div></Panel>
-      <Panel title="EM BREVE" ribbon="orange"><div className="flex flex-col gap-2">{soon.map((it) => <Row key={it.title} it={it} />)}</div></Panel>
+
+      <Panel title="JOGADOR" ribbon="blue">
+        <div className="flex flex-col gap-2">
+          <Row icon="ico-badge" title="Destreza" desc={`+1% de acerto em pênaltis e faltas por ponto (você tem ${me.dexterity}/${dexMax}).`} busy={busy}
+            price={fmt(dexPrice)} cta="+1" busyKey="dex" disabled={me.dexterity >= dexMax || me.money < dexPrice}
+            onClick={() => run('dex', async () => { const r = await api.buyDexterity(1); toast('+1 destreza!', 'success'); return r; })} />
+          <Row icon="ico-crown_silver" title="Ativar VIP (1 dia)" desc={`Recargas pela metade e nick azul. Você tem ${me.vipDays} unidade(s) de VIP${me.vip ? ' · VIP ativo' : ''}.`} busy={busy} active={me.vip}
+            price="1 VIP" cta="Ativar" busyKey="vip" disabled={me.vipDays < 1}
+            onClick={() => run('vip', async () => { const r = await api.activateVip(1); toast('VIP ativado por 1 dia!', 'success'); return r; })} />
+        </div>
+      </Panel>
+
+      {(Object.keys(CATEGORY) as ShopItemDef['category'][]).map((cat) => {
+        const defs = catalog.filter((d) => d.category === cat);
+        if (!defs.length) return null;
+        return (
+          <Panel key={cat} title={CATEGORY[cat].title} ribbon={CATEGORY[cat].ribbon}>
+            <div className="flex flex-col gap-2">{defs.map(render)}</div>
+          </Panel>
+        );
+      })}
+
+      {shop && shop.history.length > 0 && (
+        <Panel title="HISTÓRICO" ribbon="yellow">
+          <ul className="flex flex-col gap-1">
+            {shop.history.map((h, i) => (
+              <li key={i} className={`flex items-center justify-between rounded-lg px-2 py-1 text-[12px] font-bold ${i % 2 ? '' : 'bg-sky/10'}`}>
+                <span className="text-navy-ink">{h.name}</span>
+                <span className="text-muted">{new Date(h.at).toLocaleDateString('pt-BR')} · {h.currency === 'vip' ? `${h.price} VIP` : fmt(h.price)}</span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
       <Link to="/partygol" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-coin02.png" className="h-6 w-6" alt="" /> Party GoL (roleta)</Link>
       <p className="text-center text-[11px] font-bold text-white/80">Dinheiro vem dos gols e das premiações; VIP vem das premiações de rodada/temporada.</p>
     </div>

@@ -1,4 +1,4 @@
-import type { ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
+import type { ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, ShopView, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -79,4 +79,10 @@ export const api = {
   removeAvatar: () => req<Me>('DELETE', '/api/uploads/avatar'),
   search: (q: string) => req<{ nick: string; goalsTotal: number; team: any }[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
   feed: (team?: string) => req<any[]>('GET', `/api/feed${team ? `?team=${team}` : ''}`),
+  // loja
+  shop: () => req<ShopView>('GET', '/api/shop'),
+  shopBuy: (key: string, currency: 'money' | 'vip' = 'money') => req<{ me: Me; item: UserItemView }>('POST', '/api/shop/buy', { key, currency }),
+  shopEquip: (key: string) => req<Me>('POST', '/api/shop/equip', { key }),
+  shopNick: (nick: string) => req<Me>('POST', '/api/shop/nick', { nick }),
+  shopNickColor: (color: string | null) => req<Me>('POST', '/api/shop/nick-color', { color }),
 };

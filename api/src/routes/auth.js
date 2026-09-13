@@ -6,6 +6,7 @@ import { prisma } from '../prisma.js';
 import { handle, badRequest, GameError } from '../lib/errors.js';
 import { signToken } from '../lib/auth.js';
 import { meView } from '../services/view.js';
+import { meInclude } from '../lib/items.js';
 
 export const auth = Router();
 
@@ -43,7 +44,7 @@ const loginSchema = z.object({
 auth.post('/login', limiter, handle(async (req) => {
   const body = loginSchema.parse(req.body);
   const key = body.login.toLowerCase();
-  const user = await prisma.user.findFirst({ where: { OR: [{ nickLower: key }, { email: key }] }, include: { team: true } });
+  const user = await prisma.user.findFirst({ where: { OR: [{ nickLower: key }, { email: key }] }, include: meInclude() });
   if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
     throw new GameError(401, 'bad-credentials', 'Nick/e-mail ou senha incorretos.');
   }

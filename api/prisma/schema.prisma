@@ -51,6 +51,7 @@ model User {
   gender       String    @default("M")
   bio          String?
   avatarUrl    String?   // /api/uploads/avatars/<id>.<ext>
+  nickColor    String?   // cor do nick (chave da paleta em lib/items.js; habilidade "Mensagem com cores", lvl 8)
   isAdmin      Boolean   @default(false)
   bannedUntil  DateTime?
   createdAt    DateTime  @default(now())
@@ -104,6 +105,8 @@ model User {
   records     Record[]
   hourWins    HourResult[]
   dailyGames  DailyGame[]
+  items       UserItem[]
+  shopLogs    ShopLog[]
 
   @@index([teamId])
   @@index([goalsTotal])
@@ -147,6 +150,38 @@ model Team {
   goals       Goal[]
   titles      Title[]
   activities  Activity[]
+}
+
+// ─── Loja ───────────────────────────────────────────────────────────────────
+// O catálogo de itens é estático em código (lib/items.js). Aqui só o que o
+// jogador tem: item com validade (expiresAt), nível (Energia 1..5), se está
+// equipado (chuteiras: só uma) e se já foi consumido (Caneleira: numa trilha).
+model UserItem {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  itemKey   String // chave em lib/items.js (ENERGY, BOOST_AUTO, SHIN_GUARD, BOOT_*)
+  level     Int       @default(1)
+  equipped  Boolean   @default(false)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, itemKey])
+  @@index([userId, expiresAt])
+}
+
+// Histórico da loja (toda compra: item, preço e moeda).
+model ShopLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  itemKey   String
+  price     Int
+  currency  String // "money" | "vip"
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model Season {

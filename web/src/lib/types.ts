@@ -27,10 +27,12 @@ export interface Me {
   rebound: Record<'PENALTY' | 'FOUL' | 'TRAIL', number>;
   cooldowns: Record<Kind, Cooldown>;
   trail: { active: boolean; phase: number; revealed: { phase: number; index: number }[] };
+  /** Itens da loja ativos (ver ShopView) e cor do nick (chave da paleta). */
+  items: UserItemView[]; nickColor: string | null;
   serverTime: number;
 }
 
-export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean }
+export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean }
 
 export interface MatchView {
   id: number; serie: Serie; status: 'LIVE' | 'FINISHED';
@@ -80,6 +82,7 @@ export interface Meta {
   termo: { letters: number; tries: number; levelPoints: number[] };
   quiz: { questions: number; seconds: number; pointsPerHit: number; goalAt: number };
   teams: Team[];
+  items: ShopItemDef[];
 }
 
 // ─── Minigames diários ──────────────────────────────────────────────────────
@@ -140,3 +143,19 @@ export interface TeamPage {
 }
 
 export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: number; avatarUrl: string | null; lastSeenAt: string; online: boolean; vip: boolean; team: Team | null }
+
+// ─── Loja ───────────────────────────────────────────────────────────────────
+export type ItemKind = 'boost' | 'boot' | 'service';
+export interface ShopItemDef {
+  key: string; kind: ItemKind; category: 'chutes' | 'chuteiras' | 'perfil'; name: string; icon: string; desc: string;
+  price: number | null; priceVip: number | null; durationMs: number | null;
+  levels: { level: number; price: number; effect: string }[] | null;
+  bonus: number | null; minLevel: number | null; colors: { key: string; name: string; hex: string }[] | null; single: boolean;
+}
+/** Item ativo do jogador (também vem em `Me.items`). */
+export interface UserItemView { id: number; key: string; level: number; equipped: boolean; expiresAt: number }
+export interface ShopView {
+  catalog: ShopItemDef[]; items: UserItemView[]; nickColor: string | null; energyLevel: number; level: number;
+  history: { key: string; name: string; price: number; currency: 'money' | 'vip'; at: number }[];
+  serverTime: number;
+}

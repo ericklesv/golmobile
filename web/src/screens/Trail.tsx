@@ -190,7 +190,7 @@ export function TrailScreen() {
         {!me.cooldowns.TRAIL.unlocked ? <span className="text-danger">A Trilha libera no nível 3 (Sub-12, 88 gols).</span>
           : !ready ? <>Recarga: <Countdown readyAt={me.cooldowns.TRAIL.readyAt} className="text-orange-deep" /> · níveis reduzem o tempo</>
           : result?.finished ? (result.goal ? 'Gol de trilha! +R$ 40' : 'A defesa levou a melhor.')
-          : <>Toque em um jogador da linha <b className="text-orange-deep">{LINES[phase]?.name}</b> para driblar. {thieves > 1 ? `${NUMBER_WORD[thieves] ?? thieves} deles roubam a bola.` : 'Um deles rouba a bola.'}</>}
+          : <>Toque em um jogador da linha <b className="text-orange-deep">{LINES[phase]?.name}</b> para driblar. {phase === LINES.length - 1 && me.items?.some((it) => it.key === 'SHIN_GUARD') ? 'Caneleira ativa: pode haver menos ladrões aqui.' : thieves > 1 ? `${NUMBER_WORD[thieves] ?? thieves} deles roubam a bola.` : 'Um deles rouba a bola.'}</>}
       </div>
     </div>
   );

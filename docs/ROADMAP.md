@@ -24,6 +24,7 @@ Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas
 - [x] Pênalti 3D (esquerda/meio/direita, goleiro pula, destreza +1%/pt) — +R$20
 - [x] Falta 3D (por fora/por cima da barreira de 4) — +R$30, libera no lvl 1
 - [x] Trilha (campo vertical, 3 linhas, um "ladrão" por linha) — +R$40, libera lvl 3, níveis reduzem o tempo
+- [x] Trilha: bola cartoon que percorre o caminho — dribla o escolhido e para à frente da linha, treme no roubo, volta no rebote, entra na rede no gol; rastro pintado pela bola
 - [x] Party GoL (roleta, aposta 50 → 150)
 - [x] Rebotes por nível (pênalti/falta/trilha)
 - [x] Destreza (compra, 0–30) e Nerf (lvl 14+)

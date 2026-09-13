@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api, ApiError } from '../lib/api';
@@ -7,6 +7,7 @@ import type { TrailResult } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Countdown, useCountdown } from '../components/ui';
 import { toast } from '../components/Toast';
+import { TrailBall, useTrailBall, type BallLeg, type Pt } from '../components/TrailBall';
 
 // Campo vertical 300x460 (igual ao original: você sai do seu gol embaixo e sobe)
 const W = 300, H = 460;
@@ -16,20 +17,48 @@ const LINES: { name: string; y: number; xs: number[]; color: string }[] = [
   { name: 'ATAQUE', y: 120, xs: [75, 150, 225], color: '#FF5470' },
 ];
 const START = { x: 150, y: 420 };
-const GOAL = { x: 150, y: 28 };
+
+// Bola: passa pelo jogador driblado e para no espaço à frente da linha; no rebote, volta pro seu lado.
+const BALL_R = 11;
+const AHEAD = 40, BACK = 34;
+const MOVE = { toPlayer: 380, ahead: 240, back: 300, shot: 460 };
+const slotOf = (li: number, i: number): Pt => ({ x: LINES[li].xs[i], y: LINES[li].y });
+const ahead = (p: Pt): Pt => ({ x: p.x, y: p.y - AHEAD });
+const behind = (p: Pt): Pt => ({ x: p.x, y: p.y + BACK });
+/** Chute no canto, longe do goleiro (que fica no meio do gol). */
+const shotAt = (x: number): Pt => ({ x: 150 + (x < 150 ? -17 : 17), y: 7 });
 
 type Cell = 'idle' | 'safe' | 'mine' | 'picked';
+type Pick = { phase: number; index: number };
+
+/** Numa linha já vencida, o último jogador tentado foi o driblado; os anteriores roubaram a bola (rebote). */
+function wasDribbled(revealed: Pick[], phase: number, p: Pick) {
+  if (p.phase >= phase) return false;
+  const inLine = revealed.filter((r) => r.phase === p.phase);
+  return inLine[inLine.length - 1] === p;
+}
+
+/** Caminho da bola ao reabrir uma trilha em andamento. */
+function routeOf(revealed: Pick[], phase: number): Pt[] {
+  const pts: Pt[] = [START];
+  for (const p of revealed) {
+    const slot = slotOf(p.phase, p.index);
+    pts.push(slot, wasDribbled(revealed, phase, p) ? ahead(slot) : behind(slot));
+  }
+  return pts;
+}
 
 export function TrailScreen() {
   const me = useAuth((s) => s.me)!;
   const refresh = useAuth((s) => s.refresh);
   const nav = useNavigate();
   const [phase, setPhase] = useState(me.trail.active ? me.trail.phase : 0);
-  const [cells, setCells] = useState<Cell[][]>(() => LINES.map((l, li) => l.xs.map((_, i) => (me.trail.revealed.some((r) => r.phase === li && r.index === i) ? 'picked' : 'idle'))));
-  const [ball, setBall] = useState(() => {
-    const last = [...me.trail.revealed].filter((r) => r.phase === (me.trail.active ? me.trail.phase - 1 : -1)).pop();
-    return last ? { x: LINES[last.phase].xs[last.index], y: LINES[last.phase].y } : START;
-  });
+  const [cells, setCells] = useState<Cell[][]>(() => LINES.map((l, li) => l.xs.map((_, i) => {
+    const p = me.trail.revealed.find((r) => r.phase === li && r.index === i);
+    return !p ? 'idle' : wasDribbled(me.trail.revealed, me.trail.phase, p) ? 'picked' : 'mine';
+  })));
+  const [route0] = useState(() => (me.trail.active ? routeOf(me.trail.revealed, me.trail.phase) : [START]));
+  const ball = useTrailBall(route0, BALL_R);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<TrailResult | null>(null);
   const [overlay, setOverlay] = useState(false);
@@ -41,40 +70,51 @@ export function TrailScreen() {
   async function pick(li: number, i: number) {
     if (busy || li !== phase || !ready || cells[li][i] !== 'idle' || result?.finished) return;
     setBusy(true);
+    const slot = slotOf(li, i);
+    const before = ball.planned();
+    // a bola sai no toque; o resultado decide o resto do trajeto
+    const tapped = performance.now();
+    const arrive = ball.push([{ to: slot, ms: MOVE.toPlayer, hop: 6, ease: 'out' }]);
     try {
       const r = await api.trail(i);
-      setBall({ x: LINES[li].xs[i], y: LINES[li].y });
+      const legs: BallLeg[] = !r.mine
+        ? [{ to: ahead(slot), ms: MOVE.ahead, hop: 3 }, ...(r.goal ? [{ to: shotAt(slot.x), ms: MOVE.shot, hop: 16, ease: 'in' as const, scale: 0.8 }] : [])]
+        : r.rebound ? [{ to: behind(slot), ms: MOVE.back, hop: 8, ease: 'out' }]
+        : [{ to: slot, ms: 1, shake: true }];
+      const done = ball.push(legs);
+      const wait = Math.max(0, arrive - (performance.now() - tapped) + 40);
       setTimeout(() => {
         setCells((prev) => prev.map((line, l) => l !== li ? line : line.map((c, j) => {
           if (r.lineMines) return r.lineMines[j] ? (j === i ? 'mine' : 'mine') : (j === i ? 'picked' : 'safe');
           return j === i ? (r.mine ? 'mine' : 'picked') : c;
         })));
+        if (r.finished && r.goal) {
+          const inNet = Math.max(0, done - wait);
+          setTimeout(() => { setResult(r); setMsg('GOOOL!!!'); }, inNet);
+          setTimeout(() => setOverlay(true), inNet + 800);
+          return;
+        }
         if (r.finished) {
           setResult(r);
-          if (!r.goal) setMsg('PERDEU A BOLA!');
-          else { setBall(GOAL); setMsg('GOOOL!!!'); }
-          setTimeout(() => setOverlay(true), r.goal ? 900 : 600);
-        } else if (r.rebound) {
-          setMsg('REBOTE! A bola sobrou pra você');
-          setBall((b) => ({ x: b.x, y: b.y + 30 }));
-        } else {
+          setMsg('PERDEU A BOLA!');
+          setTimeout(() => setOverlay(true), 700);
+          return;
+        }
+        if (r.rebound) setMsg('REBOTE! A bola sobrou pra você');
+        else {
           setPhase(r.phase);
           setMsg(`Passou pela ${LINES[li].name.toLowerCase()}!`);
         }
         setBusy(false);
-      }, 450);
+      }, wait);
       refresh();
     } catch (e) {
+      ball.reset(before);
       setBusy(false);
       if (e instanceof ApiError && e.code === 'cooldown') { toast('Trilha ainda em recarga.'); refresh(); }
       else toast((e as Error).message, 'error');
     }
   }
-
-  const path = useMemo(() => {
-    const pts = [START, ...me.trail.revealed.map((r) => ({ x: LINES[r.phase].xs[r.index], y: LINES[r.phase].y }))];
-    return pts;
-  }, [me.trail.revealed]);
 
   useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(null), 1800); return () => clearTimeout(t); }, [msg]);
 
@@ -108,8 +148,8 @@ export function TrailScreen() {
           </g>
           {/* gol adversário */}
           <rect x="120" y="0" width="60" height="9" fill="rgba(255,255,255,0.35)" stroke="#fff" strokeWidth="2" />
-          {/* rastro do caminho */}
-          <polyline points={[...path, ball].map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="3" strokeDasharray="6 6" strokeLinecap="round" />
+          {/* rastro do caminho (pintado pela bola enquanto ela anda) */}
+          <polyline points={[...ball.trail, ball.pose].map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="3" strokeDasharray="6 6" strokeLinecap="round" />
           {/* linhas de jogadores */}
           {LINES.map((line, li) => (
             <g key={line.name}>
@@ -133,13 +173,9 @@ export function TrailScreen() {
           {/* goleiro adversário e meu goleiro */}
           <circle cx={150} cy={22} r="10" fill="#111827" stroke="#22E58A" strokeWidth="2" />
           <circle cx={150} cy={H - 20} r="9" fill={me.team.colorPrimary} stroke={me.team.colorSecondary} strokeWidth="2" />
-          {/* bola */}
-          <motion.g animate={{ x: ball.x, y: ball.y }} transition={{ type: 'spring', stiffness: 260, damping: 22 }}>
-            <circle r="9" fill="#fff" stroke="#111" strokeWidth="2" />
-            <circle r="3" fill="#111" />
-          </motion.g>
+          <TrailBall pose={ball.pose} r={BALL_R} />
           {msg && (
-            <motion.text initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} x={W / 2} y={H / 2 + 8} textAnchor="middle" fontSize="26" fontWeight="900" fill="#fff" stroke="#000" strokeWidth="1.5" fontFamily="Anton, Impact, sans-serif" style={{ transformOrigin: `${W / 2}px ${H / 2}px` }}>
+            <motion.text pointerEvents="none" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} x={W / 2} y={H / 2 + 8} textAnchor="middle" fontSize="26" fontWeight="900" fill="#fff" stroke="#000" strokeWidth="1.5" fontFamily="Anton, Impact, sans-serif" style={{ transformOrigin: `${W / 2}px ${H / 2}px` }}>
               {msg}
             </motion.text>
           )}

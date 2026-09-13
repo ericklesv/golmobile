@@ -106,5 +106,9 @@ Env da API em `/var/www/brgol/app/api/.env` (ver `api/.env.example`). Segredos n
 - 3D: modelos glTF em `web/public/3d/` gerados dos packs comprados via `tools/3d/` (README lá).
   `scenes/models.tsx` (estádio, trave, bola) e `scenes/keeper.tsx` (jogador com poses
   procedurais). Rota oculta `/debug3d?view=&pose=` para conferir por screenshot.
+- Trilha: a bola é `components/TrailBall.tsx` (arte SVG cartoon no traço do kit + animação por
+  requestAnimationFrame; o rastro é pintado por ela). Não usar `motion.g animate={{ x, y }}`
+  dentro do `<svg>` da Trilha: a bola antiga, feita assim, nunca se moveu (ficava presa no
+  canto 0,0 do campo).
 - Antes de mexer em produção/servidor: mostrar o comando e pedir autorização.
 - Ao concluir itens, atualizar `docs/ROADMAP.md` e este arquivo.

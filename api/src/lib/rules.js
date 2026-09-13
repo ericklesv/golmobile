@@ -171,4 +171,9 @@ export const KIND_LABEL = {
 // artilharia e lances) + pontos de nível pela tentativa em que acertou
 // (1ª +30 … 6ª +5 — decisão do dono em 12/09/2026). Não dá dinheiro.
 export const TERMO = { letters: 5, tries: 6, levelPoints: [30, 25, 20, 15, 10, 5] };
-export const DAILY_GAMES = ['TERMO'];
+// Quiz do dia: vira ao MEIO-DIA de Brasília. 5 perguntas de 4 alternativas, 20 s cada
+// (o relógio corre no servidor; estourou = erro). Cada acerto +6 de nível (até +30);
+// 3+ acertos = 1 gol normal. Não dá dinheiro. (Decisão do dono em 13/09/2026.)
+export const QUIZ = { questions: 5, seconds: 20, pointsPerHit: 6, goalAt: 3, toleranceMs: 2500 };
+export const DAILY_GAMES = ['TERMO', 'QUIZ'];
+KIND_LABEL.QUIZ = 'Quiz';

@@ -40,10 +40,18 @@ depois que o novo estiver estável. Não instalar nada dele.
   senão o bônus some (desbloqueios, rebote, nerf, recarga da trilha). O front mostra
   `me.levelPoints` na barra de nível.
 - **Minigames diários** (`services/daily.js`, tabela `DailyGame`): 1 partida por jogador,
-  por jogo, por dia; o dia vira à **meia-noite de Brasília** (`dayNumber`/`nextMidnight` em
-  `time.js`, #1 = 12/09/2026). A faixa roxa da Home (`DailyStrip`) só aparece enquanto houver
-  jogo por fazer. Minigame novo: entra em `DAILY_GAMES` + serviço + tela (sem migração).
-  Fora de produção, `TERMO_DAY=<n>` força o dia (teste da virada).
+  por jogo, por dia. Cada um vira num horário: **Termo à meia-noite**, **Quiz ao meio-dia**
+  (Brasília; `dayNumber`/`nextMidnight` e `quizDayNumber`/`nextNoon` em `time.js`). A Home
+  mostra **uma faixa só** (`featured` de `GET /api/daily`): a do jogo disponível que vence
+  primeiro; terminou, aparece o outro. Minigame novo: `DAILY_GAMES` + `calendar()` + serviço
+  + tela; o gol dele pede um valor novo no enum `KickKind` (migração). Fora de produção,
+  `TERMO_DAY=<n>` / `QUIZ_DAY=<n>` forçam o dia (teste da virada).
+- **Quiz do dia** (`lib/quiz/`): 5 perguntas de 4 alternativas, 20 s cada. O relógio é do
+  servidor (começa no `POST next`; estourou + 2,5 s de tolerância = erro); alternativas
+  embaralhadas por jogador; a certa só vai ao cliente depois da resposta. Cada acerto +6 de
+  nível; 3+ acertos = 1 gol normal (kind `QUIZ`); não dá dinheiro. Perguntas em `q-*.js`
+  (`a[0]` é a correta — só fatos certos e estáveis); o calendário é `ORDER` em
+  `questions.js`: **pergunta nova entra no fim de `ORDER`**. 172 perguntas = 34 dias.
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
   cliente antes do fim (nem no JSON). Acertar = 1 gol normal (`applyResult` com kind `TERMO`:
   placar, artilharia, lances) + pontos de nível pela tentativa (`TERMO.levelPoints`, 30→5);
@@ -54,7 +62,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 ## Endpoints
 `POST /api/auth/register|login` · `GET /api/me` · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party`
-`GET /api/daily|daily/termo` · `POST /api/daily/termo/guess{word,day}` (minigames diários)
+`GET /api/daily|daily/termo|daily/quiz` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}` (minigames diários)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|ban` (header `x-admin-key`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.

@@ -74,10 +74,26 @@ export function dayNumber(date = new Date()) {
   return Math.round((Date.UTC(y, m - 1, d) - DAY_ONE) / 86_400_000) + 1;
 }
 
-/** A próxima meia-noite de Brasília (quando os minigames renovam). */
+/** A próxima meia-noite de Brasília (quando o Termo renova). */
 export function nextMidnight(date = new Date()) {
   const { y, m, d } = tzParts(date);
   return fromTz(y, m, d + 1, 0, 0);
+}
+
+/** Dia do Quiz: vira ao meio-dia de Brasília (#1 = 12/09/2026 12:00). QUIZ_DAY força outro fora de produção. */
+export function quizDayNumber(date = new Date()) {
+  if (process.env.NODE_ENV !== 'production') {
+    const forced = Number(process.env.QUIZ_DAY);
+    if (Number.isInteger(forced) && forced > 0) return forced;
+  }
+  const { y, m, d } = tzParts(new Date(date.getTime() - 12 * 3600_000));
+  return Math.round((Date.UTC(y, m - 1, d) - DAY_ONE) / 86_400_000) + 1;
+}
+
+/** O próximo meio-dia de Brasília (quando o Quiz renova). */
+export function nextNoon(date = new Date()) {
+  const { y, m, d, h } = tzParts(date);
+  return fromTz(y, m, h < 12 ? d : d + 1, 12, 0);
 }
 
 export const MIN = 60_000;

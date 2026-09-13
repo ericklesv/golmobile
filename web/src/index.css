@@ -144,7 +144,9 @@ img { -webkit-user-drag: none; }
 .tile-slot, .tile-now, .tile-typed { border-width: 9px 8px 10px 8px; border-image: url(/ui/label-round-white.png) 32 29 33 29 fill; color: var(--ink); }
 .tile-slot { opacity: 0.35; }
 .tile-now { opacity: 0.8; }
-.tile-correct, .tile-present, .tile-absent { border-width: 8px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+.tile-correct, .tile-present, .tile-absent, .tile-wrong { border-width: 8px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+/* Quiz: bola errada no placar (item-yellow puxado para o vermelho; o kit não tem item vermelho) */
+.tile-wrong { border-image: url(/ui/item-yellow.png) 24 fill; filter: hue-rotate(-32deg) saturate(1.6); }
 .tile-correct { border-image: url(/ui/item-green.png) 24 fill; }
 .tile-present { border-image: url(/ui/item-yellow.png) 24 fill; }
 .tile-absent { border-image: url(/ui/item-blue.png) 24 fill; filter: grayscale(0.9) brightness(1.05); color: rgba(255,255,255,0.8); }

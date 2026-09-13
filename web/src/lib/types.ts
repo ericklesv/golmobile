@@ -78,14 +78,28 @@ export interface Meta {
   chances: { penalty: number; foul: number; perDexterity: number; rebound: number[] };
   partySegments: string[];
   termo: { letters: number; tries: number; levelPoints: number[] };
+  quiz: { questions: number; seconds: number; pointsPerHit: number; goalAt: number };
   teams: Team[];
 }
 
 // ─── Minigames diários ──────────────────────────────────────────────────────
-export type DailyGameId = 'TERMO';
+export type DailyGameId = 'TERMO' | 'QUIZ';
 export interface DailyStatus {
   day: number; nextAt: number;
-  games: { id: DailyGameId; available: boolean; started: boolean; finished: boolean; won: boolean }[];
+  games: { id: DailyGameId; day: number; nextAt: number; available: boolean; started: boolean; finished: boolean; won: boolean }[];
+  /** A única faixa que a Home mostra: o jogo disponível que vence primeiro. */
+  featured: DailyGameId | null;
+}
+
+export interface QuizResult { q: string; options: string[]; choice: number; correctChoice: number; correct: boolean }
+export interface QuizState {
+  day: number; total: number; index: number;
+  results: QuizResult[];
+  /** A pergunta no ar (o relógio já está correndo). A certa só vem depois de responder. */
+  current: { index: number; q: string; options: string[]; deadline: number } | null;
+  finished: boolean; hits: number;
+  reward: { goal: boolean; levelPoints: number; hits: number; total: number; text: string | null; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
+  nextAt: number; serverTime: number;
 }
 
 export type TermoColor = 'correct' | 'present' | 'absent';

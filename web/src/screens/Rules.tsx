@@ -22,7 +22,8 @@ export function RulesScreen() {
           <li><b className="text-sky-deep">Falta</b> — por fora da barreira ou por cima. Libera no nível 1. +{fmt(meta?.money.FOUL ?? 30)}.</li>
           <li><b className="text-orange-deep">Trilha</b> — drible a defesa, o meio e o ataque tocando em um jogador por linha. {thieves ? `Roubam a bola: ${thieves}.` : 'Em cada linha, alguém rouba a bola.'} Libera no nível 3. +{fmt(meta?.money.TRAIL ?? 40)}.</li>
           <li><b className="text-gold-deep">Party GoL</b> — a roleta: aposta {fmt(meta?.money.PARTY_BET ?? 50)}, acertou leva {fmt(meta?.money.PARTY_PRIZE ?? 150)}.</li>
-          <li><b className="text-grass-deep">Termo do dia</b> — uma palavra de futebol por dia, {meta?.termo.tries ?? 6} tentativas. Acertou, é gol do seu time e ganha pontos de nível: {termoPoints}.</li>
+          <li><b className="text-grass-deep">Termo do dia</b> — uma palavra de futebol por dia (renova à meia-noite), {meta?.termo.tries ?? 6} tentativas. Acertou, é gol do seu time e ganha pontos de nível: {termoPoints}.</li>
+          <li><b className="text-sky-deep">Quiz do dia</b> — {meta?.quiz.questions ?? 5} perguntas de futebol com 4 alternativas, {meta?.quiz.seconds ?? 20} segundos cada (renova ao meio-dia). Cada acerto: +{meta?.quiz.pointsPerHit ?? 6} de nível; com {meta?.quiz.goalAt ?? 3} acertos, é gol do seu time.</li>
         </ul>
       </Panel>
       <Panel title="RECARGAS" ribbon="blue">

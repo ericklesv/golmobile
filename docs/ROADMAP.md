@@ -55,6 +55,7 @@ Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas
 
 ## Fase 3 — Novidades (inspiradas no revival brgol.online)
 - [x] Minigames diários (1x por dia, vira à meia-noite): **Termo do dia** — palavra de futebol, 6 tentativas; acertar = 1 gol pro time + pontos de nível (+30 na 1ª … +5 na 6ª); faixa roxa na Home enquanto disponível (12/09/2026)
+- [x] **Quiz do dia** (vira ao meio-dia): 5 perguntas de futebol, 4 alternativas, 20 s cada; +6 de nível por acerto e 3 acertos = 1 gol; a Home mostra só uma faixa (o minigame que vence primeiro) (13/09/2026)
 - [ ] Próximos minigames diários (a estrutura `DailyGame` já aceita — ver CLAUDE.md)
 - [ ] Bola de Ouro da temporada (fórmula do dossiê) + Top Chutadores
 - [ ] Hora Premiada, Giro Premiado diário, Ranking de Fama
@@ -65,6 +66,7 @@ Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável
 
 ## Dívidas / ideias
+- [ ] **Quiz: o banco (172 perguntas) cobre 34 dias, até 16/10/2026** — depois as perguntas se repetem; acrescentar em `api/src/lib/quiz/q-*.js` e no fim de `ORDER`
 - [ ] **Termo: a lista de respostas acaba no dia #114 (03/01/2027)** — acrescentar palavras no fim de `api/src/lib/termo/answers.js` antes disso (depois o calendário dá a volta)
 - [ ] Socket.IO para placar/feed em tempo real (hoje polling 15 s)
 - [ ] Painel admin web (hoje só endpoints com `x-admin-key`)

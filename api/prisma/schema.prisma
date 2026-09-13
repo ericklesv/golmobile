@@ -23,6 +23,7 @@ enum KickKind {
   TRAIL
   PARTY
   TERMO
+  QUIZ
 }
 
 enum SeasonStatus {

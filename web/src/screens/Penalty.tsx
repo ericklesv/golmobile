@@ -33,7 +33,7 @@ function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }
     }
     if (started.current !== shot.t0) {
       started.current = shot.t0;
-      kh.current?.play(shot.keeperDir === 'center' ? 'jump' : 'dive', { once: true });
+      kh.current?.pose(shot.keeperDir === 'center' ? 'jump' : 'dive');
     }
     const e = (performance.now() - shot.t0) / 1000;
     const flight = 0.8;
@@ -54,7 +54,7 @@ function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }
     }
     // goleiro desliza para o canto que escolheu (a animação faz o mergulho)
     const kp = clamp01((e - 0.1) / 0.6);
-    k.position.set(X[shot.keeperDir] * 0.45 * ease.out(kp), 0, 0.5);
+    k.position.set(X[shot.keeperDir] * 0.35 * ease.out(kp), 0, 0.5);
     camera.position.lerp(new THREE.Vector3(tx * 0.25, 1.9, 9.5), 0.04);
     camera.lookAt(tx * 0.5, 1.3, 0);
   });
@@ -65,7 +65,7 @@ function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }
       <StadiumModel />
       <GoalModel />
       <group ref={keeper} position={[0, 0, 0.5]}>
-        <KeeperModel ref={kh} color={keeperColor} flip={shot?.keeperDir === 'left'} />
+        <KeeperModel ref={kh} color={keeperColor} flip={shot?.keeperDir === 'left'} speed={7} />
       </group>
       <group ref={ball}><BallModel /></group>
     </>

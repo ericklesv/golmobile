@@ -6,10 +6,9 @@
  *   /3d/keeper.glb   Football Soccer Simulator (malha do jogador + animações de goleiro)
  * Sistema de coordenadas do jogo: linha do gol em z=0, campo cresce para +z, metros.
  */
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import { useEffect, useMemo, useRef } from 'react';
+import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { SkeletonUtils } from 'three-stdlib';
 
 const URLS = { stadium: '/3d/stadium.glb', goal: '/3d/goal.glb', ball: '/3d/ball.glb', keeper: '/3d/keeper.glb' };
 export function preloadModels() { Object.values(URLS).forEach((u) => useGLTF.preload(u)); }
@@ -50,50 +49,7 @@ export function BallModel({ spin = 0 }: { spin?: number }) {
   return <group ref={ref} scale={2}><primitive object={obj} /></group>;
 }
 
-export type KeeperAction = 'idle' | 'dive' | 'jump' | 'miss' | 'save_low';
-export interface KeeperHandle { play: (a: KeeperAction, opts?: { flip?: boolean; once?: boolean }) => void }
-
-interface KeeperProps { color?: string; action?: KeeperAction; flip?: boolean; position?: [number, number, number]; rotation?: [number, number, number]; scale?: number; frozen?: boolean }
-
-/** Jogador animado (goleiro ou barreira). `flip` espelha para mergulhar pro outro lado. */
-export const KeeperModel = forwardRef<KeeperHandle, KeeperProps>(function KeeperModel({ color = '#f2c200', action = 'idle', flip = false, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, frozen = false }, ref) {
-  const { scene, animations } = useGLTF(URLS.keeper);
-  const obj = useMemo(() => {
-    const s = SkeletonUtils.clone(scene) as THREE.Group;
-    s.traverse((o: any) => {
-      if (o.isMesh || o.isSkinnedMesh) {
-        o.castShadow = true; o.frustumCulled = false;
-        o.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.85, metalness: 0 });
-      }
-    });
-    return s;
-  }, [scene, color]);
-  const group = useRef<THREE.Group>(null);
-  const { actions, mixer } = useAnimations(animations, obj);
-  const current = useRef<THREE.AnimationAction | null>(null);
-
-  const play = (a: KeeperAction, opts: { once?: boolean } = {}) => {
-    const next = actions[a];
-    if (!next) return;
-    const once = opts.once ?? a !== 'idle';
-    next.reset();
-    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
-    next.clampWhenFinished = once;
-    next.enabled = true;
-    if (current.current && current.current !== next) { next.crossFadeFrom(current.current, 0.15, false); }
-    next.play();
-    current.current = next;
-  };
-  useImperativeHandle(ref, () => ({ play: (a, opts) => play(a, opts) }), [actions]);
-  useEffect(() => { if (!frozen) play(action); }, [action, actions, frozen]);
-  useEffect(() => () => { mixer.stopAllAction(); }, [mixer]);
-
-  return (
-    <group ref={group} position={position} rotation={rotation} scale={[flip ? -scale : scale, scale, scale]}>
-      <primitive object={obj} />
-    </group>
-  );
-});
+export { KeeperModel, type KeeperHandle, type KeeperPose } from './keeper';
 
 export function SceneLights() {
   return (

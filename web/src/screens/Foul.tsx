@@ -47,7 +47,7 @@ function Scene({ shot, keeperColor, wallColor }: { shot: Shot | null; keeperColo
     if (started.current !== shot.t0) {
       started.current = shot.t0;
       const a = shot.outcome === 'keeper' ? (shot.dir === 'over' ? 'jump' : 'save_low') : shot.outcome === 'goal' ? 'dive' : 'miss';
-      setTimeout(() => kh.current?.play(a, { once: true }), 350);
+      setTimeout(() => kh.current?.pose(a), 350);
     }
     const e = (performance.now() - shot.t0) / 1000;
     const flight = shot.outcome === 'wall' ? 0.45 : 1.0;
@@ -81,9 +81,9 @@ function Scene({ shot, keeperColor, wallColor }: { shot: Shot | null; keeperColo
       <SceneLights />
       <StadiumModel />
       <GoalModel />
-      <group ref={keeper} position={[0, 0, 0.5]}><KeeperModel ref={kh} color={keeperColor} flip={keeperFlip} /></group>
+      <group ref={keeper} position={[0, 0, 0.5]}><KeeperModel ref={kh} color={keeperColor} flip={keeperFlip} speed={7} /></group>
       <group ref={wall} position={[0, 0, WALL_Z]}>
-        {[-1.2, -0.4, 0.4, 1.2].map((x) => <KeeperModel key={x} color={wallColor} position={[x, 0, 0]} rotation={[0, Math.PI, 0]} />)}
+        {[-1.2, -0.4, 0.4, 1.2].map((x, i) => <KeeperModel key={x} color={wallColor} pose="wall" position={[x, 0, 0]} seed={i * 1.7} />)}
       </group>
       <group ref={ball}><BallModel /></group>
     </>

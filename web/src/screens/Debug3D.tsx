@@ -2,14 +2,13 @@ import { Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, type KeeperAction } from '../scenes/models';
+import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, type KeeperPose } from '../scenes/models';
 
-/** Rota oculta /debug3d?view=penalty|foul|top|goal&anim=idle|dive|jump|miss|save_low&flip=1 — só para conferir escala/orientação. */
+/** Rota oculta /debug3d?view=penalty|foul|top|goal|keeper&pose=idle|wall|dive|jump|miss|save_low|celebrate&flip=1 — só para conferir escala/orientação. */
 export function Debug3DScreen() {
   const [q] = useSearchParams();
   const view = q.get('view') ?? 'penalty';
-  const animQ = q.get('anim') ?? 'idle';
-  const anim = (animQ === 'none' ? 'idle' : animQ) as KeeperAction;
+  const pose = (q.get('pose') ?? 'idle') as KeeperPose;
   const flip = q.get('flip') === '1';
   const cams: Record<string, { pos: [number, number, number]; look: [number, number, number]; fov: number }> = {
     penalty: { pos: [0, 1.6, 15], look: [0, 1.2, 0], fov: 48 },
@@ -27,9 +26,9 @@ export function Debug3DScreen() {
           <StadiumModel />
           <GoalModel />
           <group position={[0, 0.21, 11]}><BallModel /></group>
-          <KeeperModel color="#f2c200" action={anim} flip={flip} position={[0, 0, 0.4]} frozen={animQ === 'none'} />
-          <KeeperModel color="#c3131a" position={[-1.2, 0, 10.5]} />
-          <KeeperModel color="#c3131a" position={[-0.4, 0, 10.5]} />
+          <KeeperModel color="#f2c200" pose={pose} flip={flip} position={[0, 0, 0.4]} />
+          <KeeperModel color="#c3131a" pose="wall" position={[-1.2, 0, 10.5]} seed={1} />
+          <KeeperModel color="#c3131a" pose="wall" position={[-0.4, 0, 10.5]} seed={2} />
           <gridHelper args={[40, 40]} position={[0, 0.02, 20]} />
           <axesHelper args={[5]} />
         </Suspense>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy do BRGOL na VPS (chamado pelo GitHub Actions a cada push em main).
+# Deploy do BRGOL na VPS (rodar manualmente via SSH após cada push em main).
 # Instalado em /usr/local/bin/brgol-deploy.sh. Roda como root; a app roda como usuário `brgol`.
 set -euo pipefail
 

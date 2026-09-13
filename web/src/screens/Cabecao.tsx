@@ -67,7 +67,7 @@ export function CabecaoScreen() {
       const m = JSON.parse(ev.data);
       if (m.t === 'hello' || m.t === 'queue') setStatus({ queue: m.queue, playing: m.playing, rules: m.rules });
       else if (m.t === 'left') setInQueue(false);
-      else if (m.t === 'match') { setInQueue(false); setOver(null); lastScore.current = [0, 0]; const mm = { side: m.side, players: m.players, field: m.field, training: !!m.training }; matchRef.current = mm; setMatch(mm); sound.play('pop'); }
+      else if (m.t === 'match') { setInQueue(false); setOver(null); setStatus((st) => st ? { ...st, queue: Math.max(0, st.queue - 1) } : st); lastScore.current = [0, 0]; const mm = { side: m.side, players: m.players, field: m.field, training: !!m.training }; matchRef.current = mm; setMatch(mm); sound.play('pop'); }
       else if (m.t === 's') {
         snapRef.current = { s: m, at: performance.now() };
         if (m.sc[0] !== lastScore.current[0] || m.sc[1] !== lastScore.current[1]) { lastScore.current = [m.sc[0], m.sc[1]]; sound.play(m.ls === matchRef.current?.side ? 'goal' : 'error'); }
@@ -179,13 +179,13 @@ export function CabecaoScreen() {
         <div className="relative flex flex-1 flex-col px-2" style={{ paddingBottom: 'calc(var(--sab) + 8px)' }}>
           {/* placar */}
           <div className="panel-navy mb-2 flex items-center justify-between px-3 py-1.5">
-            <div className="flex min-w-0 items-center gap-1.5"><Shield team={match.players[0].team} size={26} /><span className="t-display t-out truncate text-[12px]">{match.players[0].nick}</span></div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5"><Shield team={match.players[0].team} size={24} /><span className="t-display t-out break-all text-[10px] leading-tight">{match.players[0].nick}</span></div>
+            <div className="flex shrink-0 items-center gap-2 px-2">
               <span className="t-display t-gold text-[26px] tabular-nums">{snap?.sc[0] ?? 0}</span>
               <span className={`trap ${snap?.g ? 'trap-orange' : 'trap-blue'} text-[12px] tabular-nums`}>{snap?.g ? 'OURO ' : ''}{clock}</span>
               <span className="t-display t-gold text-[26px] tabular-nums">{snap?.sc[1] ?? 0}</span>
             </div>
-            <div className="flex min-w-0 items-center gap-1.5"><span className="t-display t-out truncate text-[12px]">{match.players[1].nick}</span><Shield team={match.players[1].team} size={26} /></div>
+            <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5 text-right"><Shield team={match.players[1].team} size={24} /><span className="t-display t-out break-all text-[10px] leading-tight">{match.players[1].nick}</span></div>
           </div>
           <div className="relative w-full overflow-hidden rounded-xl border-4 border-white/80 shadow-[0_6px_0_rgba(0,0,0,0.3)]" style={{ aspectRatio: '16 / 10' }}>
             <canvas ref={canvasRef} className="block touch-none" />

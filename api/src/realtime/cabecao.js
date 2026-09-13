@@ -112,8 +112,8 @@ function botInput(sim, side) {
   const ownGoalSide = (p.x - b.x) * dir > 0; // bola atrás do bot (entre ele e o gol dele)
   return {
     l: behind < p.x - 10, r: behind > p.x + 10,
-    j: near && b.y > 80 && Math.random() < 0.35,
-    k: near && !ownGoalSide && Math.random() < 0.5,
+    j: near && b.y > 80 && Math.random() < 0.3,
+    k: near && !ownGoalSide && Math.random() < 0.4,
   };
 }
 
@@ -145,7 +145,7 @@ function startMatch(a, b) {
   m.timer = setInterval(() => {
     const now = Date.now();
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
-    for (const c of m.conns) if (c.bot && m.sim.tick % 2 === 0) setInput(m.sim, c.side, botInput(m.sim, c.side));
+    for (const c of m.conns) if (c.bot && m.sim.tick % 4 === 0) setInput(m.sim, c.side, botInput(m.sim, c.side)); // reage a 7,5 Hz: dá pra vencer
     step(m.sim, dt);
     const snap = snapshot(m.sim);
     for (const c of m.conns) send(c.ws, snap);

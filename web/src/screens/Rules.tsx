@@ -12,6 +12,7 @@ export function RulesScreen() {
   const thieves = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}` : parts[0];
   const pts = meta?.termo.levelPoints ?? [30, 25, 20, 15, 10, 5];
   const termoPoints = `+${pts[0]} na 1ª tentativa, caindo até +${pts[pts.length - 1]} na ${pts.length}ª`;
+  const tp = meta?.prizes?.team ?? { A: { champion: 25, runnerUp: 20 }, B: { champion: 20, runnerUp: 15 }, C: { champion: 15, runnerUp: 10 } };
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-center"><div className="ribbon ribbon-blue ribbon-lg">COMO JOGAR</div></div>
@@ -42,7 +43,7 @@ export function RulesScreen() {
           <li>1º da rodada: R$ 30 mil + 5 VIP · 2º–5º: R$ 15 mil · 6º–10º: R$ 7 mil</li>
           <li>1º da temporada: R$ 300 mil + 40 VIP · 2º–5º: R$ 150 mil · 6º–10º: R$ 70 mil</li>
           <li>Recorde da rodada na temporada: 20 VIP</li>
-          <li>Campeão da Série A: 25 VIP · vice 20 · B 20/15 · C 15/10</li>
+          <li>Time campeão e vice: VIP para cada jogador que marcou pelo time na temporada — Série A {tp.A.champion}/{tp.A.runnerUp} · B {tp.B.champion}/{tp.B.runnerUp} · C {tp.C.champion}/{tp.C.runnerUp}</li>
         </ul>
       </Panel>
       <Panel title="NÍVEIS" ribbon="orange">

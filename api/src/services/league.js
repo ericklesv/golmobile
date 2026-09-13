@@ -250,12 +250,15 @@ async function finishSeason(tx, season, now) {
   const standings = await tx.standing.findMany({ where: { seasonId: season.id }, include: { team: true } });
   const promote = [];
   const relegate = [];
+  const teamPrizes = [];
   for (const serie of SERIES) {
     const table = standings.filter((s) => s.serie === serie).sort(standingOrder);
     if (!table.length) continue;
     await tx.title.create({ data: { seasonId: season.id, teamId: table[0].teamId, competition: `Série ${serie}`, place: 1 } });
+    teamPrizes.push({ teamId: table[0].teamId, vip: PRIZES.team[serie].champion });
     if (table[1]) {
       await tx.title.create({ data: { seasonId: season.id, teamId: table[1].teamId, competition: `Série ${serie}`, place: 2 } });
+      teamPrizes.push({ teamId: table[1].teamId, vip: PRIZES.team[serie].runnerUp });
     }
     // Acesso e rebaixamento: 2 sobem / 2 caem (o original tinha Divisão de Acesso)
     if (serie !== 'A') promote.push(...table.slice(0, 2).map((s) => ({ teamId: s.teamId, to: serie === 'B' ? 'A' : 'B' })));
@@ -263,6 +266,18 @@ async function finishSeason(tx, season, now) {
   }
   for (const p of [...promote, ...relegate]) {
     await tx.team.update({ where: { id: p.teamId }, data: { serie: p.to } });
+  }
+  // Prêmio de time (decisão do dono, 13/09/2026): VIP para quem marcou pelo menos 1 gol pelo campeão
+  // ou vice na temporada — não para quem só está no time (trocar de time é livre: daria para pular
+  // para o líder no fim só pelo prêmio). Quem marcou por dois times premiados leva só o maior.
+  const teamVip = new Map();
+  for (const { teamId, vip } of teamPrizes) {
+    const scorers = await tx.goal.groupBy({ by: ['userId'], where: { seasonId: season.id, teamId } });
+    for (const { userId } of scorers) teamVip.set(userId, Math.max(teamVip.get(userId) ?? 0, vip));
+  }
+  for (const vip of new Set(teamVip.values())) {
+    const ids = [...teamVip].filter(([, v]) => v === vip).map(([id]) => id);
+    await tx.user.updateMany({ where: { id: { in: ids } }, data: { vipDays: { increment: vip } } });
   }
   // Artilharia da temporada: prêmios + recorde
   const top = await topScorers({ seasonId: season.id }, 10, tx);

@@ -61,7 +61,13 @@ for (const [i, t] of teams.entries()) {
     users.push(await prisma.user.create({ data: { nick, nickLower: nick, email: `${nick}@sim.test`, passwordHash: 'x', teamId: t.id } }));
   }
 }
-console.log(`elenco: ${users.length} jogadores em ${new Set(users.map((u) => u.teamId)).size} times (os outros sem ninguém)`);
+// e um torcedor parado em cada time com gente: está no time, nunca marca (não leva prêmio de time)
+const idle = [];
+for (const teamId of new Set(users.map((u) => u.teamId))) {
+  const nick = `simparado${teamId}`;
+  idle.push(await prisma.user.create({ data: { nick, nickLower: nick, email: `${nick}@sim.test`, passwordHash: 'x', teamId } }));
+}
+console.log(`elenco: ${users.length} jogadores em ${new Set(users.map((u) => u.teamId)).size} times (os outros sem ninguém) + ${idle.length} torcedores parados`);
 
 async function kick(userId, at) {
   return prisma.$transaction(async (tx) => {
@@ -182,6 +188,18 @@ for (let r = 1; r <= TOTAL; r++) {
       if (serie !== 'C') check(tab.slice(-2).every((x) => newSerie.get(x.teamId) === (serie === 'A' ? 'B' : 'C')), `FIM Série ${serie}: os 2 últimos caíram`);
       check(tab.slice(2, -2).every((x) => newSerie.get(x.teamId) === serie), `FIM Série ${serie}: o meio da tabela ficou`);
     }
+    // prêmio de time: VIP para quem marcou pelo campeão/vice (o maior, se marcou por dois); parado não leva
+    const teamVipExp = new Map();
+    for (const serie of ['A', 'B', 'C']) {
+      const tab = st.filter((x) => x.serie === serie).sort(L.standingOrder);
+      for (const [row, vip] of [[tab[0], PRIZES.team[serie].champion], [tab[1], PRIZES.team[serie].runnerUp]]) {
+        const scorers = new Set((await prisma.goal.findMany({ where: { seasonId: s1.id, teamId: row.teamId }, select: { userId: true } })).map((g) => g.userId));
+        for (const id of scorers) teamVipExp.set(id, Math.max(teamVipExp.get(id) ?? 0, vip));
+        check(scorers.size > 0 && [...scorers].every((id) => delta.get(id).v >= vip), `FIM Série ${serie}: ${scorers.size} jogador(es) que marcaram pelo ${row.team.name} levaram ${vip} VIP de time`);
+      }
+    }
+    for (const [id, vip] of teamVipExp) delta.get(id).v -= vip;
+    check(idle.every((u) => delta.get(u.id).m === 0 && delta.get(u.id).v === 0), 'FIM: torcedor que está no time mas não marcou não leva prêmio de time');
     const count = { A: 0, B: 0, C: 0 };
     for (const s of newSerie.values()) count[s]++;
     check(count.A === 16 && count.B === 16 && count.C === 16, `FIM: 16 times por série depois do sobe-e-desce (${JSON.stringify(count)})`);
@@ -199,7 +217,8 @@ for (let r = 1; r <= TOTAL; r++) {
       if (JSON.stringify(want.sort()) !== JSON.stringify(got.sort())) { seasonOk = false; console.log(`   temporada: grupo com ${seasonTop[i][1]} gols esperava ${want} e recebeu ${got}`); }
       pos += j - i; i = j;
     }
-    check(seasonOk, 'FIM: prêmios da temporada pagos certinho');
+    for (const [id, d] of delta) if (!sg.has(id) && (d.m || d.v)) { seasonOk = false; console.log(`   temporada: user ${id} sem gol recebeu ${d.m}/${d.v}`); }
+    check(seasonOk, 'FIM: prêmios da temporada (artilharia + time) pagos certinho, e mais ninguém recebeu');
     const srec = await prisma.record.findUnique({ where: { scope_seasonId: { scope: 'SEASON', seasonId: s1.id } } });
     check(srec?.goals === seasonTop[0][1], `FIM: recorde da temporada = ${seasonTop[0][1]} gols`);
     // turno e returno: cada par 2x, uma em casa de cada; 15 jogos em casa por time

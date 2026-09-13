@@ -6,6 +6,7 @@ import { statsState, statsStart, statsPick } from '../services/stats.js';
 import { camisasState, camisasStart, camisasGuess } from '../services/camisas.js';
 import { hattrickState, hattrickStart, hattrickShoot } from '../services/hattrick.js';
 import { faltaproState, faltaproStart, faltaproKick } from '../services/faltapro.js';
+import { frangacoState, frangacoStart, frangacoKick, frangacoSave } from '../services/frangaco.js';
 
 /**
  * Minigames diários (1x por dia): GET /api/daily · Termo: GET /api/daily/termo,
@@ -44,3 +45,9 @@ daily.post('/hattrick/shoot', handle((req) => hattrickShoot(req.user.id, req.bod
 daily.get('/faltapro', handle((req) => faltaproState(req.user.id)));
 daily.post('/faltapro/start', handle((req) => faltaproStart(req.user.id)));
 daily.post('/faltapro/kick', handle((req) => faltaproKick(req.user.id, req.body)));
+// Frangaço (duelo de pênaltis): GET /api/daily/frangaco, POST /api/daily/frangaco/start,
+// POST /api/daily/frangaco/kick {x, y, anunciado?}, POST /api/daily/frangaco/save {x, y, ms}
+daily.get('/frangaco', handle((req) => frangacoState(req.user.id)));
+daily.post('/frangaco/start', handle((req) => frangacoStart(req.user.id)));
+daily.post('/frangaco/kick', handle((req) => frangacoKick(req.user.id, req.body)));
+daily.post('/frangaco/save', handle((req) => frangacoSave(req.user.id, req.body)));

@@ -30,6 +30,7 @@ function calendar(now) {
     CAMISAS: { day: dayNumberAt(RESET_HOUR.CAMISAS, now), nextAt: nextResetAt(RESET_HOUR.CAMISAS, now).getTime() },
     HATTRICK: { day: dayNumberAt(RESET_HOUR.HATTRICK, now), nextAt: nextResetAt(RESET_HOUR.HATTRICK, now).getTime() },
     FALTAPRO: { day: dayNumberAt(RESET_HOUR.FALTAPRO, now), nextAt: nextResetAt(RESET_HOUR.FALTAPRO, now).getTime() },
+    FRANGACO: { day: dayNumberAt(RESET_HOUR.FRANGACO, now), nextAt: nextResetAt(RESET_HOUR.FRANGACO, now).getTime() },
     // Estatísticas viram às 13h; sem os dados baixados, ficam de fora
     ...(statsReady() ? { STATS: { day: statsDayNumber(now), nextAt: nextStatsReset(now).getTime() } } : {}),
   };

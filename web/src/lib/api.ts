@@ -1,4 +1,4 @@
-import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, FrangacoDefense, FrangacoKick, FrangacoPending, FrangacoReward, FrangacoState, HattrickShootResponse, HattrickState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -81,6 +81,10 @@ export const api = {
   faltapro: () => req<{ state: FaltaProState }>('GET', '/api/daily/faltapro'),
   faltaproStart: () => req<{ state: FaltaProState }>('POST', '/api/daily/faltapro/start'),
   faltaproKick: (b: { i: number; dirX: number; dirY: number; power: number; spin: number }) => req<FaltaProKickResponse>('POST', '/api/daily/faltapro/kick', b),
+  frangaco: () => req<{ state: FrangacoState }>('GET', '/api/daily/frangaco'),
+  frangacoStart: () => req<{ state: FrangacoState }>('POST', '/api/daily/frangaco/start'),
+  frangacoKick: (b: { x: number; y: number; anunciado?: number | null }) => req<{ state: FrangacoState; kick: FrangacoKick; defense: FrangacoPending | null; reward: FrangacoReward | null }>('POST', '/api/daily/frangaco/kick', b),
+  frangacoSave: (b: { x: number | null; y: number | null; ms: number | null }) => req<{ state: FrangacoState; save: FrangacoDefense; reward: FrangacoReward | null }>('POST', '/api/daily/frangaco/save', b),
   // leitura
   meta: () => req<Meta>('GET', '/api/meta'),
   home: (team?: string) => req<Home>('GET', `/api/home${team ? `?team=${encodeURIComponent(team)}` : ''}`),

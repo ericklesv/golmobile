@@ -39,6 +39,8 @@ Pendências pequenas: cabelo nos jogadores 3D; empate por diferença < 5 % nas c
 Minigames novos planejados (13/09, design em **`docs/FALTA_PRO.md`**): **Falta PRO**
 (FEITO 13/09 — nível 8, vira às 19h; ver a lista de minigames) e **Frangalho**
 (transposto do Managol — mecânica original a confirmar com o dono antes de fazer).
+(simulador de falta com arrasto + curva, Trionda, servidor valida). O **Frangaço**
+(transposto do Managol) foi feito em 13/09 — ver a lista de minigames abaixo.
 **Temporário:** MVGIC está sem recarga de pênalti/falta (`COOLDOWN_FREE_NICKS` em
 `rules.js`) para o dono testar as animações — tirar depois.
 Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em runtime:
@@ -96,6 +98,7 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [x] **Camisas** (nível 5, vira às 16h): maior ou menor com 4 camisas de 1 a 11 nas cores do time; 4 certas = 1 gol e segue valendo até errar (vários gols no dia, exceção do dono); +3 de nível por acerto (até +30) (13/09/2026)
 - [x] **Hat Trick** (nível 7, vira às 18h): chute de longe com mira de estilingue, batida na bola (lado = curva, embaixo = sobe), vento e goleiro; 3 vidas, cada gol vale gol do time, 3 gols = hat trick (13/09/2026)
 - [x] **Falta PRO** (nível 8, vira às 19h): cobrança de falta 3D estilo Free Kick Classic — arrasta a bola (direção/força; arco no gesto = efeito Magnus), barreira 3–5 (às vezes pula), goleiro e alvos bônus no ângulo; física em `api/src/lib/faltapro.js` (calibrada em `api/scripts/faltapro-balance.js`: bom ~36%); 5 cobranças, 3+ gols = exatamente 1 gol, +4 de nível por conversão (até +20), alvo = +R$ 50 (13/09/2026)
+- [x] **Frangaço** (nível 10, vira às 20h; transposto do Managol): duelo de pênaltis alternado contra clube IA da mesma série — 5 cobranças (mira contínua + finta) e 5 defesas (alvo com janela de reação de 900→660 ms validada no servidor); empate = morte súbita; mata-mata de 4 fases, um duelo por dia; venceu = 1 gol (kind FRANGACO), campeão = +R$ 500 e +20 de nível (13/09/2026)
 - [x] **Horário de virada por minigame** (um por jogo, para sempre ter algum renovando): Termo 0h, Quiz 12h, Estatísticas 13h, Memória 14h, De que time é? 15h, Camisas 16h, Alvo no Gol 17h; jogo novo pega a próxima hora livre (13/09/2026)
 - [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP
 - [ ] **Embaixadinhas** (nível 12): ritmo, não deixar a bola cair

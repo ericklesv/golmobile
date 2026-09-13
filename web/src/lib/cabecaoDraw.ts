@@ -59,13 +59,13 @@ export function draw(ctx: CanvasRenderingContext2D, W: number, H: number, f: Fie
   at('stands.png', 0, gy - 731 * ts);
   at('lights.png', 0, 0);
   // torcida (duas fileiras, pulando quando tem gol)
-  const fanScale = ts * 0.92;
+  const fanScale = ts * 0.84;
   for (const s of seats()) {
     const im = tex(`fans${s.sheet}.png`);
     if (!im) continue;
     const bob = excited ? Math.abs(Math.sin(t / 140 + s.phase)) * 14 * ts : Math.sin(t / 900 + s.phase) * 2 * ts;
     const scale = s.row === 0 ? fanScale * 0.9 : fanScale;
-    const baseY = s.row === 0 ? gy - 372 * ts : gy - 330 * ts;
+    const baseY = s.row === 0 ? gy - 442 * ts : gy - 404 * ts;
     ctx.drawImage(im, (s.cell % 8) * FAN_W, Math.floor(s.cell / 8) * FAN_H, FAN_W, FAN_H, s.x * ts, baseY - FAN_H * scale - bob, FAN_W * scale, FAN_H * scale);
   }
   at('ads.png', 0, gy - 407 * ts);

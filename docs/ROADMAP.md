@@ -74,7 +74,7 @@ empate por diferença < 5 % nas copas.
 - [x] **Memória dos Escudos** (nível 2, vira à meia-noite): 16 cartas/8 pares sorteados por jogador; até 14 jogadas = 1 gol; nível +30 (≤8), +25 (≤10), +20 (≤12), +15 (≤14), +10 (≤18), +5 (13/09/2026)
 - [x] **De que time é?** (nível 4, vira à meia-noite): 8 pistas (estádio, estado, apelido, ídolo) com 4 escudos, 10 s cada; +4 de nível por acerto, 6 acertos = 1 gol; banco em `api/src/lib/qualtime/bank.js` (13/09/2026)
 - [x] Regra: todo minigame vencido = 1 gol + bônus; Party GoL dá o gol na 1ª vitória do dia; slider ordenado por disponibilidade (13/09/2026)
-- [x] **Alvo no Gol** (nível 6, vira à meia-noite): 10 alvos acendem um a um no gol por 1,5 s (relógio no servidor); +3 de nível por acerto, 7 acertos = 1 gol (13/09/2026)
+- [x] **Alvo no Gol** (nível 6, vira à meia-noite): batalha naval no gol — grade 6x4 com goleiro (3), 2 zagueiros (2) e 3 cones (1) escondidos por jogador/dia (`api/src/lib/alvo.js`); 14 chutes; +2 de nível por casa, 8 casas = 1 gol, derrubar tudo = gol +30. Substituiu a versão "10 alvos de 1,5 s", que estava fácil demais (13/09/2026)
 - [x] **Estatísticas** (nível 3, vira às 13h): "quem tem mais?" entre dois jogadores do Brasileirão 2024 (dados reais da API-Football, com fotos) + 22 duelos escritos pelo dono; sequência até errar; uma partida por dia: +3 por acerto (até +30) e 5 seguidos = gol (13/09/2026)
 - [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP
 - [ ] **Embaixadinhas** (nível 12): ritmo, não deixar a bola cair

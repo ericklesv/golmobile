@@ -9,6 +9,7 @@ import { GameError, badRequest } from '../lib/errors.js';
 import { dayNumber, nextMidnight, quizDayNumber, nextNoon, statsDayNumber, nextStatsReset } from '../lib/time.js';
 import { statsReady } from '../lib/stats/data.js';
 import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, ALVO, levelOf } from '../lib/rules.js';
+import { layoutFor, applyShot, summarize, rewardFor } from '../lib/alvo.js';
 import { questionsOfDay as qualtimeQuestions } from '../lib/qualtime/bank.js';
 import { teamView } from './view.js';
 import { cabecaoStatus } from '../realtime/cabecao.js';
@@ -513,37 +514,26 @@ export function qualtimeAnswer(userId, index, choice, clientDay) {
 }
 
 // ─── Alvo no Gol ───────────────────────────────────────────────────────────
-// 10 alvos, um por vez: o servidor "acende" o alvo (POST next: posição + prazo) e o toque
-// (POST hit) só vale dentro da janela. Posições sorteadas por jogador/dia/alvo, sem repetir a
-// anterior. Estado: { results: [{ hit }], servedAt }. ≥ goalAt acertos = 1 gol; +pontos por acerto.
+// Batalha naval no gol: grade cols x rows com goleiro, zagueiros e cones escondidos (posições
+// sorteadas por jogador/dia em lib/alvo.js e guardadas no estado na 1ª chamada). Cada chute é
+// um POST: o servidor responde vazio / acertou / derrubou. A posição das peças nunca vai ao
+// cliente antes do fim (só as casas de peça já derrubada). Estado: { pieces, shots: [index] }.
 
-function alvoSpot(userId, day, index) {
-  const r = rng(`alvo:${userId}:${day}:${index}`);
-  const prev = index > 0 ? alvoSpotRaw(userId, day, index - 1) : null;
-  let spot = alvoSpotRaw(userId, day, index);
-  // não repete a zona do alvo anterior
-  if (prev && prev.zone === spot.zone) spot = { ...spot, zone: (spot.zone + 1 + Math.floor(r() * 8)) % 9 };
-  const col = spot.zone % 3, row = Math.floor(spot.zone / 3);
-  return { x: 0.18 + col * 0.32 + (spot.jx - 0.5) * 0.12, y: 0.22 + row * 0.28 + (spot.jy - 0.5) * 0.1, zone: spot.zone };
-}
-function alvoSpotRaw(userId, day, index) {
-  const r = rng(`alvo:${userId}:${day}:${index}:raw`);
-  return { zone: Math.floor(r() * 9), jx: r(), jy: r() };
-}
-
-function alvoView(userId, day, row, now = new Date()) {
+/** O que a tela vê. As casas de uma peça só aparecem quando ela caiu (ou no fim, para revelar). */
+function alvoView(day, row, now = new Date()) {
   const st = row?.state ?? {};
-  const results = st.results ?? [];
+  const pieces = st.pieces ?? [];
+  const shots = st.shots ?? [];
   const finished = !!row?.finishedAt;
-  let current = null;
-  if (!finished && st.servedAt && results.length < ALVO.targets) {
-    const { x, y } = alvoSpot(userId, day, results.length);
-    current = { index: results.length, x, y, servedAt: st.servedAt, deadline: st.servedAt + ALVO.windowMs };
-  }
+  const sum = summarize(pieces, shots);
+  const pieceAt = (index) => pieces.findIndex((p) => p.cells.includes(index));
   return {
-    day, total: ALVO.targets, index: results.length, results, current, finished,
-    hits: results.filter((a) => a.hit).length, reward: row?.reward ?? null,
-    windowMs: ALVO.windowMs, pointsPerHit: ALVO.pointsPerHit, goalAt: ALVO.goalAt,
+    day, cols: ALVO.cols, rows: ALVO.rows, maxShots: ALVO.shots, shotsLeft: sum.shotsLeft,
+    shots: shots.map((index) => { const pi = pieceAt(index); return { index, hit: pi >= 0, piece: pi >= 0 && (sum.sunk[pi] || finished) ? pi : null }; }),
+    pieces: pieces.map((p, k) => ({ id: k, kind: p.kind, name: p.name, size: p.size, sunk: sum.sunk[k], cells: sum.sunk[k] || finished ? p.cells : null })),
+    hits: sum.hits, occupied: sum.occupied, sunkCount: sum.sunkCount, finished,
+    reward: row?.reward ?? null,
+    pointsPerHit: ALVO.pointsPerHit, sinkAllPoints: ALVO.sinkAllPoints, goalAt: ALVO.goalAt,
     nextAt: nextMidnight(now).getTime(), serverTime: now.getTime(),
   };
 }
@@ -553,16 +543,17 @@ function alvoUnlock(user) {
   if (levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `Alvo no Gol libera no nível ${g.unlock}.`);
 }
 
+/** Tranca a partida do dia (cria com o tabuleiro sorteado se não existe) e fecha quando acaba. */
 async function withAlvo(userId, clientDay, fn) {
   const now = new Date();
   const day = dayNumber(now);
   if (clientDay !== undefined && clientDay !== null && Number(clientDay) !== day) {
-    throw new GameError(409, 'day-changed', 'Virou o dia: já tem alvos novos. Recarregue.');
+    throw new GameError(409, 'day-changed', 'Virou o dia: o gol foi remontado. Recarregue.');
   }
   return prisma.$transaction(async (tx) => {
     const user = await loadUser(tx, userId);
     alvoUnlock(user);
-    const fresh = JSON.stringify({ results: [], servedAt: null });
+    const fresh = JSON.stringify({ pieces: layoutFor(userId, day), shots: [] });
     await tx.$executeRaw`
       INSERT INTO "DailyGame" ("userId", game, day, state, won, "createdAt", "updatedAt")
       VALUES (${userId}, 'ALVO', ${day}, ${fresh}::jsonb, false, now(), now())
@@ -570,51 +561,42 @@ async function withAlvo(userId, clientDay, fn) {
     const [row] = await tx.$queryRaw`
       SELECT id, state, won, reward, "finishedAt" FROM "DailyGame"
        WHERE "userId" = ${userId} AND game = 'ALVO' AND day = ${day} FOR UPDATE`;
-    const st = { results: [...(row.state.results ?? [])], servedAt: row.state.servedAt ?? null };
-    const expired = !row.finishedAt && st.servedAt && now.getTime() - st.servedAt > ALVO.windowMs + ALVO.toleranceMs;
-    const extra = await fn({ st, row, day, now, expired, user });
-    if (expired && !extra?.handledTimeout) { st.results.push({ hit: false }); st.servedAt = null; }
+    const st = { pieces: row.state.pieces ?? layoutFor(userId, day), shots: [...(row.state.shots ?? [])] };
+    const extra = await fn({ st, row, day, now, user });
+    if (!extra) return { state: alvoView(day, row, now) }; // só leitura: nada a salvar
     let reward = row.reward ?? null;
     let finishedAt = row.finishedAt;
-    if (!finishedAt && st.results.length >= ALVO.targets) {
-      const hits = st.results.filter((a) => a.hit).length;
-      const levelPoints = hits * ALVO.pointsPerHit;
-      reward = { goal: false, levelPoints, hits, total: ALVO.targets, text: null };
-      if (hits >= ALVO.goalAt) {
+    const sum = summarize(st.pieces, st.shots);
+    if (!finishedAt && sum.finished) {
+      const { goal, levelPoints } = rewardFor(sum.hits, sum.allSunk);
+      reward = { goal: false, levelPoints, hits: sum.hits, occupied: sum.occupied, sunkCount: sum.sunkCount, allSunk: sum.allSunk, text: null };
+      if (goal) {
         const match = await liveMatchForTeam(user.teamId, tx);
-        const { text } = await applyResult(tx, user, { kind: 'ALVO', goal: true, now, match, money: 0, phrase: `acertou ${hits} de ${ALVO.targets} alvos no gol` });
+        const phrase = sum.allSunk ? 'derrubou goleiro, zagueiros e cones no Alvo no Gol' : `acertou ${sum.hits} de ${sum.occupied} casas no Alvo no Gol`;
+        const { text } = await applyResult(tx, user, { kind: 'ALVO', goal: true, now, match, money: 0, phrase });
         Object.assign(reward, { goal: true, text });
       }
       if (levelPoints) await tx.user.update({ where: { id: userId }, data: { levelBonus: { increment: levelPoints } } });
       finishedAt = now;
     }
     const saved = await tx.dailyGame.update({ where: { id: row.id }, data: { state: st, won: !!reward?.goal, reward: reward ?? undefined, finishedAt } });
-    const { handledTimeout, ...out } = extra ?? {};
-    return { ...out, state: alvoView(userId, day, saved, now) };
+    return { ...extra, state: alvoView(day, saved, now) };
   });
 }
 
-export function alvoState(userId) { return withAlvo(userId, undefined, async () => ({})); }
+export function alvoState(userId) { return withAlvo(userId, undefined, async () => null); }
 
-/** Acende o próximo alvo (idempotente enquanto ele estiver aceso). Alvo que apagou sem toque = erro. */
-export function alvoNext(userId, clientDay) {
-  return withAlvo(userId, clientDay, async ({ st, row, expired, now }) => {
-    if (row.finishedAt) return {};
-    if (expired) { st.results.push({ hit: false }); st.servedAt = null; }
-    if (!st.servedAt && st.results.length < ALVO.targets) st.servedAt = now.getTime();
-    return { handledTimeout: true };
-  });
-}
-
-/** Toque no alvo da vez: dentro da janela = acerto; fora = erro. */
-export function alvoHit(userId, index, clientDay) {
-  return withAlvo(userId, clientDay, async ({ st, row, expired, now }) => {
+/** Chuta numa casa da grade. Resposta: { hit, sunk (peça que caiu, com as casas) | null, state }. */
+export function alvoShot(userId, index, clientDay) {
+  return withAlvo(userId, clientDay, async ({ st, row }) => {
     if (row.finishedAt) throw new GameError(409, 'finished', 'Você já jogou o Alvo no Gol de hoje. Volte amanhã!');
-    if (!Number.isInteger(index) || index !== st.results.length) throw new GameError(409, 'out-of-sync', 'Esse alvo já apagou.');
-    if (!st.servedAt) throw new GameError(409, 'not-served', 'Espere o alvo acender.');
-    const hit = !expired && now.getTime() - st.servedAt <= ALVO.windowMs + ALVO.toleranceMs;
-    st.results.push({ hit, ms: now.getTime() - st.servedAt });
-    st.servedAt = null;
-    return { hit, handledTimeout: true };
+    let res;
+    try { res = applyShot(st.pieces, st.shots, index); } catch (e) {
+      if (e.code === 'repeated') throw new GameError(409, 'repeated', e.message);
+      throw badRequest(e.message);
+    }
+    st.shots.push(index);
+    const piece = res.sunk ? st.pieces[res.piece] : null;
+    return { hit: res.hit, sunk: piece ? { id: res.piece, kind: piece.kind, name: piece.name, size: piece.size, cells: piece.cells } : null };
   });
 }

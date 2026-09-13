@@ -189,11 +189,17 @@ export interface ShopView {
 
 // ─── Captcha dos chutes manuais ─────────────────────────────────────────────
 export interface CaptchaPayload { captchaId: string; answer: string }
+// ─── Alvo no Gol (batalha naval no gol) ─────────────────────────────────────
+export type AlvoKind = 'goleiro' | 'zagueiro' | 'cone';
+/** `cells` só vem quando a peça caiu (ou no fim, para revelar o gol). */
+export interface AlvoPiece { id: number; kind: AlvoKind; name: string; size: number; sunk: boolean; cells: number[] | null }
+export interface AlvoShot { index: number; hit: boolean; piece: number | null }
+export interface AlvoReward { goal: boolean; levelPoints: number; hits: number; occupied: number; sunkCount: number; allSunk: boolean; text: string | null }
 export interface AlvoState {
-  day: number; total: number; index: number; results: { hit: boolean; ms?: number }[];
-  current: { index: number; x: number; y: number; servedAt: number; deadline: number } | null;
-  finished: boolean; hits: number; reward: { goal: boolean; levelPoints: number; hits: number; total: number; text: string | null } | null;
-  windowMs: number; pointsPerHit: number; goalAt: number; nextAt: number; serverTime: number;
+  day: number; cols: number; rows: number; maxShots: number; shotsLeft: number;
+  shots: AlvoShot[]; pieces: AlvoPiece[];
+  hits: number; occupied: number; sunkCount: number; finished: boolean; reward: AlvoReward | null;
+  pointsPerHit: number; sinkAllPoints: number; goalAt: number; nextAt: number; serverTime: number;
 }
 
 // ─── Estatísticas ("quem tem mais?") ───────────────────────────────────────

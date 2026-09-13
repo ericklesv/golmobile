@@ -197,7 +197,7 @@ export const MINIGAMES = [
   { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: 'gol + até 30 de nível' },
   { id: 'STATS', name: 'Estatísticas', unlock: 3, daily: true, route: '/estatisticas', icon: '/ui/ico-ranking.png', desc: 'Quem tem mais? Acertou, segue; errou, acaba. 5 seguidos é gol.', reward: 'gol + até 30 de nível' },
   { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Estádio, apelido ou ídolo: qual é o time? 8 rodadas, 10 s cada.', reward: 'gol + até 32 de nível' },
-  { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: '10 alvos acendem no gol, 1,5 s cada. Toque rápido!', reward: 'gol + até 30 de nível' },
+  { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 14 chutes para derrubar todos.', reward: 'gol + até 30 de nível' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'EMBAIXADINHAS', name: 'Embaixadinhas', unlock: 12, daily: true, route: '/embaixadinhas', icon: '/ui/ico-energy.png', desc: 'Toque no ritmo e não deixe a bola cair.', reward: 'gol + nível', soon: true },
   { id: 'CABECAO', name: 'Cabeção', unlock: 0, daily: false, route: '/cabecao', icon: '/ui/ico-member.png', desc: 'Head soccer 1x1 ao vivo contra outro craque. Vencedor marca 1 gol.', reward: 'gol' },
@@ -213,9 +213,23 @@ KIND_LABEL.MEMORIA = 'Memória dos Escudos';
 export const QUALTIME = { questions: 8, seconds: 10, pointsPerHit: 4, goalAt: 6, toleranceMs: 2500 };
 DAILY_GAMES.push('QUALTIME');
 KIND_LABEL.QUALTIME = 'De que time é?';
-// Alvo no Gol: vira à meia-noite. 10 alvos acendem um a um (posição sorteada), cada um fica
-// aceso 1,5 s (relógio no servidor). +3 de nível por acerto (até +30); 7 acertos = 1 gol.
-export const ALVO = { targets: 10, windowMs: 1500, pointsPerHit: 3, goalAt: 7, toleranceMs: 400 };
+// Alvo no Gol (batalha naval no gol): vira à meia-noite. O gol é uma grade de 6 x 4 casas; o
+// servidor esconde, por jogador/dia (sha256 userId:day), 1 goleiro (3 casas), 2 zagueiros (2) e
+// 3 cones (1) = 10 casas ocupadas, sem sobreposição. O jogador tem 14 chutes; cada chute revela
+// vazio / acertou / derrubou (todas as casas da peça). Acaba quando os chutes terminam ou tudo
+// caiu. Recompensa (nunca mais de 1 gol):
+//   derrubou tudo (10/10)  -> 1 gol + 30 de nível
+//   8 ou 9 casas acertadas -> 1 gol + 2 por casa (16-18)
+//   menos de 8             -> só 2 por casa acertada, sem gol
+export const ALVO = {
+  cols: 6, rows: 4, shots: 14,
+  pieces: [
+    { kind: 'goleiro', name: 'Goleiro', size: 3 },
+    { kind: 'zagueiro', name: 'Zagueiro', size: 2 }, { kind: 'zagueiro', name: 'Zagueiro', size: 2 },
+    { kind: 'cone', name: 'Cone', size: 1 }, { kind: 'cone', name: 'Cone', size: 1 }, { kind: 'cone', name: 'Cone', size: 1 },
+  ],
+  pointsPerHit: 2, sinkAllPoints: 30, goalAt: 8,
+};
 DAILY_GAMES.push('ALVO');
 KIND_LABEL.ALVO = 'Alvo no Gol';
 // Estatísticas: "quem tem mais X?" entre dois jogadores do Brasileirão 2024 (dados reais da

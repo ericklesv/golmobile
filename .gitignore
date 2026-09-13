@@ -11,3 +11,4 @@ Thumbs.db
 .firebase/
 legacy-expo/node_modules/
 api/uploads/
+.claude/

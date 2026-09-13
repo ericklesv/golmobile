@@ -10,6 +10,8 @@ export function Debug3DScreen() {
   const view = q.get('view') ?? 'penalty';
   const pose = (q.get('pose') ?? 'idle') as KeeperPose;
   const flip = q.get('flip') === '1';
+  // ?bones=LeftArm:0,-60,30;RightArm:0,60,-30 → pose customizada (graus) para iterar sem redeploy
+  const custom = q.get('bones') ? Object.fromEntries(q.get('bones')!.split(';').map((t) => { const [b, v] = t.split(':'); return [b, v.split(',').map(Number) as [number, number, number]]; })) : undefined;
   const cams: Record<string, { pos: [number, number, number]; look: [number, number, number]; fov: number }> = {
     penalty: { pos: [0, 1.6, 15], look: [0, 1.2, 0], fov: 48 },
     foul: { pos: [3.5, 2.2, 25], look: [0, 1.2, 4], fov: 50 },
@@ -26,7 +28,7 @@ export function Debug3DScreen() {
           <StadiumModel />
           <GoalModel />
           <group position={[0, 0.21, 11]}><BallModel /></group>
-          <KeeperModel color="#f2c200" pose={pose} flip={flip} position={[0, 0, 0.4]} />
+          <KeeperModel color="#f2c200" pose={pose} flip={flip} position={[0, 0, 0.4]} custom={custom} />
           <KeeperModel color="#c3131a" pose="wall" position={[-1.2, 0, 10.5]} seed={1} />
           <KeeperModel color="#c3131a" pose="wall" position={[-0.4, 0, 10.5]} seed={2} />
           <gridHelper args={[40, 40]} position={[0, 0.02, 20]} />

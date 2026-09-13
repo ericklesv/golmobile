@@ -36,9 +36,9 @@ const POSES: Record<KeeperPose, Pose> = Object.fromEntries(Object.entries(POSES_
 
 const BONES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightShoulder', 'RightArm', 'RightForeArm', 'RightHand', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightUpLeg', 'RightLeg', 'RightFoot'];
 
-interface Props { color?: string; pose?: KeeperPose; flip?: boolean; position?: [number, number, number]; rotation?: [number, number, number]; scale?: number; speed?: number; seed?: number }
+interface Props { color?: string; pose?: KeeperPose; flip?: boolean; position?: [number, number, number]; rotation?: [number, number, number]; scale?: number; speed?: number; seed?: number; custom?: Record<string, Rot> }
 
-export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel({ color = '#f2c200', pose = 'idle', flip = false, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, speed = 6, seed = 0 }, ref) {
+export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel({ color = '#f2c200', pose = 'idle', flip = false, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, speed = 6, seed = 0, custom }, ref) {
   const { scene } = useGLTF('/3d/keeper.glb');
   const obj = useMemo(() => {
     const s = SkeletonUtils.clone(scene) as THREE.Group;
@@ -63,7 +63,7 @@ export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel(
   target.current = pose;
 
   useFrame(({ clock }, dt) => {
-    const P = POSES[target.current];
+    const P = custom ? { bones: Object.fromEntries(Object.entries(custom).map(([b, r]) => [b, r.map((v) => v * D) as Rot])), root: { rot: [0, 0, 0] as Rot, pos: [0, 0, 0] as [number, number, number] } } : POSES[target.current];
     const k = 1 - Math.exp(-speed * dt);
     const t = clock.getElapsedTime() + seed;
     const breathing = target.current === 'idle' || target.current === 'wall';

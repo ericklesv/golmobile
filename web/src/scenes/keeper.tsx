@@ -118,8 +118,8 @@ const CLIPS_DEG: Partial<Record<KeeperPose, FrameDeg[]>> = {
   dive: [
     { t: 0.0, bones: B_READY },
     { t: 0.16, ease: 'out', bones: B_LOAD, root: { rot: [0, 0, -8], pos: [0.12, -0.24, 0] } },
-    { t: 0.36, ease: 'out', bones: B_FLIGHT, root: { rot: [0, 0, -52], pos: [0.8, 0.82, 0] } },
-    { t: 0.56, ease: 'lin', bones: B_EXTEND, root: { rot: [0, 0, -84], pos: [1.4, 0.52, 0] } },
+    { t: 0.36, ease: 'out', bones: B_FLIGHT, root: { rot: [0, 0, -52], pos: [0.8, 0.9, 0] } },
+    { t: 0.56, ease: 'lin', bones: B_EXTEND, root: { rot: [0, 0, -84], pos: [1.4, 0.58, 0] } },
     { t: 0.74, ease: 'in', bones: B_LAND, root: { rot: [0, 0, -96], pos: [1.65, 0.16, 0] } },
     { t: 1.0, ease: 'out', bones: B_LAND, root: { rot: [0, 0, -98], pos: [1.78, 0.14, 0] } },
   ],
@@ -227,7 +227,13 @@ export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel(
   const q = useMemo(() => new THREE.Quaternion(), []);
   const e = useMemo(() => new THREE.Euler(), []);
   const v = useMemo(() => new THREE.Vector3(), []);
-  const setPose = (p: KeeperPose) => { if (target.current !== p) { target.current = p; startedAt.current = performance.now(); } };
+  const jumpK = useRef(1); // variação de altura do mergulho (cada salto sai diferente)
+  const setPose = (p: KeeperPose) => {
+    if (target.current === p) return;
+    target.current = p;
+    startedAt.current = performance.now();
+    jumpK.current = (p === 'dive' || p === 'save_low') && sampleAt === undefined ? 1 + Math.random() * 0.45 : 1;
+  };
   useImperativeHandle(ref, () => ({ pose: setPose }), []);
   // só o prop MUDANDO troca a pose (re-render não pode desfazer um pose() via ref)
   if (prevProp.current !== pose) { prevProp.current = pose; setPose(pose); }
@@ -238,7 +244,10 @@ export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel(
     let rootRot: Rot; let rootPos: V3;
     if (clip) {
       const s = sampleClip(clip, sampleAt ?? (performance.now() - startedAt.current) / 1000);
-      boneAt = s.bones; rootRot = s.root.rot; rootPos = s.root.pos;
+      boneAt = s.bones; rootRot = s.root.rot;
+      // salto com altura variável: escala só o que passa de 0,2 m (aterrissagem/deitado não flutua)
+      const y = s.root.pos[1];
+      rootPos = [s.root.pos[0], y > 0.2 ? 0.2 + (y - 0.2) * jumpK.current : y, s.root.pos[2]];
     } else {
       const P = custom
         ? { bones: Object.fromEntries(Object.entries(custom).map(([b, r]) => [b, toRad(r)])), root: { rot: [0, 0, 0] as Rot, pos: [0, 0, 0] as V3 } }

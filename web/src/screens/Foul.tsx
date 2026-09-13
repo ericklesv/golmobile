@@ -82,7 +82,7 @@ function Scene({ shot, keeperColor, wallColor, gkKit, wallKit }: { shot: Shot | 
         }
       }
       if (shot.outcome === 'wall') { b.position.z = tgt.z + 5 * q; b.position.y = 0.21 + Math.sin(q * Math.PI) * 1.4; }
-      if (shot.outcome === 'keeper') { b.position.x = k.position.x * 0.8; b.position.y = 1.0; }
+      if (shot.outcome === 'keeper') { b.position.x = tgt.x * 0.6; b.position.y = shot.dir === 'over' ? 1.6 : 0.45; b.position.z = 0.6; }
       if (shot.outcome === 'out') { b.position.z = tgt.z - 4 * q; b.position.y = tgt.y + 1.5 * q; }
     }
     const jump = shot.dir === 'over' ? Math.sin(clamp01((e - 0.15) / 0.5) * Math.PI) * 0.5 : 0;
@@ -95,7 +95,9 @@ function Scene({ shot, keeperColor, wallColor, gkKit, wallKit }: { shot: Shot | 
     camera.lookAt(tgt.x * 0.5, 1.5, 2);
   });
 
-  const keeperFlip = shot ? (shot.outcome === 'goal' ? shot.dir === 'left' : shot.dir === 'right') : false;
+  // defesa: mergulha PARA o lado da bola; gol: mergulha para o canto ERRADO
+  // (flip espelha o clipe, que salta para +x; dir 'left' = bola em x negativo)
+  const keeperFlip = shot ? (shot.outcome === 'goal' ? shot.dir === 'right' : shot.dir === 'left') : false;
   return (
     <>
       <SceneLights />

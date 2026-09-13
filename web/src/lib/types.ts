@@ -140,3 +140,7 @@ export interface TeamPage {
 }
 
 export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: number; avatarUrl: string | null; lastSeenAt: string; online: boolean; vip: boolean; team: Team | null }
+
+export type ChatRoom = 'geral' | 'time';
+export interface ChatMessage { id: number; text: string; color: string | null; at: string; user: { id: number; nick: string; avatarUrl: string | null; level: number; levelName: string; vip: boolean; nickColor: string | null; team: Team | null } }
+export interface ChatPage { room: string; messages: ChatMessage[]; online: number; colorLevel: number; colors: string[]; canColor: boolean }

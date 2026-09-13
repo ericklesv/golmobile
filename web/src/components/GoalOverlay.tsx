@@ -35,7 +35,7 @@ export function GoalOverlay({ open, goal, title, text, money = 0, levelPoints = 
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}
-          className="fixed inset-0 z-[90] flex items-center justify-center overflow-hidden bg-navy-deep/80 backdrop-blur-[2px]">
+          className="fixed inset-y-0 left-1/2 z-[90] flex w-full max-w-[480px] -translate-x-1/2 items-center justify-center overflow-hidden bg-navy-deep/80 backdrop-blur-[2px]">
           {goal && <img src="/ui/screen-glow.png" alt="" className="pointer-events-none absolute left-1/2 top-1/2 w-[130%] max-w-none -translate-x-1/2 -translate-y-1/2 opacity-70 animate-spinSlow" />}
           {goal && confetti.map((c, i) => (
             <motion.span key={i} initial={{ y: -40, x: `${c.x}vw`, rotate: 0, opacity: 1 }} animate={{ y: '110vh', rotate: c.rot, opacity: [1, 1, 0.6] }}

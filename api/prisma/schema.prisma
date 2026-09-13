@@ -104,6 +104,7 @@ model User {
   records     Record[]
   hourWins    HourResult[]
   dailyGames  DailyGame[]
+  chatMessages ChatMessage[]
 
   @@index([teamId])
   @@index([goalsTotal])
@@ -304,4 +305,17 @@ model Nerf {
   createdAt  DateTime @default(now())
 
   @@index([toUserId])
+}
+
+// Chat: salas "geral" e "time:<slug>". Cor da mensagem = habilidade do nível 8.
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  room      String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  text      String
+  color     String?
+  createdAt DateTime @default(now())
+
+  @@index([room, id])
 }

@@ -1,4 +1,4 @@
-import type { ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
+import type { ChatMessage, ChatPage, ChatRoom, ActivePlayer, DailyStatus, Home, KickResult, League, Me, Meta, PartyResult, PublicPlayer, QuizState, TeamPage, TermoReward, TermoState, TopRow, TrailResult } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -67,6 +67,8 @@ export const api = {
   titles: () => req<any[]>('GET', '/api/league/titles'),
   team: (slug: string) => req<TeamPage>('GET', `/api/teams/${slug}`),
   player: (nick: string) => req<PublicPlayer>('GET', `/api/players/${encodeURIComponent(nick)}`),
+  chat: (room: ChatRoom, after = 0) => req<ChatPage>('GET', `/api/chat/${room}${after ? `?after=${after}` : ''}`),
+  chatSend: (room: ChatRoom, text: string, color?: string) => req<ChatMessage>('POST', `/api/chat/${room}`, { text, color }),
   activePlayers: () => req<ActivePlayer[]>('GET', '/api/players/active'),
   uploadAvatar: async (file: File) => {
     const fd = new FormData(); fd.append('avatar', file);

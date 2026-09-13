@@ -5,6 +5,7 @@ import { Avatar } from './Avatar';
 import { money } from '../lib/format';
 import { useEffect } from 'react';
 import { api } from '../lib/api';
+import { ChatFab } from './ChatFab';
 
 const tabs = [
   { to: '/', label: 'Jogar', icon: '/ui/pi-home.png', end: true },
@@ -65,6 +66,7 @@ export function Layout() {
       <main className="relative flex-1 px-3 pb-28 pt-3">
         <Outlet />
       </main>
+      <ChatFab />
 
       {/* Barra de abas */}
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] bg-navy-deep/90 px-1 pt-1 backdrop-blur" style={{ paddingBottom: 'calc(var(--sab) + 4px)' }}>

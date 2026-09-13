@@ -25,7 +25,7 @@ export function ToastHost() {
   const items = useToast((s) => s.items);
   const remove = useToast((s) => s.remove);
   return (
-    <div className="pointer-events-none fixed inset-x-0 z-[100] flex flex-col items-center gap-2 px-4" style={{ top: 'calc(var(--sat) + 10px)' }}>
+    <div className="pointer-events-none fixed left-1/2 z-[100] flex w-full max-w-[480px] -translate-x-1/2 flex-col items-center gap-2 px-4" style={{ top: 'calc(var(--sat) + 10px)' }}>
       <AnimatePresence>
         {items.map((t) => (
           <motion.button key={t.id} initial={{ opacity: 0, y: -16, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} onClick={() => remove(t.id)}

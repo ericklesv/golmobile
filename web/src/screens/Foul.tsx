@@ -19,6 +19,8 @@ interface Shot { dir: Dir; outcome: Outcome; t0: number }
 
 const START = new THREE.Vector3(1.5, 0.21, 20);
 const WALL_Z = 10.5;
+const GK_KIT = { primary: '#f2c200', secondary: '#14335F', gloves: '#e8e8e8' }; // uniforme clássico de goleiro
+const WALL_KIT = { primary: '#c3131a', secondary: '#F4F7FB' }; // barreira = adversário
 
 function targetFor(dir: Dir, outcome: Outcome): THREE.Vector3 {
   if (outcome === 'wall') return new THREE.Vector3(dir === 'left' ? -1.2 : dir === 'right' ? 1.0 : 0, 1.4, WALL_Z);
@@ -84,9 +86,9 @@ function Scene({ shot, keeperColor, wallColor }: { shot: Shot | null; keeperColo
       <SceneLights />
       <StadiumModel />
       <GoalModel />
-      <group ref={keeper} position={[0, 0, 0.5]}><KeeperModel ref={kh} color={keeperColor} flip={keeperFlip} speed={7} /></group>
+      <group ref={keeper} position={[0, 0, 0.5]}><KeeperModel ref={kh} color={keeperColor} kit={GK_KIT} flip={keeperFlip} speed={7} /></group>
       <group ref={wall} position={[0, 0, WALL_Z]}>
-        {[-1.2, -0.4, 0.4, 1.2].map((x, i) => <KeeperModel key={x} color={wallColor} pose="wall" position={[x, 0, 0]} seed={i * 1.7} />)}
+        {[-1.2, -0.4, 0.4, 1.2].map((x, i) => <KeeperModel key={x} color={wallColor} kit={WALL_KIT} pose="wall" position={[x, 0, 0]} seed={i * 1.7} />)}
       </group>
       <group ref={ball}><BallModel /></group>
     </>

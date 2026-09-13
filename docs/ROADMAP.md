@@ -30,8 +30,10 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
 8. **Desafio 1x1** com aposta (dinheiro/VIP), modo hora atual, ELO.
 9. Mensagens privadas, amigos, chat do time; "à frente/atrás" no ranking geral no perfil.
 10. Limpeza pré-lançamento: apagar contas de teste `craque_g88qn` / `craque_warvl` e zerar temporada.
-Pendências pequenas: cabelo nos jogadores 3D; strip das animações não usadas do `keeper.glb`;
-empate por diferença < 5 % nas copas.
+Pendências pequenas: cabelo nos jogadores 3D; empate por diferença < 5 % nas copas.
+Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em runtime:
+`kit-mask.png` + `kit-ao.png` + cores em `keeper.tsx` — pele, chuteira, luva do goleiro);
+`keeper.glb` reconstruído com UVs e sem as animações não usadas (84 KB).
 
 ## Fase 1 — Núcleo 1:1 em produção (jogagol.com.br)
 - [x] API Node/Express/Prisma/Postgres na VPS do Managol (porta 4100, PM2 `brgol-api`)
@@ -67,7 +69,9 @@ empate por diferença < 5 % nas copas.
 - [ ] Copa do Brasil (mata-mata), Copa BRGOL (inscrição paga), Estaduais, Amistosos
 - [ ] Títulos/histórico de temporadas com página própria; Bola Prateada/Dourada
 - [ ] Avatar de corpo inteiro com uniforme do time (o pack Soccer Players Uniforms tem 430 uniformes/1650 skins texturizados), foto de perfil
-- [ ] Uniformes reais nas cenas 3D (goleiro/barreira com camisa do adversário) e cabelo
+- [x] Uniformes reais nas cenas 3D (13/09/2026: textura composta em runtime com cores de kit
+  livres — goleiro amarelo com luvas, barreira vermelha; falta usar as cores do time
+  adversário de verdade e cabelo)
 - [ ] Som de alerta (lvl 2) — mensagens coloridas (lvl 8) já estão no chat
 
 ## Fase 3 — Novidades (inspiradas no revival brgol.online)

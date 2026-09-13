@@ -49,7 +49,7 @@ export function BallModel({ spin = 0 }: { spin?: number }) {
   return <group ref={ref} scale={2}><primitive object={obj} /></group>;
 }
 
-export { KeeperModel, type KeeperHandle, type KeeperPose } from './keeper';
+export { KeeperModel, type KeeperHandle, type KeeperPose, type KitColors } from './keeper';
 
 export function SceneLights() {
   return (

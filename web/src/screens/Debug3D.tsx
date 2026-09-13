@@ -29,9 +29,9 @@ export function Debug3DScreen() {
           <StadiumModel />
           <GoalModel />
           <group position={[0, 0.21, 11]}><BallModel /></group>
-          <KeeperModel color="#f2c200" pose={pose} flip={flip} position={[0, 0, 0.4]} custom={custom} sampleAt={at} />
-          <KeeperModel color="#c3131a" pose="wall" position={[-1.2, 0, 10.5]} seed={1} />
-          <KeeperModel color="#c3131a" pose="wall" position={[-0.4, 0, 10.5]} seed={2} />
+          <KeeperModel color="#f2c200" kit={{ primary: '#f2c200', secondary: '#14335F', gloves: '#e8e8e8' }} pose={pose} flip={flip} position={[0, 0, 0.4]} custom={custom} sampleAt={at} />
+          <KeeperModel color="#c3131a" kit={{ primary: '#c3131a', secondary: '#F4F7FB' }} pose="wall" position={[-1.2, 0, 10.5]} seed={1} />
+          <KeeperModel color="#c3131a" kit={{ primary: '#c3131a', secondary: '#F4F7FB' }} pose="wall" position={[-0.4, 0, 10.5]} seed={2} />
           <gridHelper args={[40, 40]} position={[0, 0.02, 20]} />
           <axesHelper args={[5]} />
         </Suspense>

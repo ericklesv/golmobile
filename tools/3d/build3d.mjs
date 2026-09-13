@@ -75,43 +75,34 @@ async function optimize(doc, maxSize = 1024) {
   console.log('ball.glb ok');
 }
 
-// ── goleiro + animações ────────────────────────────────────────────────────
+// ── goleiro ────────────────────────────────────────────────────────────────
+// Sem animações do pack: as poses são procedurais (web/src/scenes/keeper.tsx).
+// UVs preservados (keepAttributes) para a textura do uniforme composta em runtime.
 {
   const gk = await rd('gk_mesh');
-  const root = gk.getRoot();
-  const nodeByName = new Map(root.listNodes().map((n) => [n.getName(), n]));
-  const anims = [
-    ['anim_goalkeeper_idle_normal', 'idle'],
-    ['anim_goalkeeper_diving_save', 'dive'],
-    ['anim_gkjump', 'jump'],
-    ['anim_gkmiss', 'miss'],
-    ['anim_gk_ballsave_low', 'save_low'],
-  ];
-  for (const [file, name] of anims) {
-    const src = await rd(file);
-    const srcAnim = src.getRoot().listAnimations()[0];
-    const anim = gk.createAnimation(name);
-    let kept = 0, dropped = 0;
-    for (const ch of srcAnim.listChannels()) {
-      const tgt = nodeByName.get(ch.getTargetNode()?.getName());
-      if (!tgt) { dropped++; continue; }
-      // só rotações (mantém o comprimento dos ossos da malha); translação apenas no quadril
-      if (ch.getTargetPath() === 'translation' && tgt.getName() !== 'Hips') { dropped++; continue; }
-      if (ch.getTargetPath() === 'scale') { dropped++; continue; }
-      const s = ch.getSampler();
-      const input = s.getInput(), output = s.getOutput();
-      const inAcc = gk.createAccessor().setType(input.getType()).setArray(input.getArray().slice());
-      const outAcc = gk.createAccessor().setType(output.getType()).setArray(output.getArray().slice());
-      const sampler = gk.createAnimationSampler().setInput(inAcc).setOutput(outAcc).setInterpolation(s.getInterpolation());
-      const channel = gk.createAnimationChannel().setTargetNode(tgt).setTargetPath(ch.getTargetPath()).setSampler(sampler);
-      anim.addSampler(sampler).addChannel(channel);
-      kept++;
-    }
-    console.log(`  ${name}: ${kept} canais (${dropped} descartados)`);
-  }
-  // material único: cor definida em runtime (uniforme do goleiro)
-  for (const m of root.listMaterials()) m.setName('kit').setBaseColorFactor([0.9, 0.9, 0.9, 1]).setRoughnessFactor(0.9).setMetallicFactor(0);
-  await gk.transform(unpartition(), dedup(), prune(), resample(), quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12 }));
+  for (const m of gk.getRoot().listMaterials()) m.setName('kit').setBaseColorFactor([1, 1, 1, 1]).setRoughnessFactor(0.9).setMetallicFactor(0);
+  await gk.transform(unpartition(), dedup(), prune({ keepAttributes: true }), quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12 }));
   await io.write(`${OUT}/keeper.glb`, gk);
-  console.log('keeper.glb ok');
+  console.log('keeper.glb ok (UVs preservados, sem animações)');
+}
+
+// ── uniforme (máscara + AO para compor a textura em runtime) ───────────────
+// TEX_KIT = pasta PlayerModel/Textures do Football Simulator. Regiões extras
+// pintadas na máscara (descobertas pelos pesos dos ossos LeftFoot/RightFoot e
+// Left/RightHand): verde = chuteira, magenta = luva. O runtime (keeper.tsx)
+// troca azul→cor primária, vermelho→secundária, verde→chuteira, magenta→luva,
+// cinza→cabelo, preto→pele, e multiplica pelo AO.
+const TEX_KIT = process.argv[6];
+if (TEX_KIT) {
+  const rect = (x0, y0, x1, y1, color) => ({
+    input: { create: { width: x1 - x0, height: y1 - y0, channels: 4, background: color } }, left: x0, top: y0,
+  });
+  await sharp(`${TEX_KIT}/KitSchemas/KitMask4.png`).resize(512, 512, { kernel: 'nearest' })
+    .composite([
+      rect(12, 123, 44, 198, '#00ff00'), rect(399, 466, 476, 477, '#00ff00'), // chuteiras
+      rect(269, 404, 316, 467, '#ff00ff'), // luvas
+    ])
+    .png({ palette: true, colors: 16 }).toFile(`${OUT}/kit-mask.png`);
+  await sharp(`${TEX_KIT}/PlayerAO.png`).resize(512, 512).grayscale().png({ compressionLevel: 9 }).toFile(`${OUT}/kit-ao.png`);
+  console.log('kit-mask.png + kit-ao.png ok');
 }

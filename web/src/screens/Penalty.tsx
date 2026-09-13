@@ -16,6 +16,7 @@ import { StadiumModel, GoalModel, BallModel, KeeperModel, SceneLights, preloadMo
 type Dir = 'left' | 'center' | 'right';
 interface Shot { dir: Dir; keeperDir: Dir; goal: boolean; t0: number }
 const X: Record<Dir, number> = { left: -2.7, center: 0, right: 2.7 };
+const GK_KIT = { primary: '#f2c200', secondary: '#14335F', gloves: '#e8e8e8' }; // uniforme clássico de goleiro
 
 function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }) {
   const ball = useRef<THREE.Group>(null);
@@ -69,7 +70,7 @@ function Scene({ shot, keeperColor }: { shot: Shot | null; keeperColor: string }
       <StadiumModel />
       <GoalModel />
       <group ref={keeper} position={[0, 0, 0.5]}>
-        <KeeperModel ref={kh} color={keeperColor} flip={shot?.keeperDir === 'left'} speed={7} />
+        <KeeperModel ref={kh} color={keeperColor} kit={GK_KIT} flip={shot?.keeperDir === 'left'} speed={7} />
       </group>
       <group ref={ball}><BallModel /></group>
     </>

@@ -11,12 +11,18 @@ npm i fbx2gltf@0.9.7-p1 @gltf-transform/{core,extensions,functions,cli}@4.5.0 sh
 node extrair-unitypackage.mjs "<pacote>.unitypackage" <saida> fbx,png,jpg,tga,mat,prefab
 # copiar as texturas para a pasta do .fbx e converter:
 FBX2glTF.exe -i modelo.fbx -o out/modelo.glb -b
-node build3d.mjs <out> <pasta st_080 com pngs> <goalNet2.png> ../../web/public/3d
+node build3d.mjs <out> <pasta st_080 com pngs> <goalNet2.png> ../../web/public/3d <PlayerModel/Textures>
 ```
 Notas:
 - FBX2glTF descarta texturas no slot *TransparentColor* e exporta `baseColorFactor` preto
   em materiais só-textura — o `build3d.mjs` religa as texturas pelo nome do material e força branco.
 - As animações do Football Simulator não batem com o rig da malha (ficam deformadas);
-  o goleiro é animado por poses procedurais em `web/src/scenes/keeper.tsx`.
+  o goleiro é animado por poses procedurais em `web/src/scenes/keeper.tsx`. O `keeper.glb`
+  vai **sem** animações e **com UVs** (`prune({keepAttributes:true})` — sem isso o prune
+  apaga o TEXCOORD_0 e a textura do uniforme não pega).
+- Uniforme: o jogo compõe a textura em runtime (`kit-mask.png` + `kit-ao.png` + cores do
+  kit, em `keeper.tsx`). A máscara é a KitMask4 do pack com regiões extras pintadas pelo
+  build3d.mjs: verde = chuteira, magenta = luva (coordenadas achadas pelos pesos dos ossos
+  dos pés/mãos). Azul = cor primária, vermelho = secundária, cinza = cabelo, preto = pele.
 - Sistema de coordenadas no jogo: linha do gol em z=0, campo cresce em +z, metros.
   Estádio: escala 100, posição z=55. Trave: rotação Y 90°, z=-1. Bola: raio 0,21 (2x real).

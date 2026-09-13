@@ -12,11 +12,65 @@
  *    agachamento de impulso → salto em ARCO parabólico → extensão → queda no chão,
  *    como um goleiro de verdade. Lado "positivo" do mergulho = +x (flip espelha).
  */
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { SkeletonUtils } from 'three-stdlib';
+
+// ---------- Uniforme de verdade: máscara do kit + AO + cores num canvas ----------
+// kit-mask.png (do pack, com regiões extras pintadas no build — tools/3d/build3d.mjs):
+// azul = cor primária, vermelho = secundária, verde = chuteira, magenta = luva,
+// cinza = cabelo, preto = pele. kit-ao.png dá o sombreamento (dobras, rosto).
+export interface KitColors { primary: string; secondary: string; skin?: string; hair?: string; boots?: string; gloves?: string }
+
+const kitCache = new Map<string, THREE.CanvasTexture>();
+let kitImages: Promise<[HTMLImageElement, HTMLImageElement]> | null = null;
+const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+const hexRgb = (hex: string): [number, number, number] => { const n = parseInt(hex.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+export const kitKeyOf = (kit?: KitColors | null) => kit ? `${kit.primary}|${kit.secondary}|${kit.skin ?? ''}|${kit.hair ?? ''}|${kit.boots ?? ''}|${kit.gloves ?? ''}` : '';
+
+async function kitTexture(kit: KitColors): Promise<THREE.CanvasTexture> {
+  const key = kitKeyOf(kit);
+  const hit = kitCache.get(key);
+  if (hit) return hit;
+  kitImages ??= Promise.all([loadImg('/3d/kit-mask.png'), loadImg('/3d/kit-ao.png')]);
+  const [mask, ao] = await kitImages;
+  const S = 512;
+  const c = document.createElement('canvas'); c.width = S; c.height = S;
+  const g = c.getContext('2d', { willReadFrequently: true })!;
+  g.drawImage(mask, 0, 0, S, S);
+  const md = g.getImageData(0, 0, S, S).data;
+  g.drawImage(ao, 0, 0, S, S);
+  const ad = g.getImageData(0, 0, S, S).data;
+  const prim = hexRgb(kit.primary), sec = hexRgb(kit.secondary);
+  const skin = hexRgb(kit.skin ?? '#d9a06b'), hair = hexRgb(kit.hair ?? '#3a2a1d');
+  const boots = hexRgb(kit.boots ?? '#26221f'), gloves = hexRgb(kit.gloves ?? kit.skin ?? '#d9a06b');
+  const out = g.createImageData(S, S);
+  for (let i = 0; i < md.length; i += 4) {
+    const r = md[i], gr = md[i + 1], b = md[i + 2];
+    let col: [number, number, number];
+    if (r > 180 && b > 180 && gr < 100) col = gloves;
+    else if (gr > 150 && r < 100 && b < 100) col = boots;
+    else {
+      const wP = Math.max(0, b - Math.max(r, gr)) / 255;
+      const wS = Math.max(0, r - Math.max(gr, b)) / 255;
+      const rest = Math.max(0, 1 - wP - wS);
+      const base = Math.min(r, gr, b) >= 12 ? hair : skin;
+      col = [prim[0] * wP + sec[0] * wS + base[0] * rest, prim[1] * wP + sec[1] * wS + base[1] * rest, prim[2] * wP + sec[2] * wS + base[2] * rest];
+    }
+    const shade = Math.min(1.25, ad[i] / 200); // AO do pack é ~0,78 no plano → normaliza para 1
+    out.data[i] = Math.min(255, col[0] * shade);
+    out.data[i + 1] = Math.min(255, col[1] * shade);
+    out.data[i + 2] = Math.min(255, col[2] * shade);
+    out.data[i + 3] = 255;
+  }
+  g.putImageData(out, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace;
+  kitCache.set(key, tex);
+  return tex;
+}
 
 export type KeeperPose = 'idle' | 'wall' | 'dive' | 'jump' | 'miss' | 'save_low' | 'celebrate';
 export interface KeeperHandle { pose: (p: KeeperPose) => void }
@@ -123,9 +177,9 @@ function sampleClip(frames: Frame[], e: number): { bones: (name: string) => Rot;
   };
 }
 
-interface Props { color?: string; pose?: KeeperPose; flip?: boolean; position?: [number, number, number]; rotation?: [number, number, number]; scale?: number; speed?: number; seed?: number; custom?: Record<string, Rot>; sampleAt?: number }
+interface Props { color?: string; kit?: KitColors; pose?: KeeperPose; flip?: boolean; position?: [number, number, number]; rotation?: [number, number, number]; scale?: number; speed?: number; seed?: number; custom?: Record<string, Rot>; sampleAt?: number }
 
-export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel({ color = '#f2c200', pose = 'idle', flip = false, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, speed = 6, seed = 0, custom, sampleAt }, ref) {
+export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel({ color = '#f2c200', kit, pose = 'idle', flip = false, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, speed = 6, seed = 0, custom, sampleAt }, ref) {
   const { scene } = useGLTF('/3d/keeper.glb');
   const obj = useMemo(() => {
     const s = SkeletonUtils.clone(scene) as THREE.Group;
@@ -142,6 +196,20 @@ export const KeeperModel = forwardRef<KeeperHandle, Props>(function KeeperModel(
     obj.traverse((o) => { if (BONES.includes(o.name)) m.set(o.name, o); });
     return m;
   }, [obj]);
+  // uniforme composto (máscara + cores); enquanto carrega, fica a cor chapada de fallback
+  const kitKey = kitKeyOf(kit);
+  useEffect(() => {
+    if (!kit) return;
+    let alive = true;
+    kitTexture(kit).then((tex) => {
+      if (!alive) return;
+      obj.traverse((o: any) => {
+        if (o.isMesh || o.isSkinnedMesh) { o.material.map = tex; o.material.color.set('#ffffff'); o.material.needsUpdate = true; }
+      });
+    }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obj, kitKey]);
   const target = useRef<KeeperPose>(pose);
   const startedAt = useRef(0);
   const prevProp = useRef(pose);

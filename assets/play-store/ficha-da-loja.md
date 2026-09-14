@@ -68,5 +68,7 @@ O dinheiro e os prêmios do JogaGol são virtuais e valem apenas dentro do jogo.
 - **Política de privacidade:** https://jogagol.com.br/privacidade
 - **Notas da versão 1.0.0 (pt-BR):** "Primeira versão do JogaGol na Google Play: chutes, minigames diários, liga com rodadas de 24 h, rankings, diretoria e chat."
 - **Ícone:** `icone-512.png` · **Gráfico de destaque:** `destaque-1024x500.png` (nesta pasta)
-- **Capturas de tela (smartphone, 1080×2400):** `screenshots/01-jogar.png` … `07-meu-time.png` — geradas com
-  `node tools/play-screenshots.mjs` a partir da produção (conta de teste). Subir de 2 a 8, nesta ordem.
+- **Capturas de tela do smartphone (1080×1920, 9:16):** `screenshots/01-jogar.png` … `07-meu-time.png` — subir de 2 a 8,
+  nesta ordem. **Tablet 7"** (1200×1920): `screenshots/tablet-7/` · **Tablet 10"** (1600×2560): `screenshots/tablet-10/`.
+  Geradas com `PRESET=phone|tab7|tab10 node tools/play-screenshots.mjs` a partir da produção (conta de teste).
+  A loja só aceita proporção até 2:1 — 9:20 (1080×2400) é recusado.

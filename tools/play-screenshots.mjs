@@ -1,8 +1,9 @@
-// Capturas de tela do JogaGol em PRODUÇÃO para a ficha da Play Store (1080×2400 = 360×800 @3x).
-// Uso (raiz do repo, precisa de puppeteer-core e do Edge):  node tools/play-screenshots.mjs [01-home ...]
-// Entra com a conta de teste, bloqueia o POST /api/play/auto (senão o chute direto sai sozinho e vira
-// gol de verdade), fecha a janela da Presença da Semana e joga duas linhas do Termo. Resultado em
-// ./shots/; as versões usadas na loja estão em assets/play-store/screenshots/.
+// Capturas de tela do JogaGol em PRODUÇÃO para a ficha da Play Store.
+// Uso (raiz do repo, precisa de puppeteer-core e do Edge):  PRESET=phone|tab7|tab10 node tools/play-screenshots.mjs [01-home ...]
+//   phone = 1080×1920 (9:16), tab7 = 1200×1920, tab10 = 1600×2560 — a loja só aceita proporção até 2:1
+//   (1080×2400 = 9:20 é RECUSADO). Entra com a conta de teste, bloqueia o POST /api/play/auto (senão o
+//   chute direto sai sozinho e vira gol de verdade), fecha a janela da Presença da Semana e joga duas
+//   linhas do Termo. Resultado em ./shots/; as versões da loja estão em assets/play-store/screenshots/.
 import puppeteer from 'puppeteer-core';
 
 const edge = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
@@ -19,7 +20,11 @@ const browser = await puppeteer.launch({
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--window-size=420,900', '--lang=pt-BR'],
 });
 const page = await browser.newPage();
-await page.setViewport({ width: 360, height: 800, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+// PRESET: phone = 1080x1920 (9:16), tab7 = 1200x1920, tab10 = 1600x2560 — a loja exige proporção até 2:1
+const PRESETS = { phone: { w: 405, h: 720, dpr: 1080 / 405 }, tab7: { w: 600, h: 960, dpr: 2 }, tab10: { w: 800, h: 1280, dpr: 2 } };
+const PRESET = process.env.PRESET || 'phone';
+const V = PRESETS[PRESET];
+await page.setViewport({ width: V.w, height: V.h, deviceScaleFactor: V.dpr, isMobile: true, hasTouch: true });
 await page.setUserAgent('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36');
 // o chute direto NÃO pode sair sozinho durante a captura (seria gol de verdade da conta de teste)
 await page.setRequestInterception(true);
@@ -49,7 +54,7 @@ for (const s of shots) {
   await sleep(s.wait);
   if (await clickText('Depois')) await sleep(1200); // janela da Presença da Semana (aparece em todo carregamento)
   if (s.fn) await s.fn();
-  await page.screenshot({ path: `shots/${s.file}.png` });
+  await page.screenshot({ path: `shots/${PRESET}-${s.file}.png` });
   console.log('ok', s.file);
 }
 await browser.close();

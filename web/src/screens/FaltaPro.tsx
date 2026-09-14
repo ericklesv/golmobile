@@ -29,7 +29,7 @@ const RESULT_TEXT: Record<FaltaProResult, string> = {
   over: 'POR CIMA!', post: 'NA TRAVE!', bar: 'NO TRAVESSÃO!', short: 'FALTOU FORÇA!',
 };
 
-type Flight = { res: FaltaProKickResponse; t0: number; dur: number };
+export type Flight = { res: FaltaProKickResponse; t0: number; dur: number };
 type Gesture = { dirX: number; dirY: number; power: number; spin: number };
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -50,12 +50,14 @@ function summarize(pts: { x: number; y: number; t: number }[], rect: DOMRect): G
   const power = clamp(speed / (rect.height * 0.004), 0.15, 1);
   const dirX = clamp(dx / (rect.width * 0.35), -1, 1);
   const dirY = clamp(-dy / (rect.height * 0.55), 0, 1);
-  // efeito: desvio lateral médio do rastro em relação à reta início→fim (arco = curva)
+  // efeito: desvio lateral médio do rastro em relação à reta início→fim (arco = curva).
+  // A bola SEGUE o arco desenhado (sai pro lado do arco e volta pra mira): o servidor
+  // espera o Magnus CONTRA o arco, por isso o sinal negativo (ver lib/faltapro.js).
   const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
   let dev = 0;
   for (const p of pts) dev += (p.x - first.x) * nx + (p.y - first.y) * ny;
   dev /= pts.length;
-  const spin = clamp(dev / (0.15 * L), -1, 1);
+  const spin = clamp(-dev / (0.12 * L), -1, 1);
   return { dirX, dirY, power, spin };
 }
 
@@ -88,12 +90,13 @@ function ballAt(res: FaltaProKickResponse, t: number): { x: number; y: number; z
   }
 }
 
-function Scene({ kick, flight, gkKit, wallKit }: { kick: FaltaProKick; flight: Flight | null; gkKit: KitColors; wallKit: KitColors }) {
+export function Scene({ kick, flight, gkKit, wallKit }: { kick: FaltaProKick; flight: Flight | null; gkKit: KitColors; wallKit: KitColors }) {
   const ball = useRef<THREE.Group>(null);
   const keeper = useRef<THREE.Group>(null);
   const wallG = useRef<THREE.Group>(null);
   const kh = useRef<KeeperHandle>(null);
   const started = useRef<number | null>(null);
+  const framed = useRef<number | null>(null); // nº da cobrança já enquadrada (corte seco na nova)
   const v = useMemo(() => new THREE.Vector3(), []);
   const b = kick.ball;
   const away = useMemo(() => { const d = Math.hypot(b.x, b.z) || 1; return { x: b.x / d, z: b.z / d }; }, [b.x, b.z]);
@@ -104,7 +107,7 @@ function Scene({ kick, flight, gkKit, wallKit }: { kick: FaltaProKick; flight: F
   const fk = flight?.res.flight.keeper ?? null;
   const keeperFlip = fk ? fk.to < fk.from : false; // o clipe mergulha para +x; flip espelha
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera }, dt) => {
     const t = flight ? (performance.now() - flight.t0) / 1000 : 0;
     if (ball.current) {
       // o servidor simula com raio real (0,11 m); o modelo visual tem 0,21 m — nunca enterrar
@@ -131,11 +134,16 @@ function Scene({ kick, flight, gkKit, wallKit }: { kick: FaltaProKick; flight: F
       }
     }
     if (!flight) { // câmera baixa atrás da Trionda: bola grande embaixo, gol em cima (ref. Free Kick Classic)
-      camera.position.lerp(v.set(b.x + away.x * 2.2, 1.0, b.z + away.z * 2.2), 0.12);
+      // Cobrança nova = CORTE SECO pro enquadramento (a suavização por lerp POR QUADRO
+      // deixava a bola FORA DA TELA por vários segundos em celular lento — era o bug da
+      // "bola invisível"); depois do corte, amortecimento por TEMPO (independe do FPS).
+      v.set(b.x + away.x * 2.2, 1.0, b.z + away.z * 2.2);
+      if (framed.current !== kick.i) { framed.current = kick.i; camera.position.copy(v); }
+      else camera.position.lerp(v, 1 - Math.exp(-8 * dt));
       camera.lookAt(b.x * 0.65, 0.55, b.z * 0.65);
     } else {
       const p = ball.current!.position;
-      camera.position.lerp(v.set(b.x * 0.5 + away.x * 3, 1.7, Math.min(b.z + 2, p.z + 7)), 0.045);
+      camera.position.lerp(v.set(b.x * 0.5 + away.x * 3, 1.7, Math.min(b.z + 2, p.z + 7)), 1 - Math.exp(-2.8 * dt));
       camera.lookAt(p.x, Math.max(0.6, p.y), p.z);
     }
   });

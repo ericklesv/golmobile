@@ -22,10 +22,14 @@ desenhando um arco no gesto (como a curveball do Pokémon GO).
 - No soltar, o cliente resume o gesto em 3 números:
   - `dir` — ângulo horizontal/vertical do vetor final do arrasto;
   - `power` — velocidade média do gesto (px/ms normalizado pela tela);
-  - `spin` — curvatura do rastro (desvio lateral médio em relação à reta início→fim;
-    desenhar um "C" dá efeito para a esquerda, um "Ɔ" para a direita).
-- Réplica visual: a bola voa com Magnus simplificado — aceleração lateral ∝ `spin`,
-  gravidade fixa — a MESMA fórmula do servidor, para o replay bater com o resultado.
+  - `spin` — curvatura do rastro (desvio lateral médio em relação à reta início→fim).
+    **A bola SEGUE o arco desenhado** (14/09/2026): desenhar um "Ɔ" (barriga pra direita)
+    faz a bola sair aberta pra direita e voltar de curva pra mira; o vetor final do
+    arrasto MIRA o ponto de chegada (o servidor compensa a deriva do Magnus — `spinComp`).
+    Curva de última hora engana o goleiro (ele lê o chute em linha reta a partir da
+    barreira) — **a curva é a arma principal**, como no Free Kick Classic.
+- Réplica visual: o cliente só reproduz as amostras do voo que o SERVIDOR devolve —
+  o arco aparece sozinho no replay (não há física de gol no front).
 
 ### Servidor (anti-cheat pela arquitetura)
 - `POST /api/daily/faltapro/start`: gera os 5 cenários do dia do jogador (distância/ângulo

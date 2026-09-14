@@ -1,22 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { Panel } from '../components/ui';
 import { toast } from '../components/Toast';
-import { money as fmt } from '../lib/format';
+import { money as fmt, timeLeft as remaining, untilLabel } from '../lib/format';
+import { VipBar, useVipLeft } from '../components/VipBar';
 import type { Me, ShopItemDef, ShopView, UserItemView } from '../lib/types';
-
-/** "27 h 12 min" / "29 d 3 h" / "vencido" */
-function remaining(ms: number) {
-  if (ms <= 0) return 'vencido';
-  const m = Math.ceil(ms / 60_000);
-  const h = Math.floor(m / 60);
-  const d = Math.floor(h / 24);
-  if (d >= 1) return `${d} d ${h % 24} h`;
-  if (h >= 1) return `${h} h ${m % 60} min`;
-  return `${m} min`;
-}
 
 const NICK_RULE = /^[a-zA-Z0-9_.\-]{3,14}$/;
 const CATEGORY: Record<ShopItemDef['category'], { title: string; ribbon: 'blue' | 'orange' | 'green' | 'yellow' }> = {
@@ -59,6 +50,7 @@ export function ShopScreen() {
   const [shop, setShop] = useState<ShopView | null>(null);
   const [nick, setNick] = useState('');
   const [, tick] = useState(0);
+  const vipLeft = useVipLeft();
   const dexPrice = meta?.money.DEXTERITY_PRICE ?? 1000;
   const dexMax = meta?.dexterityMax ?? 30;
   const catalog = shop?.catalog ?? meta?.items ?? [];
@@ -174,7 +166,7 @@ export function ShopScreen() {
       <div className="flex justify-center"><div className="ribbon ribbon-yellow ribbon-lg"><img src="/ui/ico-goldpouch.png" className="mr-2 h-9 w-9" alt="" />LOJA</div></div>
       <div className="flex justify-center gap-2">
         <span className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</span>
-        <span className="resbar"><img src="/ui/ico-crown_silver.png" className="ico -ml-3 h-8 w-8" alt="" />{me.vipDays} VIP</span>
+        <VipBar iconClass="h-8 w-8" />
       </div>
 
       <Panel title="JOGADOR" ribbon="blue">
@@ -182,9 +174,18 @@ export function ShopScreen() {
           <Row icon="ico-badge" title="Destreza" desc={`+1% de acerto em pênaltis e faltas por ponto (você tem ${me.dexterity}/${dexMax}).`} busy={busy}
             price={fmt(dexPrice)} cta="+1" busyKey="dex" disabled={me.dexterity >= dexMax || me.money < dexPrice}
             onClick={() => run('dex', async () => { const r = await api.buyDexterity(1); toast('+1 destreza!', 'success'); return r; })} />
-          <Row icon="ico-crown_silver" title="Ativar VIP (1 dia)" desc={`Recargas pela metade e nick azul. Você tem ${me.vipDays} unidade(s) de VIP${me.vip ? ' · VIP ativo' : ''}.`} busy={busy} active={me.vip}
+          <Row icon="ico-crown_silver" title="Ativar VIP (1 dia)" desc={`Recargas pela metade e nick azul. Você tem ${me.vipDays} ${me.vipDays === 1 ? 'VIP guardado' : 'VIPs guardados'}.`} busy={busy} active={vipLeft > 0}
+            sub={vipLeft > 0 && me.vipUntil ? (
+              <motion.span key={me.vipUntil} initial={{ scale: 1.12 }} animate={{ scale: 1 }} className="inline-block origin-left">
+                VIP ativo: faltam {remaining(vipLeft)} (até {untilLabel(new Date(me.vipUntil).getTime())})
+              </motion.span>
+            ) : undefined}
             price="1 VIP" cta="Ativar" busyKey="vip" disabled={me.vipDays < 1}
-            onClick={() => run('vip', async () => { const r = await api.activateVip(1); toast('VIP ativado por 1 dia!', 'success'); return r; })} />
+            onClick={() => run('vip', async () => {
+              const r = await api.activateVip(1);
+              toast(r.vipUntil ? `VIP ativado! Agora vai até ${untilLabel(new Date(r.vipUntil).getTime())}.` : 'VIP ativado por 1 dia!', 'success');
+              return r;
+            })} />
           <Link to="/vip" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-crown_silver.png" className="h-6 w-6" alt="" /> Comprar dias de VIP</Link>
         </div>
       </Panel>

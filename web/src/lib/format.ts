@@ -27,4 +27,32 @@ export function hourLabel(hourKey: string): string {
   return h ? `${h}:00` : s;
 }
 
+/** Tempo que falta: "29 d 3 h" / "27 h 12 min" / "8 min" / "vencido". */
+export function timeLeft(ms: number): string {
+  if (ms <= 0) return 'vencido';
+  const m = Math.ceil(ms / 60_000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d >= 1) return `${d} d ${h % 24} h`;
+  if (h >= 1) return `${h} h ${m % 60} min`;
+  return `${m} min`;
+}
+
+/** Versão curta para o topo da tela: "29d 3h" / "5h 12m" / "8 min". */
+export function timeLeftShort(ms: number): string {
+  const m = Math.max(0, Math.ceil(ms / 60_000));
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d >= 1) return `${d}d ${h % 24}h`;
+  if (h >= 1) return `${h}h ${m % 60}m`;
+  return `${m} min`;
+}
+
+/** "17/09 às 21:52" (hora de Brasília). */
+export function untilLabel(ms: number): string {
+  const d = new Date(ms);
+  const tz = { timeZone: 'America/Sao_Paulo' } as const;
+  return `${d.toLocaleDateString('pt-BR', { ...tz, day: '2-digit', month: '2-digit' })} às ${d.toLocaleTimeString('pt-BR', { ...tz, hour: '2-digit', minute: '2-digit' })}`;
+}
+
 export function pct(v: number) { return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`; }

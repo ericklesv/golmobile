@@ -8,6 +8,8 @@ import { CartoonBall } from '../components/TrailBall';
 import { toast } from '../components/Toast';
 import { sound } from '../lib/sound';
 import { isTwa } from '../lib/twa';
+import { timeLeft, untilLabel } from '../lib/format';
+import { useVipLeft } from '../components/VipBar';
 
 /**
  * VIP — situação do VIP do jogador (ativo até quando + VIPs guardados + ativar), o que o VIP dá, os pacotes
@@ -33,6 +35,7 @@ export function VipScreen() {
   const [checkout, setCheckout] = useState<VipPurchase | null>(null);
   const [days, setDays] = useState(1);
   const [activating, setActivating] = useState(false);
+  const vipLeft = useVipLeft();
 
   const load = () => api.vip().then((s) => { setSt(s); setDays((d) => Math.max(1, Math.min(d, s.vip.bank || 1))); }).catch((e) => toast((e as Error).message, 'error'));
   useEffect(() => { load(); }, []);
@@ -45,7 +48,13 @@ export function VipScreen() {
   async function activate(n: number) {
     if (activating || n < 1) return;
     setActivating(true);
-    try { setMe(await api.activateVip(n)); toast(`VIP ativado por ${n} ${n === 1 ? 'dia' : 'dias'}!`, 'success'); sound.play('coin'); await load(); }
+    try {
+      const u = await api.activateVip(n);
+      setMe(u);
+      toast(u.vipUntil ? `VIP ativado! Agora vai até ${untilLabel(new Date(u.vipUntil).getTime())}.` : `VIP ativado por ${n} ${n === 1 ? 'dia' : 'dias'}!`, 'success');
+      sound.play('coin');
+      await load();
+    }
     catch (e) { toast((e as Error).message, 'error'); } finally { setActivating(false); }
   }
   function paid(bank: number) { refresh(); load(); setDays(bank); }
@@ -61,8 +70,9 @@ export function VipScreen() {
         <div className="flex items-center gap-3">
           <img src="/ui/ico-crown_silver.png" alt="" className={`h-14 w-14 shrink-0 ${st.vip.active ? '' : 'opacity-60 grayscale'}`} />
           <div className="min-w-0 flex-1">
-            <div className="t-display t-out text-[20px] leading-tight">{st.vip.active && st.vip.until ? `VIP ativo até ${when(st.vip.until)}` : 'Você ainda não é VIP'}</div>
-            <div className="text-[13px] font-extrabold text-white/85">{bank} {bank === 1 ? 'VIP guardado' : 'VIPs guardados'} · cada VIP vale 1 dia</div>
+            <div className="t-display t-out text-[20px] leading-tight">{vipLeft > 0 && st.vip.until ? `VIP ativo por mais ${timeLeft(vipLeft)}` : 'Você ainda não é VIP'}</div>
+            {vipLeft > 0 && st.vip.until && <div className="text-[13px] font-extrabold text-sky-light">Até {untilLabel(st.vip.until)}</div>}
+            <div className="text-[13px] font-extrabold text-white/85">{bank} {bank === 1 ? 'VIP guardado' : 'VIPs guardados'}. Cada VIP vale 1 dia.</div>
           </div>
         </div>
         {bank > 0 ? (

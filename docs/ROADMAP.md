@@ -36,6 +36,8 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    time) e **doação de VIP entre colegas de time**. Falta: Capitão/Auxiliar (com a ordem de chute), caixa do time (R$ e VIP),
    **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
    adversário atual, boosts Gatorade/Energético comprados pelo presidente).
+6d. [x] **Convites** (14/09/2026): link de afiliado no Perfil; quem convidou ganha VIP nos marcos de gols do
+   convidado (25→1000; 16 VIP por amigo); trava de mesma internet. Depois: % dos VIPs comprados pelo convidado?
 6c. [x] **Distintivos e TOP 10** (13/09/2026): P/D ao lado do nome, ícone do top 3 de agora (hora/rodada/
    temporada; ouro/prata/bronze) nos rankings, chat e perfil, e o quadro TOP 10 do perfil (vezes em 1º/2º/3º/top 10).
 6b. [x] **Presença da Semana** (login diário, 13/09/2026): 7 dias, todo dia dá XP (490/semana, dobro para VIP),

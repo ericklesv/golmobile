@@ -6,6 +6,7 @@ import { toast } from '../components/Toast';
 import { Shield } from '../components/Shield';
 import { Tabs } from '../components/ui';
 import type { Serie } from '../lib/types';
+import { InviteBanner, savedInvite, clearInvite } from '../components/Invite';
 
 export function RegisterScreen() {
   const register = useAuth((s) => s.register);
@@ -28,7 +29,7 @@ export function RegisterScreen() {
     if (busy) return;
     if (!teamSlug) { toast('Escolha seu time.', 'error'); setStep(1); return; }
     setBusy(true);
-    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender }); nav('/', { replace: true }); }
+    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender, ref: savedInvite() ?? undefined }); clearInvite(); nav('/', { replace: true }); }
     catch (err: any) { toast(err?.message ?? 'Falha no cadastro.', 'error'); }
     finally { setBusy(false); }
   }
@@ -41,6 +42,8 @@ export function RegisterScreen() {
         <img src="/brand/logo-h.webp" alt="JogaGol" className="h-12 drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]" />
         <span className="trap trap-blue">{step}/2</span>
       </div>
+
+      <div className="relative mt-4"><InviteBanner /></div>
 
       {step === 1 ? (
         <div className="relative mt-5">

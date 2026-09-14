@@ -1,4 +1,4 @@
-import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -35,7 +35,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const api = {
   // auth
-  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/register', b),
+  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string; ref?: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/register', b),
   login: (b: { login: string; password: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/login', b),
   // me
   me: () => req<Me>('GET', '/api/me'),
@@ -112,6 +112,9 @@ export const api = {
   vip: () => req<VipState>('GET', '/api/vip'),
   vipBuy: (pack: string) => req<{ purchase: VipPurchase }>('POST', '/api/vip/buy', { pack }),
   vipPurchase: (id: number) => req<{ purchase: VipPurchase; bank: number }>('GET', `/api/vip/purchases/${id}`),
+  // convites (link de afiliado)
+  refMe: () => req<RefState>('GET', '/api/ref/me'),
+  refLookup: (code: string) => req<RefInviter>('GET', `/api/ref/${encodeURIComponent(code)}`),
   // presença da semana (login diário)
   pass: () => req<PassState>('GET', '/api/pass'),
   passClaim: () => req<{ reward: PassReward & { step: number; week: number }; state: PassState }>('POST', '/api/pass/claim'),

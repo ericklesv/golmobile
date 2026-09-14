@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PublicPlayer } from '../lib/types';
 import { NameBadges, TopHistory } from '../components/Badges';
+import { InvitePanel } from '../components/Invite';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
@@ -102,6 +103,8 @@ export function ProfileScreen() {
         <Stat label="Destreza" value={`${me.dexterity}/${dexMax}`} icon="/ui/ico-energy.png" />
         <Stat label="VIP" value={me.vip ? 'ATIVO' : `${me.vipDays} un.`} icon="/ui/ico-crown_silver.png" sub={me.vip && me.vipUntil ? `até ${new Date(me.vipUntil).toLocaleDateString('pt-BR')}` : undefined} />
       </div>
+
+      <InvitePanel />
 
       {pub?.history && <Panel title="MEU TOP 10" ribbon="yellow"><TopHistory history={pub.history} /></Panel>}
 

@@ -8,6 +8,7 @@ import { signToken } from '../lib/auth.js';
 import { meView } from '../services/view.js';
 import { meInclude } from '../lib/items.js';
 import { clientIp } from '../lib/ip.js';
+import { attachReferral } from '../services/referral.js';
 
 export const auth = Router();
 
@@ -20,6 +21,7 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Senha: mínimo 6 caracteres.').max(72),
   teamSlug: z.string().min(1, 'Escolha um time.'),
   gender: z.enum(['M', 'F']).default('M'),
+  ref: z.string().trim().max(16).optional(), // código do link de convite (services/referral.js)
 });
 
 auth.post('/register', limiter, handle(async (req) => {
@@ -34,6 +36,7 @@ auth.post('/register', limiter, handle(async (req) => {
     data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id, lastIp: clientIp(req), lastIpAt: new Date() },
     include: { team: true },
   });
+  await attachReferral(user.id, body.ref, clientIp(req)).catch((e) => console.error('[convite] cadastro:', e.message));
   return { token: signToken(user), me: meView(user) };
 }));
 

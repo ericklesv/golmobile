@@ -114,6 +114,12 @@ model User {
   // Contratado por proposta: não troca de time nem aceita outra proposta até aqui (1 dia por VIP)
   contractUntil DateTime?
 
+  // Convites: código do link (jogagol.com.br/convite/<refCode>) e quem convidou este jogador
+  refCode      String?  @unique
+  referredById Int?
+  referredBy   User?    @relation("Referral", fields: [referredById], references: [id])
+  referrals    User[]   @relation("Referral")
+
   goals       Goal[]
   activities  Activity[]
   nerfsGiven  Nerf[]     @relation("NerfFrom")
@@ -132,11 +138,14 @@ model User {
   giftsSent   VipGift[]       @relation("GiftFrom")
   giftsGot    VipGift[]       @relation("GiftTo")
   loginPasses LoginPass[]
+  refEarned   ReferralReward[] @relation("RefEarner")
+  refRewards  ReferralReward[] @relation("RefFrom")
   adminActions AdminAction[] @relation("AdminActionBy")
   adminTargeted AdminAction[] @relation("AdminActionTo")
 
   @@index([teamId])
   @@index([goalsTotal])
+  @@index([referredById])
 }
 
 // Minigames diários: 1 partida por jogador, por jogo, por dia (o dia vira à
@@ -537,4 +546,20 @@ model LoginPass {
   createdAt DateTime @default(now())
 
   @@unique([userId, day])
+}
+
+// Convites: VIP pago a quem convidou quando o convidado chega a um marco de gols (REFERRAL, rules.js).
+// O @@unique([referredId, milestone]) garante NO BANCO que cada marco de cada convidado paga uma vez só.
+model ReferralReward {
+  id         Int      @id @default(autoincrement())
+  referrerId Int
+  referrer   User     @relation("RefEarner", fields: [referrerId], references: [id])
+  referredId Int
+  referred   User     @relation("RefFrom", fields: [referredId], references: [id])
+  milestone  Int // gols da carreira do convidado (25, 50, 100, …)
+  vip        Int
+  createdAt  DateTime @default(now())
+
+  @@unique([referredId, milestone])
+  @@index([referrerId])
 }

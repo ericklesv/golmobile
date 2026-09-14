@@ -120,6 +120,15 @@ depois que o novo estiver estável. Não instalar nada dele.
   chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
   (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
   chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
+- **Convites — link de afiliado** (decisão do dono, 14/09/2026, a partir da sugestão de um jogador; `services/referral.js`,
+  `routes/referral.js` em `/api/ref`, marcos em `REFERRAL` de `rules.js`, `User.refCode/referredById` + tabela
+  `ReferralReward`, migração 0022; tela `components/Invite.tsx`: painel CONVIDE AMIGOS no Perfil, rota `/convite/:code`
+  e aviso "Convite de fulano" no cadastro). Código fixo de 6 letras (não é o nick — nick muda). Quem cria conta pelo
+  link vira convidado (**só no cadastro**; conta criada na MESMA internet de quem convidou não vira convidado). Quem
+  convidou ganha VIP **no banco** quando o convidado chega a 25/50/100/200/400/800 gols da carreira (1 VIP cada) e
+  1000 (10 VIP) = 16 por amigo. `referralSweep` no scheduler (2 min) paga; `@@unique([referredId, milestone])` =
+  cada marco paga uma vez. Jogando na mesma internet ou suspenso, o marco **espera**. A sugestão original (% dos VIPs
+  comprados pelo convidado) NÃO foi feita. Mexeu? **`node scripts/test-referral.js`** (pasta api/, só banco LOCAL).
 - **Distintivos ao lado do nome** (pedido do dono, 13/09/2026; `services/badges.js`, `components/Badges.tsx`): **P**
   (Presidente) / **D** (Diretor) do cargo no time e o **top 3 de AGORA** — hora = estrela, rodada = medalha, temporada
   = troféu; 1º ouro, 2º prata, 3º bronze (`/ui/ico-{star,medal,trophy}_{gold,silver,bronze}.png`; estrela/troféu prata
@@ -275,7 +284,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
-`GET /api/pass` · `POST /api/pass/claim` (Presença da Semana — login diário)
+`GET /api/pass` · `POST /api/pass/claim` (Presença da Semana — login diário) · `GET /api/ref/me` · `GET /api/ref/:code` (convites; o cadastro aceita `ref`)
 `GET /api/club|club/candidates` · `POST /api/club/claim|resign|directors{nick}|directors/remove{nick}|pass{nick}|offers{nick,vip,message}|offers/:id/accept|offers/:id/refuse|offers/:id/cancel|gift{nick,days}` (diretoria e contratações; a diretoria pública vem em `GET /api/teams/:slug` → `board`)
 `GET /api/vip|vip/purchases/:id` · `POST /api/vip/buy{pack}|vip/purchases/:id/test-pay` (só `EFI_FAKE`) · `POST /api/pay/efi/:secret[/pix]` (aviso da Efí, sem login)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`

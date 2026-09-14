@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LevelUpWatcher } from './components/LevelUp';
 import { PassWatcher } from './components/Pass';
+import { InviteRoute } from './components/Invite';
 import { LoginScreen } from './screens/Login';
 import { RegisterScreen } from './screens/Register';
 import { HomeScreen } from './screens/Home';
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="/bem-vindo" element={me ? <Navigate to="/" replace /> : <LandingScreen />} />
         <Route path="/entrar" element={me ? <Navigate to="/" replace /> : <LoginScreen />} />
         <Route path="/cadastro" element={me ? <Navigate to="/" replace /> : <RegisterScreen />} />
+        <Route path="/convite/:code" element={<InviteRoute logged={!!me} />} />
         <Route element={<Private><Layout /></Private>}>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/liga" element={<LeagueScreen />} />

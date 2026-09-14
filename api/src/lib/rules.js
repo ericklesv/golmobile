@@ -348,3 +348,21 @@ export const LOGIN_PASS = {
   vipXp: 2, // VIP ativo: XP em dobro
   streakVip: 2, // VIPs do 7º dia a partir da 2ª semana seguida
 };
+
+// ─── Convites (link de afiliado) ──────────────────────────────────────────────
+// Decisão do dono (14/09/2026, a partir da sugestão de um jogador): cada jogador tem um link de convite;
+// quem cria conta por ele vira "convidado" e quem convidou ganha VIP (no banco de VIPs) quando o convidado
+// chega a cada marco de GOLS DA CARREIRA (goalsTotal). 16 VIP por convidado que chega a 1000 gols.
+// Conta criada na mesma internet (IP) de quem convidou não vira convidado; jogando na mesma internet, o VIP
+// do marco espera (conta falsa não junta VIP). Regras em services/referral.js.
+export const REFERRAL = {
+  milestones: [
+    { goals: 25, vip: 1 },
+    { goals: 50, vip: 1 },
+    { goals: 100, vip: 1 },
+    { goals: 200, vip: 1 },
+    { goals: 400, vip: 1 },
+    { goals: 800, vip: 1 },
+    { goals: 1000, vip: 10 },
+  ],
+};

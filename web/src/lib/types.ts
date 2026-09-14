@@ -387,3 +387,11 @@ export interface PassState {
 export type TopScope = 'HOUR' | 'ROUND' | 'SEASON';
 export interface TopBadge { scope: TopScope; pos: number }
 export interface TopTally { gold: number; silver: number; bronze: number; top10: number }
+
+// ─── Convites (link de afiliado) ──────────────────────────────────────────────
+export interface RefMilestone { goals: number; vip: number }
+export interface RefState {
+  code: string; milestones: RefMilestone[]; perFriend: number; count: number; earned: number;
+  invited: { nick: string; avatarUrl: string | null; team: Team; goals: number; since: number; earned: number; next: RefMilestone | null }[];
+}
+export interface RefInviter { nick: string; avatarUrl: string | null; team: Team; perFriend: number }

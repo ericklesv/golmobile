@@ -3,11 +3,13 @@ import { vipOfflineAutoKicks } from './play.js';
 import { VIP_OFFLINE_AUTO } from '../lib/rules.js';
 import { vipReconcile } from './vip.js';
 import { clubSweep } from './club.js';
+import { referralSweep } from './referral.js';
 
 let ticking = false;
 let exact = null; // disparo extra para fechar a rodada NA HORA (a volta normal é de 30 s)
 let lastReconcile = 0; // conferência dos PIX do VIP pendentes: a cada 2 min
 let lastClubSweep = 0; // diretoria: cargos perdidos e propostas vencidas (o VIP volta) — a cada 5 min
+let lastReferral = 0; // convites: paga os marcos de gols que os convidados passaram — a cada 2 min
 
 async function tick() {
   if (ticking) return;
@@ -32,6 +34,11 @@ async function tick() {
     if (Date.now() - lastClubSweep > 300_000) {
       lastClubSweep = Date.now();
       await clubSweep();
+    }
+    if (Date.now() - lastReferral > 120_000) {
+      lastReferral = Date.now();
+      const n = await referralSweep();
+      if (n) console.log('[convite] marcos pagos:', n);
     }
   } catch (e) {
     console.error('[scheduler] erro:', e);

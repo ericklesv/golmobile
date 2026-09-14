@@ -26,7 +26,7 @@ export const FRANGACO = {
   // vira uma elipse em metros, 0,115×7,32 m na largura por 0,115×2,44 m na altura)
   saveRadius: 0.115,
   netToleranceMs: 250,         // tolerância de rede na validação do toque
-  incomingGraceMs: 3500,       // latência + suspense do Unity até o alvo aparecer (~0,3–0,7 s + rede)
+  incomingGraceMs: 4500,       // latência + suspense do Unity até o alvo aparecer (~0,3–0,7 s + rede lenta)
   pendingBudgetMs: 20_000,     // aba fechada: passou disso desde o /incoming, resolve como gol da IA
   goalW: 7.32, goalH: 2.44,
   // Cobrança
@@ -64,7 +64,8 @@ export function resolveKick(rand, { xAnunciado, xReal, dexterity = 0 }) {
   // dispersão: a bola não vai EXATAMENTE onde a seta parou; altura é sorteada
   const spread = FRANGACO.spreadBase * (1 - FRANGACO.spreadDexCut * dex);
   const xBola = aim + noise(rand) * spread;
-  const yBola = clamp(0.18 + rand() * 0.62 + noise(rand) * spread * 0.8, 0.04, 1.08);
+  // altura sorteada do chão ao ângulo: de vez em quando beija o travessão (e às vezes passa)
+  const yBola = clamp(0.08 + rand() * 0.9 + noise(rand) * spread * 0.8, 0.03, 1.08);
 
   // Goleiro IA: sem finta ele lê o anúncio e quase sempre vai certo; com finta,
   // ou acredita no anunciado (e come a finta), ou desconfia e tende a ler o real

@@ -37,18 +37,16 @@ ericklesv. Marque `[x]` conforme for fazendo; o que depende do Play Console est�
 | Teste automatizado do bloco de conta | `node scripts/test-conta.js` (pasta api/, só banco local) → "TUDO OK" |
 
 **Pendências que precisam de decisão/ação do dono:**
-- [ ] **E-mail de contato `contato@jogagol.com.br`** está nos textos de privacidade/termos/exclusão
-  (`CONTACT_EMAIL` em `Legal.tsx`). Criar a caixa (ou redirecionamento) no painel do domínio — o
-  Google e os jogadores vão escrever para ele. Se preferir outro e-mail, trocar a constante.
+- [x] **E-mail de contato `contato@jogagol.com.br`** criado (14/09) — está nos textos de
+  privacidade/termos/exclusão (`CONTACT_EMAIL` em `Legal.tsx`).
 - [ ] Nome do responsável nos textos: **"Managol Softwares"** (`RESPONSIBLE` em `Legal.tsx`). Se a
   conta virar CNPJ/organização, atualizar.
 
 ## Passo a passo
 
 ### 1. Play Console — conferências (dono)
-- [ ] `play.google.com/console` → conta "Managol Softwares": **verificação de identidade** concluída
-  (documento) e e-mail/telefone confirmados. Sem isso não publica.
-- [ ] *Criar app*: nome **JogaGol**, idioma padrão **português (Brasil)**, **Jogo**, **Grátis**
+- [x] `play.google.com/console` → conta "Managol Softwares" (pessoal), verificação OK (14/09).
+- [x] *Criar app* feito (14/09) — nome **JogaGol**, idioma padrão **português (Brasil)**, **Jogo**, **Grátis**
   (grátis não tem volta: um app grátis nunca vira pago; compras no app são outra coisa).
 - [ ] *Configuração › Integridade do app › Assinatura de apps*: aceitar o **Play App Signing**
   (padrão). Depois do primeiro upload aparece o **SHA-256 do certificado de assinatura do app** — é
@@ -56,60 +54,60 @@ ericklesv. Marque `[x]` conforme for fazendo; o que depende do Play Console est�
 
 ### 2. Código (feito; ver tabela acima) + deploy
 - [x] Páginas legais, exclusão de conta, denúncias/bloqueio, ícone maskable, TWA sem PIX.
-- [ ] Deploy na VPS (`bash /usr/local/bin/brgol-deploy.sh`) — a migração **0023_play_store** cria
-  `User.deletedAt`, `UserBlock` e `Report`.
-- [ ] Conferir no ar: `/privacidade`, `/termos`, `/excluir-conta`, `/manifest.webmanifest`,
-  `/icon-512-maskable.png`.
+- [x] Deploy na VPS feito 14/09 (migração **0023_play_store**: `User.deletedAt`, `UserBlock`, `Report`).
+- [x] No ar: `/privacidade`, `/termos`, `/excluir-conta`, `/manifest.webmanifest`, `/icon-512-maskable.png`.
 
 ### 3. Digital Asset Links (sem isso o app abre com a barra do Chrome)
-Arquivo `https://jogagol.com.br/.well-known/assetlinks.json` com **os dois** SHA-256 (assinatura do
-app + chave de upload), no formato:
-```json
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "br.com.jogagol.app",
-    "sha256_cert_fingerprints": [
-      "AA:BB:...:ZZ",
-      "11:22:...:99"
-    ]
-  }
-}]
-```
-- [ ] Colocar em `web/public/.well-known/assetlinks.json` (o Vite copia para o build) **e** conferir
-  que o nginx do site `brgol` **não bloqueia** caminhos que começam com ponto (muitas configs têm
-  `location ~ /\.` → deny; se tiver, abrir exceção para `/.well-known/`). Teste:
-  `curl -sI https://jogagol.com.br/.well-known/assetlinks.json` → `200` e `content-type: application/json`.
-- [ ] Validar: https://developers.google.com/digital-asset-links/tools/generator (ou o próprio
-  `bubblewrap doctor`/`bubblewrap validate`).
+Arquivo **`web/public/.well-known/assetlinks.json`** (o Vite copia para o build; o nginx do site
+`brgol` serve caminhos com ponto normalmente — conferido em 14/09). Precisa dos **dois** SHA-256:
+- [x] **chave de upload** (a que assina o que sai do Bubblewrap): já está no arquivo —
+  `17:F8:59:74:CE:89:F0:F6:6D:86:96:7C:94:D2:55:93:CF:62:8F:BB:FB:E1:64:95:0E:8A:4F:A3:9A:42:D0:25`
+  (`keytool -list -v -keystore android.keystore -alias jogagol`).
+- [ ] **chave de assinatura do app** (Play App Signing): aparece no console **depois do primeiro
+  upload** em *Testar e lançar → Configuração → Integridade do app → Assinatura de apps → "Certificado
+  da chave de assinatura do app" → SHA-256*. Colar como segundo item de `sha256_cert_fingerprints`,
+  commit + deploy. Sem ela, o app instalado **pela Play Store** (assinado pelo Google) abre com a barra
+  do Chrome; o APK instalado por USB (assinado pela chave de upload) já abre sem barra.
+- Conferir no ar: `curl -sI https://jogagol.com.br/.well-known/assetlinks.json` → `200` e
+  `content-type: application/json`. Validador: https://developers.google.com/digital-asset-links/tools/generator
 
-### 4. Empacotar com o Bubblewrap (qualquer máquina com Node 20)
-```bash
-npm i -g @bubblewrap/cli
-mkdir jogagol-twa && cd jogagol-twa
-bubblewrap init --manifest https://jogagol.com.br/manifest.webmanifest
-```
-Respostas no `init` (o resto pode ficar no padrão):
-- Application ID: **`br.com.jogagol.app`** (não muda nunca mais).
-- Name: **JogaGol** · Launcher name: **JogaGol**.
-- **Start URL: `/?src=twa`** ← é o que liga o modo "app" (`lib/twa.ts`). O manifest do site continua
-  com `start_url: /` para o PWA instalado pelo navegador.
-- Display mode: `standalone` · Orientation: `portrait` · Status bar color: `#04101B`.
-- Icon URL: `https://jogagol.com.br/icon-512.png` · Maskable icon: `https://jogagol.com.br/icon-512-maskable.png`.
-- **Include support for Play Billing? → yes** (necessário para o passo 8).
-- Signing key: deixar o Bubblewrap criar (`android.keystore`) — **guardar o arquivo e as senhas em
-  lugar seguro (gerenciador de senhas)**. Perdeu = nunca mais atualiza o app.
-- O Bubblewrap baixa o JDK e o Android SDK sozinho na primeira vez (aceitar as licenças).
+### 4. Empacotar com o Bubblewrap (feito em 14/09/2026 na máquina do Guilherme)
+O `bubblewrap init` é todo interativo; em vez dele usamos **`node tools/twa/init-twa.cjs`** (mesmas
+chamadas da biblioteca, respostas fixas). O projeto TWA fica **fora do repo** em
+`C:\Users\guicp\dev\jogagol-twa\` (tem a chave de upload). Cópia de referência do
+`twa-manifest.json` em `tools/twa/`.
 
-```bash
-bubblewrap build        # gera app-release-bundle.aab (loja) e app-release-signed.apk (teste)
-bubblewrap install      # instala o APK num celular ligado por USB com depuração ativa
+Ferramentas (uma vez por máquina; ~1 GB):
+- JDK 17 x64 (Temurin `17.0.11+9`, zip) em `C:\Users\guicp\dev\jdk-17.0.11+9`.
+- Android command-line tools `6609375` em `C:\Users\guicp\dev\android-sdk` (fica `android-sdk\tools\...`),
+  + `sdkmanager --sdk_root=C:\Users\guicp\dev\android-sdk "build-tools;36.1.0" "platforms;android-36" "platform-tools"`
+  (aceitar licenças com `--licenses`).
+- `npm i -g @bubblewrap/cli` e `%USERPROFILE%\.bubblewrap\config.json` =
+  `{"jdkPath":"C:/Users/guicp/dev/jdk-17.0.11+9","androidSdkPath":"C:/Users/guicp/dev/android-sdk"}`.
+
+Decisões que o Bubblewrap impôs: **Play Billing exige `enableNotifications: true`** (delegação de
+notificações) e **`minSdkVersion: 23`** (a biblioteca de billing não aceita 21) — já estão no
+`init-twa.cjs`. Resultado: `applicationId br.com.jogagol.app`, versionCode 1 / 1.0.0, minSdk 23,
+**targetSdk 36 (Android 16)**, permissões INTERNET/BILLING/POST_NOTIFICATIONS.
+
+Gerar/atualizar (PowerShell — pelo Git Bash o `gradlew.bat` não é encontrado):
+```powershell
+cd C:\Users\guicp\dev\jogagol-twa
+$pw = '<senha do keystore>'          # está em SENHA-DA-CHAVE.txt — mover para o gerenciador de senhas
+$env:BUBBLEWRAP_KEYSTORE_PASSWORD = $pw; $env:BUBBLEWRAP_KEY_PASSWORD = $pw
+$env:JAVA_HOME = 'C:\Users\guicp\dev\jdk-17.0.11+9'
+$env:Path = "$env:JAVA_HOME\bin;C:\Users\guicp\dev\jogagol-twa;$env:Path"
+bubblewrap update --skipVersionUpgrade   # só se mudou o twa-manifest.json (ou `bubblewrap update` para subir a versão)
+bubblewrap build --skipPwaValidation     # → app-release-bundle.aab (loja) e app-release-signed.apk (teste por USB)
 ```
-- [ ] No celular: o app abre **sem** barra de endereço (assetlinks OK), tela cheia, ícone certo,
-  `/vip` mostra "chega em breve" no lugar dos pacotes PIX.
-- [ ] Guardar a pasta `jogagol-twa/` (tem o `twa-manifest.json`) — é ela que gera as versões seguintes
-  (`bubblewrap update` + `bubblewrap build`; subir `appVersionCode` a cada envio).
+- [x] Primeiro build feito: `C:\Users\guicp\dev\jogagol-twa\app-release-bundle.aab` (3,7 MB).
+- [ ] Testar no celular: `adb install app-release-signed.apk` (adb em `android-sdk\platform-tools`)
+  — abre **sem** barra de endereço, `/vip` mostra "chega em breve" no lugar dos pacotes PIX.
+- [ ] Versão nova: subir `appVersionCode` (e `appVersionName`) no `twa-manifest.json`, `bubblewrap
+  update --skipVersionUpgrade`, `bubblewrap build`. Nunca subir o mesmo `versionCode` duas vezes.
+- Chave de upload: `android.keystore` (alias `jogagol`), senha em `SENHA-DA-CHAVE.txt` → **guardar no
+  gerenciador de senhas e apagar o .txt**. Perdeu a chave? O Play App Signing permite pedir troca da
+  chave de upload no console (por isso ela é só "de upload").
 
 ### 5. Play Console — formulários (dono)
 *Configuração do app › Conteúdo do app*:

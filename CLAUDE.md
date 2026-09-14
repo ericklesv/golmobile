@@ -220,8 +220,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   Telas.cs ("Primeira Fase"…"Final"). **Torneio INTEIRO numa sessão**: 5 fases contra clubes da
   MESMA série (sorteio no servidor, sem repetir), duelo de 5 cobranças alternadas, morte súbita
   (até 3 rodadas; persistindo, a defesa mais rápida decide). Defesa validada no relógio do
-  servidor: janela 900→660 ms por fase (−60 na morte súbita), raio normalizado 0,115 (a elipse
-  que o Unity desenha), tolerância de rede 250 ms; estourou com a aba fechada = gol da IA.
+  servidor: janela 1250→970 ms por fase (−60 na morte súbita), alvo PEQUENO com raio por fase
+  0,011→0,008 (`saveRadiusFase`) validado em METROS = exatamente o círculo que o Unity desenha
+  (`DimensionarAlvo` tem piso de 15 cm de diâmetro — `raioMetros` espelha), tolerância de rede
+  250 ms; estourou com a aba fechada = gol da IA. **REGRA DE OURO (dono, 14/09/2026): em jogo
+  legítimo o `/save` NUNCA responde erro** — sem pendência ele REPRISA a última defesa
+  (`run.lastSave`); e um torneio que atravessa a virada das 20h **continua na linha de ontem**
+  (`withFrangaco` tranca a linha do dia anterior com run ativo — trocar de linha no meio era o
+  "ERRO — defesa não registrada"). A máquina de estados é pura em `lib/frangaco.js`
+  (`stepEntry/stepIncoming/stepKick/stepSave`); **mexeu no Frangaço? Rode
+  `node scripts/frangaco-fluxo.js`** (pasta api/, sem banco): 500 torneios por perfil com o
+  fluxo exato do Unity + casos degenerados, tem de dar 0 erros de API.
   **1 torneio por dia** (`DailyGame`, estado do run inteiro no `state`; `champion` no topo do
   JSON por causa da query do ranking). Só o CAMPEÃO pontua: **1 gol** (kind `FRANGACO`) +
   R$ 500 + 20 de nível; eliminado = nada. Tela `Frangaco.tsx` = wrapper (header do kit +

@@ -17,10 +17,10 @@
  */
 import { randomInt } from 'node:crypto';
 import { prisma } from '../prisma.js';
-import { GameError, badRequest } from '../lib/errors.js';
+import { GameError } from '../lib/errors.js';
 import { dayNumberAt, nextResetAt } from '../lib/time.js';
 import { MINIGAMES, RESET_HOUR, resetLabel, levelOf, DEXTERITY_MAX } from '../lib/rules.js';
-import { FRANGACO as C, resolveKick, newIncoming, resolveSave, duelStatus } from '../lib/frangaco.js';
+import { FRANGACO as C, parseKick, stepEntry, stepIncoming, stepKick, stepSave, pendingExpired } from '../lib/frangaco.js';
 import { applyResult, loadUser } from './play.js';
 import { liveMatchForTeam, currentRound } from './league.js';
 
@@ -91,27 +91,44 @@ function runView(row, st, teams, meNick) {
 
 /* ─────────────────────────── transação padrão dos minigames ─────────────────────────── */
 
-const expired = (pending, now) => !!pending && now.getTime() - pending.servedAt > C.pendingBudgetMs;
+/** Cria (se preciso) e tranca a linha do dia `day`. */
+async function lockDayRow(tx, userId, day) {
+  await tx.$executeRaw`
+    INSERT INTO "DailyGame" ("userId", game, day, state, won, "createdAt", "updatedAt")
+    VALUES (${userId}, 'FRANGACO', ${day}, '{}'::jsonb, false, now(), now())
+    ON CONFLICT ("userId", game, day) DO NOTHING`;
+  const [row] = await tx.$queryRaw`
+    SELECT id, day, state, won, reward, "finishedAt" FROM "DailyGame"
+     WHERE "userId" = ${userId} AND game = 'FRANGACO' AND day = ${day} FOR UPDATE`;
+  return row;
+}
+
+const freshCtx = (base, row) => ({ ...base, row, st: { ...row.state }, day: row.day, patch: {} });
 
 async function withFrangaco(userId, fn) {
   const now = new Date();
   const day = dayNumberAt(HOUR, now);
   const teams = await allTeams();
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`
-      INSERT INTO "DailyGame" ("userId", game, day, state, won, "createdAt", "updatedAt")
-      VALUES (${userId}, 'FRANGACO', ${day}, '{}'::jsonb, false, now(), now())
-      ON CONFLICT ("userId", game, day) DO NOTHING`;
-    const [row] = await tx.$queryRaw`
-      SELECT id, state, won, reward, "finishedAt" FROM "DailyGame"
-       WHERE "userId" = ${userId} AND game = 'FRANGACO' AND day = ${day} FOR UPDATE`;
-    const ctx = { tx, row, st: { ...row.state }, now, day, teams, userId, patch: {} };
-    // defesa que estourou o tempo com a aba fechada: resolve sozinha como gol da IA
-    if (!row.finishedAt && ctx.st.run?.status === 'ativo' && expired(ctx.st.run.duel?.pending, now)) {
-      await applySave(ctx, null);
+    const base = { tx, now, teams, userId };
+    // Torneio começado ANTES da virada das 20h continua na linha de ONTEM. Trocar de linha no
+    // meio do run era a CAUSA do "ERRO — defesa não registrada": às 20h em ponto o `day` mudava,
+    // nascia uma linha vazia e o /save respondia 409 no-run com o duelo em andamento.
+    const [prev] = await tx.$queryRaw`
+      SELECT id, day, state, won, reward, "finishedAt" FROM "DailyGame"
+       WHERE "userId" = ${userId} AND game = 'FRANGACO' AND day = ${day - 1}
+         AND "finishedAt" IS NULL AND state->'run'->>'status' = 'ativo'
+       FOR UPDATE`;
+    const ctx = prev ? freshCtx(base, prev) : freshCtx(base, await lockDayRow(tx, userId, day));
+    // defesa que estourou o tempo com a aba fechada: resolve sozinha como gol da IA (se isso
+    // fechar o run de ontem, a linha de ontem é gravada fechada e a PRÓXIMA requisição já cai
+    // na linha de hoje — o torneio de hoje continua disponível)
+    if (!ctx.row.finishedAt) {
+      const fimEntrada = stepEntry(rand, ctx.st, now.getTime());
+      if (fimEntrada) await applyFim(ctx, fimEntrada, null);
     }
     const extra = (await fn(ctx)) ?? {};
-    await tx.dailyGame.update({ where: { id: row.id }, data: { state: ctx.st, ...ctx.patch } });
+    await tx.dailyGame.update({ where: { id: ctx.row.id }, data: { state: ctx.st, ...ctx.patch } });
     return extra;
   });
 }
@@ -145,13 +162,21 @@ async function titulosDaTemporada(desde) {
   return rows;
 }
 
+/** A linha "corrente": um run ATIVO de ontem (torneio que atravessou a virada das 20h)
+ *  tem prioridade sobre a linha de hoje — o MESMO critério do lock em withFrangaco. */
+async function findRow(userId, day) {
+  const prev = await prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'FRANGACO', day: day - 1 } } });
+  if (prev && !prev.finishedAt && prev.state?.run?.status === 'ativo') return prev;
+  return prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'FRANGACO', day } } });
+}
+
 export async function frangacoState(userId) {
   const now = new Date();
   const day = dayNumberAt(HOUR, now);
-  let row = await prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'FRANGACO', day } } });
-  if (row && !row.finishedAt && row.state?.run?.status === 'ativo' && expired(row.state.run.duel?.pending, now)) {
+  let row = await findRow(userId, day);
+  if (row && !row.finishedAt && row.state?.run?.status === 'ativo' && pendingExpired(row.state.run, now.getTime())) {
     await withFrangaco(userId, async () => ({})); // fecha a defesa vencida pelo relógio
-    row = await prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'FRANGACO', day } } });
+    row = await findRow(userId, day);
   }
   const [user, teams, temporada] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, include: { team: true } }),
@@ -221,45 +246,26 @@ export function frangacoRun(userId) {
 export function frangacoIncoming(userId) {
   return withFrangaco(userId, async (ctx) => {
     const { st, teams, now } = ctx;
-    const run = st.run;
-    if (run?.status !== 'ativo') throw new GameError(409, 'no-run', ctx.row.finishedAt ? DONE() : 'Comece um torneio do Frangaço.');
-    if (run.duel.turn !== 'ia') throw new GameError(409, 'not-your-defense', 'Agora é a sua vez de BATER.');
-    const adv = teams.find((t) => t.id === run.oppIds[run.rodada - 1]);
-    // já servida e ainda no ar (recarregou a página): devolve a MESMA, sem zerar o relógio
-    if (!run.duel.pending) {
-      const sudden = run.duel.defenses.length >= C.kicks;
-      run.duel.pending = { n: run.duel.defenses.length + 1, ...newIncoming(rand, run.rodada - 1, sudden), servedAt: now.getTime() };
-    }
-    const p = run.duel.pending;
+    // já servida e ainda no ar (recarregou a página): o step devolve a MESMA, sem zerar o relógio
+    const p = stepIncoming(rand, st, now.getTime(), !!(ctx.row.finishedAt ?? ctx.patch.finishedAt));
+    const adv = teams.find((t) => t.id === st.run.oppIds[st.run.rodada - 1]);
     return { alvo: p.alvo, janelaMs: p.janelaMs, raio: p.raio, cobrador: adv ? batedorDe(adv) : 'O cobrador' };
   });
 }
 
 /* ─────────────────────────── POST /api/frangaco/kick ─────────────────────────── */
 
-const num01 = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 ? v : null);
-
 export function frangacoKick(userId, body = {}) {
-  const xAnunciado = num01(body.xAnunciado);
-  if (xAnunciado === null) throw badRequest('Mire dentro do gol.', 'bad-aim');
-  const xReal = body.xReal == null ? null : num01(body.xReal);
-  if (body.xReal != null && xReal === null) throw badRequest('Finta inválida.', 'bad-aim');
+  const aim = parseKick(body);
   return withFrangaco(userId, async (ctx) => {
-    const { st } = ctx;
-    const run = st.run;
-    if (run?.status !== 'ativo') throw new GameError(409, 'no-run', ctx.row.finishedAt ? DONE() : 'Comece um torneio do Frangaço.');
-    if (run.duel.turn !== 'user') throw new GameError(409, 'not-your-kick', 'Agora é a sua vez de DEFENDER.');
     const user = await loadUser(ctx.tx, userId);
-    const r = resolveKick(rand, { xAnunciado, xReal, dexterity: user.dexterity });
-    run.duel.kicks.push({
-      n: run.duel.kicks.length + 1, gol: r.gol, motivo: r.motivo, fintou: r.fintou,
-      xAnunciado, xReal, xBola: r.xBola, yBola: r.yBola, xGk: r.xGk, keeperMs: r.keeperMs ?? null,
-    });
-    const fim = await advance(ctx, user);
+    const { r, fim } = stepKick(rand, ctx.st, { ...aim, dexterity: user.dexterity },
+      !!(ctx.row.finishedAt ?? ctx.patch.finishedAt));
+    const mensagem = await applyFim(ctx, fim, user);
     return {
       resultado: { gol: r.gol, xBola: r.xBola, yBola: r.yBola, xGk: r.xGk, motivo: r.motivo, fintou: r.fintou },
-      mensagem: fim.mensagem ?? mensagemKick(r),
-      run: runView(ctx.row, st, ctx.teams, user.nick),
+      mensagem: mensagem ?? mensagemKick(r),
+      run: runView(ctx.row, ctx.st, ctx.teams, user.nick),
       dueloFinal: fim.dueloFinal, avancou: fim.avancou,
     };
   });
@@ -277,28 +283,22 @@ const mensagemKick = (r) => {
 export function frangacoSave(userId, body = {}) {
   return withFrangaco(userId, async (ctx) => {
     const { st } = ctx;
-    const run = st.run;
-    // a defesa pode ter sido fechada pelo relógio na entrada do withFrangaco (ou é um
-    // toque duplo): devolve o último resultado em vez de erro — o Unity segue o run
-    if (run?.duel?.defenses?.length && !run.duel.pending && (run.status !== 'ativo' || run.duel.turn === 'user')) {
-      const d = run.duel.defenses.at(-1);
-      const user = await loadUser(ctx.tx, userId);
+    // REGRA DE OURO: em jogo legítimo o /save nunca responde erro — o step reprisa a última
+    // defesa quando não há pendência (toque duplo, resposta perdida, fechada pelo relógio)
+    const res = stepSave(rand, st, body, ctx.now.getTime(), !!(ctx.row.finishedAt ?? ctx.patch.finishedAt));
+    const user = await loadUser(ctx.tx, userId);
+    if (res.replay) {
       return {
-        resultado: { defendeu: d.defendeu, gol: d.gol, alvo: d.alvo, motivo: d.motivo },
-        mensagem: mensagemSave(d),
-        run: runView(ctx.row, st, ctx.teams, user.nick), dueloFinal: null, avancou: false,
+        resultado: res.replay.resultado, mensagem: mensagemSave(res.replay.resultado),
+        run: runView(ctx.row, st, ctx.teams, user.nick),
+        dueloFinal: res.replay.dueloFinal ?? null, avancou: !!res.replay.avancou,
       };
     }
-    if (run?.status !== 'ativo') throw new GameError(409, 'no-run', ctx.row.finishedAt ? DONE() : 'Comece um torneio do Frangaço.');
-    if (run.duel.turn !== 'ia' || !run.duel.pending) throw new GameError(409, 'not-your-defense', 'Agora é a sua vez de BATER.');
-    const ms = typeof body.ms === 'number' && Number.isFinite(body.ms) ? Math.round(body.ms) : null;
-    const click = ms === null ? null : { x: num01(body.x) ?? NaN, y: num01(body.y) ?? NaN, ms };
-    const user = await loadUser(ctx.tx, userId);
-    const fim = await applySave(ctx, click, user);
-    const d = run.duel.defenses.at(-1);
+    const { d, fim } = res;
+    const mensagem = await applyFim(ctx, fim, user);
     return {
       resultado: { defendeu: d.defendeu, gol: d.gol, alvo: d.alvo, motivo: d.motivo },
-      mensagem: fim.mensagem ?? mensagemSave(d),
+      mensagem: mensagem ?? mensagemSave(d),
       run: runView(ctx.row, st, ctx.teams, user.nick),
       dueloFinal: fim.dueloFinal, avancou: fim.avancou,
     };
@@ -314,66 +314,38 @@ const mensagemSave = (d) => {
   return 'A bola morreu no canto.';
 };
 
-/** Resolve a defesa pendente (click null = não clicou) e move o duelo adiante. */
-async function applySave(ctx, click, user = null) {
-  const { st, tx, now } = ctx;
-  const run = st.run;
-  const pending = run.duel.pending;
-  const r = resolveSave(rand, pending, click, now.getTime() - pending.servedAt);
-  run.duel.defenses.push({
-    n: pending.n, gol: r.gol, defendeu: r.defendeu, motivo: r.motivo,
-    alvo: pending.alvo, clique: click && Number.isFinite(click.x) ? { x: click.x, y: click.y } : null,
-    ms: click?.ms ?? null, janelaMs: pending.janelaMs,
-  });
-  run.duel.pending = null;
-  return advance(ctx, user ?? await loadUser(tx, ctx.userId));
-}
-
-/* ─────────────────────────── avanço do torneio ─────────────────────────── */
+/* ─────────────────────────── desfecho do lance no mundo ─────────────────────────── */
 
 /**
- * Depois de cada lance: duelo segue (troca a vez), avança de fase, consagra o
- * campeão ou elimina. Devolve { dueloFinal, avancou, mensagem } para a resposta.
+ * Aplica o desfecho devolvido por advanceRun (via steps da lib): fecha a linha do dia,
+ * paga o campeão e monta a mensagem. Devolve a mensagem (ou null se o duelo só segue).
  */
-async function advance(ctx, user) {
-  const { st, tx, now, teams } = ctx;
-  const run = st.run;
-  const status = duelStatus(run.duel.kicks, run.duel.defenses);
-  if (!status.over) {
-    run.duel.turn = run.duel.turn === 'user' ? 'ia' : 'user';
-    return { dueloFinal: null, avancou: false, mensagem: null };
-  }
-  const advId = run.oppIds[run.rodada - 1];
-  const adv = teams.find((t) => t.id === advId);
-  run.historico.push({ rodada: run.rodada, teamId: advId, golsUser: status.golsUser, golsIa: status.golsIa, venceu: status.venceu });
-  const dueloFinal = { golsUser: status.golsUser, golsIa: status.golsIa, vencedor: status.venceu ? 'user' : 'ia' };
-
-  if (!status.venceu) {
-    run.status = 'eliminado';
+async function applyFim(ctx, fim, user) {
+  if (!fim?.outcome) return null;
+  const { tx, now, teams } = ctx;
+  const adv = teams.find((t) => t.id === fim.advTeamId);
+  if (fim.outcome === 'eliminado') {
     ctx.patch = { ...ctx.patch, finishedAt: now, won: false, reward: null };
-    return { dueloFinal, avancou: false, mensagem: `Fim de linha na ${C.fases[run.rodada - 1]}. Só o campeão pontua — amanhã tem torneio novo.` };
+    return `Fim de linha na ${C.fases[fim.faseIdx]}. Só o campeão pontua — amanhã tem torneio novo.`;
   }
-  if (run.rodada < C.fases.length) {
-    run.rodada += 1;
-    run.duel = { turn: 'user', kicks: [], defenses: [], pending: null };
-    const prox = teams.find((t) => t.id === run.oppIds[run.rodada - 1]);
-    return { dueloFinal, avancou: true, mensagem: `Bateu o ${adv?.name ?? 'adversário'}! ${C.fases[run.rodada - 1]} contra o ${prox?.name ?? 'próximo'}.` };
+  if (fim.outcome === 'avancou') {
+    const prox = teams.find((t) => t.id === fim.proxTeamId);
+    return `Bateu o ${adv?.name ?? 'adversário'}! ${C.fases[fim.faseIdx + 1]} contra o ${prox?.name ?? 'próximo'}.`;
   }
   // CAMPEÃO: a única forma de pontuar — 1 gol (kind FRANGACO) + R$ 500 + 20 de nível
-  run.status = 'campeao';
-  st.champion = true;
-  const placar = `${status.golsUser} x ${status.golsIa}`;
-  const match = await liveMatchForTeam(user.teamId, tx);
-  const { text } = await applyResult(tx, user, {
+  const u = user ?? await loadUser(tx, ctx.userId);
+  const placar = `${fim.dueloFinal.golsUser} x ${fim.dueloFinal.golsIa}`;
+  const match = await liveMatchForTeam(u.teamId, tx);
+  const { text } = await applyResult(tx, u, {
     kind: 'FRANGACO', goal: true, now, match, money: C.championMoney,
     phrase: `é CAMPEÃO do Frangaço: bateu o ${adv?.name ?? 'adversário'} por ${placar} na final`,
   });
-  await tx.user.update({ where: { id: user.id }, data: { levelBonus: { increment: C.championLevelPoints } } });
+  await tx.user.update({ where: { id: u.id }, data: { levelBonus: { increment: C.championLevelPoints } } });
   ctx.patch = {
     ...ctx.patch, finishedAt: now, won: true,
     reward: { goal: true, champion: true, money: C.championMoney, levelPoints: C.championLevelPoints, text },
   };
-  return { dueloFinal, avancou: false, mensagem: `CAMPEÃO DO FRANGAÇO! +1 gol, R$ ${C.championMoney} e +${C.championLevelPoints} de nível.` };
+  return `CAMPEÃO DO FRANGAÇO! +1 gol, R$ ${C.championMoney} e +${C.championLevelPoints} de nível.`;
 }
 
 /* ─────────────────────────── GET /api/daily/frangaco (hub) ─────────────────────────── */
@@ -382,7 +354,7 @@ async function advance(ctx, user) {
 export async function frangacoHub(userId) {
   const now = new Date();
   const day = dayNumberAt(HOUR, now);
-  const row = await prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'FRANGACO', day } } });
+  const row = await findRow(userId, day); // um run ativo de ontem aparece como CONTINUAR
   const finished = !!row?.finishedAt;
   return {
     day, nextAt: nextResetAt(HOUR, now).getTime(), serverTime: now.getTime(), freePlay: FREE,

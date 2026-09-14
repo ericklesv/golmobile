@@ -68,3 +68,5 @@ O dinheiro e os prêmios do JogaGol são virtuais e valem apenas dentro do jogo.
 - **Política de privacidade:** https://jogagol.com.br/privacidade
 - **Notas da versão 1.0.0 (pt-BR):** "Primeira versão do JogaGol na Google Play: chutes, minigames diários, liga com rodadas de 24 h, rankings, diretoria e chat."
 - **Ícone:** `icone-512.png` · **Gráfico de destaque:** `destaque-1024x500.png` (nesta pasta)
+- **Capturas de tela (smartphone, 1080×2400):** `screenshots/01-jogar.png` … `07-meu-time.png` — geradas com
+  `node tools/play-screenshots.mjs` a partir da produção (conta de teste). Subir de 2 a 8, nesta ordem.

@@ -17,6 +17,7 @@ Repo: https://github.com/ericklesv/golmobile (branch `main` = prod; deploy manua
 |---|---|
 | `api/` | Node 20 ESM · Express 5 · Prisma 6 · PostgreSQL (banco `brgol`, mesmo servidor PG do Managol) |
 | `web/` | Vite 5 · React 18 · TypeScript · Tailwind 3 · framer-motion · react-three-fiber/three (cenas 3D do pênalti e da falta) · zustand · vite-plugin-pwa |
+| Android | TWA (Bubblewrap) sobre o site — `docs/PLAY_STORE.md` |
 | Infra | Nginx (site `brgol`) · PM2 (`brgol-api`, porta 4310, usuário `brgol`) · Certbot · deploy = `ssh root@VPS 'bash /usr/local/bin/brgol-deploy.sh'` |
 
 `legacy-expo/` = esqueleto antigo (Expo + Firebase + Railway). Não é usado; será apagado
@@ -172,6 +173,23 @@ depois que o novo estiver estável. Não instalar nada dele.
   VIP). O painel de admin passa por cima do contrato ao trocar o time. Selo de propostas na aba Time vem no
   heartbeat (`offers`). **Mexeu nisso? Rode `node scripts/test-club.js`** (pasta api/, só banco LOCAL — o
   script se recusa a rodar fora dele): ~50 conferências, tem de dar "TUDO OK".
+- **Google Play / conta do jogador** (decisões do dono, 14/09/2026; guia em **`docs/PLAY_STORE.md`**):
+  app Android = **TWA** (Bubblewrap) sobre o site; dentro do app o VIP será pelo **Google Play Billing**,
+  no site fica o **PIX** — o app **nunca** cita PIX nem aponta para o site (`web/src/lib/twa.ts`: `?src=twa`
+  no startUrl do TWA ou `referrer android-app://` ⇒ `isTwa()`, e `Vip.tsx` esconde os pacotes). Exigências
+  já cumpridas: páginas públicas `/privacidade`, `/termos`, `/excluir-conta` (`screens/Legal.tsx`;
+  `CONTACT_EMAIL` = contato@jogagol.com.br, `RESPONSIBLE` = Managol Softwares — mudou o tratamento de
+  dados? atualizar texto e data); **exclusão de conta** (`routes/account.js` → `DELETE /api/account
+  {password}`: ANONIMIZA a linha — nick `excluido-<id>`, e-mail/senha/foto/bio/IP/economia apagados,
+  mensagens e bloqueios apagados, lances sem o nick, `deletedAt`; gols ficam nos placares; `requireAuth`,
+  login, busca, rankings e perfil público ignoram `deletedAt`); **bloqueio** (`UserBlock`: quem bloqueou não
+  recebe as mensagens do bloqueado no `GET /api/chat`) e **denúncia** (`Report`, 20/dia, cópia do texto da
+  mensagem; painel de admin aba Denúncias → `GET /api/painel/denuncias`, `POST …/:id/resolver
+  {acao: ignorar|apagar|banir, horas}` — fecha as outras abertas da mesma mensagem/pessoa, tudo no
+  `AdminAction`). Telas: bandeirinha em cada mensagem do chat e botões Denunciar/Bloquear no perfil
+  (`components/Account.tsx`). **Mexeu nisso? Rode `node scripts/test-conta.js`** (pasta api/, só banco
+  LOCAL): 35 conferências, tem de dar "TUDO OK". Ícone maskable `icon-512-maskable.png`; artes da loja em
+  `assets/play-store/`.
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
   `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).
@@ -300,7 +318,9 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick|daily/faltapro` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}|daily/faltapro/start|daily/faltapro/kick{i,dirX,dirY,power,spin}` (minigames)
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}` (minigames)
 `GET /api/frangaco/state` · `POST /api/frangaco/run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}` (Frangaço — contrato do cliente Unity em /tv/?mode=penalty) · `GET /api/daily/frangaco` (estado do slider)
-`GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
+`GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links; não traz mensagens de quem eu bloqueei)
+`DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
+`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

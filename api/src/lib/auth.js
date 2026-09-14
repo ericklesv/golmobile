@@ -19,7 +19,7 @@ export async function requireAuth(req, res, next) {
       throw unauthorized('Sessão inválida. Entre novamente.');
     }
     const user = await prisma.user.findUnique({ where: { id: payload.uid } });
-    if (!user) throw unauthorized('Conta não encontrada.');
+    if (!user || user.deletedAt) throw unauthorized('Conta não encontrada.');
     if (user.bannedUntil && user.bannedUntil.getTime() > Date.now()) {
       throw forbidden(`Conta suspensa até ${user.bannedUntil.toLocaleString('pt-BR', { timeZone: config.tz })}.`);
     }

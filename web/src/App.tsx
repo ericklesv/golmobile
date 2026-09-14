@@ -30,6 +30,7 @@ import { ProfileScreen } from './screens/Profile';
 import { PlayerScreen } from './screens/Player';
 import { RulesScreen } from './screens/Rules';
 import { LandingScreen } from './screens/Landing';
+import { PrivacyScreen, TermsScreen, DeleteAccountInfoScreen } from './screens/Legal';
 import { ShopScreen } from './screens/Shop';
 import { ActiveScreen } from './screens/Active';
 import { installDragScroll } from './lib/dragScroll';
@@ -86,6 +87,10 @@ export default function App() {
         <Route path="/entrar" element={me ? <Navigate to="/" replace /> : <LoginScreen />} />
         <Route path="/cadastro" element={me ? <Navigate to="/" replace /> : <RegisterScreen />} />
         <Route path="/convite/:code" element={<InviteRoute logged={!!me} />} />
+        {/* páginas públicas exigidas pela Play Store (sem login) */}
+        <Route path="/privacidade" element={<PrivacyScreen />} />
+        <Route path="/termos" element={<TermsScreen />} />
+        <Route path="/excluir-conta" element={<DeleteAccountInfoScreen />} />
         <Route element={<Private><Layout /></Private>}>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/liga" element={<LeagueScreen />} />

@@ -11,6 +11,8 @@ import { Panel, Bar } from '../components/ui';
 import { toast } from '../components/Toast';
 import { money as fmt, num } from '../lib/format';
 import { sound } from '../lib/sound';
+import { AnimatePresence } from 'framer-motion';
+import { DeleteAccountModal } from '../components/Account';
 
 function Stat({ label, value, sub, icon }: { label: string; value: React.ReactNode; sub?: string; icon?: string }) {
   return (
@@ -37,6 +39,7 @@ export function ProfileScreen() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [som, setSom] = useState(sound.enabled());
+  const [deleting, setDeleting] = useState(false); // janela "Excluir minha conta" (Play Store)
   const [pub, setPub] = useState<PublicPlayer | null>(null); // top 3 de agora + quadro de top 10
   useEffect(() => { api.player(me.nick).then(setPub).catch(() => {}); }, [me.nick]);
   async function pickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
@@ -139,6 +142,8 @@ export function ProfileScreen() {
       </Panel>
 
       <button onClick={() => { logout(); nav('/entrar'); }} className="btn btn-red btn-md w-full"><img src="/ui/pi-exit_l.png" className="h-5 w-5" alt="" /> Deslogar</button>
+      <p className="t-display t-out text-center text-[11px]"><Link to="/privacidade">Privacidade</Link> · <Link to="/termos">Termos de uso</Link> · <button onClick={() => setDeleting(true)} className="no-drag t-display t-out">Excluir minha conta</button></p>
+      <AnimatePresence>{deleting && <DeleteAccountModal key="del" onClose={() => setDeleting(false)} />}</AnimatePresence>
     </div>
   );
 }

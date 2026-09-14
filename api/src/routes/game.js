@@ -90,7 +90,7 @@ game.get('/rankings/:scope', handle(async (req) => {
   if (scope === 'rodada') return { scope, key: round?.number ?? null, rows: round ? await withBadges(await topScorers({ roundId: round.id }, take)) : [] };
   if (scope === 'temporada') return { scope, key: round?.season?.number ?? null, rows: round ? await withBadges(await topScorers({ seasonId: round.seasonId }, take)) : [] };
   const field = { geral: 'goalsTotal', penal: 'penaltyGoals', falta: 'foulGoals', trilha: 'trailGoals' }[scope];
-  const users = await prisma.user.findMany({ where: { [field]: { gt: 0 } }, orderBy: [{ [field]: 'desc' }, { id: 'asc' }], take, include: { team: teamSel } });
+  const users = await prisma.user.findMany({ where: { [field]: { gt: 0 }, deletedAt: null }, orderBy: [{ [field]: 'desc' }, { id: 'asc' }], take, include: { team: teamSel } });
   return {
     scope, key: null,
     rows: await withBadges(users.map((u, i) => ({ position: i + 1, userId: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, goals: u[field], team: u.team, vip: !!(u.vipUntil && u.vipUntil > new Date()) }))),
@@ -175,7 +175,7 @@ game.get('/teams/:slug', handle(async (req) => {
 game.get('/players/active', handle(async () => {
   const now = Date.now();
   const users = await prisma.user.findMany({
-    where: { lastSeenAt: { gt: new Date(now - 24 * 3600_000) } },
+    where: { lastSeenAt: { gt: new Date(now - 24 * 3600_000) }, deletedAt: null },
     orderBy: { lastSeenAt: 'desc' }, take: 300,
     select: { nick: true, goalsTotal: true, goalsRound: true, roundId: true, lastSeenAt: true, avatarUrl: true, vipUntil: true, team: teamSel },
   });
@@ -185,13 +185,13 @@ game.get('/players/active', handle(async () => {
 game.get('/players/search', handle(async (req) => {
   const q = String(req.query.q || '').trim().toLowerCase();
   if (q.length < 1) return [];
-  const users = await prisma.user.findMany({ where: { nickLower: { contains: q } }, take: 20, orderBy: { goalsTotal: 'desc' }, include: { team: teamSel } });
+  const users = await prisma.user.findMany({ where: { nickLower: { contains: q }, deletedAt: null }, take: 20, orderBy: { goalsTotal: 'desc' }, include: { team: teamSel } });
   return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, avatarUrl: u.avatarUrl, team: teamView(u.team) }));
 }));
 
 game.get('/players/:nick', handle(async (req) => {
   const user = await prisma.user.findUnique({ where: { nickLower: String(req.params.nick).toLowerCase() }, include: { team: true } });
-  if (!user) throw notFound('Jogador não encontrado.');
+  if (!user || user.deletedAt) throw notFound('Jogador não encontrado.');
   const [geral, penal, falta, trilha, recent] = await Promise.all([
     prisma.user.count({ where: { goalsTotal: { gt: user.goalsTotal } } }),
     prisma.user.count({ where: { penaltyGoals: { gt: user.penaltyGoals } } }),

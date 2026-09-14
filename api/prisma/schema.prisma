@@ -67,6 +67,9 @@ model User {
   lastSeenAt   DateTime  @default(now())
   lastIp       String? // último IP visto (cadastro/login/heartbeat) — painel de admin
   lastIpAt     DateTime?
+  // Conta excluída pelo próprio jogador (exigência da Play Store): a linha fica anonimizada
+  // (nick "excluido-<id>", e-mail/senha/foto/bio/IP apagados) e não entra mais. Ver routes/account.js.
+  deletedAt    DateTime?
 
   teamId Int
   team   Team @relation(fields: [teamId], references: [id])
@@ -138,6 +141,10 @@ model User {
   giftsSent   VipGift[]       @relation("GiftFrom")
   giftsGot    VipGift[]       @relation("GiftTo")
   loginPasses LoginPass[]
+  blocksGiven UserBlock[]     @relation("BlockFrom")
+  blocksGot   UserBlock[]     @relation("BlockTo")
+  reportsMade Report[]        @relation("ReportFrom")
+  reportsGot  Report[]        @relation("ReportTo")
   refEarned   ReferralReward[] @relation("RefEarner")
   refRewards  ReferralReward[] @relation("RefFrom")
   adminActions AdminAction[] @relation("AdminActionBy")
@@ -395,6 +402,42 @@ model Nerf {
   createdAt  DateTime @default(now())
 
   @@index([toUserId])
+}
+
+// Bloqueio entre jogadores (política de conteúdo gerado por usuário da Play Store): quem bloqueia
+// deixa de ver as mensagens do bloqueado no chat. POST/DELETE /api/me/block/:nick.
+model UserBlock {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation("BlockFrom", fields: [userId], references: [id])
+  blockedId Int
+  blocked   User     @relation("BlockTo", fields: [blockedId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, blockedId])
+}
+
+// Denúncia de jogador/mensagem (política de conteúdo gerado por usuário): o painel de admin lista
+// as abertas e resolve (ignorar, apagar a mensagem, banir). `messageText` é a cópia da mensagem
+// na hora da denúncia (a original pode ser apagada depois).
+model Report {
+  id           Int       @id @default(autoincrement())
+  reporterId   Int
+  reporter     User      @relation("ReportFrom", fields: [reporterId], references: [id])
+  targetId     Int
+  target       User      @relation("ReportTo", fields: [targetId], references: [id])
+  messageId    Int?
+  messageText  String?
+  reason       String // "ofensa" | "spam" | "golpe" | "nick" | "foto" | "outro"
+  details      String?
+  status       String    @default("OPEN") // "OPEN" | "RESOLVED"
+  resolution   String? // "ignorar" | "apagar" | "banir"
+  resolvedById Int?
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([targetId])
 }
 
 // Chat: salas "geral" e "time:<slug>". Cor da mensagem = habilidade do nível 8.

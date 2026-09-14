@@ -29,6 +29,7 @@ export function LandingScreen() {
       <div className="relative mt-6 flex flex-col gap-3">
         <Link to="/cadastro" className="btn btn-orange btn-lg w-full">Escolher meu time</Link>
         <Link to="/entrar" className="btn btn-blue btn-md w-full">Já tenho conta</Link>
+        <p className="t-display t-out text-center text-[11px]"><Link to="/privacidade">Privacidade</Link> · <Link to="/termos">Termos de uso</Link></p>
       </div>
     </div>
   );

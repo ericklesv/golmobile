@@ -11,6 +11,7 @@ import { num, timeAgo } from '../lib/format';
 import { AnimatePresence } from 'framer-motion';
 import { OfferModal, GiftModal, roleLabel, dayMonth } from '../components/Club';
 import { NameBadges, TopHistory } from '../components/Badges';
+import { ReportModal } from '../components/Account';
 
 export function PlayerScreen() {
   const { nick } = useParams();
@@ -19,10 +20,12 @@ export function PlayerScreen() {
   const setMe = useAuth((s) => s.setMe);
   const [p, setP] = useState<PublicPlayer | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  const [modal, setModal] = useState<'offer' | 'gift' | null>(null);
+  const [modal, setModal] = useState<'offer' | 'gift' | 'report' | null>(null);
+  const [blocked, setBlocked] = useState(false); // eu bloqueei este jogador? (GET /api/account/blocks)
   const refresh = useAuth((s) => s.refresh);
 
   useEffect(() => { setP(undefined); api.player(nick!).then(setP).catch(() => setP(null)); }, [nick]);
+  useEffect(() => { api.blocks().then((b) => setBlocked(b.some((x) => x.nick.toLowerCase() === String(nick).toLowerCase()))).catch(() => {}); }, [nick]);
   if (p === undefined) return <div className="flex justify-center py-16"><Spinner /></div>;
   if (!p) return <Empty text="Jogador não encontrado." />;
 
@@ -108,6 +111,12 @@ export function PlayerScreen() {
       )}
 
       {canNerf && <button onClick={nerf} disabled={busy} className="btn btn-red btn-md w-full">Nerfar destreza (R$ 1.000)</button>}
+      {!isMe && (
+        <div className="flex gap-2">
+          <button onClick={() => setModal('report')} className="btn btn-gray btn-sm flex-1"><img src="/ui/flag-orange.png" className="h-5 w-5" alt="" /> Denunciar</button>
+          <button onClick={async () => { if (busy) return; setBusy(true); try { const r = blocked ? await api.unblock(p!.nick) : await api.block(p!.nick); setBlocked(r.blocked); toast(r.blocked ? `${p!.nick} bloqueado.` : `${p!.nick} desbloqueado.`, 'success'); } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); } }} disabled={busy} className={`btn btn-sm flex-1 ${blocked ? 'btn-orange' : 'btn-gray'}`}>{blocked ? 'Desbloquear' : 'Bloquear'}</button>
+        </div>
+      )}
 
       <Panel title="ÚLTIMOS LANCES" ribbon="green">
         {p.recent.length ? <ul className="flex flex-col gap-1.5 text-[12px] font-bold">{p.recent.map((r) => <li key={r.id} className="flex gap-2"><span className={`flex-1 ${r.goal ? 'text-navy-ink' : 'text-muted'}`}>{r.text}</span><span className="text-muted">{timeAgo(r.at)}</span></li>)}</ul> : <p className="text-xs font-bold text-muted">Nenhum lance ainda.</p>}
@@ -116,6 +125,7 @@ export function PlayerScreen() {
       <AnimatePresence>
         {modal === 'offer' && <OfferModal key="offer" nick={p.nick} gender={p.gender} teamName={p.team.name} onClose={() => setModal(null)} onSent={() => setModal(null)} />}
         {modal === 'gift' && <GiftModal key="gift" nick={p.nick} onClose={() => setModal(null)} onSent={() => setModal(null)} />}
+        {modal === 'report' && <ReportModal key="report" nick={p.nick} blocked={blocked} onBlocked={setBlocked} onClose={() => setModal(null)} />}
       </AnimatePresence>
     </div>
   );

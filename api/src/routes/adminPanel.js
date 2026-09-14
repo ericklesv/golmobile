@@ -198,3 +198,47 @@ adminPanel.get('/log', handle(async (req) => {
     })),
   };
 }));
+
+// ─── Denúncias (política de conteúdo gerado por usuário da Play Store) ──────
+// GET /api/painel/denuncias?status=OPEN|RESOLVED&page= · POST /api/painel/denuncias/:id/resolver
+// {acao: 'ignorar'|'apagar'|'banir', horas?} — apagar = remove a mensagem denunciada; banir = suspende
+// o denunciado por `horas` (padrão 24 h) e apaga a mensagem também. Tudo entra no log (AdminAction).
+const reportView = (r) => ({
+  id: r.id, reason: r.reason, details: r.details ?? null, messageId: r.messageId ?? null, messageText: r.messageText ?? null,
+  status: r.status, resolution: r.resolution ?? null, resolvedAt: r.resolvedAt ?? null, at: r.createdAt,
+  reporter: { id: r.reporter.id, nick: r.reporter.nick },
+  target: { id: r.target.id, nick: r.target.nick, avatarUrl: r.target.avatarUrl ?? null, banned: !!(r.target.bannedUntil && r.target.bannedUntil.getTime() > Date.now()), deleted: !!r.target.deletedAt },
+});
+
+adminPanel.get('/denuncias', handle(async (req) => {
+  const status = req.query.status === 'RESOLVED' ? 'RESOLVED' : 'OPEN';
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  const sel = { reporter: { select: { id: true, nick: true } }, target: { select: { id: true, nick: true, avatarUrl: true, bannedUntil: true, deletedAt: true } } };
+  const [total, open, rows] = await Promise.all([
+    prisma.report.count({ where: { status } }),
+    prisma.report.count({ where: { status: 'OPEN' } }),
+    prisma.report.findMany({ where: { status }, orderBy: { id: 'desc' }, skip: (page - 1) * PAGE, take: PAGE, include: sel }),
+  ]);
+  return { status, page, pages: Math.max(1, Math.ceil(total / PAGE)), total, open, rows: rows.map(reportView) };
+}));
+
+adminPanel.post('/denuncias/:id/resolver', handle(async (req) => {
+  const id = Number(req.params.id);
+  const acao = String(req.body?.acao || '');
+  if (!['ignorar', 'apagar', 'banir'].includes(acao)) throw badRequest('Ação inválida.');
+  const horas = Math.max(1, Math.min(24 * 365, Math.floor(Number(req.body?.horas) || 24)));
+  const r = await prisma.report.findUnique({ where: { id }, include: { target: true } });
+  if (!r) throw notFound('Denúncia não encontrada.');
+  if (r.status !== 'OPEN') throw badRequest('Essa denúncia já foi resolvida.');
+  await prisma.$transaction(async (tx) => {
+    if (acao !== 'ignorar' && r.messageId) await tx.chatMessage.deleteMany({ where: { id: r.messageId } });
+    if (acao === 'banir') await tx.user.update({ where: { id: r.targetId }, data: { bannedUntil: new Date(Date.now() + horas * 3600_000) } });
+    // as outras denúncias abertas contra a mesma pessoa/mensagem fecham junto
+    await tx.report.updateMany({
+      where: { status: 'OPEN', OR: [{ id }, ...(r.messageId ? [{ messageId: r.messageId }] : []), ...(acao === 'banir' ? [{ targetId: r.targetId }] : [])] },
+      data: { status: 'RESOLVED', resolution: acao, resolvedById: req.user.id, resolvedAt: new Date() },
+    });
+  });
+  await audit(req.user.id, r.targetId, 'denuncia', { id, acao, ...(acao === 'banir' ? { horas } : {}), ...(r.messageId ? { messageId: r.messageId } : {}) });
+  return { ok: true };
+}));

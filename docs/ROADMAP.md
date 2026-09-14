@@ -2,7 +2,16 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## Próximos passos (atualizado 13/09/2026 — fazer nesta ordem)
+## Próximos passos (atualizado 14/09/2026 — fazer nesta ordem)
+0. [~] **Google Play** (14/09/2026, decisões do dono; guia completo em **`docs/PLAY_STORE.md`**):
+   app = TWA com Bubblewrap; Play Billing dentro do app + PIX só no site (modelo Pokémon GO); conta
+   pessoal ⇒ teste fechado 12 testadores/14 dias. **Feito 14/09:** `/privacidade`, `/termos`,
+   `/excluir-conta` (`Legal.tsx`), exclusão de conta no Perfil (`DELETE /api/account`, anonimiza),
+   denunciar/bloquear no chat e no perfil (`/api/account/*`, tabelas `UserBlock`/`Report`, migração
+   0023), aba **Denúncias** no painel de admin, ícone maskable, app esconde o PIX quando é TWA
+   (`lib/twa.ts`), ícone e gráfico de destaque em `assets/play-store/`. **Falta:** criar
+   `contato@jogagol.com.br`; deploy; `assetlinks.json` (precisa do SHA-256 do console); Bubblewrap;
+   formulários do console; screenshots; teste fechado; depois **Play Billing** (passo 8 do guia).
 Feitos hoje: header (foto · nick/xp · nível → /perfil), foto de perfil (PNG/JPG/WEBP/GIF ≤ 5 MB),
 aba **Loja**, moeda VIP no header, texto pessoal no perfil público, lista de jogadores ativos
 (24 h) clicável, rolagem por arraste no PC, roleta calibrada, setas de chute no pênalti/falta,

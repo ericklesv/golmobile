@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
-import type { AdminLogRow, AdminPatch, AdminUserDetail, AdminUserRow } from '../lib/types';
+import type { AdminLogRow, AdminPatch, AdminUserDetail, AdminUserRow, AdminReportRow } from '../lib/types';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { Panel, Spinner, Tabs, Empty } from '../components/ui';
@@ -315,11 +315,70 @@ function LogList() {
   );
 }
 
+// ─── Denúncias (política de conteúdo gerado por usuário da Play Store) ──────
+const REASON_LABEL: Record<string, string> = { ofensa: 'Ofensa/ameaça', spam: 'Spam', golpe: 'Golpe/link', nick: 'Nick/texto impróprio', foto: 'Foto imprópria', outro: 'Outro' };
+
+function ReportList({ onPick }: { onPick: (id: number) => void }) {
+  const [status, setStatus] = useState<'OPEN' | 'RESOLVED'>('OPEN');
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<{ page: number; pages: number; total: number; open: number; rows: AdminReportRow[] } | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const load = () => api.adminReports(status, page).then(setData).catch((e) => toast((e as Error).message, 'error'));
+  useEffect(() => { setData(null); load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [status, page]);
+
+  async function resolve(r: AdminReportRow, acao: 'ignorar' | 'apagar' | 'banir') {
+    const ask = { ignorar: `Ignorar a denúncia contra ${r.target.nick}?`, apagar: `Apagar a mensagem de ${r.target.nick}?`, banir: `Banir ${r.target.nick} por 24 h (e apagar a mensagem)?` }[acao];
+    if (busy || !window.confirm(ask)) return;
+    setBusy(r.id);
+    try { await api.adminResolveReport(r.id, acao, 24); toast('Denúncia resolvida.', 'success'); await load(); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(null); }
+  }
+
+  if (!data) return <div className="flex justify-center py-10"><Spinner /></div>;
+  return (
+    <div className="flex flex-col gap-3">
+      <Tabs value={status} onChange={(v) => { setStatus(v); setPage(1); }} items={[{ id: 'OPEN', label: `Abertas (${data.open})` }, { id: 'RESOLVED', label: 'Resolvidas' }]} />
+      <div className="panel p-2">
+        {data.rows.length === 0 ? <Empty text={status === 'OPEN' ? 'Nenhuma denúncia aberta.' : 'Nada resolvido ainda.'} /> : (
+          <ul className="flex flex-col gap-2">
+            {data.rows.map((r) => (
+              <li key={r.id} className="rounded-xl bg-sky/10 p-2">
+                <div className="flex items-center gap-2 text-[13px] font-extrabold text-navy-ink">
+                  <button onClick={() => onPick(r.target.id)} className="no-drag flex items-center gap-1.5"><Avatar url={r.target.avatarUrl} size={26} />{r.target.nick}</button>
+                  {r.target.banned && <span className="trap trap-orange text-[9px] uppercase">banido</span>}
+                  {r.target.deleted && <span className="trap trap-blue text-[9px] uppercase">conta excluída</span>}
+                  <span className="ml-auto text-[10px] font-bold text-muted">{dt(r.at)}</span>
+                </div>
+                <div className="mt-1 text-[12px] font-bold text-navy-ink"><span className="text-orange-deep">{REASON_LABEL[r.reason] ?? r.reason}</span> · por {r.reporter.nick}{r.details ? ` · "${r.details}"` : ''}</div>
+                {r.messageText && <p className="mt-1 rounded-lg bg-white/80 px-2 py-1 text-[12px] font-bold text-navy-ink">"{r.messageText}"</p>}
+                {r.status === 'OPEN' ? (
+                  <div className="mt-2 flex gap-1.5">
+                    <button onClick={() => resolve(r, 'ignorar')} disabled={busy === r.id} className="btn btn-gray btn-sm flex-1">Ignorar</button>
+                    {r.messageId && <button onClick={() => resolve(r, 'apagar')} disabled={busy === r.id} className="btn btn-orange btn-sm flex-1">Apagar msg</button>}
+                    <button onClick={() => resolve(r, 'banir')} disabled={busy === r.id} className="btn btn-red btn-sm flex-1">Banir 24 h</button>
+                  </div>
+                ) : <div className="mt-1 text-[10px] font-bold text-muted">Resolvida: {r.resolution}{r.resolvedAt ? ` · ${dt(r.resolvedAt)}` : ''}</div>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {data.pages > 1 && (
+        <div className="flex items-center justify-between">
+          <button className="btn btn-gray btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
+          <span className="t-display t-out text-sm">pág. {data.page}/{data.pages}</span>
+          <button className="btn btn-gray btn-sm" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}>Próxima</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tela ───────────────────────────────────────────────────────────────────
 export function AdminScreen() {
   const me = useAuth((s) => s.me)!;
   const nav = useNavigate();
-  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'log'>('jogadores');
+  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'denuncias' | 'log'>('jogadores');
   const [picked, setPicked] = useState<number | null>(null);
 
   if (!me.isAdmin) return <Navigate to="/" replace />;
@@ -333,10 +392,10 @@ export function AdminScreen() {
         <span className="trap trap-blue text-[11px] uppercase">{me.nick}</span>
       </div>
       <div className="relative px-3 pb-2">
-        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas criadas' }, { id: 'log', label: 'Log' }]} />
+        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'log', label: 'Log' }]} />
       </div>
       <div className="relative flex-1 px-3 pb-4">
-        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail id={picked} onBack={() => setPicked(null)} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
+        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail id={picked} onBack={() => setPicked(null)} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
       </div>
     </div>
   );

@@ -49,7 +49,7 @@ auth.post('/login', limiter, handle(async (req) => {
   const body = loginSchema.parse(req.body);
   const key = body.login.toLowerCase();
   const user = await prisma.user.findFirst({ where: { OR: [{ nickLower: key }, { email: key }] }, include: meInclude() });
-  if (!user || !(await bcrypt.compare(body.password, user.passwordHash))) {
+  if (!user || user.deletedAt || !(await bcrypt.compare(body.password, user.passwordHash))) {
     throw new GameError(401, 'bad-credentials', 'Nick/e-mail ou senha incorretos.');
   }
   await prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: clientIp(req), lastIpAt: new Date() } });

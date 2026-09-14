@@ -47,7 +47,7 @@ function roleLost(role, user, now = Date.now()) {
 }
 
 /** Encerra uma proposta aberta e devolve o VIP a quem propôs — só se ela ainda estava PENDING (uma vez). */
-async function closeOffer(tx, offer, status) {
+export async function closeOffer(tx, offer, status) {
   const r = await tx.transferOffer.updateMany({ where: { id: offer.id, status: 'PENDING' }, data: { status, decidedAt: new Date() } });
   if (r.count === 1) await tx.user.update({ where: { id: offer.fromUserId }, data: { vipDays: { increment: offer.vip } } });
   return r.count === 1;

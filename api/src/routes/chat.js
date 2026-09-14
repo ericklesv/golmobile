@@ -76,8 +76,10 @@ chat.get('/:room', handle(async (req) => {
   const user = await prisma.user.findUnique({ where: { id: req.user.id }, include: { team: true } });
   const room = roomFor(user, req.params.room);
   const after = Number(req.query.after || 0);
+  // Bloqueios (UserBlock): as mensagens de quem eu bloqueei não chegam à minha tela
+  const blocked = (await prisma.userBlock.findMany({ where: { userId: user.id }, select: { blockedId: true } })).map((b) => b.blockedId);
   const rows = await prisma.chatMessage.findMany({
-    where: { room, ...(after ? { id: { gt: after } } : {}) },
+    where: { room, ...(after ? { id: { gt: after } } : {}), ...(blocked.length ? { userId: { notIn: blocked } } : {}) },
     orderBy: { id: 'desc' }, take: 60, include: { user: userSel },
   });
   const [online, mentions] = await Promise.all([

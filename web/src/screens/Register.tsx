@@ -83,6 +83,7 @@ export function RegisterScreen() {
             </div>
           </div>
           <button className="btn btn-orange btn-lg w-full" disabled={busy}>{busy ? 'Criando…' : 'Criar jogador'}</button>
+          <p className="-mt-1 text-center text-[11px] font-bold text-white/85">Ao criar o jogador você concorda com os <Link to="/termos" className="t-gold t-display">Termos de uso</Link> e a <Link to="/privacidade" className="t-gold t-display">Política de privacidade</Link>. Para maiores de 13 anos.</p>
           <p className="text-center text-sm font-bold text-white/90">Já tem conta? <Link to="/entrar" className="t-gold t-display">Entrar</Link></p>
         </form>
       )}

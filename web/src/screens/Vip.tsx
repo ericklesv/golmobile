@@ -7,6 +7,7 @@ import { Panel, Countdown, Spinner } from '../components/ui';
 import { CartoonBall } from '../components/TrailBall';
 import { toast } from '../components/Toast';
 import { sound } from '../lib/sound';
+import { isTwa } from '../lib/twa';
 
 /**
  * VIP — situação do VIP do jogador (ativo até quando + VIPs guardados + ativar), o que o VIP dá, os pacotes
@@ -28,6 +29,7 @@ export function VipScreen() {
   const refresh = useAuth((s) => s.refresh);
   const [st, setSt] = useState<VipState | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
+  const twa = isTwa(); // app da Play Store: sem PIX (ver lib/twa.ts)
   const [checkout, setCheckout] = useState<VipPurchase | null>(null);
   const [days, setDays] = useState(1);
   const [activating, setActivating] = useState(false);
@@ -98,6 +100,13 @@ export function VipScreen() {
         </ul>
       </Panel>
 
+      {twa ? (
+        // App da Play Store: a compra aqui dentro será pelo Google Play Billing (docs/PLAY_STORE.md);
+        // a política do Google não permite mostrar o PIX nem apontar para o site.
+        <Panel title="PACOTES" ribbon="green">
+          <p className="rounded-xl bg-gold/25 p-2 text-center text-[12px] font-extrabold text-navy-ink">A compra de dias de VIP dentro do app chega em breve. Os VIPs que você já tem continuam valendo aqui.</p>
+        </Panel>
+      ) : (
       <Panel title="PACOTES" ribbon="green">
         {!st.enabled && <p className="mb-2 rounded-xl bg-gold/25 p-2 text-center text-[12px] font-extrabold text-navy-ink">A compra por PIX abre em breve.</p>}
         <div className="grid grid-cols-2 gap-2">
@@ -114,6 +123,7 @@ export function VipScreen() {
         </div>
         <p className="mt-2 text-center text-[11px] font-bold text-muted">Pagamento por PIX. Os VIPs entram na sua conta assim que o PIX é confirmado.</p>
       </Panel>
+      )}
 
       {st.history.length > 0 && (
         <Panel title="SUAS COMPRAS" ribbon="orange">

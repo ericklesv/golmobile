@@ -32,7 +32,7 @@ export const uploads = Router();
 // Arquivos públicos (cache longo: o nome muda a cada upload)
 uploads.use('/', express.static(config.uploadsDir, { maxAge: '30d', immutable: true, index: false, fallthrough: true }));
 
-function removeOld(url) {
+export function removeOld(url) {
   if (!url) return;
   const name = url.split('/').pop();
   if (!name || name.includes('..')) return;

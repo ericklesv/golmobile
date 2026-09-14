@@ -9,6 +9,8 @@ import { Tabs, Spinner } from '../components/ui';
 import { toast } from '../components/Toast';
 import { sound } from '../lib/sound';
 import { NameBadges } from '../components/Badges';
+import { AnimatePresence } from 'framer-motion';
+import { ReportModal } from '../components/Account';
 
 const LAST_SEEN_KEY = 'brgol.chat.lastSeen';
 export function markChatSeen(id: number) { try { localStorage.setItem(LAST_SEEN_KEY, String(id)); } catch {} }
@@ -69,6 +71,7 @@ export function ChatScreen() {
   const [busy, setBusy] = useState(false);
   const [mention, setMention] = useState<{ start: number; q: string } | null>(null);
   const [sug, setSug] = useState<Sug[]>([]);
+  const [report, setReport] = useState<ChatMessage | null>(null); // mensagem sendo denunciada (Play Store: denúncia + bloqueio)
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const msgsRef = useRef<ChatMessage[]>([]);
@@ -196,6 +199,7 @@ export function ChatScreen() {
                       {m.user.team && <Link to={`/time/${m.user.team.slug}`}><Shield team={m.user.team} size={14} /></Link>}
                       <span className="text-[9px] font-bold uppercase text-muted">lvl {m.user.level} · {m.user.levelName}</span>
                       <span className="ml-auto pl-2 text-[9px] font-bold text-muted">{hhmm(m.at)}</span>
+                      {!mine && <button type="button" onClick={() => setReport(m)} className="no-drag -mr-1 shrink-0 p-0.5 opacity-60 hover:opacity-100" aria-label={`Denunciar ou bloquear ${m.user.nick}`}><img src="/ui/flag-orange.png" className="h-3.5 w-3.5" alt="" /></button>}
                     </div>
                     <MsgText m={m} />
                   </div>
@@ -236,6 +240,10 @@ export function ChatScreen() {
           <button className="btn btn-green btn-md px-5" disabled={busy || !text.trim()}>{busy ? '…' : 'Enviar'}</button>
         </div>
       </form>
+      <AnimatePresence>
+        {report && <ReportModal key={report.id} nick={report.user.nick} messageId={report.id} messageText={report.text} onClose={() => setReport(null)}
+          onBlocked={(b) => { if (b) { const uid = report.user.id; setMsgs((prev) => (prev ?? []).filter((x) => x.user.id !== uid)); setReport(null); } }} />}
+      </AnimatePresence>
     </div>
   );
 }

@@ -417,3 +417,14 @@ export interface MatchPage {
   recent: { id: number; side: 'home' | 'away' | null; nick: string; avatarUrl: string | null; kind: string; label: string; at: number }[];
   serverTime: number;
 }
+
+// ─── Conta (exigências da Play Store): bloqueios, denúncias e exclusão ──────
+export interface BlockedUser { id: number; nick: string; avatarUrl: string | null; at: string }
+export type ReportReason = 'ofensa' | 'spam' | 'golpe' | 'nick' | 'foto' | 'outro';
+export interface AdminReportRow {
+  id: number; reason: ReportReason; details: string | null; messageId: number | null; messageText: string | null;
+  status: 'OPEN' | 'RESOLVED'; resolution: 'ignorar' | 'apagar' | 'banir' | null; resolvedAt: string | null; at: string;
+  reporter: { id: number; nick: string };
+  target: { id: number; nick: string; avatarUrl: string | null; banned: boolean; deleted: boolean };
+}
+export interface AdminReportsPage { status: 'OPEN' | 'RESOLVED'; page: number; pages: number; total: number; open: number; rows: AdminReportRow[] }

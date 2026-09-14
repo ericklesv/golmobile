@@ -367,3 +367,16 @@ export interface ClubState {
   gifts: { id: number; nick: string; days: number; at: number }[];
 }
 export interface ClubCandidate { id: number; nick: string; avatarUrl: string | null; gender: string; vip: boolean; online: boolean; goalsTotal: number }
+
+// ─── Presença da Semana (login diário) ────────────────────────────────────────
+export interface PassReward {
+  xp: number; baseXp: number; money: number; dexterity: number; vip: number;
+  item: { key: string; level: number | null; name: string; icon: string; hours: number } | null;
+  /** destreza já no máximo: o ponto virou dinheiro (valor em R$) */
+  dexterityAsMoney?: number;
+}
+export interface PassDay extends PassReward { step: number; done: boolean }
+export interface PassState {
+  today: number; claimed: boolean; step: number; week: number; vip: boolean; broken: boolean;
+  nextAt: number; vipXp: number; streakVip: number; days: PassDay[];
+}

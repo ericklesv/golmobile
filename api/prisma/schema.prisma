@@ -131,6 +131,7 @@ model User {
   offersGot   TransferOffer[] @relation("OfferTo")
   giftsSent   VipGift[]       @relation("GiftFrom")
   giftsGot    VipGift[]       @relation("GiftTo")
+  loginPasses LoginPass[]
   adminActions AdminAction[] @relation("AdminActionBy")
   adminTargeted AdminAction[] @relation("AdminActionTo")
 
@@ -515,4 +516,21 @@ model VipGift {
 
   @@index([fromUserId, createdAt])
   @@index([toUserId, createdAt])
+}
+
+// Presença da Semana (login diário; decisões do dono, 13/09/2026 — números em LOGIN_PASS, rules.js):
+// um resgate por dia do calendário de Brasília. O @@unique([userId, day]) garante NO BANCO que o prêmio
+// do dia sai uma vez só (dois toques ao mesmo tempo = um resgate). step = dia do passe (1..7); week =
+// semanas seguidas sem pular (da 2ª em diante o 7º dia dá 2 VIP); reward = o que foi entregue.
+model LoginPass {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  day       Int // calendarDay (time.js): #1 = 12/09/2026
+  step      Int
+  week      Int
+  reward    Json
+  createdAt DateTime @default(now())
+
+  @@unique([userId, day])
 }

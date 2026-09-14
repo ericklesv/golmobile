@@ -22,6 +22,7 @@ import { chat } from './routes/chat.js';
 import { frangacoTv } from './routes/frangacoTv.js';
 import { vip, pay } from './routes/vip.js';
 import { club } from './routes/club.js';
+import { pass } from './routes/pass.js';
 import { ensureSeason } from './services/league.js';
 import { startScheduler } from './services/scheduler.js';
 import { attachCabecao, cabecaoStatus } from './realtime/cabecao.js';
@@ -55,6 +56,7 @@ app.use('/api/chat', chat);
 app.use('/api/frangaco', frangacoTv); // contrato do cliente Unity do Frangaço (/tv/?mode=penalty)
 app.use('/api/vip', vip);
 app.use('/api/club', club);
+app.use('/api/pass', pass);
 app.use('/api/pay', pay); // aviso de PIX da Efí (sem login)
 app.get('/api/cabecao/status', (_req, res) => res.json(cabecaoStatus())); // fila do Cabeção (WebSocket em /api/ws/cabecao)
 app.use('/api', game);

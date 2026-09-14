@@ -74,6 +74,12 @@ export function dayNumber(date = new Date()) {
   return Math.round((Date.UTC(y, m - 1, d) - DAY_ONE) / 86_400_000) + 1;
 }
 
+/** Nº do dia do calendário de Brasília (vira à meia-noite; #1 = 12/09/2026), SEM o TERMO_DAY de teste. */
+export function calendarDay(date = new Date()) {
+  const { y, m, d } = tzParts(date);
+  return Math.round((Date.UTC(y, m - 1, d) - DAY_ONE) / 86_400_000) + 1;
+}
+
 /** A próxima meia-noite de Brasília (quando o Termo renova). */
 export function nextMidnight(date = new Date()) {
   const { y, m, d } = tzParts(date);

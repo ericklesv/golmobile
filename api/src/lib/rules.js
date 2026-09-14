@@ -328,3 +328,23 @@ export const CLUB = {
   maxOpenOffers: 5, // propostas abertas ao mesmo tempo por dirigente
   messageMax: 140, // recado da proposta
 };
+
+// ─── Presença da Semana (login diário) ────────────────────────────────────────
+// Decisões do dono (13/09/2026): entrar 1x por dia e tocar em RESGATAR (vira à meia-noite de Brasília);
+// pulou um dia, volta ao dia 1. TODO dia dá XP (pontos de nível — "tá muito difícil upar"): 490 por semana;
+// para quem começa do zero, cada dia libera um minigame novo. VIP ativo ganha o DOBRO de XP. O VIP do 7º
+// dia ATIVA NA HORA (não vai para o banco de VIPs — não dá para passar para outra conta); da 2ª semana
+// seguida em diante, o 7º dia dá 2 VIP. Gol NUNCA é prêmio (mexe na liga). Regras em services/pass.js.
+export const LOGIN_PASS = {
+  days: [
+    { xp: 30, money: 1000 },
+    { xp: 40, item: { key: 'ENERGY', level: 1 } },
+    { xp: 50, money: 2000 },
+    { xp: 60, item: { key: 'BOOST_AUTO' } },
+    { xp: 70, dexterity: 1 }, // já com destreza no máximo: vira R$ 1.000
+    { xp: 90, item: { key: 'ENERGY', level: 2 } },
+    { xp: 150, money: 5000, vip: 1 },
+  ],
+  vipXp: 2, // VIP ativo: XP em dobro
+  streakVip: 2, // VIPs do 7º dia a partir da 2ª semana seguida
+};

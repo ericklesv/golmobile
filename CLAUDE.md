@@ -120,6 +120,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
   (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
   chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
+- **Presença da Semana** (login diário; decisões do dono, 13/09/2026 — "tá muito difícil upar"; `services/pass.js`,
+  `routes/pass.js` em `/api/pass`, prêmios em `LOGIN_PASS` de `rules.js`, tabela `LoginPass`, migração 0020; tela
+  `components/Pass.tsx`: cartela que abre sozinha 1x por dia no aparelho + cartão na Home). Entrar 1x por dia e tocar
+  em RESGATAR; o dia vira à meia-noite de Brasília (`calendarDay`, time.js — sem o TERMO_DAY de teste). **Pulou
+  um dia, volta ao dia 1** (e as semanas seguidas zeram). **Todo dia dá XP** (`levelBonus`): 30·40·50·60·70·90·150 =
+  490/semana — para quem começa do zero, cada dia libera um minigame; **VIP ativo ganha o dobro de XP**. Extras:
+  R$ 1.000 · Energia nv 1 (28 h) · R$ 2.000 · Boost Auto (28 h) · +1 destreza (no máximo vira R$ 1.000) · Energia nv 2
+  (28 h; Energia nunca rebaixa) · R$ 5.000 + **VIP que ATIVA NA HORA** (soma em `vipUntil`, NÃO vai para o banco
+  `vipDays` — não dá para doar nem usar em proposta); da 2ª semana seguida em diante o 7º dia dá 2 VIP. **Gol nunca é
+  prêmio** (mexe na liga). Um resgate por dia garantido no banco (`@@unique([userId, day])`; a linha é criada antes
+  dos prêmios, na mesma transação). Mexeu nisso? **`node scripts/test-pass.js`** (pasta api/, só banco LOCAL).
 - **Diretoria e contratações** (decisões do dono, 13/09/2026, a partir do BRGOL original; `services/club.js`,
   `routes/club.js` em `/api/club`, números em `CLUB` de `rules.js`, tabelas `TeamRole`/`TransferOffer`/`VipGift`
   + `User.contractUntil`, migração 0019; telas: tribuna `BoardPanel` e `MovesPanel` na página do time,
@@ -256,6 +267,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
+`GET /api/pass` · `POST /api/pass/claim` (Presença da Semana — login diário)
 `GET /api/club|club/candidates` · `POST /api/club/claim|resign|directors{nick}|directors/remove{nick}|pass{nick}|offers{nick,vip,message}|offers/:id/accept|offers/:id/refuse|offers/:id/cancel|gift{nick,days}` (diretoria e contratações; a diretoria pública vem em `GET /api/teams/:slug` → `board`)
 `GET /api/vip|vip/purchases/:id` · `POST /api/vip/buy{pack}|vip/purchases/:id/test-pay` (só `EFI_FAKE`) · `POST /api/pay/efi/:secret[/pix]` (aviso da Efí, sem login)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`

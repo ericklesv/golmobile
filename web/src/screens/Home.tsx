@@ -10,6 +10,7 @@ import { MinigameSlider } from '../components/MinigameSlider';
 import { Panel, TopList, ProgressRing, useCountdown, Countdown } from '../components/ui';
 import { countdown, hourLabel, timeAgo, pct } from '../lib/format';
 import { toast } from '../components/Toast';
+import { PassCard } from '../components/Pass';
 
 const TARGETS: { id: Kind; label: string; icon: string; color: string; to?: string }[] = [
   { id: 'AUTO', label: 'Chute', icon: '/ui/ico-energy.png', color: '#4CD137' },
@@ -94,6 +95,7 @@ export function HomeScreen() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PassCard />
       {offers > 0 && (
         <Link to="/propostas" className="card-orange flex items-center gap-3" style={{ borderRadius: 18 }}>
           <img src="/ui/ico-pass_golden.png" alt="" className="h-9 w-12 shrink-0 object-contain" />

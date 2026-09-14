@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, token } from '../lib/api';
 import { Countdown } from '../components/ui';
 import { toast } from '../components/Toast';
+import { useAuth } from '../store/auth';
 
 /**
  * Frangaço — o JOGO é o cliente Unity WebGL do Managol (hospedado em /tv/, modo
@@ -22,7 +23,26 @@ import { toast } from '../components/Toast';
  */
 type Fim = { status: 'campeao' | 'eliminado'; champion: boolean; fase: string | null; golsUser: number | null; golsIa: number | null; nextAt: number; freePlay: boolean };
 
+/** Desativado pelo dono (14/09/2026): quando o catálogo (/api/meta) não traz o Frangaço, mostra o aviso. */
 export function FrangacoScreen() {
+  const meta = useAuth((s) => s.meta);
+  const nav = useNavigate();
+  if (meta && !meta.minigames?.some((g) => g.id === 'FRANGACO')) {
+    return (
+      <div className="app-frame flex min-h-full flex-col items-center justify-center gap-4 px-6 text-center" style={{ minHeight: '100dvh' }}>
+        <div className="stadium-bg" />
+        <div className="relative panel w-full max-w-sm text-navy-ink">
+          <div className="t-display text-[22px]">Frangaço em manutenção</div>
+          <p className="mt-1 text-[13px] font-bold text-muted">Estamos arrumando o Frangaço. Ele volta em breve.</p>
+          <button onClick={() => nav('/')} className="btn btn-orange btn-md mt-4 w-full">Voltar ao jogo</button>
+        </div>
+      </div>
+    );
+  }
+  return <FrangacoGame />;
+}
+
+function FrangacoGame() {
   const nav = useNavigate();
   const frame = useRef<HTMLIFrameElement>(null);
   const [pronto, setPronto] = useState(false);

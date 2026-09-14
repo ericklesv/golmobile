@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../lib/auth.js';
 import { handle, GameError } from '../lib/errors.js';
+import { MINIGAMES } from '../lib/rules.js';
 import { frangacoState, frangacoRun, frangacoIncoming, frangacoKick, frangacoSave, frangacoResultado, frangacoReset } from '../services/frangaco.js';
 
 /**
@@ -18,6 +19,12 @@ import { frangacoState, frangacoRun, frangacoIncoming, frangacoKick, frangacoSav
  */
 export const frangacoTv = Router();
 frangacoTv.use(requireAuth);
+
+// Desativado pelo dono (14/09/2026, "muito bugado"): enquanto o catálogo marcar soon, nada do Frangaço responde.
+frangacoTv.use((req, res, next) => {
+  if (MINIGAMES.find((g) => g.id === 'FRANGACO')?.soon) return res.status(503).json({ error: 'off', message: 'O Frangaço está em manutenção. Volta em breve.' });
+  next();
+});
 
 const FREE_ENV = process.env.NODE_ENV !== 'production' && process.env.MINIGAMES_LIVRES === '1';
 // Repetir o torneio do dia só no modo de teste local (MINIGAMES_LIVRES=1, nunca em produção).

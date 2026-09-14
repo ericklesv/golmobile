@@ -278,6 +278,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   converte ~50% —, médio ~23%, iniciante ~17%). Rota oculta `/debug-faltapro` (sem login):
   a MESMA cena com cobrança mockada — `?flight=1` anima um voo com curva, `?t=<s>` congela,
   `?bx=&bz=` mudam a bola. `MINIGAMES_LIVRES=1` também vale aqui.
+- **Frangaço — DESATIVADO em 14/09/2026 pelo dono ("muito bugado")**: `soon: true` no `MINIGAMES` (card EM BREVE,
+  some do `/api/meta`), `/api/frangaco/*` responde 503 "em manutenção" e `/frangaco` mostra o aviso. Para religar:
+  tirar o `soon` (o resto se ajusta sozinho). Documentação original abaixo.
 - **Frangaço** (nível 10, vira às **20h**; **porte 1:1 do Managol — o jogo é o cliente Unity
   WebGL** `ManagolTV` em `/tv/?mode=penalty`, decisão do dono 13/09/2026): a API do JogaGol fala
   O CONTRATO do Unity em **`/api/frangaco/*`** (`routes/frangacoTv.js`; serviço

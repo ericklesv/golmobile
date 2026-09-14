@@ -143,7 +143,15 @@ export function isVip(user, now = Date.now()) {
  * Recarga efetiva (ms) de um modo para um usuário. Se o usuário veio com `items`
  * (UserItem ativos — ver items.js), a Energia do chute e o Boost Auto entram aqui.
  */
+/**
+ * Modo livre — SÓ NO PC (MODO_LIVRE=1 no api/.env; ignorado com NODE_ENV=production): chutes sem recarga,
+ * sem captcha e minigames sem limite do dia (routes/daily.js apaga as partidas terminadas do jogador).
+ * Para testar e gravar vídeo de propaganda (pedido do dono, 14/09/2026). NUNCA pôr no .env da VPS.
+ */
+export const freeMode = () => process.env.NODE_ENV !== 'production' && process.env.MODO_LIVRE === '1';
+
 export function cooldownFor(user, kind, now = Date.now()) {
+  if (freeMode()) return 0;
   return applyItemCooldown(user, kind, baseCooldownFor(user, kind, now), now);
 }
 

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { handle } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
+import { prisma } from '../prisma.js';
+import { freeMode } from '../lib/rules.js';
 import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, minigamesHub, memoriaState, memoriaFlip, qualtimeState, qualtimeNext, qualtimeAnswer, alvoState, alvoShot } from '../services/daily.js';
 import { statsState, statsStart, statsPick } from '../services/stats.js';
 import { camisasState, camisasStart, camisasGuess } from '../services/camisas.js';
@@ -15,6 +17,15 @@ import { frangacoHub } from '../services/frangaco.js';
  */
 export const daily = Router();
 daily.use(requireAuth);
+
+// Modo livre (SÓ no PC, MODO_LIVRE=1): as partidas TERMINADAS do jogador são apagadas a cada chamada —
+// todo minigame volta a ficar disponível na hora (vídeo de propaganda / testes). Nunca vale em produção.
+daily.use(async (req, _res, next) => {
+  if (freeMode()) {
+    try { await prisma.dailyGame.deleteMany({ where: { userId: req.user.id, finishedAt: { not: null } } }); } catch { /* nunca derruba o jogo */ }
+  }
+  next();
+});
 
 daily.get('/', handle((req) => dailyStatus(req.user.id)));
 daily.get('/hub', handle((req) => minigamesHub(req.user.id)));

@@ -12,6 +12,7 @@
  * - acertou, fica liberado até o chute sair: se o chute for recusado (recarga etc.), não pede de novo.
  */
 import { randomBytes } from 'crypto';
+import { freeMode } from './rules.js';
 
 export const CAPTCHA_EVERY = 10;
 const TTL_MS = 30 * 60_000;
@@ -24,6 +25,7 @@ export const manualKicks = (user) => (user.penaltyTries ?? 0) + (user.foulTries 
 
 /** O próximo chute manual exige captcha? (a cada CAPTCHA_EVERY chutes, se ainda não acertou a conta) */
 export function captchaRequired(user) {
+  if (freeMode()) return false; // modo livre (só no PC): sem captcha
   const n = manualKicks(user);
   return n > 0 && n % CAPTCHA_EVERY === 0 && solved.get(user.id) !== n;
 }

@@ -121,6 +121,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
   (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
   chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
+- **Modo livre — SÓ no PC** (`MODO_LIVRE=1` no ambiente; `freeMode()` em rules.js, ignorado com NODE_ENV=production;
+  pedido do dono em 14/09/2026 para gravar vídeo de propaganda): chutes sem recarga (`cooldownFor` = 0), sem captcha e
+  minigames sem limite do dia (`routes/daily.js` apaga as partidas terminadas do jogador a cada chamada). Junte com
+  `MINIGAMES_LIVRES=1` (Hat Trick/Falta PRO/Frangaço). **NUNCA no .env da VPS.**
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi

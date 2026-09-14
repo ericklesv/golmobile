@@ -72,7 +72,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   (`MinigameSlider.tsx`, dados de `GET /api/daily/hub`): catálogo em `MINIGAMES` (`rules.js`)
   com o **nível que libera cada um** (Termo 0, Quiz 0, Party 1, Memória 2, Estatísticas 3,
   De que time é? 4, Camisas 5, Alvo no Gol 6, Hat Trick 7, Falta PRO 8, Baú 9, Embaixadinhas 12, Disputa 1x1 15); `soon: true` =
-  card "EM BREVE". O nível também é conferido no servidor ao começar (403 `locked`).
+  **escondido** (não aparece no slider nem no /api/meta — decisão do dono, 14/09/2026: só o que já está no jogo). O nível também é conferido no servidor ao começar (403 `locked`).
   Minigame novo: entrada em `MINIGAMES` (tirar o `soon`) + `DAILY_GAMES` + `calendar()` +
   serviço + tela; o gol dele pede um valor novo no enum `KickKind` (migração). **Regras do
   dono (13/09/2026): um minigame por vez, perfeito e funcional antes do próximo; TODO
@@ -278,8 +278,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   converte ~50% —, médio ~23%, iniciante ~17%). Rota oculta `/debug-faltapro` (sem login):
   a MESMA cena com cobrança mockada — `?flight=1` anima um voo com curva, `?t=<s>` congela,
   `?bx=&bz=` mudam a bola. `MINIGAMES_LIVRES=1` também vale aqui.
-- **Frangaço — DESATIVADO em 14/09/2026 pelo dono ("muito bugado")**: `soon: true` no `MINIGAMES` (card EM BREVE,
-  some do `/api/meta`), `/api/frangaco/*` responde 503 "em manutenção" e `/frangaco` mostra o aviso. Para religar:
+- **Frangaço — DESATIVADO em 14/09/2026 pelo dono ("muito bugado")**: `soon: true` no `MINIGAMES` (some do slider e
+  do `/api/meta`), `/api/frangaco/*` responde 503 "em manutenção" e `/frangaco` mostra o aviso. Para religar:
   tirar o `soon` (o resto se ajusta sozinho). Documentação original abaixo.
 - **Frangaço** (nível 10, vira às **20h**; **porte 1:1 do Managol — o jogo é o cliente Unity
   WebGL** `ManagolTV` em `/tv/?mode=penalty`, decisão do dono 13/09/2026): a API do JogaGol fala

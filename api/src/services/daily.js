@@ -264,7 +264,8 @@ export async function minigamesHub(userId, now = new Date()) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const lvl = levelOf(user).lvl;
   const status = await dailyStatus(userId, now);
-  const games = MINIGAMES.map((g) => {
+  // Só o que já está no jogo (decisão do dono, 14/09/2026): minigame "em breve" (soon) não aparece no slider.
+  const games = MINIGAMES.filter((g) => !g.soon).map((g) => {
     const d = status.games.find((x) => x.id === g.id);
     const unlocked = lvl >= g.unlock;
     return {

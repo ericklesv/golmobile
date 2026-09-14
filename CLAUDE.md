@@ -378,7 +378,6 @@ servidos pelo próprio Express em `/api/uploads/`.
   `kit-mask.png` + `kit-ao.png` + cores + escudo no peito). Goleiro e barreira vestem a camisa
   do **adversário da rodada** (`GET /api/me/opponent`; sem partida, kit padrão amarelo/vermelho).
   Rota oculta `/debug3d?view=&pose=&at=&badge=&c1=&c2=` para conferir por screenshot.
-  **Temporário:** MVGIC sem NENHUMA recarga — chute direto, pênalti, falta e trilha (`COOLDOWN_FREE_NICKS`/`isFreeTester`, rules.js; desde 14/09).
 - Trilha: a bola é `components/TrailBall.tsx` (arte SVG cartoon no traço do kit + animação por
   requestAnimationFrame; o rastro é pintado por ela). Não usar `motion.g animate={{ x, y }}`
   dentro do `<svg>` da Trilha: a bola antiga, feita assim, nunca se moveu (ficava presa no

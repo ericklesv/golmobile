@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../lib/auth.js';
 import { handle, GameError } from '../lib/errors.js';
-import { prisma } from '../prisma.js';
-import { isFreeTester } from '../lib/rules.js';
 import { frangacoState, frangacoRun, frangacoIncoming, frangacoKick, frangacoSave, frangacoResultado, frangacoReset } from '../services/frangaco.js';
 
 /**
@@ -22,17 +20,8 @@ export const frangacoTv = Router();
 frangacoTv.use(requireAuth);
 
 const FREE_ENV = process.env.NODE_ENV !== 'production' && process.env.MINIGAMES_LIVRES === '1';
-const podeRepetir = (user) => FREE_ENV || isFreeTester(user);
-
-// Conta de teste do dono (13/09/2026): sem limite diário — mas o torneio TERMINADO só é apagado
-// quando ele pede OUTRO (POST /run) ou no /reset do wrapper. Apagar em toda chamada (como era)
-// fazia o fim do torneio sumir antes do wrapper mostrar "Voltar ao jogo".
-frangacoTv.post('/run', async (req, _res, next) => {
-  if (isFreeTester(req.user)) {
-    try { await prisma.dailyGame.deleteMany({ where: { userId: req.user.id, game: 'FRANGACO', finishedAt: { not: null } } }); } catch { /* nunca derruba o jogo */ }
-  }
-  next();
-});
+// Repetir o torneio do dia só no modo de teste local (MINIGAMES_LIVRES=1, nunca em produção).
+const podeRepetir = () => FREE_ENV;
 
 frangacoTv.get('/state', handle((req) => frangacoState(req.user.id)));
 frangacoTv.post('/run', handle((req) => frangacoRun(req.user.id)));

@@ -6,10 +6,13 @@
  * e esta conta decide o resultado. O cliente NUNCA decide gol.
  *
  * O gesto (decisões do design em docs/FALTA_PRO.md):
- * - dirX (−1..1): direção horizontal do vetor final do arrasto (+ = direita);
+ * - dirX (−1..1): direção horizontal do vetor final do arrasto (+ = direita) = MIRA
+ *   do ponto de chegada (o servidor compensa a deriva do efeito — ver spinComp);
  * - dirY (0..1): quanto o arrasto subiu = altura do chute (0 = rasteira);
  * - power (0..1): velocidade média do gesto = velocidade da bola;
- * - spin (−1..1): curvatura do rastro = efeito Magnus lateral (+ = curva pra direita).
+ * - spin (−1..1): efeito Magnus lateral (+ = acelera pra direita). O cliente manda o
+ *   NEGATIVO do arco desenhado: arco pra direita ⇒ a bola sai aberta pra direita e o
+ *   Magnus (pra esquerda) traz de volta pra mira — a trajetória segue o arco do gesto.
  *
  * As amostras do voo saem como no Hat Trick: [x, z, y] a 30/s (x lateral, z distância
  * da linha do gol, y altura) — a tela só reproduz.
@@ -23,7 +26,8 @@ export const FALTAPRO = {
   targets: { r: 0.5, inset: 0.65 },                          // alvos bônus nos cantos superiores
   vMin: 15, vMax: 29,                                        // power 0 → 1 (m/s)
   elevMax: 0.55, sideMax: 0.5,                               // dirY/dirX 1 → ângulo máximo (rad)
-  spinAcc: 8,                                                // m/s² de curva com spin = 1
+  spinAcc: 12,                                               // m/s² de curva com spin = 1 (banana bem visível)
+  spinComp: 0.95, spinCompMax: 0.5,                          // compensação da saída (a bola abre e volta pra mira)
   g: 9.8, drag: 0.06,
   keeper: { react: [0.22, 0.4], speed: [2.7, 3.7], reach: 0.95, high: 2.2, readErr: 0.4, cornerPenalty: 0.35, blunder: 0.05 },
 };
@@ -83,17 +87,22 @@ export function simulateKick(kick, { dirX, dirY, power, spin }) {
   const C = FALTAPRO;
   const dX = clamp(dirX, -1, 1), dY = clamp(dirY, 0, 1), pw = clamp(power, 0, 1), sp = clamp(spin, -1, 1);
   const b = kick.ball, distH = Math.hypot(b.x, b.z) || 1;
-  // direção horizontal: da bola ao meio do gol, girada por dirX (φ > 0 = direita)
-  const h0x = -b.x / distH, h0z = -b.z / distH;
-  const phi = dX * C.sideMax;
-  const hx = h0x * Math.cos(phi) - h0z * Math.sin(phi);
-  const hz = h0x * Math.sin(phi) + h0z * Math.cos(phi);
   const speed = C.vMin + pw * (C.vMax - C.vMin);
   const theta = dY * C.elevMax;
+  // direção horizontal: da bola ao meio do gol, girada por dirX (φ > 0 = direita).
+  // dirX MIRA o ponto de chegada; o efeito abre a saída pro lado do arco desenhado e o
+  // Magnus traz a bola de volta pra mira (a trajetória segue o arco do gesto, como no
+  // Free Kick Classic) — spinComp compensa a deriva prevista 0,5·a·T².
+  const T0 = distH / Math.max(1, speed * Math.cos(theta));
+  const comp = clamp(Math.atan2(0.5 * C.spinAcc * sp * C.spinComp * T0 * T0, distH), -C.spinCompMax, C.spinCompMax);
+  const phi = dX * C.sideMax - comp;
+  const h0x = -b.x / distH, h0z = -b.z / distH;
+  const hx = h0x * Math.cos(phi) - h0z * Math.sin(phi);
+  const hz = h0x * Math.sin(phi) + h0z * Math.cos(phi);
   let vx = speed * Math.cos(theta) * hx, vz = speed * Math.cos(theta) * hz, vy = speed * Math.sin(theta);
   let x = b.x, y = C.ballR, z = b.z, t = 0;
   const dt = 1 / 120, samples = [[x, z, y]];
-  let step = 0, cross = null, result = null, wallHit = null;
+  let step = 0, cross = null, result = null, wallHit = null, wallPass = null;
   const wallBand = kick.wall.jump ? [C.wall.jumpBottom, C.wall.jumpTop] : [0, C.wall.height];
   while (t < 4) {
     const sh = Math.hypot(vx, vz) || 1;
@@ -117,6 +126,7 @@ export function simulateKick(kick, { dirX, dirY, power, spin }) {
         result = 'wall'; wallHit = { x: round(xi), y: round(yi), t: round(t, 3) };
         break;
       }
+      wallPass = { x: xi, vx, t }; // passou da barreira: é daqui que o goleiro lê o chute
     }
     if (z <= 0) { // cruzou a linha do gol: interpola o ponto exato
       const f = pz / (pz - z || 1);
@@ -139,9 +149,11 @@ export function simulateKick(kick, { dirX, dirY, power, spin }) {
   // alvo bônus: no aro é gol certo (canto inalcançável) + prêmio
   const ti = kick.targets.findIndex((tg) => Math.hypot(cross.x - tg.x, cross.y - tg.y) <= C.targets.r);
   if (ti >= 0) return { ...base, result: 'goal', target: ti };
-  // goleiro: lê o canto (com erro), sai depois da reação e se estica até onde alcança
+  // goleiro: lê o canto (com erro), sai depois da reação e se estica até onde alcança.
+  // Ele lê a bola em LINHA RETA a partir da barreira — curva de última hora engana o goleiro.
   const k = kick.keeper;
-  const aim = clamp(cross.x + k.readErr, -C.goalHalf - 0.3, C.goalHalf + 0.3);
+  const readX = wallPass ? wallPass.x + wallPass.vx * Math.max(0, T - wallPass.t) : cross.x;
+  const aim = clamp(readX + k.readErr, -C.goalHalf - 0.3, C.goalHalf + 0.3);
   const need = aim - k.x;
   const moved = Math.sign(need) * Math.min(Math.abs(need), k.speed * Math.max(0, T - k.react));
   const handX = k.x + moved;

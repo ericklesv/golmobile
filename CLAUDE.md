@@ -195,15 +195,22 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Falta PRO** (`lib/faltapro.js` = física pura; `services/faltapro.js`; tela `FaltaPro.tsx`; nível 8,
   vira às 19h): cobrança de falta 3D estilo Free Kick Classic — câmera baixa atrás da Trionda, cena
   do pênalti/falta reaproveitada (StadiumModel/GoalModel/BallModel/KeeperModel com kit do adversário).
-  O jogador ARRASTA a partir da bola (pointer events): a tela resume o rastro em `dirX` (lado),
-  `dirY` (altura), `power` (velocidade média do gesto) e `spin` (curvatura do rastro = efeito
-  Magnus — desenhar um arco curva a bola). O SERVIDOR sorteia as 5 cobranças no start (distância,
+  O jogador ARRASTA a partir da bola (pointer events): a tela resume o rastro em `dirX` (mira do
+  ponto de chegada), `dirY` (altura), `power` (velocidade média do gesto) e `spin` (arco do rastro).
+  **A bola SEGUE o arco desenhado** (14/09): sai aberta pro lado do arco e o Magnus traz de volta
+  pra mira (`spinComp` compensa a deriva no servidor); curva de última hora engana o goleiro (ele
+  lê o chute em linha reta a partir da barreira) — **a curva é a arma principal**. A câmera de
+  descanso dá CORTE SECO ao enquadrar cobrança nova e amortece por TEMPO, não por quadro (lerp por
+  quadro deixava a bola fora da tela por segundos em celular lento — era o bug da "bola invisível").
+  O SERVIDOR sorteia as 5 cobranças no start (distância,
   barreira 3–5 que pode pular — o pulo é secreto —, goleiro sorteado secreto, 2 alvos bônus no
   ângulo), simula tudo e devolve o voo (amostras [x, z, y] a 30/s) para a tela animar. 5 cobranças;
   3+ gols = exatamente 1 gol do time (kind `FALTAPRO`, na 3ª conversão); +4 de nível por conversão
   (até +20); alvo bônus = +R$ 50 (alvo é gol certo). Rasteira passa por baixo da barreira que pulou.
-  Calibrar: `node scripts/faltapro-balance.js` (bom ~36% de gol e vence 26% dos dias, médio ~21%,
-  iniciante ~13%). `MINIGAMES_LIVRES=1` também vale aqui.
+  Calibrar: `node scripts/faltapro-balance.js` (bom ~36% de gol e vence 25% dos dias — curva
+  converte ~50% —, médio ~23%, iniciante ~17%). Rota oculta `/debug-faltapro` (sem login):
+  a MESMA cena com cobrança mockada — `?flight=1` anima um voo com curva, `?t=<s>` congela,
+  `?bx=&bz=` mudam a bola. `MINIGAMES_LIVRES=1` também vale aqui.
 - **Frangaço** (nível 10, vira às **20h**; **porte 1:1 do Managol — o jogo é o cliente Unity
   WebGL** `ManagolTV` em `/tv/?mode=penalty`, decisão do dono 13/09/2026): a API do JogaGol fala
   O CONTRATO do Unity em **`/api/frangaco/*`** (`routes/frangacoTv.js`; serviço

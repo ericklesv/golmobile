@@ -139,7 +139,7 @@ export const api = {
   shopNick: (nick: string) => req<Me>('POST', '/api/shop/nick', { nick }),
   shopNickColor: (color: string | null) => req<Me>('POST', '/api/shop/nick-color', { color }),
   // painel de admin (só usuários com isAdmin; o servidor nega os demais)
-  adminUsers: (q = '', page = 1) => req<AdminUsersPage>('GET', `/api/painel/users?q=${encodeURIComponent(q)}&page=${page}`),
+  adminUsers: (q = '', page = 1, order: 'recentes' | 'criadas' = 'recentes') => req<AdminUsersPage>('GET', `/api/painel/users?q=${encodeURIComponent(q)}&page=${page}&order=${order}`),
   adminUser: (id: number) => req<AdminUserDetail>('GET', `/api/painel/users/${id}`),
   adminPatch: (id: number, body: AdminPatch) => req<AdminUserDetail>('PATCH', `/api/painel/users/${id}`, body),
   adminGols: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow; text: string | null }>('POST', `/api/painel/users/${id}/gols`, { qtd }),

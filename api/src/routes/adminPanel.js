@@ -30,7 +30,8 @@ function rowView(u, now = Date.now()) {
     team: teamView(u.team), level: { lvl: level.lvl, name: level.name }, levelPoints: levelPoints(u),
     goalsTotal: u.goalsTotal, money: u.money, vip: isVip(u, now), vipDays: u.vipDays,
     banned: !!(u.bannedUntil && new Date(u.bannedUntil).getTime() > now), bannedUntil: u.bannedUntil,
-    isAdmin: u.isAdmin, lastSeenAt: u.lastSeenAt,
+    isAdmin: u.isAdmin, lastSeenAt: u.lastSeenAt, createdAt: u.createdAt,
+    invitedBy: u.referredBy?.nick ?? null, // entrou pelo link de convite de alguém (services/referral.js)
     online: new Date(u.lastSeenAt).getTime() > now - 2 * 60_000,
   };
 }
@@ -57,13 +58,15 @@ function audit(adminId, targetId, action, payload) {
 }
 
 // ─── Lista/busca paginada (50 por página) ───────────────────────────────────
+// order=criadas: contas mais novas primeiro (aba "Contas criadas"); padrão: quem entrou por último.
 adminPanel.get('/users', handle(async (req) => {
   const q = String(req.query.q || '').trim().toLowerCase();
+  const orderBy = req.query.order === 'criadas' ? [{ createdAt: 'desc' }, { id: 'desc' }] : { lastSeenAt: 'desc' };
   const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
   const where = q ? { OR: [{ nickLower: { contains: q } }, { email: { contains: q } }] } : {};
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
-    prisma.user.findMany({ where, include: { team: true }, orderBy: { lastSeenAt: 'desc' }, skip: (page - 1) * PAGE, take: PAGE }),
+    prisma.user.findMany({ where, include: { team: true, referredBy: { select: { nick: true } } }, orderBy, skip: (page - 1) * PAGE, take: PAGE }),
   ]);
   return { page, pages: Math.max(1, Math.ceil(total / PAGE)), total, users: users.map((u) => rowView(u)) };
 }));

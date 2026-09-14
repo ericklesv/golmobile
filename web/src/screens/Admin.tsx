@@ -16,6 +16,8 @@ import { money as fmt, num, timeAgo } from '../lib/format';
  */
 
 const dt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
+// "14/09 às 16:22" (horário de Brasília) — cabe numa linha no celular
+const shortDt = (iso: string) => { const d = new Date(iso), o = { timeZone: 'America/Sao_Paulo' } as const; return `${d.toLocaleDateString('pt-BR', { ...o, day: '2-digit', month: '2-digit' })} às ${d.toLocaleTimeString('pt-BR', { ...o, hour: '2-digit', minute: '2-digit' })}`; };
 
 function Badges({ u }: { u: AdminUserRow }) {
   return (
@@ -29,7 +31,8 @@ function Badges({ u }: { u: AdminUserRow }) {
 }
 
 // ─── Lista de jogadores ─────────────────────────────────────────────────────
-function UserList({ onPick }: { onPick: (id: number) => void }) {
+function UserList({ onPick, order = 'recentes' }: { onPick: (id: number) => void; order?: 'recentes' | 'criadas' }) {
+  const criadas = order === 'criadas';
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ page: number; pages: number; total: number; users: AdminUserRow[] } | null>(null);
@@ -40,13 +43,13 @@ function UserList({ onPick }: { onPick: (id: number) => void }) {
     setLoading(true);
     const t = setTimeout(async () => {
       try {
-        const r = await api.adminUsers(q.trim(), page);
+        const r = await api.adminUsers(q.trim(), page, order);
         if (alive) setData(r);
       } catch (e) { if (alive) toast((e as Error).message, 'error'); }
       finally { if (alive) setLoading(false); }
     }, q ? 300 : 0);
     return () => { alive = false; clearTimeout(t); };
-  }, [q, page]);
+  }, [q, page, order]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -65,9 +68,11 @@ function UserList({ onPick }: { onPick: (id: number) => void }) {
                   {u.team ? <Shield team={u.team} size={22} /> : null}
                   <span className="min-w-0 flex-1">
                     <span className={`block truncate text-[14px] font-extrabold leading-tight ${u.nickColor ? `nick-${u.nickColor}` : u.vip ? 'text-sky-deep' : 'text-navy-ink'}`}>{u.nick}</span>
-                    <span className="block truncate text-[10px] font-bold text-muted">{u.email} · lvl {u.level.lvl} · visto {timeAgo(u.lastSeenAt)}</span>
+                    <span className="block truncate text-[10px] font-bold text-muted">{criadas ? u.email : `${u.email} · lvl ${u.level.lvl} · visto ${timeAgo(u.lastSeenAt)}`}</span>
+                    {criadas && <span className="block text-[10px] font-extrabold leading-snug text-navy-ink">criada {shortDt(u.createdAt)}{u.invitedBy && <span className="text-grass-deep"> · convite de {u.invitedBy}</span>}</span>}
+                    {criadas && <span className="mt-0.5 block"><Badges u={u} /></span>}
                   </span>
-                  <Badges u={u} />
+                  {!criadas && <Badges u={u} />}
                   <span className="text-right">
                     <span className="block font-display text-base leading-tight text-grass-deep">{num(u.goalsTotal)} gols</span>
                     <span className="block text-[10px] font-bold text-muted">{fmt(u.money)}</span>
@@ -314,7 +319,7 @@ function LogList() {
 export function AdminScreen() {
   const me = useAuth((s) => s.me)!;
   const nav = useNavigate();
-  const [tab, setTab] = useState<'jogadores' | 'log'>('jogadores');
+  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'log'>('jogadores');
   const [picked, setPicked] = useState<number | null>(null);
 
   if (!me.isAdmin) return <Navigate to="/" replace />;
@@ -328,10 +333,10 @@ export function AdminScreen() {
         <span className="trap trap-blue text-[11px] uppercase">{me.nick}</span>
       </div>
       <div className="relative px-3 pb-2">
-        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'log', label: 'Log' }]} />
+        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas criadas' }, { id: 'log', label: 'Log' }]} />
       </div>
       <div className="relative flex-1 px-3 pb-4">
-        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail id={picked} onBack={() => setPicked(null)} /> : <UserList onPick={setPicked} />}
+        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail id={picked} onBack={() => setPicked(null)} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
       </div>
     </div>
   );

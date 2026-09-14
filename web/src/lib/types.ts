@@ -262,9 +262,10 @@ export interface AdminUserRow {
   team: Team | null; level: { lvl: number; name: string }; levelPoints: number;
   goalsTotal: number; money: number; vip: boolean; vipDays: number;
   banned: boolean; bannedUntil: string | null; isAdmin: boolean; lastSeenAt: string; online: boolean;
+  createdAt: string; invitedBy?: string | null;
 }
 export interface AdminUserDetail extends AdminUserRow {
-  gender: string; bio: string | null; createdAt: string; dexterity: number; levelBonus: number; vipUntil: string | null;
+  gender: string; bio: string | null; dexterity: number; levelBonus: number; vipUntil: string | null;
   /** Última conexão do jogador: IP + geolocalização (geo null = sem dados). */
   conn: { ip: string | null; at: string | null; geo: AdminGeo | null };
 }

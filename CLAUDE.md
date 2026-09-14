@@ -185,6 +185,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   0 desbane) e mostra IP + geolocalização (`lib/ip.js`: `User.lastIp` capturado no
   cadastro/login/heartbeat; ip-api.com server-side com cache de 24 h — nunca chamar do front).
   Toda ação fica na tabela `AdminAction` (`GET /api/painel/log`). Entrada discreta no perfil.
+  Aba **Contas criadas** (pedido do dono, 14/09/2026): a mesma lista em ordem de criação, mais nova primeiro
+  (`GET /api/painel/users?order=criadas`), com e-mail, gols, "criada dd/mm às hh:mm" e "convite de X" (convites).
   Não confundir com `/api/admin` (x-admin-key, uso via curl) — intocado.
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
   cliente antes do fim (nem no JSON). Acertar = 1 gol normal (`applyResult` com kind `TERMO`:
@@ -295,7 +297,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
-`GET /api/painel/users?q=&page=|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)
+`GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.
 
 ## Comandos

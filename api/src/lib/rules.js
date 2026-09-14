@@ -358,3 +358,12 @@ export const REFERRAL = {
     { goals: 1000, vip: 10 },
   ],
 };
+
+// ─── Grupo do WhatsApp dos jogadores ─────────────────────────────────────────
+// Pedido do dono (14/09/2026): a cada 100 horas, uma janela convida o jogador para o grupo (web/src/components/
+// WhatsInvite.tsx; controle no aparelho). Quem toca em "Entrar no grupo" não vê mais; "Agora não" = de novo em
+// 100 h. Também há um botão fixo no Perfil. Trocar o link aqui (vai para o site via /api/meta).
+export const COMMUNITY = {
+  whatsapp: 'https://chat.whatsapp.com/EGNPGEuZMUEBY5HLXl09M8',
+  everyHours: 100,
+};

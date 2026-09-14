@@ -74,6 +74,8 @@ export interface TrailResult {
 export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number }
 
 export interface Meta {
+  /** Grupo do WhatsApp dos jogadores (COMMUNITY em rules.js). */
+  community?: { whatsapp: string; everyHours: number };
   /** Diretoria e contratações (CLUB em rules.js). */
   club?: { directors: number; roleLossDays: number; offerMin: number; offerMax: number; offerHours: number; maxOpenOffers: number; messageMax: number };
   cooldowns: Record<Kind, { normal: number; vip: number }>;

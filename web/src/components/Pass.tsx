@@ -27,6 +27,8 @@ export const usePass = create<PassStore>((set) => ({
 const SEEN = (id: number, day: number) => `brgol.passeVisto.${id}.${day}`;
 const seenToday = (id: number, day: number) => { try { return localStorage.getItem(SEEN(id, day)) === '1'; } catch { return false; } };
 const markSeen = (id: number, day: number) => { try { localStorage.setItem(SEEN(id, day), '1'); } catch {} };
+/** A Presença já foi resolvida hoje (resgatada ou a cartela já apareceu) e não está aberta — outras janelas podem vir. */
+export const passSettled = (id: number) => { const { st, open } = usePass.getState(); return !!st && !open && (st.claimed || seenToday(id, st.today)); };
 const brl = (v: number) => `R$ ${v.toLocaleString('pt-BR')}`;
 
 /** O prêmio extra do dia (além do XP), em poucas palavras, com o ícone da loja. */

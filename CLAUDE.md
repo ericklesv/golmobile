@@ -121,6 +121,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
   (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
   chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
+- **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
+  `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
+  só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi
+  resolvida (`passSettled`). "Entrar no grupo" = não aparece mais; "Agora não" = 100 h. Botão fixo no Perfil.
 - **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
   pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/
   empate", artilheiro da partida, top 5 de cada time, gols hora a hora (gráfico espelhado nas cores dos times), gols por

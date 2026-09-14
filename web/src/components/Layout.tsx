@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from './Toast';
 import { api } from '../lib/api';
 import { ChatFab } from './ChatFab';
+import { WhatsInviteWatcher } from './WhatsInvite';
 
 const tabs = [
   { to: '/', label: 'Jogar', icon: '/ui/pi-home.png', end: true },
@@ -78,6 +79,7 @@ export function Layout() {
         <ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary>
       </main>
       <ChatFab />
+      <WhatsInviteWatcher />
 
       {/* Barra de abas */}
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] bg-navy-deep/90 px-1 pt-1 backdrop-blur" style={{ paddingBottom: 'calc(var(--sab) + 4px)' }}>

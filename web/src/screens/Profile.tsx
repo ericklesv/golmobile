@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PublicPlayer } from '../lib/types';
 import { NameBadges, TopHistory } from '../components/Badges';
 import { InvitePanel } from '../components/Invite';
+import { WhatsButton } from '../components/WhatsInvite';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
@@ -128,6 +129,7 @@ export function ProfileScreen() {
 
       <button onClick={() => { sound.setEnabled(!som); setSom(!som); }} className={`btn btn-md w-full ${som ? 'btn-sky' : 'btn-gray'}`}><img src={som ? '/ui/pi-sound_on.png' : '/ui/pi-sound_off.png'} className="h-6 w-6" alt="" /> Sons da interface: {som ? 'ligados' : 'desligados'}</button>
       <Link to="/loja" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-goldpouch.png" className="h-6 w-6" alt="" /> Loja: destreza, VIP e itens</Link>
+      <WhatsButton />
       {me.isAdmin && <Link to="/admin" className="btn btn-gray btn-md w-full"><img src="/ui/pi-setting.png" className="h-5 w-5" alt="" /> Painel de admin</Link>}
       <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL} · <Link to="/niveis" className="t-gold t-display">níveis</Link> · <Link to="/regras" className="t-gold t-display">regras</Link></p>
 

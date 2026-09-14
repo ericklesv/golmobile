@@ -6,7 +6,7 @@
  *   /3d/keeper.glb   Football Soccer Simulator (malha do jogador + animações de goleiro)
  * Sistema de coordenadas do jogo: linha do gol em z=0, campo cresce para +z, metros.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -37,17 +37,21 @@ export function GoalModel() {
 }
 
 /** Bola centrada na origem do grupo, raio ~0,21 m (2x o real, para leitura no celular). */
-export function BallModel({ spin = 0 }: { spin?: number }) {
+export function BallModel() {
   const { scene } = useGLTF(URLS.ball);
-  const obj = useMemo(() => scene.clone(true), [scene]);
-  const ref = useRef<THREE.Group>(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    const box = new THREE.Box3().setFromObject(obj);
-    const c = box.getCenter(new THREE.Vector3());
-    obj.position.set(-c.x, -c.y, -c.z);
-  }, [obj]);
-  return <group ref={ref} scale={2}><primitive object={obj} /></group>;
+  const obj = useMemo(() => {
+    const s = scene.clone(true);
+    // Centra pelo bounds em espaço LOCAL, antes de o modelo ter pai. Isso era um useEffect
+    // depois de montar e CORRIA contra o 1º frame do r3f: se o grupo da cena já estivesse
+    // posicionado (Falta PRO: bola a ~19 m), o centro vinha em coordenadas de MUNDO e a
+    // bola era jogada para trás do gol — "apareceu por 1 s e sumiu" no celular.
+    s.updateMatrixWorld(true);
+    const c = new THREE.Box3().setFromObject(s).getCenter(new THREE.Vector3());
+    s.position.set(-c.x, -c.y, -c.z);
+    s.traverse((o: any) => { if (o.isMesh) o.frustumCulled = false; });
+    return s;
+  }, [scene]);
+  return <group scale={2}><primitive object={obj} /></group>;
 }
 
 export { KeeperModel, type KeeperHandle, type KeeperPose, type KitColors } from './keeper';

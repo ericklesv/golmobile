@@ -82,6 +82,9 @@ export const api = {
   faltaproStart: () => req<{ state: FaltaProState }>('POST', '/api/daily/faltapro/start'),
   faltaproKick: (b: { i: number; dirX: number; dirY: number; power: number; spin: number }) => req<FaltaProKickResponse>('POST', '/api/daily/faltapro/kick', b),
   // Frangaço: o cliente Unity (/tv/?mode=penalty) fala direto com /api/frangaco/* — nada aqui.
+  // Frangaço (o jogo é o Unity em /tv/; só o wrapper usa estes dois)
+  frangacoResultado: () => req<{ finished: boolean; status: 'campeao' | 'eliminado' | null; lobby: boolean; champion: boolean; fase: string | null; golsUser: number | null; golsIa: number | null; nextAt: number; freePlay: boolean }>('GET', '/api/frangaco/resultado'),
+  frangacoReset: () => req<{ ok: boolean }>('POST', '/api/frangaco/reset'),
   // leitura
   meta: () => req<Meta>('GET', '/api/meta'),
   home: (team?: string) => req<Home>('GET', `/api/home${team ? `?team=${encodeURIComponent(team)}` : ''}`),

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Frangaço · JogaGol</title>
+  <link rel="icon" href="/brand/logo-v.webp">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #071426;
+      font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: #e8f0fb; }
+    #unity-canvas { display: block; width: 100vw; height: 100vh; background: #071426; }
+    .loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px; z-index: 3;
+      background: radial-gradient(ellipse 120% 80% at 50% 22%, #103257 0%, #0a1f3b 42%, #050d1f 100%);
+      transition: opacity .4s;
+    }
+    .loading img { width: 110px; filter: drop-shadow(0 3px 10px #000); }
+    .loading .lbl { font-size: 13px; letter-spacing: .2em; color: #a9c6ea; text-transform: uppercase; }
+    .bar { width: 220px; height: 6px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
+    .bar > i { display: block; height: 100%; width: 0; border-radius: 6px;
+      background: linear-gradient(90deg,#2a8cff,#7fc0ff); transition: width .2s; }
+  </style>
+</head>
+<body>
+  <canvas id="unity-canvas" width="1152" height="720"></canvas>
+  <div class="loading" id="loading">
+    <img src="/brand/logo-v.webp" alt="JogaGol">
+    <div class="lbl">Carregando o Frangaço</div>
+    <div class="bar"><i id="barFill"></i></div>
+  </div>
+
+  <script src="Build/BuildWebGL.loader.js?v=20260913-2200"></script>
+  <script>
+    var loading = document.getElementById('loading');
+    var barFill = document.getElementById('barFill');
+
+    // Celular: depois de cada TOQUE o navegador dispara um mousedown/click "de
+    // compatibilidade" ~300 ms depois. O Unity ouve toque E mouse, então um toque
+    // virava DOIS cliques em frames diferentes — o 2º caía já na fase de anunciar/
+    // fintar ("clicar para iniciar já usava a finta"). preventDefault no touchend
+    // cancela os eventos sintéticos (o Unity continua recebendo o toque normal).
+    var canvasEl = document.querySelector('#unity-canvas');
+    ['touchend', 'touchcancel'].forEach(function (tipo) {
+      canvasEl.addEventListener(tipo, function (e) { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    });
+
+    createUnityInstance(document.querySelector("#unity-canvas"), {
+      dataUrl: "Build/BuildWebGL.data.unityweb?v=20260913-2200",
+      frameworkUrl: "Build/BuildWebGL.framework.js.unityweb?v=20260913-2200",
+      codeUrl: "Build/BuildWebGL.wasm.unityweb?v=20260913-2200",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "JogaGol",
+      productName: "Frangaço",
+      productVersion: "1.0.0",
+    }, function (progress) {
+      barFill.style.width = Math.round(progress * 100) + '%';
+    }).then(function (instance) {
+      loading.style.opacity = '0';
+      setTimeout(function () { loading.style.display = 'none'; }, 450);
+
+      // ---- ponte do FRANGAÇO (?mode=penalty) -------------------------------
+      // O token de sessão vem por postMessage e NUNCA pela URL (não vaza na
+      // barra de endereço nem no histórico). Reenvia até o modo nascer.
+      // Contrato idêntico ao do Managol (tv-index.html): managol-frangaco-auth
+      // → SendMessage('ManagolPenalty','SetAuth') e aviso managol-tv-pronto.
+      window.managolUnity = instance;
+      var tokenFrangaco = null;
+      function enviarToken() {
+        if (!tokenFrangaco) return;
+        try { instance.SendMessage('ManagolPenalty', 'SetAuth', tokenFrangaco); }
+        catch (e) { /* modo ainda não nasceu */ }
+      }
+      window.addEventListener('message', function (ev) {
+        if (ev.origin !== window.location.origin) return; // mesma origem só
+        var d = ev.data;
+        if (!d) return;
+        if (d.tipo === 'managol-frangaco-auth' && d.token) {
+          tokenFrangaco = String(d.token);
+          enviarToken();
+        }
+      });
+      var tentativas = 0;
+      var repique = setInterval(function () {
+        enviarToken();
+        if (++tentativas > 40) clearInterval(repique);   // ~16s
+      }, 400);
+      if (window.parent !== window) {
+        window.parent.postMessage({ tipo: 'managol-tv-pronto' }, window.location.origin);
+      }
+    }).catch(function (err) {
+      document.querySelector('.lbl').textContent = 'Erro ao carregar: ' + err;
+    });
+  </script>
+</body>
+</html>

@@ -194,6 +194,12 @@ export async function frangacoState(userId) {
   const byId = new Map(players.map((p) => [p.id, p]));
   const lvl = levelOf(user).lvl;
   const r2 = (v) => Math.round(v * 100) / 100;
+  // O Unity só pede /state DEPOIS da cerimônia de fim (2,6 s de CAMPEÃO/ELIMINADO) — é o
+  // momento em que ele vai para o lobby com o botão JOGAR. Marcamos `lobbyAt` para o wrapper
+  // (GET /resultado) cobrir esse lobby com "Voltar ao jogo" em vez de deixar começar outro.
+  if (row && row.state?.run && row.state.run.status !== 'ativo' && !row.state.lobbyAt) {
+    await prisma.dailyGame.update({ where: { id: row.id }, data: { state: { ...row.state, lobbyAt: now.getTime() } } });
+  }
   return {
     temporada,
     meuTime: { ...clubView(user.team), kitHome: kitOf(user.team.colorPrimary, user.team.colorSecondary) },
@@ -361,4 +367,38 @@ export async function frangacoHub(userId) {
     available: !finished, started: !!row?.state?.run && !finished, finished, won: !!row?.won,
     status: row?.state?.run?.status ?? null, reward: row?.reward ?? null,
   };
+}
+
+/* ─────────────────────────── GET /api/frangaco/resultado (wrapper) ─────────────────────────── */
+
+/**
+ * Fim do torneio para o WRAPPER (Frangaco.tsx), SEM efeito colateral: o Unity não tem
+ * botão "sair" — depois do torneio ele volta ao lobby com JOGAR. O wrapper consulta isto a
+ * cada 1,5 s e, quando `lobby` vira true (o Unity já pediu /state depois do fim), cobre o
+ * jogo com "Voltar ao jogo" (e "Jogar de novo" no modo teste).
+ */
+export async function frangacoResultado(userId, freePlay = false) {
+  const now = new Date();
+  const row = await findRow(userId, dayNumberAt(HOUR, now));
+  const st = row?.state ?? {};
+  const run = st.run ?? null;
+  const fim = run && run.status !== 'ativo';
+  const ultimo = run?.historico?.length ? run.historico[run.historico.length - 1] : null;
+  return {
+    finished: !!row?.finishedAt || !!fim,
+    status: fim ? run.status : null,
+    lobby: !!st.lobbyAt,
+    champion: !!st.champion,
+    fase: ultimo ? C.fases[ultimo.rodada - 1] ?? null : null,
+    golsUser: ultimo?.golsUser ?? null,
+    golsIa: ultimo?.golsIa ?? null,
+    nextAt: nextResetAt(HOUR, now).getTime(),
+    freePlay: FREE || freePlay,
+  };
+}
+
+/** Modo teste (MINIGAMES_LIVRES ou conta de teste do dono): apaga o torneio terminado para jogar de novo. */
+export async function frangacoReset(userId) {
+  const r = await prisma.dailyGame.deleteMany({ where: { userId, game: 'FRANGACO', finishedAt: { not: null } } });
+  return { ok: true, removed: r.count };
 }

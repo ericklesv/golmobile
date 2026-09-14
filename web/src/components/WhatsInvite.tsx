@@ -48,7 +48,7 @@ export function WhatsInviteWatcher() {
             <div className="relative pt-7">
               <div className="absolute inset-x-0 top-0 z-10 flex justify-center"><div id="whats-title" className="ribbon ribbon-green text-[18px]">GRUPO DO JOGAGOL</div></div>
               <div className="panel pt-8 text-center text-navy-ink">
-                <img src="/ui/ico-chat.png" alt="" className="mx-auto h-16 w-16" />
+                <img src="/ui/ico-whatsapp.png" alt="WhatsApp" className="mx-auto h-16 w-16 drop-shadow-[0_3px_0_rgba(0,0,0,0.25)]" />
                 <div className="t-display mt-1 text-[21px] leading-tight">A galera do JogaGol está no WhatsApp</div>
                 <p className="mt-1 text-[13px] font-bold leading-snug text-muted">Novidades antes de todo mundo, dicas dos minigames e resenha com os outros jogadores.</p>
                 <a href={link} target="_blank" rel="noopener noreferrer" onClick={join} className="btn btn-green btn-lg mt-4 w-full">Entrar no grupo</a>
@@ -69,7 +69,7 @@ export function WhatsButton() {
   if (!link) return null;
   return (
     <a href={link} target="_blank" rel="noopener noreferrer" onClick={() => { if (me) write(me.id, { ...read(me.id), joined: true }); }} className="btn btn-green btn-md w-full">
-      <img src="/ui/ico-chat.png" className="h-6 w-6" alt="" /> Grupo do JogaGol no WhatsApp
+      <img src="/ui/ico-whatsapp.png" className="h-6 w-6" alt="" /> Grupo do JogaGol no WhatsApp
     </a>
   );
 }

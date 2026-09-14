@@ -16,8 +16,8 @@ import { sound } from '../lib/sound';
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const when = (ms: number) => new Date(ms).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-const PERKS: { icon: React.ReactNode; title: string; text: string }[] = [
-  { icon: <svg viewBox="-11 -11 22 22" className="h-9 w-9"><CartoonBall r={10} /></svg>, title: 'Gol com o app fechado', text: 'O chute direto sai sozinho a cada 5 minutos, mesmo com o JogaGol fechado.' },
+const PERKS: { icon: React.ReactNode; title: string; text: string; offline?: boolean }[] = [
+  { offline: true, icon: <svg viewBox="-11 -11 22 22" className="h-9 w-9"><CartoonBall r={10} /></svg>, title: 'Gol com o app fechado', text: 'O chute direto sai sozinho a cada 5 minutos, mesmo com o JogaGol fechado.' },
   { icon: <img src="/ui/ico-energy.png" alt="" className="h-9 w-9" />, title: 'Recargas pela metade', text: 'Chute direto, pênalti, falta e trilha voltam na metade do tempo.' },
   { icon: <img src="/ui/ico-chat.png" alt="" className="h-9 w-9" />, title: 'Nome azul e selo VIP', text: 'No chat, nos rankings e no seu perfil.' },
   { icon: <img src="/ui/ico-goldpouch.png" alt="" className="h-9 w-9" />, title: 'Moeda da loja', text: 'Itens da loja também saem por VIP.' },
@@ -86,7 +86,7 @@ export function VipScreen() {
 
       <Panel title="O QUE O VIP DÁ" ribbon="blue">
         <ul className="flex flex-col gap-2">
-          {PERKS.map((p) => (
+          {PERKS.filter((p) => !p.offline || st.offlineAuto).map((p) => (
             <li key={p.title} className="flex items-center gap-3 rounded-xl bg-sky/10 p-2">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center">{p.icon}</span>
               <div className="min-w-0">

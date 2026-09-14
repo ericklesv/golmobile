@@ -48,7 +48,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   instante do fechamento; ~7 mil conferências, tem de dar 0 falha.
 - Auto-chute: o cliente dispara `POST /api/play/auto` quando o timer zera com a aba aberta
   (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
-  Exceção: **VIP ativo chuta sozinho mesmo com o app fechado** (scheduler; ver "VIP pago").
+  O chute do VIP com o app FECHADO está pronto mas **desligado** (`VIP_OFFLINE_AUTO = false`; ver "VIP pago").
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
   relógio do celular.
 - **Janela de "subiu de nível"** (`components/LevelUp.tsx`, montada no App para quem está logado; pedido do
@@ -114,7 +114,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
   **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do
   scheduler): quem tem `vipUntil` no futuro e não está suspenso chuta sozinho quando a recarga do
-  chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`.
+  chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
+  (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
+  chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
 - **Diretoria e contratações** (decisões do dono, 13/09/2026, a partir do BRGOL original; `services/club.js`,
   `routes/club.js` em `/api/club`, números em `CLUB` de `rules.js`, tabelas `TeamRole`/`TransferOffer`/`VipGift`
   + `User.contractUntil`, migração 0019; telas: tribuna `BoardPanel` e `MovesPanel` na página do time,

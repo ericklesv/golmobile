@@ -103,8 +103,24 @@ bubblewrap update --skipVersionUpgrade   # só se mudou o twa-manifest.json (ou 
 bubblewrap build --skipPwaValidation     # → app-release-bundle.aab (loja) e app-release-signed.apk (teste por USB)
 ```
 - [x] Primeiro build feito e **publicado no Teste interno** (14/09, versão 1 / 1.0.0, 1,98 MB na loja).
-- [ ] Testar no celular: `adb install app-release-signed.apk` (adb em `android-sdk\platform-tools`)
-  — abre **sem** barra de endereço, `/vip` mostra "chega em breve" no lugar dos pacotes PIX.
+- [x] Testado no **emulador** (14/09): abre sem barra de endereço, login OK, `/vip` mostra "chega em
+  breve" no lugar dos pacotes PIX. Num celular: `adb install app-release-signed.apk`.
+
+#### 4b. Emulador Android no PC (montado 14/09/2026)
+Serve para VOCÊ testar e para entrar como testador pela Play Store sem celular — nunca para inflar a
+conta de 12 testadores com contas falsas (motivo de encerramento da conta de desenvolvedor).
+- Instalado com o `sdkmanager` do mesmo SDK: `"emulator"` e
+  `"system-images;android-35;google_apis_playstore;x86_64"` (~1,5 GB). Aceleração: WHPX do Windows
+  (`emulator -accel-check` → "WHPX is installed and usable").
+- AVD `jogagol` criado com `avdmanager create avd -n jogagol -k "system-images;android-35;google_apis_playstore;x86_64" -d pixel_3a`
+  (o cmdline-tools 6609375 não conhece `pixel_6`) e ajustado em `%USERPROFILE%\.android\avd\jogagol.avd\config.ini`:
+  `PlayStore.enabled=yes`, `hw.ramSize=4096`, `hw.gpu.enabled=yes`, tela 1080×2220,
+  `image.sysdir.1=system-images/android-35/google_apis_playstore/x86_64/` (o avdmanager grava um caminho
+  errado com `android-sdk\` na frente — o emulador morre com "Broken AVD system path").
+- Ligar: **`tools\twa\emulador.ps1`** (`-Instalar` também instala o APK de teste). Chrome dentro do
+  emulador mostra a tela de boas-vindas na primeira vez ("Use without an account").
+- Para instalar PELA LOJA no emulador: Play Store → Sign in com a conta Google → abrir o link do teste
+  interno no Chrome do emulador → "Tornar-se testador" → instalar.
 - [ ] Versão nova: subir `appVersionCode` (e `appVersionName`) no `twa-manifest.json`, `bubblewrap
   update --skipVersionUpgrade`, `bubblewrap build`. Nunca subir o mesmo `versionCode` duas vezes.
 - Chave de upload: `android.keystore` (alias `jogagol`), senha em `SENHA-DA-CHAVE.txt` → **guardar no

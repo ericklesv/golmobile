@@ -11,7 +11,7 @@
  */
 import { prisma } from '../prisma.js';
 import { GameError } from '../lib/errors.js';
-import { VIP_PACKS, VIP_PIX, isVip } from '../lib/rules.js';
+import { VIP_PACKS, VIP_PIX, VIP_OFFLINE_AUTO, isVip } from '../lib/rules.js';
 import { efiReady, efiFake, newTxid, createCharge, getCharge, fakePay } from '../lib/efi.js';
 
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -28,6 +28,7 @@ export async function vipState(userId) {
   const history = await prisma.vipPurchase.findMany({ where: { userId, status: 'PAID' }, orderBy: { id: 'desc' }, take: 10 });
   return {
     enabled: efiReady(), test: efiFake(),
+    offlineAuto: VIP_OFFLINE_AUTO, // benefício "Gol com o app fechado" (desligado por ora)
     packs: VIP_PACKS.map(packView),
     vip: { active: isVip(user, now.getTime()), until: user.vipUntil ? user.vipUntil.getTime() : null, bank: user.vipDays },
     pending: purchaseView(pending),

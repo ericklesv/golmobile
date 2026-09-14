@@ -295,8 +295,7 @@ KIND_LABEL.FRANGACO = 'Frangaço';
 // ─── VIP pago (PIX pela Efí) ─────────────────────────────────────────────────
 // Decisões do dono (13/09/2026): pacotes de DIAS de VIP — 1 VIP = 1 dia; vão para o banco de VIPs do
 // jogador (User.vipDays), que ativa quando quiser (POST /api/me/activate-vip). Pagamento por PIX na Efí
-// (services/vip.js, lib/efi.js). VIP ativo ganha o auto-chute com o app fechado (scheduler). PREÇOS:
-// proposta de 13/09/2026, esperando o ok do dono — mudar só aqui.
+// (services/vip.js, lib/efi.js). PREÇOS: proposta de 13/09/2026, esperando o ok do dono — mudar só aqui.
 export const VIP_PACKS = [
   { key: 'vip10', days: 10, price: 3.99 },
   { key: 'vip30', days: 30, price: 9.9 },
@@ -307,6 +306,13 @@ export const VIP_PACKS = [
 ];
 /** O QR do PIX vale 30 min; no máximo 3 cobranças abertas por jogador ao mesmo tempo. */
 export const VIP_PIX = { expiresSec: 30 * 60, maxOpen: 3 };
+/**
+ * Chute direto saindo sozinho com o app FECHADO para VIP ativo (vipOfflineAutoKicks, no scheduler).
+ * DESLIGADO por decisão do dono (13/09/2026, "por enquanto"): com o app aberto o chute direto segue
+ * automático para todos, como sempre. Para religar: true — o scheduler volta a chutar e a tela do VIP
+ * volta a mostrar o benefício "Gol com o app fechado".
+ */
+export const VIP_OFFLINE_AUTO = false;
 
 // ─── Diretoria e contratações ────────────────────────────────────────────────
 // Decisões do dono (13/09/2026, com base no BRGOL original): time sem presidente → um VIP do time que já

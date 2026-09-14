@@ -1,5 +1,6 @@
 import { settleDueRounds, closePastHours, ensureSeason, refreshLiveRound } from './league.js';
 import { vipOfflineAutoKicks } from './play.js';
+import { VIP_OFFLINE_AUTO } from '../lib/rules.js';
 import { vipReconcile } from './vip.js';
 import { clubSweep } from './club.js';
 
@@ -18,9 +19,11 @@ async function tick() {
     for (const r of rounds) console.log('[rodada] fechada:', JSON.stringify(r));
     if (rounds.length) await ensureSeason();
     armExactClose(await refreshLiveRound());
-    // VIP ativo: chute direto sai sozinho mesmo com o app fechado (a cada recarga)
-    const vipGoals = await vipOfflineAutoKicks();
-    if (vipGoals) console.log('[vip] auto-chutes com app fechado:', vipGoals);
+    // VIP ativo: chute direto sai sozinho mesmo com o app fechado (a cada recarga) — desligado por ora
+    if (VIP_OFFLINE_AUTO) {
+      const vipGoals = await vipOfflineAutoKicks();
+      if (vipGoals) console.log('[vip] auto-chutes com app fechado:', vipGoals);
+    }
     if (Date.now() - lastReconcile > 120_000) {
       lastReconcile = Date.now();
       const paid = await vipReconcile();

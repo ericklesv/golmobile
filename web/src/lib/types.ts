@@ -337,6 +337,8 @@ export interface VipPurchase {
 export interface VipState {
   /** enabled = a compra por PIX está ligada no servidor; test = Efí simulada (só no PC de teste). */
   enabled: boolean; test: boolean; packs: VipPack[];
+  /** VIP chuta sozinho com o app fechado (VIP_OFFLINE_AUTO no servidor; desligado por ora). */
+  offlineAuto: boolean;
   vip: { active: boolean; until: number | null; bank: number };
   pending: VipPurchase | null; history: VipPurchase[];
 }

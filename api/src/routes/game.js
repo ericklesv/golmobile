@@ -11,6 +11,7 @@ import { catalogView } from '../lib/items.js';
 import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { boardView, playerClub } from '../services/club.js';
+import { withBadges, badgesOf, topHistory } from '../services/badges.js';
 
 export const game = Router();
 
@@ -69,7 +70,7 @@ game.get('/home', handle(async (req) => {
     season: round ? { id: round.seasonId, number: round.season.number, totalRounds: round.season.totalRounds } : null,
     round: round ? { id: round.id, number: round.number, startsAt: round.startsAt, endsAt: round.endsAt } : null,
     myMatch: myMatch ? matchView(myMatch) : null,
-    tops: { hour, round: roundTop, season: seasonTop },
+    tops: { hour: await withBadges(hour), round: await withBadges(roundTop), season: await withBadges(seasonTop) },
     records: recs,
     lastHour: hourResult ? { hourKey: hourResult.hourKey, nick: hourResult.winner?.nick ?? null, goals: hourResult.winnerGoals, team: hourResult.winner?.team ?? null } : null,
     feed: feed.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt, team: teamView(a.team) })),
@@ -84,14 +85,14 @@ game.get('/rankings/:scope', handle(async (req) => {
   if (!SCOPES.includes(scope)) throw badRequest('Ranking inválido.');
   const take = Math.min(100, Number(req.query.limit) || 50);
   const round = await currentRound();
-  if (scope === 'hora') return { scope, key: hourKey(), rows: await topScorers({ hourKey: hourKey() }, take) };
-  if (scope === 'rodada') return { scope, key: round?.number ?? null, rows: round ? await topScorers({ roundId: round.id }, take) : [] };
-  if (scope === 'temporada') return { scope, key: round?.season?.number ?? null, rows: round ? await topScorers({ seasonId: round.seasonId }, take) : [] };
+  if (scope === 'hora') return { scope, key: hourKey(), rows: await withBadges(await topScorers({ hourKey: hourKey() }, take)) };
+  if (scope === 'rodada') return { scope, key: round?.number ?? null, rows: round ? await withBadges(await topScorers({ roundId: round.id }, take)) : [] };
+  if (scope === 'temporada') return { scope, key: round?.season?.number ?? null, rows: round ? await withBadges(await topScorers({ seasonId: round.seasonId }, take)) : [] };
   const field = { geral: 'goalsTotal', penal: 'penaltyGoals', falta: 'foulGoals', trilha: 'trailGoals' }[scope];
   const users = await prisma.user.findMany({ where: { [field]: { gt: 0 } }, orderBy: [{ [field]: 'desc' }, { id: 'asc' }], take, include: { team: teamSel } });
   return {
     scope, key: null,
-    rows: users.map((u, i) => ({ position: i + 1, userId: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, goals: u[field], team: u.team, vip: !!(u.vipUntil && u.vipUntil > new Date()) })),
+    rows: await withBadges(users.map((u, i) => ({ position: i + 1, userId: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, goals: u[field], team: u.team, vip: !!(u.vipUntil && u.vipUntil > new Date()) }))),
   };
 }));
 
@@ -159,7 +160,7 @@ game.get('/teams/:slug', handle(async (req) => {
     members, active: active.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, avatarUrl: u.avatarUrl, online: u.lastSeenAt.getTime() > now.getTime() - 2 * 60_000 })), totalGoals,
     standing: standing ? { position, ...standing } : null,
     match: match ? matchView(match) : null,
-    tops: { hour: hourTop, round: roundTop, season: seasonTop },
+    tops: { hour: await withBadges(hourTop), round: await withBadges(roundTop), season: await withBadges(seasonTop) },
     titles: titles.map((t) => ({ season: t.season.number, competition: t.competition, place: t.place })),
     board, // diretoria (presidente + diretores) e movimentações
   };
@@ -197,6 +198,8 @@ game.get('/players/:nick', handle(async (req) => {
   return {
     ...publicView(user),
     ...(await playerClub(user)), // cargo no time e contrato
+    tops: (await badgesOf(user.id)).tops, // top 3 de agora (hora/rodada/temporada)
+    history: await topHistory(user.id), // vezes em 1º/2º/3º e no top 10
     positions: { geral: geral + 1, penal: penal + 1, falta: falta + 1, trilha: trilha + 1 },
     recent: recent.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt })),
   };

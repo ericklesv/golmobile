@@ -234,6 +234,7 @@ model Season {
   endsAt      DateTime?
   totalRounds Int
   status      SeasonStatus @default(ACTIVE)
+  topJson     Json? // top 10 artilheiros congelado no fechamento da temporada (estatísticas de top 10 do perfil)
 
   rounds    Round[]
   standings Standing[]
@@ -345,6 +346,9 @@ model HourResult {
   winner       User?    @relation(fields: [winnerUserId], references: [id])
   winnerGoals  Int      @default(0)
   topJson      Json?
+
+  // estatísticas de top 10 do perfil: busca "horas em que o jogador X ficou no top" (topJson @> [{userId}])
+  @@index([topJson(ops: JsonbPathOps)], type: Gin)
 }
 
 model Record {

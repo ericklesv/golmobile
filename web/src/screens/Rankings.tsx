@@ -18,7 +18,8 @@ export function RankingsScreen() {
   const [key, setKey] = useState<any>(null);
   // Trocar de aba limpa a lista E a chave no mesmo instante: a chave da Temporada/Rodada é um
   // número; se sobrasse para a aba Hora (que espera "2026-09-13-14"), a tela quebrava.
-  const pick = (s: Scope) => { setRows(null); setKey(null); setScope(s); };
+  // Tocar na aba que já está aberta não faz nada (antes limpava a lista e ela ficava carregando para sempre).
+  const pick = (s: Scope) => { if (s === scope) return; setRows(null); setKey(null); setScope(s); };
 
   useEffect(() => {
     let alive = true;

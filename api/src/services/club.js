@@ -17,6 +17,7 @@ import { prisma } from '../prisma.js';
 import { GameError, badRequest, notFound, forbidden } from '../lib/errors.js';
 import { CLUB, isVip } from '../lib/rules.js';
 import { teamView } from './view.js';
+import { invalidateRoles } from './badges.js';
 
 const DAY = 86_400_000;
 const ROLE_NAME = { PRESIDENTE: 'Presidente', DIRETOR: 'Diretor' };
@@ -74,6 +75,7 @@ export async function clubSweep({ teamId, userId } = {}) {
       if ((await tx.teamRole.deleteMany({ where: { id: r.id } })).count) await leaveClub(tx, r.userId);
     });
     dropped++;
+    invalidateRoles();
     console.log(`[diretoria] ${r.user?.nick} perdeu o cargo de ${ROLE_NAME[r.role]} (${why})`);
   }
   const scope = userId ? { OR: [{ fromUserId: userId }, { toUserId: userId }] } : teamId ? { teamId } : {};
@@ -133,6 +135,7 @@ const sentView = (o) => ({
 
 /** Tudo do jogador: cargo, diretoria do time, contrato, propostas recebidas/enviadas e VIP recebido. */
 export async function clubState(userId) {
+  invalidateRoles(); // toda ação da diretoria termina aqui: o P/D do ranking atualiza na hora
   await clubSweep({ userId });
   const now = Date.now();
   const me = await prisma.user.findUnique({ where: { id: userId }, include: { team: true, teamRole: true } });

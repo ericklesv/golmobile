@@ -10,6 +10,7 @@ import { handle, badRequest, GameError } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { levelOf, isVip } from '../lib/rules.js';
 import { teamView } from '../services/view.js';
+import { badgeLookup } from '../services/badges.js';
 
 export const chat = Router();
 chat.use(requireAuth);
@@ -83,7 +84,8 @@ chat.get('/:room', handle(async (req) => {
     prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) }, ...(room !== 'geral' ? { teamId: user.teamId } : {}) } }),
     resolveMentions(rows.map((r) => r.text)),
   ]);
-  return { room, messages: rows.reverse().map((m) => view(m, mentions)), online, colorLevel: CHAT_COLOR_LEVEL, colors: CHAT_COLORS, canColor: levelOf(user).lvl >= CHAT_COLOR_LEVEL };
+  const look = await badgeLookup(); // P/D e top 3 de agora ao lado do nick
+  return { room, messages: rows.reverse().map((m) => { const v = view(m, mentions); Object.assign(v.user, look(v.user.id)); return v; }), online, colorLevel: CHAT_COLOR_LEVEL, colors: CHAT_COLORS, canColor: levelOf(user).lvl >= CHAT_COLOR_LEVEL };
 }));
 
 const schema = z.object({ text: z.string().trim().min(1, 'Escreva algo.').max(MAX_LEN, `Máximo de ${MAX_LEN} caracteres.`), color: z.string().optional() });
@@ -104,5 +106,7 @@ chat.post('/:room', handle(async (req) => {
   }
   lastSent.set(user.id, now);
   const m = await prisma.chatMessage.create({ data: { room, userId: user.id, text, color }, include: { user: userSel } });
-  return view(m, await resolveMentions([m.text]));
+  const v = view(m, await resolveMentions([m.text]));
+  Object.assign(v.user, (await badgeLookup())(v.user.id));
+  return v;
 }));

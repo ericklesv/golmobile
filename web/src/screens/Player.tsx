@@ -10,6 +10,7 @@ import { toast } from '../components/Toast';
 import { num, timeAgo } from '../lib/format';
 import { AnimatePresence } from 'framer-motion';
 import { OfferModal, GiftModal, roleLabel, dayMonth } from '../components/Club';
+import { NameBadges, TopHistory } from '../components/Badges';
 
 export function PlayerScreen() {
   const { nick } = useParams();
@@ -52,7 +53,7 @@ export function PlayerScreen() {
         <div className="flex items-center gap-3">
           <div className="relative"><Avatar url={p.avatarUrl} size={64} /><Link to={`/time/${p.team.slug}`} className="absolute -bottom-1 -right-1"><Shield team={p.team} size={28} /></Link></div>
           <div className="min-w-0 flex-1">
-            <div className={`t-display truncate text-3xl ${p.vip ? 'text-sky-light' : 't-out'}`}>{p.nick} {p.vip && <img src="/ui/ico-crown_silver.png" className="ico h-5 w-5" alt="VIP" />}</div>
+            <div className={`t-display truncate text-3xl ${p.vip ? 'text-sky-light' : 't-out'}`}>{p.nick} {p.vip && <img src="/ui/ico-crown_silver.png" className="ico h-5 w-5" alt="VIP" />}<NameBadges role={p.role} tops={p.tops} size={20} /></div>
             <div className="text-[12px] font-extrabold text-white/90"><Link to={`/time/${p.team.slug}`} className="t-gold t-display">{p.team.name}</Link> · {p.online ? <span className="t-green">online</span> : 'offline'}</div>
             <div className="trap trap-orange mt-1 text-[11px] uppercase">Lvl {p.level.lvl} · {p.level.name}</div>
             {(p.role || p.contractUntil) && (
@@ -74,6 +75,8 @@ export function PlayerScreen() {
           <div key={k} className="item-blue"><div className="t-display t-out text-xl">{num(p.positions[k])}º</div><div className="t-display text-[10px] uppercase text-white/80">{k}</div></div>
         ))}
       </div>
+
+      {p.history && <Panel title="TOP 10" ribbon="yellow"><TopHistory history={p.history} /></Panel>}
 
       <Panel title="NÚMEROS" ribbon="blue">
         <div className="grid grid-cols-2 gap-2 text-center">

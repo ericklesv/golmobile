@@ -36,7 +36,7 @@ export interface Me {
   serverTime: number;
 }
 
-export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean }
+export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[] }
 
 export interface MatchView {
   id: number; serie: Serie; status: 'LIVE' | 'FINISHED';
@@ -147,6 +147,8 @@ export interface PublicPlayer {
   positions: { geral: number; penal: number; falta: number; trilha: number };
   recent: FeedItem[];
   role: ClubRole | null; contractUntil: number | null;
+  /** top 3 de agora (hora/rodada/temporada) e quantas vezes ficou em 1º/2º/3º/top 10 */
+  tops: TopBadge[]; history: Record<TopScope, TopTally>;
 }
 
 export interface TeamPage {
@@ -162,7 +164,7 @@ export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: nu
 
 export type ChatRoom = 'geral' | 'time';
 export interface ChatMention { nick: string; avatarUrl: string | null }
-export interface ChatMessage { id: number; text: string; color: string | null; at: string; mentions: Record<string, ChatMention> | null; user: { id: number; nick: string; avatarUrl: string | null; level: number; levelName: string; vip: boolean; nickColor: string | null; team: Team | null } }
+export interface ChatMessage { id: number; text: string; color: string | null; at: string; mentions: Record<string, ChatMention> | null; user: { id: number; nick: string; avatarUrl: string | null; level: number; levelName: string; vip: boolean; nickColor: string | null; team: Team | null; role?: ClubRole | null; tops?: TopBadge[] } }
 export interface ChatPage { room: string; messages: ChatMessage[]; online: number; colorLevel: number; colors: string[]; canColor: boolean }
 
 export interface MinigameCard {
@@ -380,3 +382,8 @@ export interface PassState {
   today: number; claimed: boolean; step: number; week: number; vip: boolean; broken: boolean;
   nextAt: number; vipXp: number; streakVip: number; days: PassDay[];
 }
+
+// ─── Distintivos: P/D do cargo e top 3 de agora; quadro de top 10 do perfil ───
+export type TopScope = 'HOUR' | 'ROUND' | 'SEASON';
+export interface TopBadge { scope: TopScope; pos: number }
+export interface TopTally { gold: number; silver: number; bronze: number; top10: number }

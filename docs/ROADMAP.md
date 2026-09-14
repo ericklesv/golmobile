@@ -36,6 +36,8 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    time) e **doação de VIP entre colegas de time**. Falta: Capitão/Auxiliar (com a ordem de chute), caixa do time (R$ e VIP),
    **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
    adversário atual, boosts Gatorade/Energético comprados pelo presidente).
+6c. [x] **Distintivos e TOP 10** (13/09/2026): P/D ao lado do nome, ícone do top 3 de agora (hora/rodada/
+   temporada; ouro/prata/bronze) nos rankings, chat e perfil, e o quadro TOP 10 do perfil (vezes em 1º/2º/3º/top 10).
 6b. [x] **Presença da Semana** (login diário, 13/09/2026): 7 dias, todo dia dá XP (490/semana, dobro para VIP),
    7º dia dá VIP que ativa na hora (2 VIP da 2ª semana seguida); pulou um dia, volta ao dia 1. Depois: "Passe da
    Temporada" (30 dias da liga) com trilha grátis + trilha VIP vendida por PIX.

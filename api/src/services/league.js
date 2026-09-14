@@ -283,7 +283,8 @@ async function finishSeason(tx, season, now) {
   const top = await topScorers({ seasonId: season.id }, 10, tx);
   await payPrizes(tx, top, PRIZES.season);
   await applyRecord(tx, 'SEASON', season.id, top);
-  await tx.season.update({ where: { id: season.id }, data: { status: 'FINISHED', endsAt: now } });
+  // top 10 congelado (igual Round.topJson / HourResult.topJson) — estatísticas de top 10 do perfil
+  await tx.season.update({ where: { id: season.id }, data: { status: 'FINISHED', endsAt: now, topJson: top } });
 }
 
 // ─── Fechamento de hora ─────────────────────────────────────────────────────

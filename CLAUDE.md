@@ -120,6 +120,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
   (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
   chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
+- **Distintivos ao lado do nome** (pedido do dono, 13/09/2026; `services/badges.js`, `components/Badges.tsx`): **P**
+  (Presidente) / **D** (Diretor) do cargo no time e o **top 3 de AGORA** — hora = estrela, rodada = medalha, temporada
+  = troféu; 1º ouro, 2º prata, 3º bronze (`/ui/ico-{star,medal,trophy}_{gold,silver,bronze}.png`; estrela/troféu prata
+  e bronze feitos a partir do dourado do kit). É ao vivo (cache de 15 s; cargos 30 s, zerado em toda ação da diretoria):
+  passou na frente, o ícone muda de dono. Aparecem nos rankings (`withBadges` em /home, /rankings, /teams), no chat
+  e no perfil. **Quadro TOP 10 do perfil** (`topHistory`): quantas vezes em 1º/2º/3º e no top 10 das horas, rodadas e
+  temporadas fechadas — lê os top 10 congelados em `HourResult/Round/Season.topJson` (Season.topJson gravado no
+  `finishSeason` desde a migração 0021; índice GIN em HourResult.topJson para o `@>`).
 - **Presença da Semana** (login diário; decisões do dono, 13/09/2026 — "tá muito difícil upar"; `services/pass.js`,
   `routes/pass.js` em `/api/pass`, prêmios em `LOGIN_PASS` de `rules.js`, tabela `LoginPass`, migração 0020; tela
   `components/Pass.tsx`: cartela que abre sozinha 1x por dia no aparelho + cartão na Home). Entrar 1x por dia e tocar

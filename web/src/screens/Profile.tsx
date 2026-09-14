@@ -1,4 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { PublicPlayer } from '../lib/types';
+import { NameBadges, TopHistory } from '../components/Badges';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
@@ -34,6 +36,8 @@ export function ProfileScreen() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [som, setSom] = useState(sound.enabled());
+  const [pub, setPub] = useState<PublicPlayer | null>(null); // top 3 de agora + quadro de top 10
+  useEffect(() => { api.player(me.nick).then(setPub).catch(() => {}); }, [me.nick]);
   async function pickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; e.target.value = '';
     if (!f) return;
@@ -70,7 +74,7 @@ export function ProfileScreen() {
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={pickAvatar} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className={`t-display truncate text-3xl ${me.vip ? 'text-sky-light' : 't-out'}`}>{me.nick} {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}</div>
+            <div className={`t-display truncate text-3xl ${me.vip ? 'text-sky-light' : 't-out'}`}>{me.nick} {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}<NameBadges role={me.role} tops={pub?.tops} size={20} /></div>
             <div className="text-[12px] font-extrabold text-white/90">{me.gender === 'F' ? 'Jogadora' : 'Jogador'} do <Link to={`/time/${me.team.slug}`} className="t-gold t-display">{me.team.name}</Link></div>
             <div className="trap trap-orange mt-1 text-[11px] uppercase">Lvl {me.level.lvl} · {me.level.name}</div>
             {(me.role || me.contractUntil) && (
@@ -98,6 +102,8 @@ export function ProfileScreen() {
         <Stat label="Destreza" value={`${me.dexterity}/${dexMax}`} icon="/ui/ico-energy.png" />
         <Stat label="VIP" value={me.vip ? 'ATIVO' : `${me.vipDays} un.`} icon="/ui/ico-crown_silver.png" sub={me.vip && me.vipUntil ? `até ${new Date(me.vipUntil).toLocaleDateString('pt-BR')}` : undefined} />
       </div>
+
+      {pub?.history && <Panel title="MEU TOP 10" ribbon="yellow"><TopHistory history={pub.history} /></Panel>}
 
       <Panel title="MEUS NÚMEROS" ribbon="blue">
         <div className="grid grid-cols-2 gap-2 text-center">

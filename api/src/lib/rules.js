@@ -288,3 +288,34 @@ KIND_LABEL.FALTAPRO = 'Falta PRO';
 RESET_HOUR.FRANGACO = 20;
 DAILY_GAMES.push('FRANGACO');
 KIND_LABEL.FRANGACO = 'Frangaço';
+
+// ─── VIP pago (PIX pela Efí) ─────────────────────────────────────────────────
+// Decisões do dono (13/09/2026): pacotes de DIAS de VIP — 1 VIP = 1 dia; vão para o banco de VIPs do
+// jogador (User.vipDays), que ativa quando quiser (POST /api/me/activate-vip). Pagamento por PIX na Efí
+// (services/vip.js, lib/efi.js). VIP ativo ganha o auto-chute com o app fechado (scheduler). PREÇOS:
+// proposta de 13/09/2026, esperando o ok do dono — mudar só aqui.
+export const VIP_PACKS = [
+  { key: 'vip10', days: 10, price: 3.99 },
+  { key: 'vip30', days: 30, price: 9.9 },
+  { key: 'vip60', days: 60, price: 17.9, tag: 'Mais vendido' },
+  { key: 'vip120', days: 120, price: 29.9 },
+  { key: 'vip250', days: 250, price: 54.9 },
+  { key: 'vip500', days: 500, price: 89.9, tag: 'Melhor preço' },
+];
+/** O QR do PIX vale 30 min; no máximo 3 cobranças abertas por jogador ao mesmo tempo. */
+export const VIP_PIX = { expiresSec: 30 * 60, maxOpen: 3 };
+
+// ─── Diretoria e contratações ────────────────────────────────────────────────
+// Decisões do dono (13/09/2026, com base no BRGOL original): time sem presidente → um VIP do time que já
+// marcou gol por ele assume; o Presidente nomeia até 2 Diretores; os dois fazem propostas com o VIP do
+// próprio banco. Aceitou = vai para o time, recebe o VIP e fica com contrato de 1 DIA POR VIP. VIP guardado
+// pode ser doado para colega de time (contas na mesma internet não trocam VIP). Regras em services/club.js.
+export const CLUB = {
+  directors: 2, // Presidente + até 2 Diretores
+  roleLossDays: 3, // perde o cargo: 3 dias sem VIP, 3 dias sem entrar, suspenso ou saiu do time
+  offerMin: 1, // VIP por proposta (= dias de contrato)
+  offerMax: 100,
+  offerHours: 48, // proposta sem resposta vence e o VIP volta para quem propôs
+  maxOpenOffers: 5, // propostas abertas ao mesmo tempo por dirigente
+  messageMax: 140, // recado da proposta
+};

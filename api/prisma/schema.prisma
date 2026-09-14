@@ -111,6 +111,9 @@ model User {
   // Corrida da trilha em andamento (layout secreto + fase)
   trailState Json?
 
+  // Contratado por proposta: não troca de time nem aceita outra proposta até aqui (1 dia por VIP)
+  contractUntil DateTime?
+
   goals       Goal[]
   activities  Activity[]
   nerfsGiven  Nerf[]     @relation("NerfFrom")
@@ -122,6 +125,12 @@ model User {
   items       UserItem[]
   shopLogs    ShopLog[]
   passwordResets PasswordReset[]
+  vipPurchases VipPurchase[]
+  teamRole    TeamRole?
+  offersSent  TransferOffer[] @relation("OfferFrom")
+  offersGot   TransferOffer[] @relation("OfferTo")
+  giftsSent   VipGift[]       @relation("GiftFrom")
+  giftsGot    VipGift[]       @relation("GiftTo")
   adminActions AdminAction[] @relation("AdminActionBy")
   adminTargeted AdminAction[] @relation("AdminActionTo")
 
@@ -167,6 +176,9 @@ model Team {
   goals       Goal[]
   titles      Title[]
   activities  Activity[]
+  roles       TeamRole[]
+  offers      TransferOffer[] @relation("OfferTeam")
+  offersOut   TransferOffer[] @relation("OfferFromTeam")
 }
 
 // ─── Loja ───────────────────────────────────────────────────────────────────
@@ -419,4 +431,88 @@ model CabecaoMatch {
   @@index([winnerId, createdAt])
   @@index([aId, createdAt])
   @@index([bId, createdAt])
+}
+
+// VIP pago (PIX na Efí): uma compra = uma cobrança com txid NOSSO (único). Só vira PAID quando a própria
+// cobrança está CONCLUIDA na Efí (nunca por valor/horário — lição do Rifa Express); o endToEndId do PIX
+// é único, então o mesmo PIX nunca credita duas vezes. status: PENDING | PAID | EXPIRED | FAILED.
+model VipPurchase {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  packKey     String
+  days        Int
+  amountCents Int
+  txid        String    @unique
+  status      String    @default("PENDING")
+  pixCode     String?
+  qrImage     String?
+  expiresAt   DateTime
+  e2eId       String?   @unique
+  paidAt      DateTime?
+  checkedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// ─── Diretoria e contratações (decisões do dono, 13/09/2026) ────────────────
+// Cargos: 1 Presidente (slot 0) + até 2 Diretores (slots 1–2). O @@unique([teamId, slot]) garante
+// NO BANCO um presidente só por time e no máximo 2 diretores; userId @unique = um cargo por jogador.
+model TeamRole {
+  id     Int      @id @default(autoincrement())
+  teamId Int
+  team   Team     @relation(fields: [teamId], references: [id])
+  userId Int      @unique
+  user   User     @relation(fields: [userId], references: [id])
+  role   String // "PRESIDENTE" | "DIRETOR"
+  slot   Int // 0 = presidente; 1..2 = diretores
+  since  DateTime @default(now())
+
+  @@unique([teamId, slot])
+}
+
+// Proposta de contratação: o VIP sai do banco de quem propõe ao enviar e volta se não fechar
+// (recusada, vencida em 48 h, cancelada ou quem propôs saiu da diretoria). Aceita = o jogador vai
+// para o time, recebe o VIP e ganha contrato de 1 dia por VIP. status: PENDING | ACCEPTED |
+// REFUSED | CANCELED | EXPIRED (a volta do VIP só acontece na troca de PENDING, uma vez).
+model TransferOffer {
+  id         Int       @id @default(autoincrement())
+  teamId     Int
+  team       Team      @relation("OfferTeam", fields: [teamId], references: [id])
+  fromUserId Int
+  fromUser   User      @relation("OfferFrom", fields: [fromUserId], references: [id])
+  toUserId   Int
+  toUser     User      @relation("OfferTo", fields: [toUserId], references: [id])
+  fromTeamId Int? // time de onde o jogador saiu (gravado ao aceitar — "Movimentações")
+  fromTeam   Team?     @relation("OfferFromTeam", fields: [fromTeamId], references: [id])
+  vip        Int
+  message    String?
+  status     String    @default("PENDING")
+  expiresAt  DateTime
+  decidedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+  @@index([teamId, status])
+  @@index([fromTeamId, status])
+  @@index([status, expiresAt])
+}
+
+// Doação de VIP guardado entre colegas do mesmo time (histórico para conferir abusos).
+model VipGift {
+  id         Int      @id @default(autoincrement())
+  fromUserId Int
+  fromUser   User     @relation("GiftFrom", fields: [fromUserId], references: [id])
+  toUserId   Int
+  toUser     User     @relation("GiftTo", fields: [toUserId], references: [id])
+  teamId     Int
+  days       Int
+  createdAt  DateTime @default(now())
+
+  @@index([fromUserId, createdAt])
+  @@index([toUserId, createdAt])
 }

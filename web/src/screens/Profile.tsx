@@ -73,6 +73,12 @@ export function ProfileScreen() {
             <div className={`t-display truncate text-3xl ${me.vip ? 'text-sky-light' : 't-out'}`}>{me.nick} {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}</div>
             <div className="text-[12px] font-extrabold text-white/90">{me.gender === 'F' ? 'Jogadora' : 'Jogador'} do <Link to={`/time/${me.team.slug}`} className="t-gold t-display">{me.team.name}</Link></div>
             <div className="trap trap-orange mt-1 text-[11px] uppercase">Lvl {me.level.lvl} · {me.level.name}</div>
+            {(me.role || me.contractUntil) && (
+              <Link to="/propostas" className="mt-1 flex flex-wrap gap-1">
+                {me.role && <span className="trap trap-green text-[10px] uppercase">{me.role === 'PRESIDENTE' ? 'Presidente' : me.gender === 'F' ? 'Diretora' : 'Diretor'} do {me.team.abbr}</span>}
+                {me.contractUntil && <span className="trap trap-blue text-[10px] uppercase">Contrato até {new Date(me.contractUntil).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })}</span>}
+              </Link>
+            )}
           </div>
         </div>
         <div className="mt-3">

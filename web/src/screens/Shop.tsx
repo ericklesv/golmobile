@@ -185,6 +185,7 @@ export function ShopScreen() {
           <Row icon="ico-crown_silver" title="Ativar VIP (1 dia)" desc={`Recargas pela metade e nick azul. Você tem ${me.vipDays} unidade(s) de VIP${me.vip ? ' · VIP ativo' : ''}.`} busy={busy} active={me.vip}
             price="1 VIP" cta="Ativar" busyKey="vip" disabled={me.vipDays < 1}
             onClick={() => run('vip', async () => { const r = await api.activateVip(1); toast('VIP ativado por 1 dia!', 'success'); return r; })} />
+          <Link to="/vip" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-crown_silver.png" className="h-6 w-6" alt="" /> Comprar dias de VIP</Link>
         </div>
       </Panel>
 

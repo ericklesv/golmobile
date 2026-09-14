@@ -31,6 +31,8 @@ export interface Me {
   items: UserItemView[]; nickColor: string | null;
   /** Só em GET /api/me: o próximo chute manual exige captcha (a cada 10 chutes). */
   captchaRequired?: boolean;
+  /** Diretoria: cargo no time e contrato de contratação (não troca de time até lá). */
+  role: ClubRole | null; contractUntil: number | null;
   serverTime: number;
 }
 
@@ -72,6 +74,8 @@ export interface TrailResult {
 export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number }
 
 export interface Meta {
+  /** Diretoria e contratações (CLUB em rules.js). */
+  club?: { directors: number; roleLossDays: number; offerMin: number; offerMax: number; offerHours: number; maxOpenOffers: number; messageMax: number };
   cooldowns: Record<Kind, { normal: number; vip: number }>;
   trailMin: { normal: number; vip: number };
   money: Record<string, number>;
@@ -142,6 +146,7 @@ export interface PublicPlayer {
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
   positions: { geral: number; penal: number; falta: number; trilha: number };
   recent: FeedItem[];
+  role: ClubRole | null; contractUntil: number | null;
 }
 
 export interface TeamPage {
@@ -150,6 +155,7 @@ export interface TeamPage {
   match: MatchView | null;
   tops: { hour: TopRow[]; round: TopRow[]; season: TopRow[] };
   titles: { season: number; competition: string; place: number }[];
+  board: ClubBoard;
 }
 
 export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: number; avatarUrl: string | null; lastSeenAt: string; online: boolean; vip: boolean; team: Team | null }
@@ -320,3 +326,42 @@ export interface FaltaProKickResponse {
 }
 
 // Frangaço: o jogo é o cliente Unity (/tv/?mode=penalty) falando direto com /api/frangaco/* — sem tipos aqui.
+
+// ─── VIP pago (PIX na Efí) ──────────────────────────────────────────────────
+export interface VipPack { key: string; days: number; price: number; perDay: number; tag: string | null }
+export interface VipPurchase {
+  id: number; packKey: string; days: number; amount: number; status: 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED';
+  /** PIX copia e cola e a imagem do QR (PNG em base64, sem o prefixo data:). */
+  pixCode: string | null; qrImage: string | null; expiresAt: number; paidAt: number | null;
+}
+export interface VipState {
+  /** enabled = a compra por PIX está ligada no servidor; test = Efí simulada (só no PC de teste). */
+  enabled: boolean; test: boolean; packs: VipPack[];
+  vip: { active: boolean; until: number | null; bank: number };
+  pending: VipPurchase | null; history: VipPurchase[];
+}
+
+// ─── Diretoria e contratações ────────────────────────────────────────────────
+export type ClubRole = 'PRESIDENTE' | 'DIRETOR';
+export interface ClubSeat { id: number; nick: string; avatarUrl: string | null; gender: string; vip: boolean; online: boolean; since: number }
+export interface ClubMove { id: number; nick: string; avatarUrl: string | null; vip: number; at: number; arrived: boolean; team: Team; fromTeam: Team | null }
+export interface ClubBoard { president: ClubSeat | null; directors: (ClubSeat | null)[]; moves: ClubMove[] }
+export interface OfferReceived {
+  id: number; team: Team; vip: number; days: number; message: string | null;
+  from: { nick: string; avatarUrl: string | null; role: ClubRole | null }; expiresAt: number; createdAt: number;
+}
+export type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REFUSED' | 'CANCELED' | 'EXPIRED';
+export interface OfferSent {
+  id: number; vip: number; message: string | null; status: OfferStatus; expiresAt: number; decidedAt: number | null; createdAt: number;
+  to: { nick: string; avatarUrl: string | null; team: Team };
+}
+export interface ClubState {
+  team: Team; role: ClubRole | null; board: ClubBoard;
+  claim: { ok: boolean; reason: string | null };
+  contract: { until: number } | null;
+  bank: number;
+  rules: { offerMin: number; offerMax: number; offerHours: number; directors: number; roleLossDays: number; messageMax: number };
+  received: OfferReceived[]; sent: OfferSent[];
+  gifts: { id: number; nick: string; days: number; at: number }[];
+}
+export interface ClubCandidate { id: number; nick: string; avatarUrl: string | null; gender: string; vip: boolean; online: boolean; goalsTotal: number }

@@ -129,6 +129,29 @@ export async function autoKick(userId) {
   });
 }
 
+/**
+ * VIP ativo: o chute direto sai sozinho a cada recarga, MESMO com o app fechado (decisão do dono,
+ * 13/09/2026 — era o item do roteiro do Guilherme). Chamado pelo scheduler; o autoKick reserva a recarga
+ * de forma atômica, então nunca sai dois gols na mesma recarga (nem com o app aberto chutando junto).
+ */
+export async function vipOfflineAutoKicks(now = new Date()) {
+  const users = await prisma.user.findMany({
+    where: {
+      vipUntil: { gt: now },
+      AND: [
+        { OR: [{ bannedUntil: null }, { bannedUntil: { lt: now } }] },
+        { OR: [{ lastAutoAt: null }, { lastAutoAt: { lt: new Date(now.getTime() - 3 * 60_000) } }] }, // recarga VIP: 5 min (4 com boost)
+      ],
+    },
+    select: { id: true }, take: 500,
+  });
+  let goals = 0;
+  for (const u of users) {
+    try { await autoKick(u.id); goals++; } catch (e) { if (e?.code !== 'cooldown') console.error('[vip] auto-chute:', e.message); }
+  }
+  return goals;
+}
+
 // ─── Pênalti ────────────────────────────────────────────────────────────────
 const DIRS = ['left', 'center', 'right'];
 export async function penalty(userId, direction) {

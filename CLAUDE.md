@@ -41,13 +41,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Ordem da tabela = `standingOrder`** (pontos, saldo, gols pró, nome), a MESMA na tela, na
   página do time e no título/acesso/rebaixamento. **Prêmio de time** (campeão/vice, VIP de
   `PRIZES.team`): vai para quem marcou pelo menos 1 gol pelo time na temporada (decisão do
-  dono; só estar no time não conta — trocar de time é livre). Gols da hora/rodada/temporada do jogador
+  dono; só estar no time não conta — trocar de time é livre, salvo contrato de contratação). Gols da hora/rodada/temporada do jogador
   ficam gravados até o próximo gol dele: na tela, sempre via `periodGoals` (`view.js`).
   **Mexeu na liga? Rode `node scripts/sim-liga.js`** (pasta api/, só banco LOCAL, schema
   `liga_sim` criado e apagado por ele): temporada inteira de 30 rodadas + virada, com gols no
   instante do fechamento; ~7 mil conferências, tem de dar 0 falha.
 - Auto-chute: o cliente dispara `POST /api/play/auto` quando o timer zera com a aba aberta
   (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
+  Exceção: **VIP ativo chuta sozinho mesmo com o app fechado** (scheduler; ver "VIP pago").
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
   relógio do celular.
 - **Janela de "subiu de nível"** (`components/LevelUp.tsx`, montada no App para quem está logado; pedido do
@@ -96,6 +97,42 @@ depois que o novo estiver estável. Não instalar nada dele.
   Os efeitos entram por `cooldownFor` (rules.js → `applyItemCooldown`), `bootBonus` nas chances e
   `shinGuard` no layout da trilha — **o usuário precisa vir com `items`**: carregue com
   `meInclude()` (items.js) em tudo que vira `meView`. Preços/regras: só em `items.js`.
+- **VIP pago** (decisões do dono, 13/09/2026; `services/vip.js`, `lib/efi.js`, `routes/vip.js`, tela
+  `/vip` = `Vip.tsx`, tabela `VipPurchase`, migração 0018): pacotes de **dias de VIP** (`VIP_PACKS` em
+  `rules.js`, preços propostos à espera do OK do dono) pagos por **PIX na Efí**. Os dias caem no banco
+  de VIPs (`User.vipDays`, 1 VIP = 1 dia) e o jogador ativa quando quiser (`activate-vip`). Regras de
+  segurança (lições do Rifa Express): txid gravado ANTES da cobrança; QR pendente do mesmo pacote é
+  reaproveitado (nunca regerar por cima); no máximo 3 PIX abertos (30 min cada); só credita quando a
+  PRÓPRIA cobrança está `CONCLUIDA` na Efí com valor ≥ o do pacote — nunca por valor/horário;
+  `e2eId` único no banco; crédito numa transação que só muda `PENDING → PAID` (credita uma vez).
+  O aviso da Efí (`POST /api/pay/efi/<EFI_WEBHOOK_SECRET>/pix`) só dispara a conferência. 3 caminhos
+  de confirmação: aviso, a tela perguntando a cada 4 s e `vipReconcile` no scheduler (2 min).
+  Credenciais `EFI_*` só no `api/.env` da VPS (ver `.env.example`); aviso registrado com
+  `node scripts/efi-webhook.js`. **A chave PIX (`EFI_PIX_KEY`) tem de ser só do JogaGol**: a Efí guarda
+  UM aviso por chave, e registrar o nosso numa chave de outro projeto (Rifa Express) derruba o de lá.
+  Sem credenciais, a tela mostra "A compra por PIX abre em breve".
+  Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
+  **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do
+  scheduler): quem tem `vipUntil` no futuro e não está suspenso chuta sozinho quando a recarga do
+  chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`.
+- **Diretoria e contratações** (decisões do dono, 13/09/2026, a partir do BRGOL original; `services/club.js`,
+  `routes/club.js` em `/api/club`, números em `CLUB` de `rules.js`, tabelas `TeamRole`/`TransferOffer`/`VipGift`
+  + `User.contractUntil`, migração 0019; telas: tribuna `BoardPanel` e `MovesPanel` na página do time,
+  `/propostas` = `Offers.tsx`, botões no perfil do jogador, janelas em `components/Club.tsx`).
+  **Presidente**: time sem presidente → qualquer VIP do time que já marcou gol por ele assume. Nomeia até **2
+  Diretores** (VIPs do time). No banco, `@@unique([teamId, slot])` (slot 0 = presidente, 1–2 = diretores)
+  garante 1 presidente e 2 diretores no máximo. **Perde o cargo** quem sai do time, fica 3 dias sem VIP, 3 dias
+  sem entrar ou é suspenso (`clubSweep`: scheduler a cada 5 min + antes de cada tela/ação).
+  **Proposta** (Presidente/Diretor, pelo perfil do jogador de outro time): 1–100 VIP do banco de quem propõe
+  — sai na hora e **volta** se for recusada, cancelada, vencer (48 h) ou quem propôs sair da diretoria; toda
+  volta passa por `closeOffer` (troca `PENDING` uma vez só). **Aceitou**: vai para o time, recebe o VIP e ganha
+  **contrato de 1 dia por VIP** (`contractUntil`: não troca de time — `change-team` recusa — nem recebe/aceita
+  outra proposta); as outras propostas abertas são canceladas (VIP volta). O aceite trava a linha do jogador
+  (`SELECT … FOR UPDATE`): dois "aceitar" ao mesmo tempo fecham um só. **Doação**: VIP guardado para colega do
+  mesmo time. **Contas na mesma internet (`lastIp` igual) não negociam nem trocam VIP** (conta falsa juntando
+  VIP). O painel de admin passa por cima do contrato ao trocar o time. Selo de propostas na aba Time vem no
+  heartbeat (`offers`). **Mexeu nisso? Rode `node scripts/test-club.js`** (pasta api/, só banco LOCAL — o
+  script se recusa a rodar fora dele): ~50 conferências, tem de dar "TUDO OK".
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
   `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).
@@ -198,6 +235,8 @@ depois que o novo estiver estável. Não instalar nada dele.
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
+`GET /api/club|club/candidates` · `POST /api/club/claim|resign|directors{nick}|directors/remove{nick}|pass{nick}|offers{nick,vip,message}|offers/:id/accept|offers/:id/refuse|offers/:id/cancel|gift{nick,days}` (diretoria e contratações; a diretoria pública vem em `GET /api/teams/:slug` → `board`)
+`GET /api/vip|vip/purchases/:id` · `POST /api/vip/buy{pack}|vip/purchases/:id/test-pay` (só `EFI_FAKE`) · `POST /api/pay/efi/:secret[/pix]` (aviso da Efí, sem login)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`
 `GET /api/players/active` (24 h)
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick|daily/faltapro` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}|daily/faltapro/start|daily/faltapro/kick{i,dirX,dirY,power,spin}` (minigames)

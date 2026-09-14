@@ -14,8 +14,11 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    (+2 % a +10 %, 30 dias, só uma equipada), troca de nick e cor do nick (nível 8+). Catálogo em
    `api/src/lib/items.js`, tabelas `UserItem`/`ShopLog`, `cooldownFor`/chances/trilha leem os itens
    ativos. `GET/POST /api/shop/*`. Falta: mercado de chuteiras entre jogadores (depois).
-2. **VIP pago** (pacotes de dias via AbacatePay Pix, mesmo fluxo do Managol) e **auto-chute
-   offline para VIP** (scheduler marca o gol a cada 5 min mesmo sem app aberto).
+2. [~] **VIP pago** (13/09/2026, código pronto e testado com a Efí simulada): pacotes de dias de VIP
+   por **PIX na Efí** (tela `/vip`, botão VIP do topo e atalho na Loja), dias guardados no banco de
+   VIPs e ativados quando o jogador quiser, e **auto-chute offline para VIP** (scheduler). **Falta:**
+   OK do dono nos preços (`VIP_PACKS`), credenciais da Efí no `api/.env` da VPS + `node
+   scripts/efi-webhook.js`, e um PIX real de teste. Depois: cartão, doação de VIP entre jogadores.
 3. **Uniformes reais nas cenas 3D** (pack Soccer Players Uniforms) — pipeline em `tools/3d/README.md`.
 4. [x] **Recuperação de senha por e-mail** (13/09/2026): `POST /api/auth/forgot|reset`, telas
    `/esqueci-senha` e `/redefinir-senha`. **Pendente na VPS:** preencher `SMTP_*`, `MAIL_FROM` e
@@ -28,7 +31,9 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    destreza/time/cor), gols de verdade e exp, ban/desban, IP + geolocalização (ip-api.com com
    cache 24 h; `User.lastIp` no cadastro/login/heartbeat) e log de auditoria (`AdminAction`).
    API em `/api/painel/*` (`routes/adminPanel.js`, middleware `requireAdmin`).
-6. **Cargos do time** (Presidente/Diretor/Capitão/Auxiliar, só VIP), caixa do time (R$ e VIP),
+6. [~] **Cargos do time**: FEITO 13/09/2026 — Presidente (time vago → VIP que marcou pelo time assume) +
+   até 2 Diretores, **contratações** (proposta em VIP; contrato de 1 dia por VIP; movimentações na página do
+   time) e **doação de VIP entre colegas de time**. Falta: Capitão/Auxiliar (com a ordem de chute), caixa do time (R$ e VIP),
    **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
    adversário atual, boosts Gatorade/Energético comprados pelo presidente).
 7. **Missões** de rodada/temporada em tiers com resgate manual + ranking.
@@ -73,7 +78,7 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [x] Captcha/anti-bot nos chutes manuais (13/09/2026: conta numérica a cada 10 chutes manuais)
 
 ## Fase 2 — Comunidade e time (features originais restantes)
-- [ ] Cargos do time: Presidente, Diretor, Capitão, Auxiliar (só VIP) e caixa do time em VIPs
+- [~] Cargos do time: Presidente e Diretores + contratações e doação de VIP no time (13/09/2026); faltam Capitão, Auxiliar e caixa do time em VIPs
 - [ ] Ordem de chute / Secar / Seguir ordem
 - [ ] Mensagens privadas (400 chars), amigos online, bloquear, mensagem em massa
 - [x] Chat: salas Geral e Torcida do time, nível/VIP/escudo em cada mensagem, mensagens coloridas a partir do nível 8, botão flutuante com contador (13/09/2026)
@@ -110,7 +115,7 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [ ] Hora Premiada, Giro Premiado diário, Ranking de Fama
 - [ ] Desafios X1 e Torneio X1
 - [x] Loja de itens com validade (13/09/2026: Energia, Boost Auto, Caneleira, Chuteiras, nick/cor) — faltam Espionagem da Trilha, Impulso, Potência
-- [ ] VIP pago (AbacatePay Pix, igual ao Managol) e doação de VIP entre jogadores
+- [~] VIP pago (PIX Efí — código pronto 13/09/2026, falta ligar as credenciais); doação de VIP só entre colegas de time (feita 13/09/2026)
 - [ ] Notificações push ("seu chute recarregou", "seu time está perdendo")
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável
 

@@ -153,7 +153,7 @@ export function activeItemsWhere(now = new Date()) {
 
 /** `include` padrão para carregar um usuário que vai virar `meView` (time + itens ativos). */
 export function meInclude(now = new Date()) {
-  return { team: true, items: activeItemsWhere(now) };
+  return { team: true, teamRole: true, items: activeItemsWhere(now) };
 }
 
 /** Catálogo para o cliente (/api/meta e /api/shop). */

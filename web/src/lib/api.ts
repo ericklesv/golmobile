@@ -1,4 +1,4 @@
-import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AdminLogPage, AdminPatch, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -39,7 +39,7 @@ export const api = {
   login: (b: { login: string; password: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/login', b),
   // me
   me: () => req<Me>('GET', '/api/me'),
-  heartbeat: () => req<{ ok: boolean; online: number; active: number; serverTime: number }>('POST', '/api/me/heartbeat'),
+  heartbeat: () => req<{ ok: boolean; online: number; active: number; offers: number; serverTime: number }>('POST', '/api/me/heartbeat'),
   opponent: () => req<{ opponent: import('./types').Team | null }>('GET', '/api/me/opponent'),
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
   buyDexterity: (qty = 1) => req<Me>('POST', '/api/me/buy-dexterity', { qty }),
@@ -105,6 +105,24 @@ export const api = {
   removeAvatar: () => req<Me>('DELETE', '/api/uploads/avatar'),
   search: (q: string) => req<{ nick: string; goalsTotal: number; avatarUrl: string | null; team: any }[]>('GET', `/api/players/search?q=${encodeURIComponent(q)}`),
   feed: (team?: string) => req<any[]>('GET', `/api/feed${team ? `?team=${team}` : ''}`),
+  // VIP pago (PIX)
+  vip: () => req<VipState>('GET', '/api/vip'),
+  vipBuy: (pack: string) => req<{ purchase: VipPurchase }>('POST', '/api/vip/buy', { pack }),
+  vipPurchase: (id: number) => req<{ purchase: VipPurchase; bank: number }>('GET', `/api/vip/purchases/${id}`),
+  // diretoria e contratações
+  club: () => req<ClubState>('GET', '/api/club'),
+  clubCandidates: () => req<ClubCandidate[]>('GET', '/api/club/candidates'),
+  clubClaim: () => req<ClubState>('POST', '/api/club/claim'),
+  clubResign: () => req<ClubState>('POST', '/api/club/resign'),
+  clubAppoint: (nick: string) => req<ClubState>('POST', '/api/club/directors', { nick }),
+  clubRemoveDirector: (nick: string) => req<ClubState>('POST', '/api/club/directors/remove', { nick }),
+  clubPass: (nick: string) => req<ClubState>('POST', '/api/club/pass', { nick }),
+  offerSend: (nick: string, vip: number, message: string) => req<ClubState>('POST', '/api/club/offers', { nick, vip, message }),
+  offerAccept: (id: number) => req<ClubState>('POST', `/api/club/offers/${id}/accept`),
+  offerRefuse: (id: number) => req<ClubState>('POST', `/api/club/offers/${id}/refuse`),
+  offerCancel: (id: number) => req<ClubState>('POST', `/api/club/offers/${id}/cancel`),
+  giftVip: (nick: string, days: number) => req<{ ok: boolean; to: string; days: number }>('POST', '/api/club/gift', { nick, days }),
+  vipTestPay: (id: number) => req<{ purchase: VipPurchase; bank: number }>('POST', `/api/vip/purchases/${id}/test-pay`),
   // loja
   shop: () => req<ShopView>('GET', '/api/shop'),
   shopBuy: (key: string, currency: 'money' | 'vip' = 'money') => req<{ me: Me; item: UserItemView }>('POST', '/api/shop/buy', { key, currency }),

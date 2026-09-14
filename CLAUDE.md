@@ -41,7 +41,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Ordem da tabela = `standingOrder`** (pontos, saldo, gols pró, nome), a MESMA na tela, na
   página do time e no título/acesso/rebaixamento. **Prêmio de time** (campeão/vice, VIP de
   `PRIZES.team`): vai para quem marcou pelo menos 1 gol pelo time na temporada (decisão do
-  dono; só estar no time não conta — trocar de time é livre). Gols da hora/rodada/temporada do jogador
+  dono; só estar no time não conta — trocar de time é livre, salvo contrato de contratação). Gols da hora/rodada/temporada do jogador
   ficam gravados até o próximo gol dele: na tela, sempre via `periodGoals` (`view.js`).
   **Mexeu na liga? Rode `node scripts/sim-liga.js`** (pasta api/, só banco LOCAL, schema
   `liga_sim` criado e apagado por ele): temporada inteira de 30 rodadas + virada, com gols no

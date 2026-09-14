@@ -33,6 +33,7 @@ enum KickKind {
   HATTRICK
   FALTAPRO
   FRANGACO
+  GANHAPERDE
 }
 
 enum SeasonStatus {

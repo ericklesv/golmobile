@@ -95,6 +95,7 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
+  ganhaperde?: { start: number; drop: number; min: number; max: number; step: number; stepPrice: number; growth: number; pointsPerHit: number };
   /** Minigames jogáveis e o nível que libera cada um. */
   minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];
   teams: Team[];
@@ -255,6 +256,23 @@ export interface CamisasState {
 export interface CamisasGuess {
   state: CamisasState; correct: boolean; number: number; levelPoints: number;
   goal: { text: string; seq: number[]; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
+}
+
+// ─── Ganha ou Perde (roleta) ──────────────────────────────────────────────
+export interface GanhaPerdeState {
+  day: number; nextAt: number; max: number; step: number; pointsPerHit: number;
+  finished: boolean; started: boolean;
+  wins: number; goals: number; points: number; spent: number; spins: number;
+  /** Chance de GANHA (%) sem pagar nada agora (50, 45, 40… a cada acerto). */
+  base: number;
+  /** As chances que dá para escolher agora (da base até max) e o preço de cada uma. */
+  options: { chance: number; price: number }[];
+  /** A última girada: at = onde a seta parou, em % do círculo a partir do começo do GANHA. */
+  last: { chance: number; at: number; win: boolean; price: number } | null;
+}
+export interface GanhaPerdeSpin {
+  state: GanhaPerdeState; win: boolean; at: number; chance: number; price: number; levelPoints: number; money: number;
+  goal: { text: string; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
 }
 
 // ─── Painel de admin (/api/painel — só usuários com isAdmin) ───────────────

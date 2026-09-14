@@ -44,6 +44,7 @@ import { CabecaoScreen } from './screens/Cabecao';
 import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
 import { StatsScreen } from './screens/Stats';
 import { CamisasScreen } from './screens/Camisas';
+import { GanhaPerdeScreen } from './screens/GanhaPerde';
 import { HattrickScreen } from './screens/Hattrick';
 import { VipScreen } from './screens/Vip';
 import { OffersScreen } from './screens/Offers';
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="/cabecao" element={<Private><CabecaoScreen /></Private>} />
         <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
         <Route path="/camisas" element={<Private><CamisasScreen /></Private>} />
+        <Route path="/ganha-ou-perde" element={<Private><GanhaPerdeScreen /></Private>} />
         <Route path="/hat-trick" element={<Private><HattrickScreen /></Private>} />
         <Route path="/falta-pro" element={<Private><Suspense fallback={<Splash />}><FaltaProScreen /></Suspense></Private>} />
         <Route path="/frangaco" element={<Private><Suspense fallback={<Splash />}><FrangacoScreen /></Suspense></Private>} />

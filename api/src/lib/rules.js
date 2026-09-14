@@ -218,6 +218,7 @@ export const MINIGAMES = [
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: 'gol + até 30 de nível' },
   { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: '1 gol a cada gol + até 30 de nível' },
   { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: 'gol + até 20 de nível + R$ 50 por alvo' },
+  { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: '1 gol + 5 de nível a cada acerto' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'FRANGACO', name: 'Frangaço', unlock: 10, daily: true, route: '/frangaco', icon: '/ui/ico-crown_silver.png', desc: 'Duelo de pênaltis contra um clube da sua série: bata 5 e defenda 5. Mata-mata de 4 fases.', reward: 'gol + R$ 500 se for campeão', soon: true }, // DESATIVADO (dono, 14/09/2026: "muito bugado") — card EM BREVE e /api/frangaco/* recusa
   { id: 'EMBAIXADINHAS', name: 'Embaixadinhas', unlock: 12, daily: true, route: '/embaixadinhas', icon: '/ui/ico-energy.png', desc: 'Toque no ritmo e não deixe a bola cair.', reward: 'gol + nível', soon: true },
@@ -291,6 +292,26 @@ KIND_LABEL.FALTAPRO = 'Falta PRO';
 RESET_HOUR.FRANGACO = 20;
 DAILY_GAMES.push('FRANGACO');
 KIND_LABEL.FRANGACO = 'Frangaço';
+// Ganha ou Perde (roleta; vira às 21h — pedido do dono, 14/09/2026): o círculo tem GANHA e PERDE. A 1ª
+// girada começa com 50% de GANHA; cada acerto baixa o ponto de partida em 5 (50, 45, 40… mínimo 5%).
+// Antes de girar, o jogador pode pagar para aumentar o GANHA de 5 em 5 até 75%: cada degrau custa mais
+// que o anterior e tudo encarece a cada acerto (ganhaPerdePrice). Caiu no GANHA = 1 gol + 5 de nível e
+// gira de novo; caiu no PERDE = acaba o jogo do dia. O dinheiro não compra gol: só aumenta a chance.
+export const GANHAPERDE = { start: 50, drop: 5, min: 5, max: 75, step: 5, stepPrice: 50, growth: 0.5, pointsPerHit: 5 };
+RESET_HOUR.GANHAPERDE = 21;
+DAILY_GAMES.push('GANHAPERDE');
+KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
+/** Chance de GANHA (%) sem pagar nada, depois de `wins` acertos no dia. */
+export const ganhaPerdeBase = (wins) => Math.max(GANHAPERDE.min, GANHAPERDE.start - GANHAPERDE.drop * wins);
+/** Preço (R$) para girar com `chance`% depois de `wins` acertos: o n-ésimo degrau de +5% custa
+ * stepPrice × n × (1 + growth × wins). Ex.: 1ª girada 50→75% = 50+100+150+200+250 = R$ 750. */
+export function ganhaPerdePrice(wins, chance) {
+  const g = GANHAPERDE;
+  const steps = Math.max(0, Math.round((chance - ganhaPerdeBase(wins)) / g.step));
+  let total = 0;
+  for (let n = 1; n <= steps; n++) total += Math.round(g.stepPrice * n * (1 + g.growth * wins));
+  return total;
+}
 
 // ─── VIP pago (PIX pela Efí) ─────────────────────────────────────────────────
 // Decisões do dono (13/09/2026): pacotes de DIAS de VIP — 1 VIP = 1 dia; vão para o banco de VIPs do

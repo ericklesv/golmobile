@@ -110,6 +110,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   Credenciais `EFI_*` só no `api/.env` da VPS (ver `.env.example`); aviso registrado com
   `node scripts/efi-webhook.js`. **A chave PIX (`EFI_PIX_KEY`) tem de ser só do JogaGol**: a Efí guarda
   UM aviso por chave, e registrar o nosso numa chave de outro projeto (Rifa Express) derruba o de lá.
+  **Ligado em 13/09/2026** com a conta Efí da plataforma Rifa Express (decisão do dono) + chave aleatória
+  só do JogaGol; aviso registrado. A Rifa (outro repo, `ericklesv/rifaexpress`) tira da lista de PIX e do
+  webhook todo txid "JG"+32 hex (`isJogaGolTxid`) — **não mudar o formato do `newTxid()`** sem mexer lá.
   Sem credenciais, a tela mostra "A compra por PIX abre em breve".
   Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
   **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do

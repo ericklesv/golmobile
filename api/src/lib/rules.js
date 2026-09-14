@@ -295,7 +295,7 @@ KIND_LABEL.FRANGACO = 'Frangaço';
 // ─── VIP pago (PIX pela Efí) ─────────────────────────────────────────────────
 // Decisões do dono (13/09/2026): pacotes de DIAS de VIP — 1 VIP = 1 dia; vão para o banco de VIPs do
 // jogador (User.vipDays), que ativa quando quiser (POST /api/me/activate-vip). Pagamento por PIX na Efí
-// (services/vip.js, lib/efi.js). PREÇOS: proposta de 13/09/2026, esperando o ok do dono — mudar só aqui.
+// (services/vip.js, lib/efi.js). PREÇOS aprovados pelo dono em 13/09/2026 — mudar só aqui.
 export const VIP_PACKS = [
   { key: 'vip10', days: 10, price: 3.99 },
   { key: 'vip30', days: 30, price: 9.9 },

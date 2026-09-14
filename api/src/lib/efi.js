@@ -66,7 +66,12 @@ async function efi(c, method, path, body, extra = {}) {
   return r.data ? JSON.parse(r.data) : {};
 }
 
-/** txid nosso: 26 a 35 caracteres [A-Za-z0-9] (regra do BACEN) — gravado ANTES de criar a cobrança. */
+/**
+ * txid nosso: 26 a 35 caracteres [A-Za-z0-9] (regra do BACEN) — gravado ANTES de criar a cobrança.
+ * NÃO MUDAR O FORMATO ("JG" + 32 hex minúsculos): a conta Efí é a MESMA da plataforma Rifa Express, e a
+ * Rifa reconhece esse formato (isJogaGolTxid em rifaexpress/src/lib/efibank.ts) para nunca usar um PIX
+ * do JogaGol na aprovação de reservas por valor. Mudou aqui = mudar lá antes.
+ */
 export const newTxid = () => `JG${randomBytes(16).toString('hex')}`; // 34 caracteres
 
 const fakeCharges = new Map(); // txid -> cobrança simulada (só EFI_FAKE; some ao reiniciar)

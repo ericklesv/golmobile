@@ -31,7 +31,9 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    destreza/time/cor), gols de verdade e exp, ban/desban, IP + geolocalização (ip-api.com com
    cache 24 h; `User.lastIp` no cadastro/login/heartbeat) e log de auditoria (`AdminAction`).
    API em `/api/painel/*` (`routes/adminPanel.js`, middleware `requireAdmin`).
-6. **Cargos do time** (Presidente/Diretor/Capitão/Auxiliar, só VIP), caixa do time (R$ e VIP),
+6. [~] **Cargos do time**: FEITO 13/09/2026 — Presidente (time vago → VIP que marcou pelo time assume) +
+   até 2 Diretores, **contratações** (proposta em VIP; contrato de 1 dia por VIP; movimentações na página do
+   time) e **doação de VIP entre colegas de time**. Falta: Capitão/Auxiliar (com a ordem de chute), caixa do time (R$ e VIP),
    **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
    adversário atual, boosts Gatorade/Energético comprados pelo presidente).
 7. **Missões** de rodada/temporada em tiers com resgate manual + ranking.
@@ -76,7 +78,7 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [x] Captcha/anti-bot nos chutes manuais (13/09/2026: conta numérica a cada 10 chutes manuais)
 
 ## Fase 2 — Comunidade e time (features originais restantes)
-- [ ] Cargos do time: Presidente, Diretor, Capitão, Auxiliar (só VIP) e caixa do time em VIPs
+- [~] Cargos do time: Presidente e Diretores + contratações e doação de VIP no time (13/09/2026); faltam Capitão, Auxiliar e caixa do time em VIPs
 - [ ] Ordem de chute / Secar / Seguir ordem
 - [ ] Mensagens privadas (400 chars), amigos online, bloquear, mensagem em massa
 - [x] Chat: salas Geral e Torcida do time, nível/VIP/escudo em cada mensagem, mensagens coloridas a partir do nível 8, botão flutuante com contador (13/09/2026)
@@ -113,7 +115,7 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [ ] Hora Premiada, Giro Premiado diário, Ranking de Fama
 - [ ] Desafios X1 e Torneio X1
 - [x] Loja de itens com validade (13/09/2026: Energia, Boost Auto, Caneleira, Chuteiras, nick/cor) — faltam Espionagem da Trilha, Impulso, Potência
-- [~] VIP pago (PIX Efí — código pronto 13/09/2026, falta ligar as credenciais) e doação de VIP entre jogadores
+- [~] VIP pago (PIX Efí — código pronto 13/09/2026, falta ligar as credenciais); doação de VIP só entre colegas de time (feita 13/09/2026)
 - [ ] Notificações push ("seu chute recarregou", "seu time está perdendo")
 - [ ] Apps nas lojas (Capacitor) — depois do PWA estável
 

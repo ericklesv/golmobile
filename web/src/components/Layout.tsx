@@ -4,7 +4,8 @@ import { useAuth } from '../store/auth';
 import { Shield } from './Shield';
 import { Avatar } from './Avatar';
 import { money } from '../lib/format';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { toast } from './Toast';
 import { api } from '../lib/api';
 import { ChatFab } from './ChatFab';
 
@@ -20,13 +21,21 @@ const tabs = [
 export function Layout() {
   const me = useAuth((s) => s.me);
   const active = useAuth((s) => s.active);
+  const offers = useAuth((s) => s.offers);
+  const lastOffers = useRef(0);
   const nav = useNavigate();
   const loc = useLocation();
 
   // Presença: heartbeat a cada 60 s enquanto a aba está aberta
   useEffect(() => {
     let alive = true;
-    const beat = () => api.heartbeat().then((r) => alive && useAuth.setState({ online: r.online, active: r.active, offset: r.serverTime - Date.now() })).catch(() => {});
+    const beat = () => api.heartbeat().then((r) => {
+      if (!alive) return;
+      // proposta de contratação nova: avisa uma vez (o selo na aba Time fica até responder)
+      if ((r.offers ?? 0) > lastOffers.current) toast(r.offers === 1 ? 'Você recebeu uma proposta de contratação!' : `Você tem ${r.offers} propostas de contratação!`, 'success');
+      lastOffers.current = r.offers ?? 0;
+      useAuth.setState({ online: r.online, active: r.active, offers: r.offers ?? 0, offset: r.serverTime - Date.now() });
+    }).catch(() => {});
     beat();
     const iv = setInterval(beat, 60_000);
     const vis = () => { if (document.visibilityState === 'visible') { beat(); useAuth.getState().refresh(); } };
@@ -77,7 +86,10 @@ export function Layout() {
             <li key={t.to} className="min-w-0 flex-1">
               <NavLink to={t.to} end={t.end} className={({ isActive }) => `menu-btn flex flex-col items-center justify-center gap-0.5 py-0.5 transition ${isActive ? '' : 'opacity-80'}`}>
                 {({ isActive }) => (<>
-                  {t.icon === 'avatar' ? <Avatar url={me.avatarUrl} size={28} className={isActive ? 'animate-bob' : ''} /> : <img src={t.icon} alt="" className={`h-7 w-7 object-contain ${isActive ? 'animate-bob' : ''}`} />}
+                  <span className="relative">
+                    {t.icon === 'avatar' ? <Avatar url={me.avatarUrl} size={28} className={isActive ? 'animate-bob' : ''} /> : <img src={t.icon} alt="" className={`h-7 w-7 object-contain ${isActive ? 'animate-bob' : ''}`} />}
+                    {t.to === '/time' && offers > 0 && <span className="absolute -right-2 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-orange-deep px-1 font-display text-[10px] leading-none text-white" aria-label={`${offers} propostas`}>{offers}</span>}
+                  </span>
                   <span className={`t-display text-[9px] uppercase tracking-wide ${isActive ? 'text-orange-deep' : 'text-navy-ink'}`}>{t.label}</span>
                 </>)}
               </NavLink>

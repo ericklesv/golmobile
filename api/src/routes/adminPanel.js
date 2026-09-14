@@ -16,6 +16,7 @@ import { teamView } from '../services/view.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam } from '../services/league.js';
 import { geoForIp } from '../lib/ip.js';
+import { leaveClub } from '../services/club.js';
 
 export const adminPanel = Router();
 adminPanel.use(requireAdmin);
@@ -119,7 +120,7 @@ adminPanel.patch('/users/:id', handle(async (req) => {
     if (!team) throw badRequest('Time inválido.');
     if (team.id !== u.teamId) {
       // igual ao /api/me/change-team: zera contadores de rodada (gols feitos ficam com o time antigo)
-      data.teamId = team.id; data.goalsRound = 0; data.roundId = null;
+      data.teamId = team.id; data.goalsRound = 0; data.roundId = null; data.contractUntil = null; // admin passa por cima do contrato
       changed.time = { de: u.team?.slug ?? null, para: team.slug };
     }
   }
@@ -135,6 +136,7 @@ adminPanel.patch('/users/:id', handle(async (req) => {
 
   if (Object.keys(data).length === 0) throw badRequest('Nada para alterar.');
   const updated = await prisma.user.update({ where: { id }, data, include: { team: true } });
+  if (data.teamId) await prisma.$transaction((tx) => leaveClub(tx, id)); // mudou de time: sai da diretoria
   await audit(req.user.id, id, changed.banir ? 'banir' : changed.desbanir ? 'desbanir' : 'editar', changed);
   return detailView(updated, await geoForIp(updated.lastIp));
 }));

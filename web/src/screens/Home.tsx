@@ -52,6 +52,7 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
 export function HomeScreen() {
   const me = useAuth((s) => s.me)!;
   const refresh = useAuth((s) => s.refresh);
+  const offers = useAuth((s) => s.offers);
   const [home, setHome] = useState<Home | null>(null);
   const [overlay, setOverlay] = useState<{ goal: boolean; text: string; money: number } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -93,6 +94,13 @@ export function HomeScreen() {
 
   return (
     <div className="flex flex-col gap-4">
+      {offers > 0 && (
+        <Link to="/propostas" className="card-orange flex items-center gap-3" style={{ borderRadius: 18 }}>
+          <img src="/ui/ico-pass_golden.png" alt="" className="h-9 w-12 shrink-0 object-contain" />
+          <span className="min-w-0 flex-1 text-[13px] font-extrabold leading-snug text-white">{offers === 1 ? 'Um time quer te contratar!' : `${offers} times querem te contratar!`} Veja quanto VIP estão oferecendo.</span>
+          <span className="btn btn-yellow btn-sm shrink-0">Ver</span>
+        </Link>
+      )}
       <GoalOverlay open={!!overlay} goal={overlay?.goal ?? false} text={overlay?.text} money={overlay?.money} team={me.team} onClose={() => setOverlay(null)} />
 
       {/* Placar da partida do meu time */}

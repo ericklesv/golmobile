@@ -57,6 +57,9 @@ export function meView(user, now = Date.now()) {
     cooldowns: cooldownsView(user, now),
     trail: user.trailState?.active ? { active: true, phase: user.trailState.phase, revealed: user.trailState.revealed || [] } : { active: false, phase: 0, revealed: [] },
     items: itemsView(user, now), nickColor: user.nickColor ?? null, // itens da loja ativos (carregar o usuário com meInclude() de items.js)
+    // diretoria (services/club.js): cargo no time atual e contrato de contratação (não troca de time até lá)
+    role: user.teamRole && user.teamRole.teamId === user.teamId ? user.teamRole.role : null,
+    contractUntil: user.contractUntil && new Date(user.contractUntil).getTime() > now ? new Date(user.contractUntil).getTime() : null,
     serverTime: now,
   };
 }

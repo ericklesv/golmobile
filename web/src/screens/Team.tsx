@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
-import type { TeamPage } from '../lib/types';
+import type { ClubState, TeamPage } from '../lib/types';
+import { BoardPanel, MovesPanel } from '../components/Club';
 import { Shield } from '../components/Shield';
 import { Avatar } from '../components/Avatar';
 import { Panel, TopList, Spinner, Tabs } from '../components/ui';
@@ -20,8 +21,12 @@ export function TeamScreen() {
   const s = slug ?? me.team.slug;
   const [page, setPage] = useState<TeamPage | null>(null);
   const [tab, setTab] = useState<'hour' | 'round' | 'season'>('round');
+  const [club, setClub] = useState<ClubState | null>(null); // só no time do jogador: ações da diretoria
+  const offers = useAuth((st) => st.offers);
+  const mineTeam = s === me.team.slug;
 
   useEffect(() => { setPage(null); api.team(s).then(setPage).catch(() => {}); }, [s]);
+  useEffect(() => { setClub(null); if (mineTeam) api.club().then(setClub).catch(() => {}); }, [s, mineTeam, me.team.slug]);
   if (!page) return <div className="flex justify-center py-16"><Spinner /></div>;
   const t = page.team;
   const m = page.match;
@@ -46,6 +51,15 @@ export function TeamScreen() {
         {page.standing && <div className="mt-2 text-center text-[12px] font-extrabold text-white/90">Campanha {page.standing.wins}V {page.standing.draws}E {page.standing.losses}D · SG {page.standing.diff} · {num(page.totalGoals)} gols na história</div>}
       </section>
 
+      {mineTeam && offers > 0 && (
+        <Link to="/propostas" className="card-orange flex items-center justify-between gap-3" style={{ borderRadius: 18 }}>
+          <span className="text-[13px] font-extrabold leading-snug text-white">{offers === 1 ? 'Você tem uma proposta de contratação.' : `Você tem ${offers} propostas de contratação.`}</span>
+          <span className="btn btn-yellow btn-sm shrink-0">Ver</span>
+        </Link>
+      )}
+
+      <BoardPanel board={page.board} teamName={t.name} club={mineTeam ? club : null} onClub={setClub} />
+
       {m && (
         <Panel title={`JOGO DA RODADA ${m.round?.number ?? ''}`} ribbon="orange">
           <div className="flex items-center justify-between">
@@ -67,6 +81,8 @@ export function TeamScreen() {
           <ul className="flex flex-wrap gap-2">{page.titles.map((tt, i) => <li key={i} className={`trap ${tt.place === 1 ? 'trap-orange' : 'trap-blue'} text-[11px]`}><img src={tt.place === 1 ? '/ui/ico-trophy_s.png' : '/ui/ico-medal_silver.png'} className="mr-1 h-5 w-5" alt="" />{tt.competition} · T{tt.season}</li>)}</ul>
         </Panel>
       )}
+
+      <MovesPanel board={club?.board ?? page.board} teamSlug={t.slug} />
 
       <Panel title="TORCEDORES ATIVOS" ribbon="green">
         <p className="mb-2 text-center text-[11px] font-bold text-muted">Quem entrou nas últimas 24 horas · ponto verde = online agora</p>

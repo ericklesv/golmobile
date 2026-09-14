@@ -5,11 +5,12 @@ import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, RESET_HOUR, MINIGAMES } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, RESET_HOUR, MINIGAMES, CLUB } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView } from '../lib/items.js';
 import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
+import { boardView, playerClub } from '../services/club.js';
 
 export const game = Router();
 
@@ -42,6 +43,7 @@ game.get('/meta', handle(async () => {
     faltapro: { kicks: FALTAPRO.kicks, goalAt: FALTAPRO.goalAt, pointsPerGoal: FALTAPRO.pointsPerGoal, maxPoints: FALTAPRO.maxPoints, targetMoney: FALTAPRO.targetMoney },
     teams: teams.map(teamView),
     items: catalogView(), // catálogo da loja (lib/items.js)
+    club: CLUB, // diretoria e contratações
   };
 }));
 
@@ -151,7 +153,7 @@ game.get('/teams/:slug', handle(async (req) => {
     round ? prisma.standing.findMany({ where: { seasonId: round.seasonId, serie: team.serie }, include: { team: { select: { name: true } } } }) : [],
   ]);
   const position = standing ? allInSerie.sort(standingOrder).findIndex((s) => s.teamId === team.id) + 1 : null;
-  const totalGoals = await prisma.goal.count({ where: { teamId: team.id } });
+  const [totalGoals, board] = await Promise.all([prisma.goal.count({ where: { teamId: team.id } }), boardView(team.id)]);
   return {
     team: teamView(team), slogan: team.slogan,
     members, active: active.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, avatarUrl: u.avatarUrl, online: u.lastSeenAt.getTime() > now.getTime() - 2 * 60_000 })), totalGoals,
@@ -159,6 +161,7 @@ game.get('/teams/:slug', handle(async (req) => {
     match: match ? matchView(match) : null,
     tops: { hour: hourTop, round: roundTop, season: seasonTop },
     titles: titles.map((t) => ({ season: t.season.number, competition: t.competition, place: t.place })),
+    board, // diretoria (presidente + diretores) e movimentações
   };
 }));
 
@@ -193,6 +196,7 @@ game.get('/players/:nick', handle(async (req) => {
   ]);
   return {
     ...publicView(user),
+    ...(await playerClub(user)), // cargo no time e contrato
     positions: { geral: geral + 1, penal: penal + 1, falta: falta + 1, trilha: trilha + 1 },
     recent: recent.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt })),
   };

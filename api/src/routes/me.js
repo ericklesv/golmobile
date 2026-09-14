@@ -9,6 +9,7 @@ import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf } from '../lib/rules.js';
 import { meInclude } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
 import { clientIp } from '../lib/ip.js';
+import { leaveClub, pendingOffers } from '../services/club.js';
 
 export const me = Router();
 me.use(requireAuth);
@@ -35,7 +36,8 @@ me.post('/heartbeat', handle(async (req) => {
   await prisma.user.update({ where: { id: req.user.id }, data: { lastSeenAt: new Date(), lastIp: clientIp(req), lastIpAt: new Date() } });
   const online = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) } } });
   const active = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 24 * 3600_000) } } });
-  return { ok: true, online, active, serverTime: Date.now() };
+  const offers = await pendingOffers(req.user.id); // propostas de contratação abertas (selo na aba Time)
+  return { ok: true, online, active, offers, serverTime: Date.now() };
 }));
 
 me.put('/bio', handle(async (req) => {
@@ -95,8 +97,15 @@ me.post('/change-team', handle(async (req) => {
   const team = await prisma.team.findUnique({ where: { slug: String(req.body?.teamSlug || '') } });
   if (!team) throw badRequest('Time inválido.');
   if (team.id === req.user.teamId) throw badRequest('Você já é desse time.');
-  // Movimentação: zera contadores de rodada (gols já feitos ficam com o time antigo)
-  const u = await prisma.user.update({ where: { id: req.user.id }, data: { teamId: team.id, goalsRound: 0, roundId: null }, include: meInclude() });
+  if (req.user.contractUntil && req.user.contractUntil.getTime() > Date.now()) {
+    const cur = await prisma.team.findUnique({ where: { id: req.user.teamId } });
+    throw new GameError(409, 'contract', `Você tem contrato com o ${cur.name} até ${req.user.contractUntil.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Depois disso pode trocar de time.`);
+  }
+  // Movimentação: zera contadores de rodada (gols já feitos ficam com o time antigo); sai da diretoria
+  const u = await prisma.$transaction(async (tx) => {
+    await leaveClub(tx, req.user.id);
+    return tx.user.update({ where: { id: req.user.id }, data: { teamId: team.id, goalsRound: 0, roundId: null }, include: meInclude() });
+  });
   await prisma.activity.create({ data: { userId: u.id, teamId: team.id, kind: 'AUTO', goal: false, text: `${u.nick} agora joga pelo ${team.name}.` } });
   return meView(u);
 }));

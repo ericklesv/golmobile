@@ -69,14 +69,30 @@ Soccer Players Uniforms) — lá o Unity toca as animações originais dos .fbx
   reação em ms** (reflexo do goleiro) para tocar nele; não clicou ou errou = gol.
 - Batedor/goleiro têm índices 0..1 (precisão / reflexo).
 
-### Transposição para o JogaGol
-- No JogaGol não há elenco: o próprio jogador é o batedor E o goleiro — os índices
-  viram atributos do craque (destreza já existe; reflexo pode vir do nível).
-- Cena: pênalti 3D atual (three.js) dos dois lados — cobrando (câmera atual) e
-  defendendo (câmera atrás do gol); goleiro/batedor com kit do adversário; Trionda.
-- Duelo de 5+5 alternado contra clube IA da mesma série; mata-mata de 4 fases;
-  campeão = **1 gol** + prêmio em dinheiro; ranking de títulos por temporada da liga.
-- Servidor manda o alvo/janela e valida o clique (timestamp servidor), como o resto.
+### Porte 1:1 via Unity (decisão do dono, 13/09/2026)
+A primeira transposição (cena three.js própria, duelo espalhado por vários dias)
+"ficou bem diferente e sequer funcional" — o dono quer **O JOGO DO MANAGOL**, que é
+o cliente **Unity WebGL** pronto (`ManagolTV`, `/tv/?mode=penalty`). O porte então é:
+- **O Unity é o jogo**; a API do JogaGol fala O CONTRATO dele em **`/api/frangaco/*`**
+  (`api/src/routes/frangacoTv.js` + `services/frangaco.js` + `lib/frangaco.js`):
+  `GET state` · `POST run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}`.
+  Contrato lido de `ManagolTV/Assets/Managol/ManagolPenalty.cs` (+`...Telas.cs`) e
+  `Managol2.0/.../frangaco_models.dart` — motivos, kit `{shirt,shorts,socks}`
+  (TraceKit.From), nomes das fases (`NomesFases`) e shapes de `state`/`run`.
+- **Torneio INTEIRO numa sessão** (como o original): 5 fases contra clubes da MESMA
+  série (sorteio no servidor, sem repetir), duelo de 5 cobranças alternadas com
+  finta (`xAnunciado`/`xReal`; sem finta o goleiro quase sempre pega), morte súbita
+  no empate. 1 torneio por dia (`DailyGame`, vira às 20h). Só o CAMPEÃO pontua:
+  **1 gol** (kind `FRANGACO`) + R$ 500 + 20 de nível; eliminado = nada.
+- No JogaGol não há elenco: o próprio jogador é o batedor E o goleiro
+  (`precisao` da destreza, `reflexo` do nível 0,35–0,8); ranking de títulos por
+  temporada da liga (agregação das linhas `DailyGame` com `champion`).
+- Tela `web/src/screens/Frangaco.tsx` = WRAPPER: header do kit + `<iframe>` de
+  `/tv/?mode=penalty&apiBase=<origem>`; o token vai por `postMessage`
+  (`managol-frangaco-auth`, a cada 400 ms até `managol-tv-pronto`), nunca na URL.
+  **Falta hospedar o build do ManagolTV em `/tv/` na VPS do JogaGol** (nginx).
+- Escudos: o Unity só decodifica PNG — clubes com escudo SVG ficam sem escudo no
+  jogo (fallback silencioso); lista PNG duplicada de `Shield.tsx` no serviço.
 - Nome no JogaGol: **Frangaço** mesmo (marca já conhecida dos jogadores do Managol).
 
 ### Bônus descoberto no caminho

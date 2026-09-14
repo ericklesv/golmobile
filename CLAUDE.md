@@ -167,21 +167,32 @@ depois que o novo estiver estável. Não instalar nada dele.
   (até +20); alvo bônus = +R$ 50 (alvo é gol certo). Rasteira passa por baixo da barreira que pulou.
   Calibrar: `node scripts/faltapro-balance.js` (bom ~36% de gol e vence 26% dos dias, médio ~21%,
   iniciante ~13%). `MINIGAMES_LIVRES=1` também vale aqui.
-- **Frangaço** (`lib/frangaco.js` = regras puras; `services/frangaco.js`; tela `Frangaco.tsx` em
-  `/frangaco`; nível 10, vira às **20h**; transposto do Managol — design em `docs/FALTA_PRO.md`):
-  duelo de pênaltis ALTERNADO contra um clube IA da **mesma série** (5 cobranças suas + 5 defesas,
-  você bate e depois defende). Cobrança = mira contínua 0..1 no gol da cena 3D do pênalti, com
-  **finta** opcional (anuncia um canto — o goleiro IA tende a ir nele — e bate no outro; fintar e
-  bater no anunciado é punido); a destreza aperta a dispersão e "seca" o goleiro. Defesa = câmera
-  atrás do gol, o servidor sorteia alvo + **janela de reação** (900→660 ms apertando com as fases) e
-  valida o toque `{x, y, ms}` pelo relógio DO SERVIDOR (tolerância de rede 200 ms; janela servida no
-  response do kick com folga de 9 s — estourou com a aba fechada, resolve sozinho como gol da IA).
-  5x5 empatado = morte súbita (até 3 rodadas; persistindo, a defesa mais rápida decide). **Mata-mata
-  de 4 fases, um duelo por dia**; o progresso do torneio atravessa os dias nas linhas de `DailyGame`
-  (a mais recente de dias anteriores diz a fase — venceu e não é campeão = fase seguinte). Venceu =
-  **1 gol** (kind `FRANGACO`, migração 0017) e avança; CAMPEÃO = +R$ 500 e +20 de nível; perdeu =
-  eliminado, torneio novo no dia seguinte. Nada de alvo/goleiro decidido no cliente; `MINIGAMES_LIVRES=1`
-  também vale aqui.
+- **Frangaço** (nível 10, vira às **20h**; **porte 1:1 do Managol — o jogo é o cliente Unity
+  WebGL** `ManagolTV` em `/tv/?mode=penalty`, decisão do dono 13/09/2026): a API do JogaGol fala
+  O CONTRATO do Unity em **`/api/frangaco/*`** (`routes/frangacoTv.js`; serviço
+  `services/frangaco.js`; matemática pura em `lib/frangaco.js`; contrato lido de
+  `ManagolTV/Assets/Managol/ManagolPenalty.cs` + `Managol2.0/.../frangaco_models.dart` — NÃO
+  mudar shape/motivos sem conferir lá): `GET state` (temporada da liga, meu time com `kitHome`
+  `{shirt,shorts,socks}{model:'solid',primary,secondary}`, batedor/goleiro = o próprio jogador
+  — `precisao` da destreza, `reflexo` do nível 0,35–0,8 —, títulos e ranking da temporada, run),
+  `POST run` (inicia o torneio), `POST incoming` (cobrança da IA que EU defendo),
+  `POST kick {xAnunciado, xReal|null}` (seta anuncia, finta opcional — **sem `xReal` o goleiro
+  quase sempre pega**), `POST save {ms, x?, y?}`. Motivos EXATOS que o Unity traduz: kick perdeu
+  = `travessao|fora|defendeu` (gol = `gol|tirou-tinta|rebote-trave|vazou`); save =
+  `tarde|antecipou|parado|esticou|tirou-tinta|rebote-trave|vazou`; fases = `NomesFases` do
+  Telas.cs ("Primeira Fase"…"Final"). **Torneio INTEIRO numa sessão**: 5 fases contra clubes da
+  MESMA série (sorteio no servidor, sem repetir), duelo de 5 cobranças alternadas, morte súbita
+  (até 3 rodadas; persistindo, a defesa mais rápida decide). Defesa validada no relógio do
+  servidor: janela 900→660 ms por fase (−60 na morte súbita), raio normalizado 0,115 (a elipse
+  que o Unity desenha), tolerância de rede 250 ms; estourou com a aba fechada = gol da IA.
+  **1 torneio por dia** (`DailyGame`, estado do run inteiro no `state`; `champion` no topo do
+  JSON por causa da query do ranking). Só o CAMPEÃO pontua: **1 gol** (kind `FRANGACO`) +
+  R$ 500 + 20 de nível; eliminado = nada. Tela `Frangaco.tsx` = wrapper (header do kit +
+  iframe de `/tv/?mode=penalty&apiBase=<origem>`; token por `postMessage`
+  `managol-frangaco-auth` a cada 400 ms até `managol-tv-pronto`, NUNCA na URL; sem resposta em
+  ~20 s mostra "TV 3D indisponível"). Escudo: o Unity só decodifica PNG (SVG = sem escudo,
+  fallback silencioso). `GET /api/daily/frangaco` = só o estado do slider. `MINIGAMES_LIVRES=1`
+  também vale aqui. **Pendente: hospedar o build do ManagolTV em `/tv/` na VPS (nginx).**
 
 ## Endpoints
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
@@ -191,7 +202,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/players/active` (24 h)
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick|daily/faltapro` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}|daily/faltapro/start|daily/faltapro/kick{i,dirX,dirY,power,spin}` (minigames)
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}` (minigames)
-`GET /api/daily/frangaco` · `POST /api/daily/frangaco/start|frangaco/kick{x,y,anunciado?}|frangaco/save{x,y,ms}` (Frangaço; coordenadas 0..1 do gol)
+`GET /api/frangaco/state` · `POST /api/frangaco/run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}` (Frangaço — contrato do cliente Unity em /tv/?mode=penalty) · `GET /api/daily/frangaco` (estado do slider)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)

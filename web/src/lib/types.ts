@@ -319,22 +319,4 @@ export interface FaltaProKickResponse {
   goal: { text: string; match: { id: number; homeGoals: number; awayGoals: number } | null } | null;
 }
 
-// ─── Frangaço (duelo de pênaltis alternado, mata-mata de 4 fases) ───────────
-/** Coordenadas 0..1 do gol: x 0 = trave esquerda do batedor, y 0 = chão, 1 = travessão. */
-export interface FrangacoKick { n: number; gol: boolean; motivo: string; x: number; y: number; anunciado: number | null; fintou: boolean; xBola: number; yBola: number; xGk: number }
-export interface FrangacoDefense { n: number; gol: boolean; defendeu: boolean; motivo: string; alvo: { x: number; y: number }; clique: { x: number; y: number } | null; ms: number | null; janelaMs: number }
-/** Defesa no ar: o alvo, a janela (ms) e quando foi servida (relógio do servidor). */
-export interface FrangacoPending { n: number; target: { x: number; y: number }; windowMs: number; flightMs: number; servedAt: number }
-export interface FrangacoReward { goal: boolean; venceu: boolean; champion: boolean; golsUser: number; golsIa: number; phase: number; money: number; levelPoints: number; text: string | null }
-export interface FrangacoState {
-  day: number; nextAt: number; serverTime: number; freePlay?: boolean;
-  phases: string[]; kicks: number; suddenMax: number; championMoney: number; championLevelPoints: number;
-  playing: boolean; finished: boolean; outcome: 'venceu' | 'perdeu' | null; champion: boolean;
-  phase: number; phaseName: string; opponent: Team | null;
-  history: { phase: number; phaseName: string; opponent: Team | null; golsUser: number; golsIa: number; venceu: boolean }[];
-  duel: {
-    turn: 'kick' | 'defense' | 'over'; round: number; sudden: boolean; golsUser: number; golsIa: number;
-    user: FrangacoKick[]; ia: FrangacoDefense[]; pending: FrangacoPending | null;
-  } | null;
-  reward: FrangacoReward | null;
-}
+// Frangaço: o jogo é o cliente Unity (/tv/?mode=penalty) falando direto com /api/frangaco/* — sem tipos aqui.

@@ -139,10 +139,11 @@ export function isVip(user, now = Date.now()) {
   return !!user.vipUntil && new Date(user.vipUntil).getTime() > now;
 }
 
-// Contas de teste do dono (pedidos de 13/09/2026): MVGIC sem recarga de pênalti/falta E sem
-// limite diário nos minigames (as partidas terminadas são apagadas a cada chamada de
-// /api/daily e /api/frangaco — joga tudo de novo na hora; o histórico de títulos do
-// Frangaço dele se perde junto, é o preço do modo teste). Tirar quando o teste acabar.
+// Contas de teste do dono (pedidos de 13 e 14/09/2026): MVGIC sem NENHUMA recarga (chute
+// direto, pênalti, falta e trilha — 14/09: antes era só pênalti/falta) E sem limite diário nos
+// minigames (as partidas terminadas são apagadas a cada chamada de /api/daily e /api/frangaco —
+// joga tudo de novo na hora; o histórico de títulos do Frangaço dele se perde junto, é o preço
+// do modo teste). Tirar quando o teste acabar.
 const COOLDOWN_FREE_NICKS = new Set(['mvgic']);
 export const isFreeTester = (user) => COOLDOWN_FREE_NICKS.has(user?.nickLower ?? user?.nick?.toLowerCase());
 
@@ -151,7 +152,7 @@ export const isFreeTester = (user) => COOLDOWN_FREE_NICKS.has(user?.nickLower ??
  * (UserItem ativos — ver items.js), a Energia do chute e o Boost Auto entram aqui.
  */
 export function cooldownFor(user, kind, now = Date.now()) {
-  if ((kind === 'PENALTY' || kind === 'FOUL') && COOLDOWN_FREE_NICKS.has(user.nickLower ?? user.nick?.toLowerCase())) return 0;
+  if (isFreeTester(user)) return 0;
   return applyItemCooldown(user, kind, baseCooldownFor(user, kind, now), now);
 }
 

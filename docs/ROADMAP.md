@@ -52,9 +52,11 @@ Minigames novos (13/09, design em **`docs/FALTA_PRO.md`**): **Falta PRO** FEITO 
 vira às 19h; arrasto + curva, Trionda, servidor valida; rota de conferência `/debug-faltapro`)
 e **Frangaço** FEITO (porte 1:1 do Managol: cliente Unity em `/tv/?mode=penalty` + API compat
 `/api/frangaco/*`; nível 10, vira às 20h) — ver a lista de minigames abaixo.
-**Temporário:** MVGIC está sem recarga de pênalti/falta e SEM limite diário nos minigames
-(`COOLDOWN_FREE_NICKS`/`isFreeTester` em `rules.js` + middlewares em `routes/daily.js` e
-`routes/frangacoTv.js` que apagam as partidas terminadas dele) — tirar depois do teste.
+**Temporário:** MVGIC está sem NENHUMA recarga (chute direto, pênalti, falta e trilha — desde
+14/09; antes só pênalti/falta) e SEM limite diário nos minigames (`COOLDOWN_FREE_NICKS`/`isFreeTester`
+em `rules.js` + middlewares em `routes/daily.js` e `routes/frangacoTv.js` que apagam as partidas
+terminadas dele) — tirar depois do teste. Em 14/09 a EXP dada pelo painel (12 × 100 = 1200 de
+`levelBonus`) foi tirada do MVGIC para o nível dele voltar a ser o "de verdade".
 Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em runtime:
 `kit-mask.png` + `kit-ao.png` + cores em `keeper.tsx` — pele, chuteira, luva do goleiro);
 `keeper.glb` reconstruído com UVs e sem as animações não usadas (84 KB).

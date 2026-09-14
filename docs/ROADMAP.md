@@ -41,11 +41,10 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
 9. Mensagens privadas, amigos, chat do time; "à frente/atrás" no ranking geral no perfil.
 10. Limpeza pré-lançamento: apagar contas de teste `craque_g88qn` / `craque_warvl` e zerar temporada.
 Pendências pequenas: cabelo nos jogadores 3D; empate por diferença < 5 % nas copas.
-Minigames novos planejados (13/09, design em **`docs/FALTA_PRO.md`**): **Falta PRO**
-(FEITO 13/09 — nível 8, vira às 19h; ver a lista de minigames) e **Frangalho**
-(transposto do Managol — mecânica original a confirmar com o dono antes de fazer).
-(simulador de falta com arrasto + curva, Trionda, servidor valida). O **Frangaço**
-(transposto do Managol) foi feito em 13/09 — ver a lista de minigames abaixo.
+Minigames novos (13/09, design em **`docs/FALTA_PRO.md`**): **Falta PRO** FEITO (nível 8,
+vira às 19h; arrasto + curva, Trionda, servidor valida; rota de conferência `/debug-faltapro`)
+e **Frangaço** FEITO (porte 1:1 do Managol: cliente Unity em `/tv/?mode=penalty` + API compat
+`/api/frangaco/*`; nível 10, vira às 20h) — ver a lista de minigames abaixo.
 **Temporário:** MVGIC está sem recarga de pênalti/falta e SEM limite diário nos minigames
 (`COOLDOWN_FREE_NICKS`/`isFreeTester` em `rules.js` + middlewares em `routes/daily.js` e
 `routes/frangacoTv.js` que apagam as partidas terminadas dele) — tirar depois do teste.

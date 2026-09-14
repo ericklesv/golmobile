@@ -396,3 +396,24 @@ export interface RefState {
   invited: { nick: string; avatarUrl: string | null; team: Team; goals: number; since: number; earned: number; next: RefMilestone | null }[];
 }
 export interface RefInviter { nick: string; avatarUrl: string | null; team: Team; perFriend: number }
+
+// ─── Página da partida (/partida/:id) ─────────────────────────────────────────
+type KindTally = { AUTO: number; PENALTY: number; FOUL: number; TRAIL: number; MINI: number };
+type MatchScorer = { userId: number; nick: string; avatarUrl: string | null; nickColor: string | null; vip: boolean; goals: number; role?: ClubRole | null; tops?: TopBadge[] };
+type MatchStanding = { position: number; of: number; points: number; played: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number };
+export interface MatchPage {
+  id: number; status: 'LIVE' | 'FINISHED'; serie: Serie;
+  round: { number: number; season: number; startsAt: number; endsAt: number };
+  home: Team; away: Team; homeGoals: number; awayGoals: number; pct: number;
+  result: 'home' | 'away' | 'draw' | null;
+  best: MatchScorer | null; tops: { home: MatchScorer[]; away: MatchScorer[] };
+  scorersCount: { home: number; away: number };
+  byKind: { home: KindTally; away: KindTally }; minigames: { kind: string; label: string; home: number; away: number }[];
+  timeline: { key: string; hour: number; home: number; away: number }[];
+  standing: { home: MatchStanding | null; away: MatchStanding | null };
+  online: { home: number; away: number } | null;
+  seasonTop: { home: { nick: string; avatarUrl: string | null; goals: number } | null; away: { nick: string; avatarUrl: string | null; goals: number } | null };
+  h2h: { matches: { id: number; season: number; round: number; homeGoals: number; awayGoals: number; winner: 'home' | 'away' | 'draw' }[]; home: number; draws: number; away: number };
+  recent: { id: number; side: 'home' | 'away' | null; nick: string; avatarUrl: string | null; kind: string; label: string; at: number }[];
+  serverTime: number;
+}

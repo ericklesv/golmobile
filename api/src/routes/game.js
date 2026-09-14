@@ -12,6 +12,7 @@ import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { boardView, playerClub } from '../services/club.js';
 import { withBadges, badgesOf, topHistory } from '../services/badges.js';
+import { matchPage } from '../services/match.js';
 
 export const game = Router();
 
@@ -132,6 +133,9 @@ game.get('/league/titles', handle(async () => {
   const titles = await prisma.title.findMany({ orderBy: [{ seasonId: 'desc' }, { competition: 'asc' }, { place: 'asc' }], include: { team: teamSel, season: { select: { number: true } } } });
   return titles.map((t) => ({ season: t.season.number, competition: t.competition, place: t.place, team: teamView(t.team) }));
 }));
+
+// ─── Partida (página /partida/:id) ──────────────────────────────────────────
+game.get('/matches/:id', handle((req) => matchPage(Number(req.params.id))));
 
 // ─── Times ──────────────────────────────────────────────────────────────────
 game.get('/teams', handle(async () => (await prisma.team.findMany({ orderBy: [{ serie: 'asc' }, { name: 'asc' }] })).map(teamView)));

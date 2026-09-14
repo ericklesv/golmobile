@@ -120,6 +120,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
   (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
   chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
+- **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
+  pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/
+  empate", artilheiro da partida, top 5 de cada time, gols hora a hora (gráfico espelhado nas cores dos times), gols por
+  tipo (chute direto/pênalti/falta/trilha/minigames), em números (quem marcou, online agora, tabela, artilheiro da
+  temporada), confrontos anteriores e últimos gols. Tudo lido de `Goal.matchId` (nada novo gravado). Abre tocando no
+  placar da tela inicial, da Liga (jogos da rodada) e da página do time. Ao vivo, a tela atualiza a cada 15 s.
 - **Convites — link de afiliado** (decisão do dono, 14/09/2026, a partir da sugestão de um jogador; `services/referral.js`,
   `routes/referral.js` em `/api/ref`, marcos em `REFERRAL` de `rules.js`, `User.refCode/referredById` + tabela
   `ReferralReward`, migração 0022; tela `components/Invite.tsx`: painel CONVIDE AMIGOS no Perfil, rota `/convite/:code`
@@ -295,7 +301,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/daily|daily/hub|daily/termo|daily/quiz|daily/memoria|daily/qualtime|daily/alvo|daily/stats|daily/camisas|daily/hattrick` · `POST /api/daily/termo/guess{word,day}|daily/quiz/next{day}|daily/quiz/answer{index,choice,day}|daily/memoria/flip{index,day}|daily/qualtime/next{day}|daily/qualtime/answer{index,choice,day}|daily/alvo/shot{index,day}|daily/stats/start|daily/stats/pick{side}|daily/camisas/start|daily/camisas/guess{guess:maior|menor}|daily/hattrick/start|daily/hattrick/shoot{i,dirX,dirY,power,strike:{sx,sy}|null}` (minigames)
 `GET /api/frangaco/state` · `POST /api/frangaco/run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}` (Frangaço — contrato do cliente Unity em /tv/?mode=penalty) · `GET /api/daily/frangaco` (estado do slider)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links)
-`GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed`
+`GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.

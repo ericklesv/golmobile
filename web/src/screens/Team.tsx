@@ -64,7 +64,10 @@ export function TeamScreen() {
         <Panel title={`JOGO DA RODADA ${m.round?.number ?? ''}`} ribbon="orange">
           <div className="flex items-center justify-between">
             <Link to={`/time/${m.home.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.home} size={48} /><span className="text-center text-[11px] font-extrabold text-navy-ink">{m.home.name}</span></Link>
-            <div className="font-display text-4xl tabular-nums text-navy-ink"><span className={mine === 'home' ? 'text-orange-deep' : ''}>{m.homeGoals}</span> <span className="text-muted">x</span> <span className={mine === 'away' ? 'text-orange-deep' : ''}>{m.awayGoals}</span></div>
+            <Link to={`/partida/${m.id}`} className="flex flex-col items-center" aria-label="Ver a partida">
+              <span className="font-display text-4xl tabular-nums text-navy-ink"><span className={mine === 'home' ? 'text-orange-deep' : ''}>{m.homeGoals}</span> <span className="text-muted">x</span> <span className={mine === 'away' ? 'text-orange-deep' : ''}>{m.awayGoals}</span></span>
+              <span className="text-[9px] font-extrabold uppercase text-sky-deep">ver partida</span>
+            </Link>
             <Link to={`/time/${m.away.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.away} size={48} /><span className="text-center text-[11px] font-extrabold text-navy-ink">{m.away.name}</span></Link>
           </div>
           <div className="bar mt-2" style={{ height: 16 }}><i style={{ width: `calc(${m.pct}% + 6px)` }} /><span style={{ fontSize: 10 }}>{pct(m.pct)} · {pct(100 - m.pct)}</span></div>

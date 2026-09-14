@@ -71,7 +71,10 @@ export function LeagueScreen() {
             <div key={m.id} className="panel">
               <div className="flex items-center gap-2">
                 <Link to={`/time/${m.home.slug}`} className="flex flex-1 items-center gap-2 text-[13px] font-extrabold text-navy-ink"><Shield team={m.home} size={30} /><span className="truncate">{m.home.name}</span></Link>
-                <div className="font-display text-2xl tabular-nums text-navy-ink">{m.homeGoals} <span className="text-muted">x</span> {m.awayGoals}</div>
+                <Link to={`/partida/${m.id}`} className="flex flex-col items-center" aria-label="Ver a partida">
+                  <span className="font-display text-2xl tabular-nums text-navy-ink">{m.homeGoals} <span className="text-muted">x</span> {m.awayGoals}</span>
+                  <span className="text-[9px] font-extrabold uppercase text-sky-deep">ver partida</span>
+                </Link>
                 <Link to={`/time/${m.away.slug}`} className="flex flex-1 items-center justify-end gap-2 text-right text-[13px] font-extrabold text-navy-ink"><span className="truncate">{m.away.name}</span><Shield team={m.away} size={30} /></Link>
               </div>
               <div className="bar mt-2" style={{ height: 16 }}><i style={{ width: `calc(${m.pct}% + 6px)` }} /><span style={{ fontSize: 10 }}>{pct(m.pct)} · {pct(100 - m.pct)}</span></div>

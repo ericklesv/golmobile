@@ -36,6 +36,8 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    time) e **doação de VIP entre colegas de time**. Falta: Capitão/Auxiliar (com a ordem de chute), caixa do time (R$ e VIP),
    **Secar / Seguir ordem** com as regras do concorrente (1 alvo por rodada, mesma divisão, não o
    adversário atual, boosts Gatorade/Energético comprados pelo presidente).
+6e. [x] **Página da partida** (14/09/2026): /partida/:id com placar, tempo que falta, artilheiros, gráfico hora a hora,
+   gols por tipo, comparação dos times, confrontos e últimos gols (placares da Home, Liga e Time levam até ela).
 6d. [x] **Convites** (14/09/2026): link de afiliado no Perfil; quem convidou ganha VIP nos marcos de gols do
    convidado (25→1000; 16 VIP por amigo); trava de mesma internet. Depois: % dos VIPs comprados pelo convidado?
 6c. [x] **Distintivos e TOP 10** (13/09/2026): P/D ao lado do nome, ícone do top 3 de agora (hora/rodada/

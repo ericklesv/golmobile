@@ -46,6 +46,7 @@ import { CamisasScreen } from './screens/Camisas';
 import { HattrickScreen } from './screens/Hattrick';
 import { VipScreen } from './screens/Vip';
 import { OffersScreen } from './screens/Offers';
+import { MatchScreen } from './screens/Match';
 
 function Splash() {
   return (
@@ -95,6 +96,7 @@ export default function App() {
           <Route path="/loja" element={<ShopScreen />} />
           <Route path="/vip" element={<VipScreen />} />
           <Route path="/propostas" element={<OffersScreen />} />
+          <Route path="/partida/:id" element={<MatchScreen />} />
           <Route path="/niveis" element={<LevelsScreen />} />
           <Route path="/ativos" element={<ActiveScreen />} />
           <Route path="/jogador/:nick" element={<PlayerScreen />} />

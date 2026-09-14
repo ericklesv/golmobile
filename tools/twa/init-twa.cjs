@@ -31,7 +31,7 @@ async function main() {
 
   const m = await TwaManifest.fromWebManifest(MANIFEST_URL);
   // ── respostas do "bubblewrap init" (docs/PLAY_STORE.md) ──
-  m.packageId = 'br.com.jogagol.app';
+  m.packageId = 'com.jogagol.com.br'; // é o pacote cadastrado no Play Console (14/09) — não muda nunca mais
   m.host = 'jogagol.com.br';
   m.name = 'JogaGol';
   m.launcherName = 'JogaGol';

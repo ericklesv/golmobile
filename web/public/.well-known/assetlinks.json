@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "br.com.jogagol.app",
+      "package_name": "com.jogagol.com.br",
       "sha256_cert_fingerprints": [
         "17:F8:59:74:CE:89:F0:F6:6D:86:96:7C:94:D2:55:93:CF:62:8F:BB:FB:E1:64:95:0E:8A:4F:A3:9A:42:D0:25"
       ]

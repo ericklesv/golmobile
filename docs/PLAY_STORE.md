@@ -87,7 +87,8 @@ Ferramentas (uma vez por máquina; ~1 GB):
 
 Decisões que o Bubblewrap impôs: **Play Billing exige `enableNotifications: true`** (delegação de
 notificações) e **`minSdkVersion: 23`** (a biblioteca de billing não aceita 21) — já estão no
-`init-twa.cjs`. Resultado: `applicationId br.com.jogagol.app`, versionCode 1 / 1.0.0, minSdk 23,
+`init-twa.cjs`. Resultado: `applicationId com.jogagol.com.br` (o pacote cadastrado no console ao criar o app —
+**não muda nunca mais**; o `br.com.jogagol.app` do primeiro build foi descartado), versionCode 1 / 1.0.0, minSdk 23,
 **targetSdk 36 (Android 16)**, permissões INTERNET/BILLING/POST_NOTIFICATIONS.
 
 Gerar/atualizar (PowerShell — pelo Git Bash o `gradlew.bat` não é encontrado):

@@ -63,11 +63,12 @@ Arquivo **`web/public/.well-known/assetlinks.json`** (o Vite copia para o build;
 - [x] **chave de upload** (a que assina o que sai do Bubblewrap): já está no arquivo —
   `17:F8:59:74:CE:89:F0:F6:6D:86:96:7C:94:D2:55:93:CF:62:8F:BB:FB:E1:64:95:0E:8A:4F:A3:9A:42:D0:25`
   (`keytool -list -v -keystore android.keystore -alias jogagol`).
-- [ ] **chave de assinatura do app** (Play App Signing): aparece no console **depois do primeiro
-  upload** em *Testar e lançar → Configuração → Integridade do app → Assinatura de apps → "Certificado
-  da chave de assinatura do app" → SHA-256*. Colar como segundo item de `sha256_cert_fingerprints`,
-  commit + deploy. Sem ela, o app instalado **pela Play Store** (assinado pelo Google) abre com a barra
-  do Chrome; o APK instalado por USB (assinado pela chave de upload) já abre sem barra.
+- [x] **chave de assinatura do app** (Play App Signing, gerada pelo Google no 1º upload, 14/09):
+  `8F:EA:14:63:17:08:C9:C5:64:EC:B3:41:3B:32:15:E9:FC:0A:D2:17:CD:61:85:39:7A:A2:2D:A0:51:EE:6A:41` —
+  está no arquivo. Onde ver no console (layout de 2026): *Protegido com o Google Play → Proteção da
+  Google Play Store (expandir) → "Gerencie a Assinatura de Apps do Google Play"* → bloco "JSON do
+  protocolo Digital Asset Links" (ou a URL `…/app/<id>/keymanagement`). Sem ela, o app instalado
+  **pela Play Store** abre com a barra do Chrome; o APK por USB usa a chave de upload.
 - Conferir no ar: `curl -sI https://jogagol.com.br/.well-known/assetlinks.json` → `200` e
   `content-type: application/json`. Validador: https://developers.google.com/digital-asset-links/tools/generator
 
@@ -101,7 +102,7 @@ $env:Path = "$env:JAVA_HOME\bin;C:\Users\guicp\dev\jogagol-twa;$env:Path"
 bubblewrap update --skipVersionUpgrade   # só se mudou o twa-manifest.json (ou `bubblewrap update` para subir a versão)
 bubblewrap build --skipPwaValidation     # → app-release-bundle.aab (loja) e app-release-signed.apk (teste por USB)
 ```
-- [x] Primeiro build feito: `C:\Users\guicp\dev\jogagol-twa\app-release-bundle.aab` (3,7 MB).
+- [x] Primeiro build feito e **publicado no Teste interno** (14/09, versão 1 / 1.0.0, 1,98 MB na loja).
 - [ ] Testar no celular: `adb install app-release-signed.apk` (adb em `android-sdk\platform-tools`)
   — abre **sem** barra de endereço, `/vip` mostra "chega em breve" no lugar dos pacotes PIX.
 - [ ] Versão nova: subir `appVersionCode` (e `appVersionName`) no `twa-manifest.json`, `bubblewrap

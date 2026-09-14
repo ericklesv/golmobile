@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { handle } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
+import { prisma } from '../prisma.js';
+import { isFreeTester } from '../lib/rules.js';
 import { dailyStatus, termoState, termoGuess, quizState, quizNext, quizAnswer, minigamesHub, memoriaState, memoriaFlip, qualtimeState, qualtimeNext, qualtimeAnswer, alvoState, alvoShot } from '../services/daily.js';
 import { statsState, statsStart, statsPick } from '../services/stats.js';
 import { camisasState, camisasStart, camisasGuess } from '../services/camisas.js';
@@ -15,6 +17,16 @@ import { frangacoHub } from '../services/frangaco.js';
  */
 export const daily = Router();
 daily.use(requireAuth);
+
+// Conta de teste do dono (13/09/2026): sem limite diário — as partidas TERMINADAS são
+// apagadas a cada chamada, então todo minigame volta a ficar disponível na hora.
+// Só vale para os nicks de isFreeTester (MVGIC); tirar quando o teste acabar.
+daily.use(async (req, _res, next) => {
+  if (isFreeTester(req.user)) {
+    try { await prisma.dailyGame.deleteMany({ where: { userId: req.user.id, finishedAt: { not: null } } }); } catch { /* nunca derruba o jogo */ }
+  }
+  next();
+});
 
 daily.get('/', handle((req) => dailyStatus(req.user.id)));
 daily.get('/hub', handle((req) => minigamesHub(req.user.id)));

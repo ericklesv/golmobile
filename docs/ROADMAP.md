@@ -46,8 +46,9 @@ Minigames novos planejados (13/09, design em **`docs/FALTA_PRO.md`**): **Falta P
 (transposto do Managol — mecânica original a confirmar com o dono antes de fazer).
 (simulador de falta com arrasto + curva, Trionda, servidor valida). O **Frangaço**
 (transposto do Managol) foi feito em 13/09 — ver a lista de minigames abaixo.
-**Temporário:** MVGIC está sem recarga de pênalti/falta (`COOLDOWN_FREE_NICKS` em
-`rules.js`) para o dono testar as animações — tirar depois.
+**Temporário:** MVGIC está sem recarga de pênalti/falta e SEM limite diário nos minigames
+(`COOLDOWN_FREE_NICKS`/`isFreeTester` em `rules.js` + middlewares em `routes/daily.js` e
+`routes/frangacoTv.js` que apagam as partidas terminadas dele) — tirar depois do teste.
 Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em runtime:
 `kit-mask.png` + `kit-ao.png` + cores em `keeper.tsx` — pele, chuteira, luva do goleiro);
 `keeper.glb` reconstruído com UVs e sem as animações não usadas (84 KB).

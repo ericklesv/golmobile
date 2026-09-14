@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../lib/auth.js';
 import { handle } from '../lib/errors.js';
+import { prisma } from '../prisma.js';
+import { isFreeTester } from '../lib/rules.js';
 import { frangacoState, frangacoRun, frangacoIncoming, frangacoKick, frangacoSave } from '../services/frangaco.js';
 
 /**
@@ -15,6 +17,15 @@ import { frangacoState, frangacoRun, frangacoIncoming, frangacoKick, frangacoSav
  */
 export const frangacoTv = Router();
 frangacoTv.use(requireAuth);
+
+// Conta de teste do dono (13/09/2026): sem limite diário — torneios TERMINADOS são
+// apagados a cada chamada (um run em andamento não é tocado). Só nicks de isFreeTester.
+frangacoTv.use(async (req, _res, next) => {
+  if (isFreeTester(req.user)) {
+    try { await prisma.dailyGame.deleteMany({ where: { userId: req.user.id, game: 'FRANGACO', finishedAt: { not: null } } }); } catch { /* nunca derruba o jogo */ }
+  }
+  next();
+});
 
 frangacoTv.get('/state', handle((req) => frangacoState(req.user.id)));
 frangacoTv.post('/run', handle((req) => frangacoRun(req.user.id)));

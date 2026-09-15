@@ -16,19 +16,20 @@ export const MESSAGE_ICONS = {
   vip: '/ui/ico-crown_silver.png', coin: '/ui/ico-coin01_s.png', dinheiro: '/ui/ico-goldpouch.png', gol: '/ui/ico-ball.png',
   trofeu: '/ui/ico-trophy_gold.png', medalha: '/ui/ico-medal_gold.png', estrela: '/ui/ico-star_gold.png', presente: '/ui/ico-gift_purple.png',
   caveira: '/ui/ico-skull_gold.png', energia: '/ui/ico-energy.png', alvo: '/ui/ico-target.png', aviso: '/ui/pi-bell.png',
+  whatsapp: '/ui/ico-whatsapp.png',
 };
 const iconOf = (icon) => (icon ? (MESSAGE_ICONS[icon] ?? (String(icon).startsWith('/ui/') ? icon : null)) : null);
 
 export async function sendMessage(userId, { kind = 'ADMIN', title, text, fromId = null, icon = null }, db = prisma) {
   if (!MESSAGE_KINDS.includes(kind)) throw badRequest('Tipo de mensagem inválido.');
-  const t = String(title ?? '').trim().slice(0, 80), body = String(text ?? '').trim().slice(0, 2000);
+  const t = String(title ?? '').trim().slice(0, 80), body = String(text ?? '').trim().slice(0, 4000);
   if (!t || !body) throw badRequest('Título e texto são obrigatórios.');
   return db.message.create({ data: { userId, kind, title: t, text: body, fromId, icon: iconOf(icon) } });
 }
 
 /** Aviso para TODOS os jogadores vivos (uma linha por jogador, em lotes). Devolve quantos receberam. */
 export async function broadcast({ title, text, fromId = null, kind = 'AVISO', icon = null }) {
-  const t = String(title ?? '').trim().slice(0, 80), body = String(text ?? '').trim().slice(0, 2000);
+  const t = String(title ?? '').trim().slice(0, 80), body = String(text ?? '').trim().slice(0, 4000);
   if (!t || !body) throw badRequest('Título e texto são obrigatórios.');
   const ic = iconOf(icon);
   let total = 0, cursor = 0;

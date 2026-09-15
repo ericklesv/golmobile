@@ -332,7 +332,7 @@ adminPanel.get('/users/:id/mensagens', handle(async (req) => {
 // ─── Mensagens (pedido do dono, 15/09/2026): recado para um jogador ou aviso para todos ──────
 // POST /api/painel/mensagens {userId?, all?, title, text}: com `all` cria uma linha por jogador vivo.
 adminPanel.post('/mensagens', handle(async (req) => {
-  const body = z.object({ userId: z.number().int().positive().optional(), all: z.boolean().optional(), title: z.string().trim().min(1).max(80), text: z.string().trim().min(1).max(2000), icon: z.string().max(80).nullable().optional() }).parse(req.body);
+  const body = z.object({ userId: z.number().int().positive().optional(), all: z.boolean().optional(), title: z.string().trim().min(1).max(80), text: z.string().trim().min(1).max(4000), icon: z.string().max(80).nullable().optional() }).parse(req.body);
   if (body.all) {
     const n = await broadcast({ title: body.title, text: body.text, fromId: req.user.id, icon: body.icon ?? null });
     await audit(req.user.id, null, 'aviso', { title: body.title, para: n });

@@ -302,7 +302,7 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
       <Panel title="MENSAGEM" ribbon="blue">
         <div className="flex flex-col gap-2">
           <input className="field" placeholder="Título" maxLength={80} value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)} />
-          <textarea className="field min-h-[80px]" placeholder="Texto (chega na caixa de mensagens do jogador). Ícones no texto: [vip] [coin] [gol] [trofeu] [caveira] [presente]" maxLength={2000} value={msgText} onChange={(e) => setMsgText(e.target.value)} />
+          <textarea className="field min-h-[80px]" placeholder="Texto (chega na caixa de mensagens do jogador). Ícones no texto: [vip] [coin] [gol] [trofeu] [caveira] [presente]" maxLength={4000} value={msgText} onChange={(e) => setMsgText(e.target.value)} />
           <IconPicker value={msgIcon} onChange={setMsgIcon} />
           <button className="btn btn-blue btn-sm" disabled={busy || !msgTitle.trim() || !msgText.trim()} onClick={() => run(async () => { await api.adminMessage({ userId: id, title: msgTitle.trim(), text: msgText.trim(), icon: msgIcon || null }); toast(`Mensagem enviada para ${u!.nick}.`, 'success'); setMsgTitle(''); setMsgText(''); await loadInbox(); })}>Enviar para {u.nick}</button>
         </div>
@@ -416,7 +416,7 @@ function BroadcastPanel() {
       <p className="mb-2 text-[11px] font-bold leading-snug text-muted">Atualizações, compensações, novidades: uma mensagem na caixa de cada jogador (o envelope no topo mostra o selo). Para falar com um jogador só, abra o perfil dele na aba Jogadores.</p>
       <div className="flex flex-col gap-2">
         <input className="field" placeholder="Título (até 80 caracteres)" maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea className="field min-h-[120px]" placeholder="Texto (até 2000 caracteres). Ícones no texto: [vip] [coin] [gol] [trofeu] [caveira] [presente] [energia] [alvo]" maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea className="field min-h-[120px]" placeholder="Texto (até 4000 caracteres). Ícones no texto: [vip] [coin] [gol] [trofeu] [caveira] [presente] [energia] [alvo]" maxLength={4000} value={text} onChange={(e) => setText(e.target.value)} />
         <IconPicker value={icon} onChange={setIcon} />
         {text.trim() && <div className="rounded-xl bg-sky/10 p-2 text-[12px] font-bold text-navy-ink"><span className="label block">Prévia</span><MsgText text={text} /></div>}
         <button className="btn btn-orange btn-md" disabled={busy || !title.trim() || !text.trim()} onClick={send}>{busy ? 'Enviando…' : 'Enviar para todos'}</button>

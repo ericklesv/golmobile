@@ -73,5 +73,6 @@ if (APPLY) {
   }
   tg.info(`🎁 Compensação de VIP: ${done} jogador(es) receberam o bônus dos pacotes comprados antes (script compensar-vip.js)`);
   console.log(`\n${done} de ${byUser.size} compensado(s).`);
+  await new Promise((r) => setTimeout(r, 2500)); // a fila do Telegram manda 1 por segundo: dá tempo de sair antes de encerrar
 }
 await prisma.$disconnect();

@@ -32,6 +32,7 @@ function rowView(u, now = Date.now()) {
     banned: !!(u.bannedUntil && new Date(u.bannedUntil).getTime() > now), bannedUntil: u.bannedUntil,
     isAdmin: u.isAdmin, lastSeenAt: u.lastSeenAt, createdAt: u.createdAt,
     invitedBy: u.referredBy?.nick ?? null, // entrou pelo link de convite de alguém (services/referral.js)
+    createdIp: u.createdIp ?? null, // IP do cadastro (segurança: contas em massa)
     online: new Date(u.lastSeenAt).getTime() > now - 2 * 60_000,
   };
 }

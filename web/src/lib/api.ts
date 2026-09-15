@@ -35,7 +35,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const api = {
   // auth
-  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string; ref?: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/register', b),
+  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string; ref?: string; website?: string; startedAt?: number; turnstileToken?: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/register', b),
   login: (b: { login: string; password: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/login', b),
   // me
   me: () => req<Me>('GET', '/api/me'),

@@ -76,6 +76,8 @@ export interface TrailResult {
 export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number }
 
 export interface Meta {
+  /** Chave pública do Turnstile (captcha invisível no cadastro); null = desligado no servidor. */
+  turnstileSiteKey?: string | null;
   /** Paleta do nick em degradê (VIP), NICK_FADE_COLORS em lib/items.js. */
   nickFades?: { key: string; name: string; hex: string }[];
   /** Grupo do WhatsApp dos jogadores (COMMUNITY em rules.js). */

@@ -8,6 +8,8 @@ import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.
 import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
+import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
+import rateLimit from 'express-rate-limit';
 import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { boardView, playerClub } from '../services/club.js';
@@ -27,10 +29,11 @@ function matchView(m) {
   };
 }
 
-game.get('/meta', handle(async () => {
+game.get('/meta', cached(10000), handle(async () => {
   const teams = await prisma.team.findMany({ orderBy: [{ serie: 'asc' }, { name: 'asc' }] });
   return {
     nickFades: NICK_FADE_COLORS, // paleta do nick em degradê (VIP)
+    turnstileSiteKey: turnstileEnabled() ? TURNSTILE_SITE_KEY : null, // captcha invisível no cadastro (lib/security.js); null = desligado
     cooldowns: COOLDOWNS, trailMin: TRAIL_MIN, money: MONEY, dexterityMax: DEXTERITY_MAX, nerfMinLevel: NERF_MIN_LEVEL,
     levels: LEVELS, prizes: PRIZES, trailLines: TRAIL_LINES, unlock: UNLOCK_LEVEL,
     chances: { penalty: 2 / 3, foul: FOUL_BASE_CHANCE, perDexterity: DEXTERITY_BONUS_PER_POINT, rebound: REBOUND_CHANCE },
@@ -53,7 +56,7 @@ game.get('/meta', handle(async () => {
   };
 }));
 
-game.get('/home', handle(async (req) => {
+game.get('/home', cached(5000), handle(async (req) => {
   const now = new Date();
   const round = await currentRound();
   const teamSlug = req.query.team ? String(req.query.team) : null;
@@ -85,7 +88,7 @@ game.get('/home', handle(async (req) => {
 
 // ─── Rankings ───────────────────────────────────────────────────────────────
 const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha'];
-game.get('/rankings/:scope', handle(async (req) => {
+game.get('/rankings/:scope', cached(5000), handle(async (req) => {
   const scope = String(req.params.scope);
   if (!SCOPES.includes(scope)) throw badRequest('Ranking inválido.');
   const take = Math.min(100, Number(req.query.limit) || 50);
@@ -102,7 +105,7 @@ game.get('/rankings/:scope', handle(async (req) => {
 }));
 
 // ─── Liga ───────────────────────────────────────────────────────────────────
-game.get('/league', handle(async () => {
+game.get('/league', cached(5000), handle(async () => {
   const round = await currentRound();
   if (!round) return { season: null, round: null, standings: {} };
   const rows = await prisma.standing.findMany({ where: { seasonId: round.seasonId }, include: { team: teamSel } });
@@ -121,7 +124,7 @@ game.get('/league', handle(async () => {
   };
 }));
 
-game.get('/league/rounds/:number', handle(async (req) => {
+game.get('/league/rounds/:number', cached(5000), handle(async (req) => {
   const number = Number(req.params.number);
   const season = await prisma.season.findFirst({ where: { status: 'ACTIVE' } });
   if (!season) throw notFound();
@@ -133,7 +136,7 @@ game.get('/league/rounds/:number', handle(async (req) => {
   };
 }));
 
-game.get('/league/titles', handle(async () => {
+game.get('/league/titles', cached(10000), handle(async () => {
   const titles = await prisma.title.findMany({ orderBy: [{ seasonId: 'desc' }, { competition: 'asc' }, { place: 'asc' }], include: { team: teamSel, season: { select: { number: true } } } });
   return titles.map((t) => ({ season: t.season.number, competition: t.competition, place: t.place, team: teamView(t.team) }));
 }));
@@ -142,9 +145,9 @@ game.get('/league/titles', handle(async () => {
 game.get('/matches/:id', handle((req) => matchPage(Number(req.params.id))));
 
 // ─── Times ──────────────────────────────────────────────────────────────────
-game.get('/teams', handle(async () => (await prisma.team.findMany({ orderBy: [{ serie: 'asc' }, { name: 'asc' }] })).map(teamView)));
+game.get('/teams', cached(30000), handle(async () => (await prisma.team.findMany({ orderBy: [{ serie: 'asc' }, { name: 'asc' }] })).map(teamView)));
 
-game.get('/teams/:slug', handle(async (req) => {
+game.get('/teams/:slug', cached(5000), handle(async (req) => {
   const team = await prisma.team.findUnique({ where: { slug: String(req.params.slug) } });
   if (!team) throw notFound('Time não encontrado.');
   const now = new Date();
@@ -176,7 +179,7 @@ game.get('/teams/:slug', handle(async (req) => {
 
 // ─── Jogadores ──────────────────────────────────────────────────────────────
 // Jogadores ativos nas últimas 24 h (para a listagem clicável)
-game.get('/players/active', handle(async () => {
+game.get('/players/active', cached(5000), handle(async () => {
   const now = Date.now();
   const users = await prisma.user.findMany({
     where: { lastSeenAt: { gt: new Date(now - 24 * 3600_000) }, deletedAt: null },
@@ -186,7 +189,8 @@ game.get('/players/active', handle(async () => {
   return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, goalsRound: periodGoals(u).goalsRound, avatarUrl: u.avatarUrl, lastSeenAt: u.lastSeenAt, online: u.lastSeenAt.getTime() > now - 2 * 60_000, vip: !!(u.vipUntil && u.vipUntil.getTime() > now), nickColor: u.nickColor ?? null, nickFade: nickFadeOf(u, now), team: teamView(u.team) }));
 }));
 
-game.get('/players/search', handle(async (req) => {
+const searchLimiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'rate-limit', message: 'Muitas buscas. Aguarde um pouco.' } });
+game.get('/players/search', searchLimiter, handle(async (req) => {
   const q = String(req.query.q || '').trim().toLowerCase();
   if (q.length < 1) return [];
   const users = await prisma.user.findMany({ where: { nickLower: { contains: q }, deletedAt: null }, take: 20, orderBy: { goalsTotal: 'desc' }, include: { team: teamSel } });
@@ -213,7 +217,7 @@ game.get('/players/:nick', handle(async (req) => {
   };
 }));
 
-game.get('/feed', handle(async (req) => {
+game.get('/feed', cached(5000), handle(async (req) => {
   const team = req.query.team ? await prisma.team.findUnique({ where: { slug: String(req.query.team) } }) : null;
   const rows = await prisma.activity.findMany({ where: team ? { teamId: team.id } : {}, orderBy: { createdAt: 'desc' }, take: 40, include: { team: teamSel } });
   return rows.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt, team: teamView(a.team) }));

@@ -5,6 +5,7 @@
 import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { prisma } from './prisma.js';
@@ -32,6 +33,7 @@ import { attachFutPrego, futpregoStatus } from './realtime/futprego.js';
 
 const app = express();
 app.set('trust proxy', 1);
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } })); // cabeçalhos de segurança da API (fotos em /api/uploads são lidas pelo site)
 app.use(cors({ origin: config.corsOrigins.length ? config.corsOrigins : true }));
 app.use(express.json({ limit: '64kb' }));
 app.use(rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false,

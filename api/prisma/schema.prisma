@@ -69,6 +69,7 @@ model User {
   createdAt    DateTime  @default(now())
   lastSeenAt   DateTime  @default(now())
   lastIp       String? // último IP visto (cadastro/login/heartbeat) — painel de admin
+  createdIp    String? // IP do cadastro (não muda; teto de contas por IP em 24 h — lib/security.js)
   lastIpAt     DateTime?
   // Conta excluída pelo próprio jogador (exigência da Play Store): a linha fica anonimizada
   // (nick "excluido-<id>", e-mail/senha/foto/bio/IP apagados) e não entra mais. Ver routes/account.js.
@@ -156,6 +157,7 @@ model User {
   @@index([teamId])
   @@index([goalsTotal])
   @@index([referredById])
+  @@index([createdIp, createdAt])
 }
 
 // Minigames diários: 1 partida por jogador, por jogo, por dia (o dia vira à

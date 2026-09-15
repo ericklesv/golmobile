@@ -9,11 +9,15 @@ import { meView } from '../services/view.js';
 import { meInclude } from '../lib/items.js';
 import { clientIp } from '../lib/ip.js';
 import { attachReferral } from '../services/referral.js';
+import { SECURITY, isDisposableEmail, checkRegisterForm, verifyTurnstile, assertNotLocked, noteLoginFail, noteLoginOk } from '../lib/security.js';
 
 export const auth = Router();
 
 const limiter = rateLimit({ windowMs: 15 * 60_000, limit: 40, standardHeaders: true, legacyHeaders: false,
   message: { error: 'rate-limit', message: 'Muitas tentativas. Aguarde alguns minutos.' } });
+// cadastro: bem mais apertado que o login (5 por hora por IP; além disso, teto de contas/IP em 24 h no handler)
+const registerLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'rate-limit', message: 'Muitos cadastros desta conexão. Tente mais tarde.' } });
 
 const registerSchema = z.object({
   nick: z.string().trim().regex(/^[a-zA-Z0-9_.\-]{3,14}$/, 'Nick: 3 a 14 caracteres (letras, números, _ . -).'),
@@ -22,18 +26,30 @@ const registerSchema = z.object({
   teamSlug: z.string().min(1, 'Escolha um time.'),
   gender: z.enum(['M', 'F']).default('M'),
   ref: z.string().trim().max(16).optional(), // código do link de convite (services/referral.js)
+  // anti-robô (lib/security.js): honeypot, hora em que o formulário abriu e token do Turnstile (se ligado)
+  website: z.string().max(200).optional(),
+  startedAt: z.number().optional(),
+  turnstileToken: z.string().max(4000).optional(),
 });
 
-auth.post('/register', limiter, handle(async (req) => {
+auth.post('/register', registerLimiter, handle(async (req) => {
   const body = registerSchema.parse(req.body);
+  checkRegisterForm(body);
+  const ip = clientIp(req);
+  await verifyTurnstile(body.turnstileToken, ip);
+  if (isDisposableEmail(body.email)) throw badRequest('Use um e-mail de verdade — endereços temporários não são aceitos.');
   const team = await prisma.team.findUnique({ where: { slug: body.teamSlug } });
   if (!team) throw badRequest('Time inválido.');
+  if (ip) {
+    const recent = await prisma.user.count({ where: { createdIp: ip, createdAt: { gt: new Date(Date.now() - 86_400_000) } } });
+    if (recent >= SECURITY.registerPerIpPerDay) throw new GameError(429, 'too-many-accounts', 'Já foram criadas contas demais nesta conexão hoje. Tente amanhã.');
+  }
   const nickLower = body.nick.toLowerCase();
   const clash = await prisma.user.findFirst({ where: { OR: [{ nickLower }, { email: body.email }] } });
   if (clash) throw new GameError(409, 'taken', clash.nickLower === nickLower ? 'Esse nick já está em uso.' : 'Esse e-mail já está cadastrado.');
   const passwordHash = await bcrypt.hash(body.password, 10);
   const user = await prisma.user.create({
-    data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id, lastIp: clientIp(req), lastIpAt: new Date() },
+    data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id, lastIp: ip, lastIpAt: new Date(), createdIp: ip },
     include: { team: true },
   });
   await attachReferral(user.id, body.ref, clientIp(req)).catch((e) => console.error('[convite] cadastro:', e.message));
@@ -48,10 +64,13 @@ const loginSchema = z.object({
 auth.post('/login', limiter, handle(async (req) => {
   const body = loginSchema.parse(req.body);
   const key = body.login.toLowerCase();
+  assertNotLocked(key); // trava por conta (lib/security.js): N senhas erradas = 15 min sem tentar
   const user = await prisma.user.findFirst({ where: { OR: [{ nickLower: key }, { email: key }] }, include: meInclude() });
   if (!user || user.deletedAt || !(await bcrypt.compare(body.password, user.passwordHash))) {
+    noteLoginFail(key);
     throw new GameError(401, 'bad-credentials', 'Nick/e-mail ou senha incorretos.');
   }
+  noteLoginOk(key);
   await prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: clientIp(req), lastIpAt: new Date() } });
   return { token: signToken(user), me: meView(user) };
 }));

@@ -218,6 +218,16 @@ depois que o novo estiver estável. Não instalar nada dele.
   (`components/Account.tsx`). **Mexeu nisso? Rode `node scripts/test-conta.js`** (pasta api/, só banco
   LOCAL): 35 conferências, tem de dar "TUDO OK". Ícone maskable `icon-512-maskable.png`; artes da loja em
   `assets/play-store/`.
+- **Segurança** (`lib/security.js`; plano completo, Cloudflare e comandos da VPS em **`docs/SEGURANCA.md`**;
+  pedido do dono, 15/09/2026): cadastro com honeypot (`website`) + 3 s mínimos no formulário (`startedAt`),
+  e-mail descartável barrado (`disposable-email-domains`), **5 cadastros/h por IP** e **3 contas por IP em
+  24 h** (`User.createdIp`, migração 0026), **Turnstile** só com `TURNSTILE_SITE_KEY`+`TURNSTILE_SECRET` no
+  `.env` (a meta manda `turnstileSiteKey`; `components/Turnstile.tsx`); login com **trava por conta** (10
+  erros/15 min → 15 min, mesmo de IPs diferentes); **cache em memória** (`cached(ttl)`) nas rotas públicas
+  do `game.js` (rankings/liga/home/teams/ativos/feed 5 s, meta 10 s) — nunca em rota com dado do usuário;
+  busca 60/min, foto 10/15 min; `helmet` (sem CSP). Tudo em memória = 1 instância PM2. **Mexeu nisso? Rode
+  `node scripts/test-seguranca.js`** (pasta api/, só banco LOCAL): tem de dar "TUDO OK". O DDoS de verdade
+  é na borda: Cloudflare + `real_ip` no nginx + ufw só com as faixas dela (docs).
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
   `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).

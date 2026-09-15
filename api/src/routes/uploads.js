@@ -5,6 +5,7 @@
  */
 import { Router } from 'express';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import sharp from 'sharp';
 import { mkdirSync, existsSync, unlinkSync, writeFileSync } from 'fs';
@@ -40,7 +41,8 @@ export function removeOld(url) {
   try { if (existsSync(p)) unlinkSync(p); } catch {}
 }
 
-uploads.post('/avatar', requireAuth, (req, res, next) => {
+const avatarLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'rate-limit', message: 'Muitos envios de foto. Aguarde alguns minutos.' } });
+uploads.post('/avatar', requireAuth, avatarLimiter, (req, res, next) => {
   upload.single('avatar')(req, res, (err) => {
     if (err?.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'too-large', message: 'A imagem precisa ter no máximo 5 MB.' });
     if (err) return res.status(400).json({ error: 'upload', message: 'Não foi possível receber a imagem.' });

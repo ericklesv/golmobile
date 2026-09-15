@@ -53,11 +53,13 @@ export function Layout() {
       {/* HUD: foto · nick/xp · nível  |  dinheiro · VIP · escudo */}
       <header className="sticky top-0 z-40" style={{ paddingTop: 'var(--sat)' }}>
         <div className="flex items-center gap-2 bg-navy-deep/85 px-3 py-2 backdrop-blur">
-          <button onClick={() => nav('/perfil')} className="flex min-w-0 items-center gap-2" aria-label="Meu perfil">
+          {/* Em telas estreitas (< 480 px) o bloco nick/xp ocupa o espaço que sobra e a logo some — a barra de xp
+              tinha largura fixa e, com o nick encolhendo (min-w-0), estourava por cima do nível e da logo. */}
+          <button onClick={() => nav('/perfil')} className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left min-[480px]:flex-none" aria-label="Meu perfil">
             <Avatar url={me.avatarUrl} size={44} />
-            <div className="min-w-0">
+            <div className="min-w-[52px] flex-1 overflow-hidden min-[480px]:flex-none">
               <div className={`t-display truncate text-[15px] leading-tight ${me.vip ? 'text-sky-light' : 'text-white'}`}>{me.nick}{me.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}</div>
-              <div className="bar mt-0.5 w-24 max-w-full" style={{ height: 14 }}>
+              <div className="bar mt-0.5 w-full max-w-[96px]" style={{ height: 14 }}>
                 <i style={{ width: `calc(${Math.min(100, lvlPct)}% + 6px)` }} />
                 <span style={{ fontSize: 9 }}>{me.levelPoints}/{me.level.next?.goals ?? me.levelPoints}</span>
               </div>

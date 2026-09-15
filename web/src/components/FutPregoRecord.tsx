@@ -6,7 +6,7 @@ import { Panel } from './ui';
  * aproveitamento como no futebol (3 pontos por vitória, 1 por empate). A barra mostra a divisão.
  * Sem partidas: no próprio perfil, convite para jogar.
  */
-export function FutPregoRecord({ record, isMe = false }: { record?: { wins: number; losses: number; draws: number }; isMe?: boolean }) {
+export function FutPregoRecord({ record, isMe = false }: { record?: { wins: number; losses: number; draws: number; points?: number; streak?: number; best?: number }; isMe?: boolean }) {
   if (!record) return null;
   const { wins, losses, draws } = record;
   const games = wins + losses + draws;
@@ -32,6 +32,11 @@ export function FutPregoRecord({ record, isMe = false }: { record?: { wins: numb
           <p className="mt-1.5 text-center text-[12px] font-extrabold text-muted">
             {games} {games === 1 ? 'partida' : 'partidas'}, {Math.round(((wins * 3 + draws) / (games * 3)) * 100)}% de aproveitamento
           </p>
+          {record.points !== undefined && (
+            <p className="text-center text-[12px] font-extrabold text-navy-ink">
+              <b className={record.points < 0 ? 'text-danger' : 'text-grass-deep'}>{record.points} {Math.abs(record.points) === 1 ? 'ponto' : 'pontos'}</b> no ranking · sem perder: máx. {record.best ?? 0}{(record.streak ?? 0) > 0 ? ` (agora ${record.streak})` : ''}
+            </p>
+          )}
         </>
       )}
     </Panel>

@@ -40,8 +40,13 @@ export function TopList({ rows, empty = 'Ninguém marcou ainda.', highlight }: {
           {r.team?.slug ? <Link to={`/time/${r.team.slug}`} aria-label={r.team.name}><Shield team={r.team} size={22} /></Link> : <Shield team={r.team} size={22} />}
           <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className={`min-w-0 flex-1 break-all text-[14px] font-extrabold leading-tight ${nickProps(r).className}`} style={nickProps(r).style}>
             {r.nick}{r.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}<NameBadges role={r.role} tops={r.tops} />
+            {r.fp && (
+              <span className="block font-sans text-[10px] font-bold leading-tight text-muted">
+                <b className="text-grass-deep">{r.fp.wins}V</b> · {r.fp.draws}E · <b className="text-danger">{r.fp.losses}D</b> · sem perder: máx. {r.fp.best}{r.fp.streak > 0 ? ` (agora ${r.fp.streak})` : ''}
+              </span>
+            )}
           </Link>
-          <span className="font-display text-lg text-grass-deep">{r.goals}</span>
+          <span className={`font-display text-lg ${r.goals < 0 ? 'text-danger' : 'text-grass-deep'}`}>{r.goals}</span>
         </li>
       ))}
     </ol>

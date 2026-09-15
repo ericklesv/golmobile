@@ -5,14 +5,15 @@ import type { TopRow } from '../lib/types';
 import { Tabs, TopList, Spinner, Panel } from '../components/ui';
 import { hourLabel } from '../lib/format';
 
-type Scope = 'hora' | 'rodada' | 'temporada' | 'geral' | 'penal' | 'falta' | 'trilha';
+type Scope = 'hora' | 'rodada' | 'temporada' | 'geral' | 'penal' | 'falta' | 'trilha' | 'futprego';
 const ITEMS: { id: Scope; label: string }[] = [
   { id: 'hora', label: 'Hora' }, { id: 'rodada', label: 'Rodada' }, { id: 'temporada', label: 'Temporada' }, { id: 'geral', label: 'Geral' },
-  { id: 'penal', label: 'Pênalti' }, { id: 'falta', label: 'Falta' }, { id: 'trilha', label: 'Trilha' },
+  { id: 'penal', label: 'Pênalti' }, { id: 'falta', label: 'Falta' }, { id: 'trilha', label: 'Trilha' }, { id: 'futprego', label: 'FutPrego' },
 ];
 
 export function RankingsScreen() {
   const me = useAuth((s) => s.me)!;
+  const meta = useAuth((s) => s.meta);
   const [scope, setScope] = useState<Scope>('hora');
   const [rows, setRows] = useState<TopRow[] | null>(null);
   const [key, setKey] = useState<any>(null);
@@ -27,16 +28,19 @@ export function RankingsScreen() {
     return () => { alive = false; };
   }, [scope]);
 
-  const sub = scope === 'hora' && key ? `HORA ${hourLabel(key)}` : scope === 'rodada' ? `RODADA ${key ?? ''}` : scope === 'temporada' ? `TEMPORADA ${key ?? ''}` : scope === 'geral' ? 'TODOS OS TEMPOS' : `GOLS DE ${ITEMS.find((i) => i.id === scope)?.label.toUpperCase()}`;
+  const sub = scope === 'hora' && key ? `HORA ${hourLabel(key)}` : scope === 'rodada' ? `RODADA ${key ?? ''}` : scope === 'temporada' ? `TEMPORADA ${key ?? ''}` : scope === 'geral' ? 'TODOS OS TEMPOS' : scope === 'futprego' ? 'FUTPREGO · PONTOS' : `GOLS DE ${ITEMS.find((i) => i.id === scope)?.label.toUpperCase()}`;
+  const fpPts = meta?.futprego?.points ?? { win: 3, draw: 1, loss: -2 };
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-center"><div className="ribbon ribbon-orange ribbon-lg"><img src="/ui/ico-trophy_s.png" className="mr-2 h-9 w-9" alt="" />ARTILHARIA</div></div>
+      <div className="flex justify-center"><div className="ribbon ribbon-orange ribbon-lg"><img src="/ui/ico-trophy_s.png" className="mr-2 h-9 w-9" alt="" />{scope === 'futprego' ? 'FUTPREGO' : 'ARTILHARIA'}</div></div>
       <Tabs value={scope} onChange={pick} items={ITEMS} />
       <Panel title={sub} ribbon="blue">
-        {rows === null ? <div className="flex justify-center py-8"><Spinner /></div> : <TopList rows={rows} highlight={me.nick} empty="Ninguém pontuou aqui ainda. Vai lá e chuta!" />}
+        {rows === null ? <div className="flex justify-center py-8"><Spinner /></div> : <TopList rows={rows} highlight={me.nick} empty={scope === 'futprego' ? 'Ninguém jogou o FutPrego ainda. Desafie alguém!' : 'Ninguém pontuou aqui ainda. Vai lá e chuta!'} />}
       </Panel>
-      <div className="panel-full text-center text-[12px] font-extrabold">A artilharia da hora fecha em toda hora cheia; a da rodada às 19:00. 1º da rodada: R$ 30 mil + 5 VIP · 1º da temporada: R$ 300 mil + 40 VIP.</div>
+      {scope === 'futprego'
+        ? <div className="panel-full text-center text-[12px] font-extrabold">Vitória {fpPts.win > 0 ? '+' : ''}{fpPts.win} · empate {fpPts.draw > 0 ? '+' : ''}{fpPts.draw} · derrota {fpPts.loss}. Só partidas de verdade (treino contra bot e W.O. antes de 2 jogadas não contam). "Sem perder" = vitórias e empates seguidos.</div>
+        : <div className="panel-full text-center text-[12px] font-extrabold">A artilharia da hora fecha em toda hora cheia; a da rodada às 19:00. 1º da rodada: R$ 30 mil + 5 VIP · 1º da temporada: R$ 300 mil + 40 VIP.</div>}
     </div>
   );
 }

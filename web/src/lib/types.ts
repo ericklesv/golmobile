@@ -38,7 +38,9 @@ export interface Me {
   serverTime: number;
 }
 
-export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; nickFade?: NickFade; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[] }
+/** Campanha no FutPrego (perfil e ranking): pontos = 3·V + 1·E − 2·D; `streak` = sequência atual sem perder, `best` = a maior. */
+export interface FutPregoStats { wins: number; draws: number; losses: number; played: number; points: number; streak: number; best: number }
+export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; nickFade?: NickFade; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[]; /** só no ranking do FutPrego (`goals` = pontos) */ fp?: FutPregoStats }
 
 export interface MatchView {
   id: number; serie: Serie; status: 'LIVE' | 'FINISHED';
@@ -101,7 +103,7 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
-  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
+  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number; points?: { win: number; draw: number; loss: number }; board?: import('../components/PregoBoard').PregoBoardData };
   ganhaperde?: { start: number; drop: number; min: number; max: number; step: number; stepPrice: number; growth: number; pointsPerHit: number };
   /** Minigames jogáveis e o nível que libera cada um. */
   minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];
@@ -155,7 +157,7 @@ export interface PublicPlayer {
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
   /** Campanha no FutPrego (só partidas de verdade que terminaram). */
-  futprego?: { wins: number; losses: number; draws: number };
+  futprego?: { wins: number; losses: number; draws: number; points?: number; streak?: number; best?: number };
   positions: { geral: number; penal: number; falta: number; trilha: number };
   recent: FeedItem[];
   role: ClubRole | null; contractUntil: number | null;

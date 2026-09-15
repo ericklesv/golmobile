@@ -151,6 +151,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   treino contra bot). Conta só partida de verdade FINISHED entre os dois, sem `wo-cedo`. A tela mostra a faixa
   `H2HStrip` entre a barra do adversário e a tábua ("Contra X: 2V · 1E · 0D" + últimas 5; "Primeiro confronto"
   se nunca jogaram). Coberto no `scripts/test-futprego.js`.
+  **Ranking do FutPrego** (aba FutPrego em Rankings; decisão do dono, 15/09/2026): `GET /api/rankings/futprego` →
+  `futpregoRanking` (todos os tempos): **pontos = 3 por vitória, 1 por empate, −2 por derrota** (`FUTPREGO.points`,
+  pode ficar negativo); desempate por vitórias, maior sequência sem perder, menos derrotas. Só partida de verdade
+  FINISHED sem `wo-cedo` (`COUNTED`); conta excluída não aparece. Linha = formato da artilharia (`goals` = pontos)
+  + `fp {wins, draws, losses, played, points, streak, best}` — `best` = maior sequência sem perder (V/E seguidos,
+  D zera), `streak` = a atual; `TopList` mostra a linha "3V · 1E · 0D · sem perder: máx. N (agora M)". A campanha
+  do perfil (`futpregoRecord`) usa a mesma soma (`tally`) e mostra pontos e sequências.
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi
@@ -396,7 +403,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links; não traz mensagens de quem eu bloqueei)
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
 `GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/futprego?page=` · `GET /api/painel/multicontas?page=&q=` (painel de admin)
-`GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
+`GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|futprego`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.

@@ -313,6 +313,8 @@ KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 export const FUTPREGO = {
   bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, challengeMaxSec: 300,
   maxGoalWinsPerDay: 3, woMinTurns: 2, reconnectSec: 20,
+  // ranking do FutPrego (decisão do dono, 15/09/2026): 3 por vitória, 1 por empate, −2 por derrota (pode ficar negativo)
+  points: { win: 3, draw: 1, loss: -2 },
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
 

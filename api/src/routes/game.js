@@ -14,7 +14,7 @@ import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { BOARD as FUTPREGO_BOARD } from '../lib/futprego.js';
 import { boardView, playerClub } from '../services/club.js';
-import { futpregoRecord } from '../realtime/futprego.js';
+import { futpregoRecord, futpregoRanking } from '../realtime/futprego.js';
 import { withBadges, badgesOf, topHistory } from '../services/badges.js';
 import { matchPage } from '../services/match.js';
 
@@ -89,7 +89,7 @@ game.get('/home', cached(5000), handle(async (req) => {
 }));
 
 // ─── Rankings ───────────────────────────────────────────────────────────────
-const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha'];
+const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha', 'futprego'];
 game.get('/rankings/:scope', cached(5000), handle(async (req) => {
   const scope = String(req.params.scope);
   if (!SCOPES.includes(scope)) throw badRequest('Ranking inválido.');
@@ -98,6 +98,7 @@ game.get('/rankings/:scope', cached(5000), handle(async (req) => {
   if (scope === 'hora') return { scope, key: hourKey(), rows: await withBadges(await topScorers({ hourKey: hourKey() }, take)) };
   if (scope === 'rodada') return { scope, key: round?.number ?? null, rows: round ? await withBadges(await topScorers({ roundId: round.id }, take)) : [] };
   if (scope === 'temporada') return { scope, key: round?.season?.number ?? null, rows: round ? await withBadges(await topScorers({ seasonId: round.seasonId }, take)) : [] };
+  if (scope === 'futprego') return { scope, key: null, rows: await withBadges(await futpregoRanking(take)) }; // pontos do FutPrego (realtime/futprego.js)
   const field = { geral: 'goalsTotal', penal: 'penaltyGoals', falta: 'foulGoals', trilha: 'trailGoals' }[scope];
   const users = await prisma.user.findMany({ where: { [field]: { gt: 0 }, deletedAt: null }, orderBy: [{ [field]: 'desc' }, { id: 'asc' }], take, include: { team: teamSel } });
   return {

@@ -243,6 +243,21 @@ check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinhe
 
 check(kickoff.tried === kickoff.blocked, `saída do meio: ${kickoff.tried} tentativas de gol de primeira (peteleco que entraria sem a garantia), nenhuma valeu; tábuas sorteadas: ${[...kickoff.boards].join(', ')}`);
 
+// ranking do FutPrego (3 · 1 · −2) bate com o que está no banco para A
+{
+  const rank = await (await fetch(`${API}/api/rankings/futprego?limit=100`)).json();
+  const rowA = rank.rows?.find((r) => r.userId === A.id);
+  const mine = { status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: A.id }, { bId: A.id }] };
+  const wins = await prisma.futPregoMatch.count({ where: { ...mine, winnerId: A.id } });
+  const draws = await prisma.futPregoMatch.count({ where: { ...mine, winnerId: null } });
+  const losses = await prisma.futPregoMatch.count({ where: { ...mine, winnerId: { not: null }, NOT: { winnerId: A.id } } });
+  const pts = wins * F.points.win + draws * F.points.draw + losses * F.points.loss;
+  check(!!rowA && rowA.goals === pts && rowA.fp.points === pts && rowA.fp.wins === wins && rowA.fp.losses === losses && rowA.fp.best >= 1,
+    `ranking: ${A.nick} com ${wins}V ${draws}E ${losses}D = ${pts} pontos (linha: ${rowA?.goals}), maior sequência sem perder ${rowA?.fp?.best}`);
+  const sorted = rank.rows.every((r, i) => i === 0 || rank.rows[i - 1].goals >= r.goals);
+  check(sorted, 'ranking em ordem de pontos');
+}
+
 for (const p of [gA, gB, gD, lobB, lobC, lobD]) p.close();
 await prisma.$disconnect();
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');

@@ -148,11 +148,14 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **X1 — jogos 1x1 ao vivo, um por dia** (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar enjoativo";
   substituiu o card do FutPrego). `realtime/x1.js` (WebSocket `/api/ws/x1`, e `/api/ws/futprego` como nome antigo;
   `mode=game` na tela `/x1` = `screens/X1.tsx`, `mode=lobby` no convite `components/X1Invite.tsx`). O jogo do dia
-  alterna à meia-noite de Brasília (`x1GameOf(calendarDay)` em `rules.js`, `X1.games`): **FutPrego** (futebol de
+  alterna **às 20h de Brasília** (dono, 15/09/2026; `X1.switchHour`, `x1GameOf(dayNumberAt(20))` em `rules.js`/`x1.js`,
+  `X1.games`): **FutPrego** (futebol de
   prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão** (`lib/botao.js` = física
   determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de dinheiro e travas
   iguais para os dois (`FUTPREGO` em rules.js): cada um põe R$ 200, quem vence leva R$ 400 + 1 gol e o time do
-  outro perde 1 gol na rodada; até 3 gols por dia no X1; mesma dupla com o mesmo vencedor duas vezes seguidas = a
+  outro perde 1 gol na rodada; **até 10 gols por hora por jogador, para ganhar e para perder** (dono, 15/09/2026;
+  `FUTPREGO.maxGoalsPerHour`, hora cheia de Brasília: com 10 vitórias valendo gol na hora, a próxima leva o pote sem
+  gol; quem já fez o time perder 10 na hora perde a partida sem tirar gol do time — `lossLimit` na tela); mesma dupla com o mesmo vencedor duas vezes seguidas = a
   2ª não vale gol; W.O./desistência antes de cada um jogar 2 vezes = aposta devolvida; bot de treino depois de
   1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por time (goleiro preso na área; os de linha não
   entram em área), 2 petelecos por vez num botão seu (quem começa dá 1 na 1ª vez — medido: assim quem começa

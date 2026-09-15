@@ -43,7 +43,7 @@ export function RankingsScreen() {
       </Panel>
       <div className="panel-full text-center text-[12px] font-extrabold">
         {x1
-          ? 'Conta cada vitória no X1 que valeu gol: até 3 por dia, e ganhar da mesma pessoa duas vezes seguidas não conta a segunda. Empate no número de vitórias: fica na frente quem perdeu menos. Zera a cada temporada.'
+          ? 'Conta cada vitória no X1 que valeu gol: até 10 por hora, e ganhar da mesma pessoa duas vezes seguidas não conta a segunda. Empate no número de vitórias: fica na frente quem perdeu menos. Zera a cada temporada.'
           : 'A artilharia da hora fecha em toda hora cheia; a da rodada às 19:00. 1º da rodada: R$ 30 mil + 5 VIP · 1º da temporada: R$ 300 mil + 40 VIP.'}
       </div>
     </div>

@@ -101,8 +101,8 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
-  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
-  /** X1: o jogo de hoje (vira à meia-noite) e o campo do Futebol de Botão (com os botões na saída, para o enfeite do começo). */
+  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalsPerHour: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
+  /** X1: o jogo de hoje (vira às 20h) e o campo do Futebol de Botão (com os botões na saída, para o enfeite do começo). */
   x1?: {
     names: Record<X1Game, string>; today: X1Today;
     botao: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; penalties: number; suddenDeath: number };
@@ -196,7 +196,7 @@ export interface MinigameCard {
 
 // ─── X1 (jogos 1x1 ao vivo, um por dia) ─────────────────────────────────────
 export type X1Game = 'FUTPREGO' | 'BOTAO';
-export interface X1Today { game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number }
+export interface X1Today { game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number; switchHour?: number }
 export interface X1Tally { wins: number; losses: number; draws: number }
 export interface X1Record extends X1Tally {
   games: Record<X1Game, X1Tally>;

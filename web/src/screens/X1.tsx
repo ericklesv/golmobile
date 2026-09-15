@@ -26,7 +26,7 @@ import { money as fmt, timeLeft } from '../lib/format';
 type Side = 0 | 1;
 interface Player { id: number; nick: string; avatarUrl: string | null; team: Team; bot: boolean }
 interface Rules {
-  bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalWinsPerDay: number;
+  bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalsPerHour: number;
   botao?: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; penalties: number };
 }
 /** Retrospecto contra o adversário desta partida no X1 (só partidas de verdade que terminaram; null no treino). */
@@ -46,14 +46,14 @@ type Match = PregoMatch | BotaoMatch;
 interface Over {
   game?: X1Game; winner: Side | null; reason: string; you: Side; training: boolean; money: number; pot?: number; goal?: boolean; why?: string | null;
   goalText?: string | null; lost?: boolean; lostTeam?: string | null; refund?: boolean; players?: Player[]; text?: string; late?: boolean;
-  score?: [number, number] | null; pen?: [boolean[], boolean[]] | null;
+  score?: [number, number] | null; pen?: [boolean[], boolean[]] | null; lossLimit?: boolean;
 }
 interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number }
 interface Shown { ball: { x: number; y: number }; pieces: BotaoPiece[] }
 
 const MAX_PULL = 120; // FutPrego: arrasto (em unidades da tábua) para a força máxima
 const MAX_PULL_BOTAO = 110; // Botão: idem, puxando o botão
-const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalWinsPerDay: 3 };
+const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
 const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
 const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary });
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
@@ -127,10 +127,10 @@ export function X1Screen() {
 
   // relógio da vez / da espera
   useEffect(() => { const iv = setInterval(() => tick((n) => n + 1), 250); return () => clearInterval(iv); }, []);
-  // o jogo do dia vira à meia-noite (com a tela aberta): os jogos se alternam
+  // o jogo do dia vira às 20h (com a tela aberta): os jogos se alternam
   useEffect(() => {
     if (!today) return;
-    const t = window.setTimeout(() => setToday((d) => (d ? { game: d.next, name: d.nextName, next: d.game, nextName: d.name, switchAt: d.switchAt + 86_400_000 } : d)), Math.max(1000, today.switchAt - Date.now() + 1500));
+    const t = window.setTimeout(() => setToday((d) => (d ? { ...d, game: d.next, name: d.nextName, next: d.game, nextName: d.name, switchAt: d.switchAt + 86_400_000 } : d)), Math.max(1000, today.switchAt - Date.now() + 1500));
     return () => clearTimeout(t);
   }, [today?.switchAt]);
   // campanha no X1 (temporada e posição no ranking) para o começo
@@ -505,7 +505,7 @@ export function X1Screen() {
     <MotionConfig reducedMotion="user">
       <div className="app-frame relative flex min-h-full flex-col">
         <div className="stadium-bg" />
-        <OverResult over={over} me={me} onClose={closeOver} />
+        <OverResult over={over} me={me} limit={rules.maxGoalsPerHour} onClose={closeOver} />
         {header}
         <div className="relative mx-auto flex w-full max-w-[440px] flex-1 flex-col px-3" style={{ paddingBottom: 'calc(var(--sab) + 12px)' }}>{body}</div>
         <AnimatePresence>
@@ -575,7 +575,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, onChalle
           <div className="t-display text-[26px] leading-[1.05]">{today?.name ?? GAME_NAME[game]}</div>
           {today && (
             <p className="mt-1.5 text-[12px] font-bold leading-snug text-muted">
-              Amanhã é <b className="text-navy-ink">{today.nextName}</b>. Troca à meia-noite{today.switchAt > now ? `, em ${timeLeft(today.switchAt - now)}` : ''}.
+              Às {today.switchHour ?? 20}h troca para <b className="text-navy-ink">{today.nextName}</b>{today.switchAt > now ? `, daqui a ${timeLeft(today.switchAt - now)}` : ''}.
             </p>
           )}
           <Link to="/rankings?aba=x1" className="mt-2 inline-flex items-center gap-1 text-[12px] font-extrabold text-sky-deep underline decoration-2 underline-offset-2">Ranking do X1</Link>
@@ -583,7 +583,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, onChalle
       </div>
       <div className="panel-navy mt-3 px-3 py-2.5">
         <p className="text-[14px] font-extrabold leading-snug text-white">{t.main}</p>
-        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Até {rules.maxGoalWinsPerDay} gols por dia; ganhar da mesma pessoa duas vezes seguidas, a segunda não vale gol.</p>
+        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Cada jogador ganha no máximo {rules.maxGoalsPerHour} gols por hora no X1, e o time perde no máximo {rules.maxGoalsPerHour} por hora por causa dele. Ganhar da mesma pessoa duas vezes seguidas, a segunda não vale gol.</p>
       </div>
       {season && season.season.number !== null && (season.wins + season.losses + season.draws > 0) && (
         <p className="t-out mt-2 text-center text-[12px] font-extrabold">
@@ -730,7 +730,7 @@ function H2HStrip({ h2h, opp }: { h2h: H2H; opp: string }) {
 }
 
 /** Fim da partida: gol, dinheiro e o aviso do gol perdido (usa a janela de resultado dos minigames). */
-function OverResult({ over, me, onClose }: { over: Over | null; me: { team: Team }; onClose: () => void }) {
+function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { team: Team }; limit: number; onClose: () => void }) {
   if (!over) return <GoalOverlay open={false} goal={false} onClose={onClose} />;
   const won = over.winner === over.you;
   const opp = over.players?.[1 - over.you]?.nick ?? 'o adversário';
@@ -747,14 +747,14 @@ function OverResult({ over, me, onClose }: { over: Over | null; me: { team: Team
   } else if (won) {
     goal = true; money = over.money;
     title = over.goal ? 'GOOOL!!!' : 'VENCEU!';
-    const why = over.why === 'limite' ? ' O gol não valeu: você já fez os gols de hoje no X1.' : over.why === 'repetido' ? ` O gol não valeu: você ganhou de ${opp} duas vezes seguidas.` : '';
+    const why = over.why === 'limite' ? ` O gol não valeu: você já fez os ${limit} gols desta hora no X1.` : over.why === 'repetido' ? ` O gol não valeu: você ganhou de ${opp} duas vezes seguidas.` : '';
     const how = over.reason === 'penaltis' ? ` nos pênaltis (${penScore})` : '';
     const narr = over.goalText ?? `Você venceu ${opp}${how}!`;
     text = over.goal ? `${narr}${/[.!?]$/.test(narr) ? '' : '.'}${over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : ''}` : `Você venceu ${opp}${how} e levou ${fmt(over.money)}.${why}`;
   } else {
     text = over.reason === 'wo' ? `Você ficou fora e perdeu por W.O. para ${opp}.` : over.reason === 'desistiu' ? 'Você desistiu da partida.'
       : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : over.reason === 'penaltis' ? `${opp} venceu nos pênaltis (${penScore}).` : `${opp} marcou primeiro.`;
-    text += over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : ' Seu time não perdeu gol.';
+    text += over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: já foram ${limit} nesta hora.` : ' Seu time não perdeu gol.';
   }
   return <GoalOverlay open goal={goal} title={title} text={text} money={money} team={me.team} onClose={onClose} autoClose={6000} />;
 }

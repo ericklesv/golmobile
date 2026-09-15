@@ -25,7 +25,7 @@ import { FUTPREGO, BOTAO, X1, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
 import { teamView } from '../services/view.js';
-import { nextMidnight, calendarDay } from '../lib/time.js';
+import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { nickFadeOf } from '../lib/items.js';
 
 const F = FUTPREGO; // regras de convite, aposta, gol e travas (valem para todo o X1)
@@ -42,16 +42,19 @@ function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.strin
 const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message });
 const rnd01 = () => randomInt(1_000_000) / 1_000_000;
 
-/** O jogo do X1 de hoje, o de amanhã e quando troca (meia-noite de Brasília). */
+/** O jogo do X1 agora, o próximo e quando troca (às X1.switchHour = 20h de Brasília). */
 // SÓ NO PC (X1_JOGO=BOTAO ou FUTPREGO no api/.env; ignorado em produção): força o jogo do dia para testar.
 const forcedGame = () => (process.env.NODE_ENV !== 'production' && X1.games.includes(process.env.X1_JOGO) ? process.env.X1_JOGO : null);
 
 export function x1Today(now = new Date()) {
-  const day = calendarDay(now);
+  const day = dayNumberAt(X1.switchHour, now);
   const game = forcedGame() ?? x1GameOf(day);
-  const next = forcedGame() ? X1.games.find((g) => g !== game) : x1GameOf(day + 1); // forçado: "amanhã" mostra o outro
-  return { game, name: X1.names[game], next, nextName: X1.names[next], switchAt: nextMidnight(now).getTime() };
+  const next = forcedGame() ? X1.games.find((g) => g !== game) : x1GameOf(day + 1); // forçado: o "próximo" mostra o outro
+  return { game, name: X1.names[game], next, nextName: X1.names[next], switchAt: nextResetAt(X1.switchHour, now).getTime(), switchHour: X1.switchHour };
 }
+
+/** Início da hora cheia de Brasília em que `now` está (a trava de gols do X1 conta por hora, como a artilharia da hora). */
+const hourStart = (now) => new Date(nextHourStart(now).getTime() - 3600_000);
 
 /**
  * Retrospecto entre dois jogadores (pedido do dono, 15/09/2026): partidas de verdade que terminaram entre
@@ -106,7 +109,7 @@ export async function x1Record(userId) {
 
 /**
  * Ranking do X1 da temporada: quem tem mais vitórias que VALERAM GOL (as mesmas travas do gol: no máximo
- * FUTPREGO.maxGoalWinsPerDay por dia e ganhar da mesma pessoa duas vezes seguidas não conta — senão dois
+ * FUTPREGO.maxGoalsPerHour por hora e ganhar da mesma pessoa duas vezes seguidas não conta — senão dois
  * amigos combinados subiam sem parar). Empate: menos derrotas na temporada fica na frente.
  */
 export async function x1Ranking(take = 50) {
@@ -148,7 +151,7 @@ async function authenticate(req) {
 
 const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user.avatarUrl ?? null, team: teamView(c.user.team), bot: !!c.bot });
 const rulesView = () => ({
-  bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalWinsPerDay: F.maxGoalWinsPerDay,
+  bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalsPerHour: F.maxGoalsPerHour,
   botao: { snapsPerTurn: BOTAO.snapsPerTurn, firstTurnSnaps: BOTAO.firstTurnSnaps, snapSec: BOTAO.snapSec, goalsToWin: BOTAO.goalsToWin, maxTurns: BOTAO.maxTurns, penalties: BOTAO.penalties },
 });
 /** Jogador ocupado: numa partida ou com desafio aberto (em qualquer conexão). */
@@ -554,15 +557,17 @@ function personal(info, m, side, result) {
   return {
     money: won ? info.pot : 0, pot: info.pot, goal: info.goal, why: info.why ?? null,
     goalText: won ? info.goalText ?? null : null, lost: info.lost ?? false, lostTeam: info.lostTeam ?? null, remaining: info.remaining ?? null,
+    lossLimit: !won && !!info.lossLimit, // o perdedor já fez o time perder o máximo desta hora: não tirou gol
   };
 }
 
 /**
  * Fecha a partida no banco (uma vez só: só a linha PLAYING vira FINISHED). Empate ou W.O./desistência
  * antes de cada um jogar FUTPREGO.woMinTurns vezes = devolve a aposta. Vitória: o vencedor leva o pote e,
- * se valer (no máximo maxGoalWinsPerDay por dia no X1; a mesma dupla com o mesmo vencedor duas vezes
- * seguidas não vale — regra do dono), 1 gol para o time dele e o time do perdedor perde 1 gol na partida da
- * rodada (nunca abaixo de 0). Só as vitórias que valeram gol contam no Ranking do X1.
+ * se valer (no máximo maxGoalsPerHour gols na hora cheia no X1; a mesma dupla com o mesmo vencedor duas
+ * vezes seguidas não vale — regras do dono), 1 gol para o time dele. O time do perdedor perde 1 gol na
+ * partida da rodada (nunca abaixo de 0) quando o gol valeu e o perdedor ainda não fez o time perder
+ * maxGoalsPerHour gols nesta hora. Só as vitórias que valeram gol contam no Ranking do X1.
  */
 async function settle(m, result) {
   const [a, b] = m.conns;
@@ -583,9 +588,9 @@ async function settle(m, result) {
     const pot = F.bet * 2;
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
     await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
-    const dayStart = new Date(nextMidnight(now).getTime() - 24 * 3600_000);
-    const todays = await tx.x1Match.count({ where: { winnerId: w.user.id, goalAwarded: true, createdAt: { gte: dayStart } } });
-    if (todays >= F.maxGoalWinsPerDay) return { pot, goal: false, why: 'limite' };
+    const since = hourStart(now); // a trava conta na hora cheia de Brasília
+    const wonThisHour = await tx.x1Match.count({ where: { winnerId: w.user.id, goalAwarded: true, finishedAt: { gte: since } } });
+    if (wonThisHour >= F.maxGoalsPerHour) return { pot, goal: false, why: 'limite' };
     const prev = await tx.x1Match.findFirst({
       where: { id: { not: m.dbId }, status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: a.user.id, bId: b.user.id }, { aId: b.user.id, bId: a.user.id }] },
       orderBy: { id: 'desc' }, select: { winnerId: true },
@@ -597,10 +602,15 @@ async function settle(m, result) {
     const how = result.reason === 'gol-contra' ? ' (gol contra dele)' : result.reason === 'penaltis' ? ' nos pênaltis' : '';
     const phrase = `venceu ${l.user.nick} no ${label}${how}`;
     const { text } = await applyResult(tx, winner, { kind: m.game, goal: true, now, match: live, money: 0, phrase });
-    // o time do perdedor perde 1 gol na partida da rodada (nunca abaixo de 0)
+    // o time do perdedor perde 1 gol na partida da rodada (nunca abaixo de 0), até maxGoalsPerHour por hora
+    // por perdedor (gols que ele já fez o time perder nesta hora no X1)
     const loser = await tx.user.findUnique({ where: { id: l.user.id }, include: { team: true } });
     let lost = null;
-    const lm = await liveMatchForTeam(loser.teamId, tx);
+    const lostThisHour = await tx.x1Match.count({
+      where: { id: { not: m.dbId }, status: 'FINISHED', lostTeamId: { not: null }, winnerId: { not: loser.id }, OR: [{ aId: loser.id }, { bId: loser.id }], finishedAt: { gte: since } },
+    });
+    const lossLimit = lostThisHour >= F.maxGoalsPerHour;
+    const lm = lossLimit ? null : await liveMatchForTeam(loser.teamId, tx);
     if (lm) {
       const field = lm.homeTeamId === loser.teamId ? 'homeGoals' : 'awayGoals';
       const { count } = await tx.match.updateMany({ where: { id: lm.id, status: 'LIVE', [field]: { gt: 0 } }, data: { [field]: { decrement: 1 } } });
@@ -613,7 +623,7 @@ async function settle(m, result) {
         text: lost ? `${loser.team.name} perdeu 1 gol: ${loser.nick} perdeu para ${w.user.nick} no ${label}.` : `${loser.nick} perdeu para ${w.user.nick} no ${label}.`,
       },
     });
-    return { pot, goal: true, goalText: text, lost: !!lost, lostTeam: loser.team.name, remaining: F.maxGoalWinsPerDay - todays - 1 };
+    return { pot, goal: true, goalText: text, lost: !!lost, lostTeam: loser.team.name, lossLimit, remaining: F.maxGoalsPerHour - wonThisHour - 1 };
   });
 }
 

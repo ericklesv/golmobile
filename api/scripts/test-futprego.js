@@ -3,7 +3,7 @@
  * jogadores de teste conectados por WebSocket como se fossem celulares (IPs diferentes via X-Real-IP):
  * convite só para quem pode (time/internet/dinheiro), aceitar, cobrança dos R$ 200, gol do vencedor,
  * pote de R$ 400, o time do perdedor perdendo 1 gol, a regra da mesma dupla com o mesmo vencedor, a trava
- * de 3 gols por dia, empate (devolve), W.O. cedo (devolve), vez de quem não é a vez, treino com bot, e a
+ * de 10 gols por hora (para ganhar e para perder), empate (devolve), W.O. cedo (devolve), vez de quem não é a vez, treino com bot, e a
  * SAÍDA DO MEIO: em toda partida a 1ª jogada tenta de propósito o peteleco que entraria sem a garantia.
  * Cria jogadores fp…
  *
@@ -218,17 +218,35 @@ const drop = await gA.wait('opp-dropped', 3000);
 const o7 = await gA.wait('over', (F.reconnectSec + 5) * 1000);
 check(!!drop && o7?.reason === 'wo' && o7.refund === true && o7.why === 'wo-cedo' && (await money(A)) === bef7.a && (await money(B)) === bef7.b, `B caiu e não voltou em ${F.reconnectSec} s antes de jogar: W.O. cedo, dinheiro devolvido aos dois`);
 
-// 8) trava de 3 gols por dia: com 3 vitórias valendo hoje, a próxima leva o pote mas não o gol
+// 8) trava de gols por hora (ganhar): com maxGoalsPerHour vitórias valendo nesta hora, a próxima leva o pote mas não o gol
 gB = phone(B, 'game', '10.0.0.2'); await gB.open;
-for (let i = 0; i < 3; i++) await prisma.x1Match.create({ data: { aId: A.id, bId: D.id, aTeamId: A.teamId, bTeamId: D.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: A.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } });
-await prisma.x1Match.create({ data: { aId: A.id, bId: B.id, aTeamId: A.teamId, bTeamId: B.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: B.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } }); // o último A x B foi do B
+// (as partidas de mentira ficam no começo desta hora cheia — se a hora virar no meio do teste, não contam)
+const nowH = new Date(); nowH.setUTCMinutes(0, 0, 0); const inHour = new Date(Math.max(nowH.getTime(), Date.now() - 1000));
+for (let i = 0; i < F.maxGoalsPerHour; i++) await prisma.x1Match.create({ data: { aId: A.id, bId: D.id, aTeamId: A.teamId, bTeamId: D.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: A.id, reason: 'gol', goalAwarded: true, finishedAt: inHour } });
+await prisma.x1Match.create({ data: { aId: A.id, bId: B.id, aTeamId: A.teamId, bTeamId: B.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: B.id, reason: 'gol', goalAwarded: true, finishedAt: new Date(Date.now() - 3 * 3600_000) } }); // o último A x B foi do B (há 3 h: não conta na hora)
 gA.send({ t: 'challenge' });
 const w8 = await gA.wait('waiting');
 gA.clear(); gB.clear();
 gB.send({ t: 'accept', id: w8.id });
 const r8 = await play(gA, gB, (side) => (side === (r1.youA) ? 'gol' : 'nada'));
 const o8 = r8.oa;
-check(o8.winner === r8.youA && o8.goal === false && o8.why === 'limite' && o8.money === F.bet * 2, `A já tinha ${F.maxGoalWinsPerDay} gols hoje: levou o pote, sem gol`);
+check(o8.winner === r8.youA && o8.goal === false && o8.why === 'limite' && o8.money === F.bet * 2, `A já tinha ${F.maxGoalsPerHour} gols nesta hora: levou o pote, sem gol`);
+
+// 8b) trava de gols por hora (perder): B já fez o time perder maxGoalsPerHour gols nesta hora; C ganha dele:
+// o gol de C vale, mas o time de B não perde mais
+for (const t of [C.teamId, B.teamId]) { const m = await liveMatchForTeam(t); if (m) await prisma.match.update({ where: { id: m.id }, data: m.homeTeamId === t ? { homeGoals: 3 } : { awayGoals: 3 } }); }
+for (let i = 0; i < F.maxGoalsPerHour; i++) await prisma.x1Match.create({ data: { aId: D.id, bId: B.id, aTeamId: D.teamId, bTeamId: B.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: D.id, reason: 'gol', goalAwarded: true, lostTeamId: B.teamId, finishedAt: inHour } });
+const gC = phone(C, 'game', '10.0.0.3'); await gC.open;
+const bef8b = { c: await teamScore(C.teamId), b: await teamScore(B.teamId) };
+gC.send({ t: 'challenge' });
+const w8b = await gC.wait('waiting');
+gC.clear(); gB.clear();
+gB.send({ t: 'accept', id: w8b.id });
+const r8b = await play(gC, gB, (side) => (side === 0 ? 'gol' : 'nada')); // quem desafia é o lado 0
+const oC = r8b?.oa, oB = r8b?.ob;
+check(oC?.winner === r8b?.youA && oC.goal === true && oB?.lost === false && oB.lossLimit === true, `B já tinha feito o time perder ${F.maxGoalsPerHour} gols nesta hora: o gol de C valeu e o time de B não perdeu`);
+if (bef8b.c !== null && bef8b.b !== null) check((await teamScore(C.teamId)) === bef8b.c + 1 && (await teamScore(B.teamId)) === bef8b.b, `placar: time de C ${bef8b.c} → ${await teamScore(C.teamId)}, time de B ficou em ${await teamScore(B.teamId)}`);
+gC.close();
 
 // 9) sem dinheiro: D não consegue desafiar; treino com bot não mexe no dinheiro
 const gD = phone(D, 'game', '10.0.0.4'); await gD.open;

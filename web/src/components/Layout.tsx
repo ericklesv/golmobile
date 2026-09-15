@@ -12,6 +12,7 @@ import { ChatFab } from './ChatFab';
 import { WhatsInviteWatcher } from './WhatsInvite';
 import { nickProps } from '../lib/nick';
 import { VipBar } from './VipBar';
+import { applyUpdate } from '../lib/pwa';
 import { X1InviteWatcher } from './X1Invite';
 
 const tabs = [
@@ -28,6 +29,7 @@ export function Layout() {
   const active = useAuth((s) => s.active);
   const offers = useAuth((s) => s.offers);
   const unread = useAuth((s) => s.unread);
+  const updateReady = useAuth((s) => s.updateReady);
   const lastUnread = useRef(-1); // -1 = ainda não sabemos: o 1º heartbeat só anota (sem toast)
   const lastOffers = useRef(0);
   const nav = useNavigate();
@@ -92,6 +94,11 @@ export function Layout() {
           <button onClick={() => nav(`/time/${me.team.slug}`)} className="shrink-0" aria-label={me.team.name}><Shield team={me.team} size={34} /></button>
         </div>
       </header>
+      {updateReady && (
+        <button onClick={applyUpdate} className="no-drag relative z-30 flex w-full items-center justify-center gap-2 bg-orange-deep px-3 py-2 text-[13px] font-extrabold text-white shadow">
+          <img src="/ui/pi-bell.png" className="h-4 w-4 brightness-0 invert" alt="" /> Nova versão do JogaGol disponível — toque para atualizar
+        </button>
+      )}
 
       <main className="relative flex-1 px-3 pb-28 pt-3">
         <ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary>

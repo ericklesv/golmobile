@@ -5,8 +5,10 @@ import App from './App';
 import { Gutters } from './components/Gutters';
 import './index.css';
 import { detectTwa } from './lib/twa';
+import { setupPwa } from './lib/pwa';
 
 detectTwa(); // app da Play Store? (antes de qualquer tela)
+setupPwa(); // versão nova → banner "Atualizar"
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

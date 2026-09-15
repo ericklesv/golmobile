@@ -10,6 +10,7 @@ interface AuthState {
   active: number;
   offers: number; // propostas de contratação abertas para mim (heartbeat; selo na aba Time)
   unread: number; // mensagens não lidas (heartbeat e /api/me; selo no envelope do topo)
+  updateReady: boolean; // há versão nova do app esperando (lib/pwa.ts) — banner "Atualizar" no Layout
   offset: number; // serverTime - Date.now()
   boot: () => Promise<void>;
   setMe: (me: Me) => void;
@@ -28,6 +29,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   active: 0,
   offers: 0,
   unread: 0,
+  updateReady: false,
   offset: 0,
   now: () => Date.now() + get().offset,
   setMe: (me) => set({ me, unread: me.unread ?? get().unread, offset: me.serverTime ? me.serverTime - Date.now() : get().offset }),

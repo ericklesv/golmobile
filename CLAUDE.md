@@ -570,6 +570,10 @@ servidos pelo próprio Express em `/api/uploads/`.
   miolo (caps que somam a largura toda não renderizam no CSS). Fontes: Lilita One + Nunito.
   Fundo: céu + gramado (`.app-frame` + `.stadium-bg`). **Nada de emoji nem "cara de site/IA"**
   (glassmorphism escuro, gradientes neon): botão é sprite, título é ribbon, ícone é PNG do pack.
+- **Atualização do app (PWA)** (15/09/2026): `registerType: 'prompt'` + `lib/pwa.ts` — checa versão nova a cada 5 min e
+  ao voltar para a aba; quando há, `updateReady` liga e o Layout mostra o banner laranja "Nova versão — toque para
+  atualizar" (`applyUpdate` = skipWaiting + reload). NUNCA recarregar sozinho (partida do X1 no meio). Antes era
+  `autoUpdate` sem reload: a tela aberta ficava com o JS antigo e mensagens/ícones novos apareciam "sem formato".
 - **SEO e preview do link** (pedido do dono, 15/09/2026): tudo no **`web/index.html`** — título/descrição com as
   palavras que o público procura (BRGOL/BR GOL, jogo de fazer gols, disputa de gols online), Open Graph + Twitter
   card (`/og.jpg` 1200×630 < 300 KB e `/og-square.jpg` 600×600, gerados de `assets/play-store/destaque-1024x500.png`

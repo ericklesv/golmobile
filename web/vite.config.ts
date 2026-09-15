@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // versão nova: banner "Atualizar" (lib/pwa.ts) — nunca recarrega sozinho no meio de uma partida
       includeAssets: ['favicon.png', 'brand/logo-v.webp', 'brand/logo-h.webp'],
       manifest: {
         name: 'JogaGol',

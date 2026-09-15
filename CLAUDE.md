@@ -245,6 +245,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   desce), some em `showMs` (2,8 s); som "pop" ao receber. **Silenciar** (X vermelho no balão do adversário ou na
   bandeja): só na tela de quem silenciou, vale a partida (zera na próxima; `resumed` mantém). No treino, o bot
   responde com uma sorteada. Mexeu? `node scripts/test-botao.js` tem o caso (relay, ritmo, chave inválida, VIP).
+  **Janela do jogo do dia** (pedido do dono, 15/09/2026; `components/X1GameSwitch.tsx`, montada no Layout e no
+  começo da tela do X1 com `gate={false}`): na troca das 20h com o app aberto ("MUDOU O JOGO DO X1") e, para quem
+  abre depois, 1x por dia-de-jogo por conta ("X1 DE HOJE"; `localStorage brgol.x1Jogo.<id>` = o `switchAt` do dia
+  mostrado). Mostra a "foto" do jogo (a tábua do FutPrego / o campo do Botão nas cores do time, os mesmos
+  componentes do começo do X1), como se joga, o que vale e "os jogos entram em rotação todo dia: às 20h, depois do
+  fechamento da rodada, troca para X". `effectiveToday(meta.x1.today, now)` corrige a meta velha (carregada uma vez no
+  boot) invertendo hoje/amanhã a cada troca já passada. No Layout espera a Presença e o aviso das séries; o convite
+  do WhatsApp espera ela (`x1SwitchSettled`).
   **Raio-X (brincadeira do dono, 15/09/2026; SÓ as contas MVGIC e ericklesv)**: na tela do X1 a tecla **R** liga/
   desliga a trajetória exata da mira (traço branco; dourado + "GOL" quando entra; no Botão também o caminho do botão
   em azul). Enquanto arrasta, a tela manda `{t:'preview', seq, dx, dy, power[, idx]}` (~12/s) e o servidor

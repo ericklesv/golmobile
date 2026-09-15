@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../store/auth';
 import { passSettled } from './Pass';
 import { seriesNoticeSettled } from './SeriesNotice';
+import { x1SwitchSettled } from './X1GameSwitch';
 
 /**
  * Convite para o grupo do WhatsApp dos jogadores (COMMUNITY em api/src/lib/rules.js; pedido do dono,
@@ -29,7 +30,7 @@ export function WhatsInviteWatcher() {
     if (s.joined || (s.next && Date.now() < s.next)) return;
     // espera a Presença da Semana e o aviso da troca de séries saírem da frente, e mais uns segundos
     const iv = window.setInterval(() => {
-      if (!passSettled(id) || !seriesNoticeSettled()) return;
+      if (!passSettled(id) || !seriesNoticeSettled() || !x1SwitchSettled()) return;
       window.clearInterval(iv);
       window.setTimeout(() => {
         write(id, { ...read(id), next: Date.now() + hours * 3_600_000 }); // conta a partir de quando apareceu

@@ -13,6 +13,7 @@ import { PregoBoard, type PregoBoardData, type TeamPaint } from '../components/P
 import { BotaoField, BotaoDisc, type BotaoFieldData, type BotaoPiece } from '../components/BotaoField';
 import { TriondaBall, type TriondaApi } from '../components/TriondaBall';
 import { toast } from '../components/Toast';
+import { X1GameSwitchWatcher } from '../components/X1GameSwitch';
 import { sound } from '../lib/sound';
 import { money as fmt, timeLeft } from '../lib/format';
 
@@ -611,6 +612,7 @@ export function X1Screen() {
       <div className="app-frame relative flex min-h-full flex-col">
         <div className="stadium-bg" />
         <OverResult over={over} me={me} limit={rules.maxGoalsPerHour} onClose={closeOver} />
+        {phase === 'lobby' && <X1GameSwitchWatcher gate={false} />}
         {header}
         <div className="relative mx-auto flex w-full max-w-[440px] flex-1 flex-col px-3" style={{ paddingBottom: 'calc(var(--sab) + 12px)' }}>{body}</div>
         <AnimatePresence>

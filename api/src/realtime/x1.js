@@ -8,7 +8,9 @@
  *   convite nunca aparece lá.
  * - mode=game: a tela do X1. Desafia no jogo do dia (se já houver um desafio compatível aberto, vira partida
  *   na hora), aceita, joga, desiste.
- * Pareamento: jogadores, times e IPs diferentes, sem bloqueio entre eles. Cada um paga FUTPREGO.bet ao
+ * Pareamento: jogadores e IPs diferentes, sem bloqueio entre eles. Dois do MESMO time podem jogar (dono,
+ * 15/09/2026): é amistoso — vale só o dinheiro, sem gol e fora do Ranking X1 (X1_COUNTED); ao desafiar, um
+ * desafio aberto de outro time tem preferência. Cada um paga FUTPREGO.bet ao
  * começar (a partida é gravada PLAYING); o servidor calcula cada peteleco (lib/futprego.js ou lib/botao.js)
  * e manda os quadros para as duas telas. Gol, dinheiro e travas: settle() — iguais nos dois jogos. Uma
  * instância PM2 só — o estado fica em memória; se a API reiniciar no meio, refundStale() devolve a aposta.
@@ -25,7 +27,7 @@ import { FUTPREGO, BOTAO, X1, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
 import { teamView } from '../services/view.js';
-import { X1_COUNTED } from '../services/x1.js';
+import { X1_PLAYED, X1_SAME_TEAM } from '../services/x1.js';
 import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
 
@@ -65,7 +67,7 @@ const hourStart = (now) => new Date(nextHourStart(now).getTime() - 3600_000);
  */
 async function headToHead(aId, bId) {
   return prisma.x1Match.findMany({
-    where: { ...X1_COUNTED, OR: [{ aId, bId }, { aId: bId, bId: aId }] },
+    where: { ...X1_PLAYED, OR: [{ aId, bId }, { aId: bId, bId: aId }] }, // amistosos entram (é o confronto dos dois)
     orderBy: { id: 'desc' }, select: { id: true, winnerId: true, finishedAt: true },
   });
 }
@@ -177,12 +179,15 @@ async function onMessage(conn, m) {
 // internet para testar. NUNCA na VPS.
 const sameIpOk = () => process.env.NODE_ENV !== 'production' && process.env.FUTPREGO_MESMO_IP === '1';
 
-/** Os dois podem se enfrentar? (jogadores, times e IPs diferentes, sem bloqueio) */
+/** Os dois podem se enfrentar? (jogadores e IPs diferentes, sem bloqueio; mesmo time pode — é amistoso) */
 async function compatible(a, b) {
-  if (a.user.id === b.user.id || a.user.teamId === b.user.teamId || (a.ip === b.ip && !sameIpOk())) return false;
+  if (a.user.id === b.user.id || (a.ip === b.ip && !sameIpOk())) return false;
   const block = await prisma.userBlock.findFirst({ where: { OR: [{ userId: a.user.id, blockedId: b.user.id }, { userId: b.user.id, blockedId: a.user.id }] }, select: { id: true } });
   return !block;
 }
+
+/** 1 = os dois são do mesmo time (amistoso: vale só dinheiro), 0 = times diferentes. */
+const sameTeamOf = (a, b) => (a.user.teamId === b.user.teamId ? 1 : 0);
 
 async function canPlay(conn) {
   const u = await prisma.user.findUnique({ where: { id: conn.user.id }, include: { team: true } });
@@ -206,9 +211,11 @@ async function createChallenge(conn) {
   if (until) return send(conn.ws, { t: 'error', code: 'cooldown', until, message: cooldownText(until) });
   if (conn.match || conn.challenge || conn.ws.readyState !== conn.ws.OPEN) return;
   const game = x1Today().game;
-  // alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora
-  for (const ch of [...challenges.values()].sort((a, b) => a.at - b.at)) {
-    if (ch.game === game && (await compatible(ch.from, conn))) return acceptChallenge(conn, ch.id);
+  // alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora — primeiro quem é
+  // de outro time (vale gol); só depois um colega de time (amistoso)
+  const waitingNow = [...challenges.values()].filter((ch) => ch.game === game).sort((a, b) => sameTeamOf(a.from, conn) - sameTeamOf(b.from, conn) || a.at - b.at);
+  for (const ch of waitingNow) {
+    if (await compatible(ch.from, conn)) return acceptChallenge(conn, ch.id);
   }
   const ch = { id: nextId++, game, from: conn, at: Date.now(), shownTo: new Set() };
   ch.botTimer = setTimeout(() => send(conn.ws, { t: 'bot-offer' }), F.botAfterSec * 1000);
@@ -248,7 +255,7 @@ async function broadcastInvite(ch, only = null) {
     if (now - c.lastInviteAt < INVITE_GAP_MS) continue;
     c.seen.add(ch.id); c.lastInviteAt = now;
     ch.shownTo.add(c);
-    send(c.ws, { t: 'invite', id: ch.id, game: ch.game, gameName: X1.names[ch.game], from: playerView(ch.from), bet: F.bet, seconds: F.inviteSec });
+    send(c.ws, { t: 'invite', id: ch.id, game: ch.game, gameName: X1.names[ch.game], from: playerView(ch.from), bet: F.bet, seconds: F.inviteSec, sameTeam: !!sameTeamOf(ch.from, c) });
   }
 }
 
@@ -261,7 +268,7 @@ async function offerOpen(conn) {
 /** Na tela do X1 (sem partida nem desafio): a lista de desafios abertos que dá para aceitar. */
 async function sendOpenList(conn) {
   const list = [];
-  for (const ch of challenges.values()) if (ch.from !== conn && (await compatible(ch.from, conn))) list.push(challengeView(ch));
+  for (const ch of challenges.values()) if (ch.from !== conn && (await compatible(ch.from, conn))) list.push({ ...challengeView(ch), sameTeam: !!sameTeamOf(ch.from, conn) });
   send(conn.ws, { t: 'open', list });
 }
 async function refreshOpenLists() {
@@ -276,7 +283,7 @@ async function acceptChallenge(conn, id) {
   const problem = await canPlay(conn);
   if (problem) return err(conn, 'no-money', problem);
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
-  if (!(await compatible(ch.from, conn))) return err(conn, 'incompatible', 'Vocês não podem se enfrentar (mesmo time ou mesma internet).');
+  if (!(await compatible(ch.from, conn))) return err(conn, 'incompatible', 'Vocês não podem se enfrentar (mesma internet ou bloqueio).');
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
   const a = ch.from, b = conn, game = ch.game;
   cancelChallenge(ch, 'aceito'); // sai da lista e fecha os convites (antes de qualquer espera: ninguém mais pega)
@@ -296,7 +303,7 @@ async function acceptChallenge(conn, id) {
     throw e;
   }
   const h2h = await headToHead(a.user.id, b.user.id).catch((e) => { console.error('[x1] retrospecto:', e.message); return null; });
-  startMatch(a, b, row.id, game, h2h);
+  startMatch(a, b, row.id, game, h2h, row.aTeamId === row.bTeamId); // mesmo time = amistoso (os times gravados na partida)
   for (const c of [a, b]) if (!conns.has(c)) onDisconnect(c);
 }
 
@@ -320,9 +327,9 @@ async function startBot(conn) {
   startMatch(conn, bot, null, game);
 }
 
-function startMatch(a, b, dbId, game, h2h = null) {
+function startMatch(a, b, dbId, game, h2h = null, sameTeam = false) {
   const first = randomInt(2);
-  const m = { id: nextId++, dbId, game, conns: [a, b], bot: !!b.bot, turn: first, turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
+  const m = { id: nextId++, dbId, game, conns: [a, b], bot: !!b.bot, sameTeam, turn: first, turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
   if (game === 'BOTAO') m.bs = newBotaoMatch(first);
   else { m.board = BOARDS[randomInt(BOARDS.length)]; m.ball = { ...m.board.center }; } // FutPrego: um desenho de tábua por partida (ninguém decora a jogada)
   a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo no campo do servidor
@@ -334,7 +341,7 @@ function startMatch(a, b, dbId, game, h2h = null) {
 function sendMatch(c, resumed) {
   const m = c.match;
   const base = {
-    t: 'match', id: m.id, game: m.game, gameName: X1.names[m.game], you: c.side, players: m.conns.map(playerView), turnEndsAt: m.turnEndsAt, bet: m.bot ? 0 : F.bet, training: m.bot, resumed,
+    t: 'match', id: m.id, game: m.game, gameName: X1.names[m.game], you: c.side, players: m.conns.map(playerView), turnEndsAt: m.turnEndsAt, bet: m.bot ? 0 : F.bet, training: m.bot, sameTeam: !!m.sameTeam, resumed,
     // retrospecto contra ESTE adversário no X1, do ponto de vista de quem recebe (null no treino contra bot)
     h2h: m.h2h ? h2hOf(m.h2h, c.user.id) : null,
   };
@@ -562,7 +569,9 @@ function personal(info, m, side, result) {
  * vezes seguidas não vale — regras do dono), 1 gol para o time dele. O time do perdedor perde 1 gol na
  * partida da rodada (nunca abaixo de 0) quando o gol valeu e o perdedor ainda não fez o time perder
  * maxGoalsPerHour gols nesta hora. Todo resultado que conta vai para os Lances ao vivo; o Ranking X1
- * (services/x1.js: 3 por vitória, 1 por empate, −2 por derrota) conta toda partida que terminou, menos W.O. cedo.
+ * (services/x1.js: 3 por vitória, 1 por empate, −2 por derrota) conta toda partida que terminou, menos W.O. cedo
+ * e amistoso. **Amistoso (os dois do mesmo time, `m.sameTeam`)**: o vencedor leva o pote e mais nada — nenhum
+ * gol ganho ou tirado, e ele não entra nas travas por hora nem na regra da mesma dupla.
  */
 async function settle(m, result) {
   const [a, b] = m.conns;
@@ -586,6 +595,10 @@ async function settle(m, result) {
     const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)', penaltis: ' nos pênaltis' }[result.reason] ?? '';
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
     await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
+    if (m.sameTeam) {
+      await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (amistoso do ${w.user.team?.name ?? 'mesmo time'}: sem gol).`);
+      return { pot, goal: false, why: 'mesmo-time' };
+    }
     const since = hourStart(now); // a trava conta na hora cheia de Brasília
     const wonThisHour = await tx.x1Match.count({ where: { winnerId: w.user.id, goalAwarded: true, finishedAt: { gte: since } } });
     if (wonThisHour >= F.maxGoalsPerHour) {
@@ -593,7 +606,7 @@ async function settle(m, result) {
       return { pot, goal: false, why: 'limite' };
     }
     const prev = await tx.x1Match.findFirst({
-      where: { id: { not: m.dbId }, status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: a.user.id, bId: b.user.id }, { aId: b.user.id, bId: a.user.id }] },
+      where: { id: { not: m.dbId }, status: 'FINISHED', reason: { not: 'wo-cedo' }, NOT: X1_SAME_TEAM, OR: [{ aId: a.user.id, bId: b.user.id }, { aId: b.user.id, bId: a.user.id }] }, // amistoso não conta como "a anterior"
       orderBy: { id: 'desc' }, select: { winnerId: true },
     });
     if (prev && prev.winnerId === w.user.id) {

@@ -170,7 +170,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   pode na hora; dono, 15/09/2026: "como o X1 ficou ilimitado, o vip perdeu valor" — `FUTPREGO.challengeCooldownSec`,
   `challengeCooldownUntil` em x1.js lê a última partida FINISHED no banco; a tela recebe `cooldown`/`over.cooldownUntil`,
   desliga o botão com o relógio e mostra "Vire VIP e jogue o X1 ilimitado!"; item "X1 ilimitado" na tela do VIP);
-  mesma dupla com o mesmo vencedor duas vezes seguidas = a 2ª não vale gol; **sair da partida = derrota, SEMPRE**
+  mesma dupla com o mesmo vencedor duas vezes seguidas = a 2ª não vale gol; **dois do MESMO time podem jogar =
+  AMISTOSO** (dono, 15/09/2026: "não vale gol, apenas dinheiro"): o vencedor leva o pote e mais nada — nenhum gol
+  ganho ou tirado, fora das travas por hora, da regra da mesma dupla e do Ranking X1/campanha/prêmios/medalhas
+  (`X1_SAME_TEAM` = `aTeamId` igual a `bTeamId`, os times gravados na partida; `X1_COUNTED` o exclui, `X1_PLAYED` não —
+  o retrospecto conta amistoso). Ao desafiar, um desafio aberto de OUTRO time tem preferência sobre o de um colega;
+  convite, lista de desafios, `match` e `over` (`why: 'mesmo-time'`) trazem `sameTeam` e a tela fala "amistoso". A
+  trava de mesma internet continua valendo para colega de time; **sair da partida = derrota, SEMPRE**
   (bug explorado, dono 15/09/2026: desistir, fechar o app — W.O. após `reconnectSec` — ou perder a vez 3 vezes é
   derrota de quem saiu; o antigo "W.O. cedo" que devolvia a aposta antes de cada um jogar 2 vezes ACABOU, `woMinTurns`
   não existe mais; resultado já decidido fica em `m.pending` até a animação acabar — quem desistir/cair nesse
@@ -204,7 +210,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   **`services/x1.js`**: `GET /api/rankings/x1-rodada|x1-temporada|x1-geral` (`futprego` = alias de geral, `x1` = da
   temporada) → `x1Ranking`: **pontos = 3 por vitória, 1 por empate, −2 por derrota** (`FUTPREGO.points`, pode ficar
   negativo); desempate por vitórias, maior sequência sem perder, menos derrotas. Só partida de verdade FINISHED sem
-  `wo-cedo` (`X1_COUNTED`); **a partida conta no período em que TERMINOU** (`finishedAt`; rodada =
+  `wo-cedo` e sem amistoso do mesmo time (`X1_COUNTED` — tem `NOT`: com outro `NOT` na consulta, junte por `AND`);
+  **a partida conta no período em que TERMINOU** (`finishedAt`; rodada =
   `[round.startsAt, fechamento)`, temporada = `season.startsAt`); conta excluída não aparece. Linha = formato da
   artilharia (`goals` = pontos) + `fp {wins, draws, losses, played, points, streak, best, eligible?, prize?, need?}` —
   `best` = maior sequência sem perder (V/E seguidos, D zera), `streak` = a atual; `TopList` mostra "3V · 1E · 0D · sem
@@ -364,8 +371,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   (`GET /api/painel/users?order=criadas`), com e-mail, gols, "criada dd/mm às hh:mm" e "convite de X" (convites).
   Aba **X1** (pedido do dono, 15/09/2026; `GET /api/painel/x1?page=`, ou `/futprego`): histórico dos confrontos de
   verdade (`X1Match`; contra bot não grava), o mais recente primeiro — jogo (FutPrego/Botão), data/hora, os dois jogadores com time,
-  vencedor e motivo, jogadas, aposta, se o gol contou (e de qual time saiu 1 gol) e selo "mesma internet"
-  (`aIp === bIp`). Tocar no nick abre o detalhe do jogador.
+  vencedor e motivo, jogadas, aposta, se o gol contou (e de qual time saiu 1 gol), selo "mesma internet"
+  (`aIp === bIp`) e selo "amistoso" (`sameTeam`: os dois do mesmo time, só dinheiro). Tocar no nick abre o detalhe do jogador.
   Aba **Multiconta** (pedido do dono, 15/09/2026; `GET /api/painel/multicontas?page=&q=`): IPs com 2+ contas vivas
   (o IP do cadastro E o último visto contam — SQL cru com UNION em `adminPanel.js`), os com mais contas primeiro;
   cada grupo traz geolocalização com avisos **celular/IP compartilhado** (CGNAT: um IP para muita gente — NÃO

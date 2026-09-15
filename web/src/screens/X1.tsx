@@ -32,7 +32,8 @@ interface Rules {
 }
 /** Retrospecto contra o adversário desta partida no X1 (só partidas de verdade que terminaram; null no treino). */
 interface H2H { total: number; wins: number; losses: number; draws: number; last: ('V' | 'D' | 'E')[]; lastAt: string | null }
-interface MatchBase { id: number; you: Side; players: [Player, Player]; turnEndsAt: number; bet: number; training: boolean; h2h: H2H | null }
+// sameTeam = amistoso entre dois do mesmo time: vale só dinheiro (sem gol e fora do Ranking X1)
+interface MatchBase { id: number; you: Side; players: [Player, Player]; turnEndsAt: number; bet: number; training: boolean; sameTeam: boolean; h2h: H2H | null }
 interface PregoMatch extends MatchBase {
   game: 'FUTPREGO'; board: PregoBoardData; ball: { x: number; y: number };
   turn: Side; turns: [number, number]; maxTurns: number; turnSec: number;
@@ -53,7 +54,7 @@ interface Over {
   /** Retrospecto já com esta partida e a frase de provocação (só partida que entrou no retrospecto). */
   h2h?: H2H; rivalry?: { kind: string; text: string } | null;
 }
-interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number }
+interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number; sameTeam?: boolean }
 interface Shown { ball: { x: number; y: number }; pieces: BotaoPiece[] }
 
 const MAX_PULL = 120; // FutPrego: arrasto (em unidades da tábua) para a força máxima
@@ -189,7 +190,7 @@ export function X1Screen() {
       case 'kicked': setPhase('kicked'); break;
       case 'match': {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setBigText(null); setOppDropped(false); setConfirmLeave(false);
-        const base = { id: m.id, you: m.you, players: m.players, turnEndsAt: m.turnEndsAt, bet: m.bet, training: m.training, h2h: m.h2h ?? null };
+        const base = { id: m.id, you: m.you, players: m.players, turnEndsAt: m.turnEndsAt, bet: m.bet, training: m.training, sameTeam: !!m.sameTeam, h2h: m.h2h ?? null };
         let ball: { x: number; y: number };
         if (m.game === 'BOTAO') {
           const bv: BotaoView = m.botao;
@@ -503,7 +504,7 @@ export function X1Screen() {
         </div>
         <PlayerBar p={match.players[you]} me active={meActive} left={left} total={total} label={meLabel} />
         <div className="mt-1 flex w-full max-w-[380px] items-center justify-between px-1">
-          <span className="text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}</span>
+          <span className="text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}</span>
           <button onClick={() => setConfirmLeave(true)} className="btn btn-gray btn-sm">Desistir</button>
         </div>
       </div>
@@ -522,7 +523,7 @@ export function X1Screen() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 left-1/2 z-[80] flex w-full max-w-[480px] -translate-x-1/2 items-center bg-navy-deep/70 px-4" role="dialog" aria-modal="true">
               <div className="panel w-full text-center text-navy-ink">
                 <div className="t-display text-[20px]">Desistir da partida?</div>
-                <p className="mt-1 text-[13px] font-bold leading-snug text-muted">{match?.training ? 'É só um treino: nada muda.' : 'Conta como derrota: você perde a aposta, o ponto no Ranking X1 e o seu time pode perder 1 gol. Fechar o app dá no mesmo.'}</p>
+                <p className="mt-1 text-[13px] font-bold leading-snug text-muted">{match?.training ? 'É só um treino: nada muda.' : match?.sameTeam ? 'Conta como derrota: você perde a aposta. Fechar o app dá no mesmo.' : 'Conta como derrota: você perde a aposta, o ponto no Ranking X1 e o seu time pode perder 1 gol. Fechar o app dá no mesmo.'}</p>
                 <button onClick={() => { giveUp(); }} className="btn btn-red btn-md mt-3 w-full">Desistir</button>
                 <button onClick={() => setConfirmLeave(false)} className="btn btn-blue btn-sm mt-2 w-full">Continuar jogando</button>
               </div>
@@ -592,7 +593,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
       </div>
       <div className="panel-navy mt-3 px-3 py-2.5">
         <p className="text-[14px] font-extrabold leading-snug text-white">{t.main}</p>
-        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Cada jogador ganha no máximo {rules.maxGoalsPerHour} gols por hora no X1, e o time perde no máximo {rules.maxGoalsPerHour} por hora por causa dele. Ganhar da mesma pessoa duas vezes seguidas, a segunda não vale gol.</p>
+        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Cada jogador ganha no máximo {rules.maxGoalsPerHour} gols por hora no X1, e o time perde no máximo {rules.maxGoalsPerHour} por hora por causa dele. Ganhar da mesma pessoa duas vezes seguidas, a segunda não vale gol. Contra alguém do seu time é amistoso: vale só o dinheiro, sem gol e sem ponto no Ranking X1.</p>
       </div>
       {season?.season && season.season.played > 0 && (
         <p className="t-out mt-2 text-center text-[12px] font-extrabold">
@@ -606,7 +607,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
               <Avatar url={c.from.avatarUrl} size={38} />
               <div className="min-w-0 flex-1">
                 <div className="t-display truncate text-[15px] text-navy-ink">{c.from.nick}</div>
-                <div className="flex items-center gap-1 text-[11px] font-extrabold text-muted"><Shield team={c.from.team} size={14} /><span className="truncate">{c.from.team.name} desafia no {c.gameName ?? GAME_NAME[c.game ?? game]}</span></div>
+                <div className="flex items-center gap-1 text-[11px] font-extrabold text-muted"><Shield team={c.from.team} size={14} /><span className="truncate">{c.sameTeam ? `Amistoso do ${c.from.team.name}: vale só dinheiro` : `${c.from.team.name} desafia no ${c.gameName ?? GAME_NAME[c.game ?? game]}`}</span></div>
               </div>
               <button onClick={() => onAccept(c.id)} disabled={busy} className="btn btn-green btn-sm min-w-[76px]">Aceitar</button>
             </div>
@@ -774,14 +775,16 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   } else if (won) {
     goal = true; money = over.money;
     title = over.goal ? 'GOOOL!!!' : 'VENCEU!';
-    const why = over.why === 'limite' ? ` O gol não valeu: você já fez os ${limit} gols desta hora no X1.` : over.why === 'repetido' ? ` O gol não valeu: você ganhou de ${opp} duas vezes seguidas.` : '';
+    const why = over.why === 'limite' ? ` O gol não valeu: você já fez os ${limit} gols desta hora no X1.` : over.why === 'repetido' ? ` O gol não valeu: você ganhou de ${opp} duas vezes seguidas.`
+      : over.why === 'mesmo-time' ? ' Amistoso do seu time: não vale gol.' : '';
     const how = over.reason === 'penaltis' ? ` nos pênaltis (${penScore})` : '';
     const narr = over.goalText ?? `Você venceu ${opp}${how}!`;
     text = over.goal ? `${narr}${/[.!?]$/.test(narr) ? '' : '.'}${over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : ''}` : `Você venceu ${opp}${how} e levou ${fmt(over.money)}.${why}`;
   } else {
     text = over.reason === 'wo' ? `Você ficou fora e perdeu por W.O. para ${opp}.` : over.reason === 'desistiu' ? 'Você desistiu da partida.'
       : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : over.reason === 'penaltis' ? `${opp} venceu nos pênaltis (${penScore}).` : `${opp} marcou primeiro.`;
-    text += over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: já foram ${limit} nesta hora.` : ' Seu time não perdeu gol.';
+    text += over.why === 'mesmo-time' ? ' Amistoso do seu time: não vale gol.'
+      : over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: já foram ${limit} nesta hora.` : ' Seu time não perdeu gol.';
   }
   // retrospecto contra o adversário já com esta partida + a frase de provocação (lib/rivalidade.js na API)
   const rival = !over.training && over.h2h ? over.h2h : null;

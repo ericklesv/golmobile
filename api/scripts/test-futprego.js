@@ -21,6 +21,7 @@ const { prisma } = await import('../src/prisma.js');
 const { simulateFlick, scorerOf } = await import('../src/lib/futprego.js');
 const { FUTPREGO: F } = await import('../src/lib/rules.js');
 const { liveMatchForTeam } = await import('../src/services/league.js');
+const { X1_COUNTED } = await import('../src/services/x1.js');
 const { config } = await import('../src/config.js');
 
 const API = process.env.FP_API || 'http://localhost:4320';
@@ -136,8 +137,9 @@ let gA = phone(A, 'game', '10.0.0.1'); await gA.open;
 gA.send({ t: 'challenge' });
 const waiting = await gA.wait('waiting');
 const invB = await lobB.wait('invite', 3000), invC = await lobC.wait('invite', 1500), invD = await lobD.wait('invite', 500);
-check(!!waiting && invB?.from?.nick === A.nick && invB.seconds === F.inviteSec && invB.bet === F.bet, `desafio aberto: B recebeu "${invB?.from?.nick} está te desafiando" por ${invB?.seconds} s`);
-check(!invC && !invD, 'C (mesmo time de A) e D (sem R$ 200) não recebem convite');
+check(!!waiting && invB?.from?.nick === A.nick && invB.seconds === F.inviteSec && invB.bet === F.bet && invB.sameTeam === false, `desafio aberto: B recebeu "${invB?.from?.nick} está te desafiando" por ${invB?.seconds} s`);
+check(invC?.from?.nick === A.nick && invC.sameTeam === true, 'C (mesmo time de A) recebe o convite marcado como amistoso');
+check(!invD, 'D (sem R$ 200) não recebe convite');
 
 // 2) aceitar
 let gB = phone(B, 'game', '10.0.0.2'); await gB.open;
@@ -334,16 +336,58 @@ gD.send({ t: 'giveup' });
 const oBot = await gD.wait('over', 5000);
 check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinheiro igual');
 
+// 11) mesmo time = AMISTOSO (dono, 15/09/2026): A e C (Náutico) podem jogar, mas vale só o dinheiro — sem gol para
+// ninguém, placar do time igual, fora do Ranking X1 (conferido no fim) —, e ao desafiar o de outro time tem preferência
+{
+  const G = await mkUser('bahia', 1000);
+  const gC2 = phone(C, 'game', '10.0.0.3'), gG = phone(G, 'game', '10.0.0.3'); // G na MESMA internet de C: os dois não se enfrentam
+  await Promise.all([gC2.open, gG.open]);
+  gC2.send({ t: 'challenge' });
+  const wC = await gC2.wait('waiting');
+  await sleep(50);
+  gG.send({ t: 'challenge' });
+  const wG = await gG.wait('waiting');
+  check(!!wC && !!wG, 'C (Náutico) e G (Bahia, mesma internet de C) ficam os dois esperando');
+  const openA = await gA.wait('open', 3000, (m) => m.list?.some((x) => x.id === wC?.id) && m.list.some((x) => x.id === wG?.id));
+  const eC = openA?.list.find((x) => x.id === wC?.id), eG = openA?.list.find((x) => x.id === wG?.id);
+  check(eC?.sameTeam === true && eG?.sameTeam === false, 'na lista de A: o desafio de C (mesmo time) vem marcado como amistoso, o de G não');
+  gA.clear();
+  gA.send({ t: 'challenge' });
+  const mAG = await gA.wait('match', 3000);
+  check(mAG?.players?.some((p) => p.id === G.id) && mAG.sameTeam === false, 'A desafia: joga com G (outro time), mesmo com o desafio de C aberto há mais tempo');
+  gA.send({ t: 'giveup' });
+  await gA.wait('over', 5000); await gG.wait('over', 5000);
+
+  const teamA0 = await teamScore(A.teamId);
+  const goals0 = await prisma.goal.count({ where: { userId: { in: [A.id, C.id] }, kind: 'FUTPREGO' } });
+  const bef = { a: await money(A), c: await money(C) };
+  gA.clear(); gC2.clear();
+  gA.send({ t: 'challenge' }); // só sobrou o desafio de C: vira amistoso na hora
+  const r = await play(gA, gC2, (side) => (side === 1 ? 'gol' : 'nada')); // C desafiou antes: C é o lado 0, A o lado 1
+  const oa = r?.oa, oc = r?.ob;
+  check(lastMatchMsgs?.ma.sameTeam === true && lastMatchMsgs?.mb.sameTeam === true, 'a partida de A e C chega às duas telas como amistoso');
+  check(oa?.winner === r?.youA && oa.goal === false && oa.why === 'mesmo-time' && oa.money === F.bet * 2 && oc?.why === 'mesmo-time' && oc.lost === false,
+    `amistoso: A venceu C e levou R$ ${F.bet * 2}, sem gol (why "${oa?.why}")`);
+  check((await money(A)) === bef.a + F.bet && (await money(C)) === bef.c - F.bet, `dinheiro do amistoso: A +R$ ${F.bet}, C −R$ ${F.bet}`);
+  check((await prisma.goal.count({ where: { userId: { in: [A.id, C.id] }, kind: 'FUTPREGO' } })) === goals0, 'nenhum gol gravado no amistoso');
+  if (teamA0 !== null) check((await teamScore(A.teamId)) === teamA0, `placar do Náutico na rodada igual (${teamA0})`);
+  const row = await prisma.x1Match.findFirst({ where: { OR: [{ aId: A.id, bId: C.id }, { aId: C.id, bId: A.id }] }, orderBy: { id: 'desc' } });
+  check(row?.status === 'FINISHED' && row.winnerId === A.id && !row.goalAwarded && row.lostTeamId === null && row.aTeamId === row.bTeamId, 'amistoso gravado: terminou, vencedor A, sem gol, nenhum time perdeu gol');
+  check(oa?.h2h?.total >= 1 && oa.h2h.last[0] === 'V', 'o amistoso entra no retrospecto entre os dois');
+  for (const p of [gC2, gG]) p.close();
+}
+
 check(kickoff.tried === kickoff.blocked, `saída do meio: ${kickoff.tried} tentativas de gol de primeira (peteleco que entraria sem a garantia), nenhuma valeu; tábuas sorteadas: ${[...kickoff.boards].join(', ')}`);
 
 // ranking do FutPrego (3 · 1 · −2) bate com o que está no banco para A
 {
   const rank = await (await fetch(`${API}/api/rankings/futprego?limit=100`)).json();
   const rowA = rank.rows?.find((r) => r.userId === A.id);
-  const mine = { status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: A.id }, { bId: A.id }] };
+  const mine = { ...X1_COUNTED, OR: [{ aId: A.id }, { bId: A.id }] }; // sem o amistoso com C (passo 11)
+  check((await prisma.x1Match.count({ where: { OR: [{ aId: A.id }, { bId: A.id }], status: 'FINISHED' } })) > (await prisma.x1Match.count({ where: mine })), 'o amistoso de A existe no banco e fica fora da conta do ranking');
   const wins = await prisma.x1Match.count({ where: { ...mine, winnerId: A.id } });
   const draws = await prisma.x1Match.count({ where: { ...mine, winnerId: null } });
-  const losses = await prisma.x1Match.count({ where: { ...mine, winnerId: { not: null }, NOT: { winnerId: A.id } } });
+  const losses = await prisma.x1Match.count({ where: { AND: [mine, { winnerId: { not: null } }, { NOT: { winnerId: A.id } }] } }); // AND: o NOT do X1_COUNTED não pode ser sobrescrito
   const pts = wins * F.points.win + draws * F.points.draw + losses * F.points.loss;
   check(!!rowA && rowA.goals === pts && rowA.fp.points === pts && rowA.fp.wins === wins && rowA.fp.losses === losses && rowA.fp.best >= 1,
     `ranking: ${A.nick} com ${wins}V ${draws}E ${losses}D = ${pts} pontos (linha: ${rowA?.goals}), maior sequência sem perder ${rowA?.fp?.best}`);

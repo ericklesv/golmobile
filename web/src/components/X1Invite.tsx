@@ -15,7 +15,8 @@ import { money as fmt } from '../lib/format';
  * dentro da Layout, então nunca aparece no meio de minigame, chute ou pênalti. Some quando alguém aceita
  * (o servidor avisa) ou quando o tempo acaba. Conexão leve: /api/ws/x1?mode=lobby.
  */
-interface Invite { id: number; gameName: string; from: { nick: string; avatarUrl: string | null; team: Team }; bet: number; seconds: number; until: number }
+// sameTeam = quem chamou é do meu time: amistoso, vale só dinheiro
+interface Invite { id: number; gameName: string; from: { nick: string; avatarUrl: string | null; team: Team }; bet: number; seconds: number; until: number; sameTeam: boolean }
 
 export function X1InviteWatcher() {
   const meId = useAuth((s) => s.me?.id);
@@ -31,7 +32,7 @@ export function X1InviteWatcher() {
       ws.onopen = () => { tries = 0; };
       ws.onmessage = (ev) => {
         let m: any; try { m = JSON.parse(ev.data); } catch { return; }
-        if (m.t === 'invite') { setInv({ id: m.id, gameName: m.gameName ?? 'X1', from: m.from, bet: m.bet, seconds: m.seconds, until: Date.now() + m.seconds * 1000 }); sound.play('pop'); }
+        if (m.t === 'invite') { setInv({ id: m.id, gameName: m.gameName ?? 'X1', from: m.from, bet: m.bet, seconds: m.seconds, until: Date.now() + m.seconds * 1000, sameTeam: !!m.sameTeam }); sound.play('pop'); }
         else if (m.t === 'invite-close') setInv((i) => (i && i.id === m.id ? null : i));
       };
       ws.onerror = () => {};
@@ -61,7 +62,7 @@ export function X1InviteWatcher() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[13px] font-extrabold leading-tight text-navy-ink"><b className="t-display text-[14px]">{inv.from.nick}</b> te chamou para o X1: {inv.gameName}</div>
-              <div className="text-[11px] font-bold text-muted">Cada um põe {fmt(inv.bet)}; quem vencer leva tudo.</div>
+              <div className="text-[11px] font-bold text-muted">{inv.sameTeam ? `Amistoso do seu time: quem vencer leva os ${fmt(inv.bet * 2)}, sem gol.` : `Cada um põe ${fmt(inv.bet)}; quem vencer leva tudo.`}</div>
               <div className="mt-1 h-1 overflow-hidden rounded-full bg-sky/20">
                 <motion.div className="h-full bg-grass" initial={{ width: '100%' }} animate={{ width: '0%' }} transition={{ duration: Math.max(0.1, (inv.until - Date.now()) / 1000), ease: 'linear' }} />
               </div>

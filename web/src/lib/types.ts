@@ -371,6 +371,7 @@ export interface AdminFutPregoRow {
   reason: 'gol' | 'gol-contra' | 'wo' | 'desistiu' | 'empate' | 'wo-cedo' | 'reinicio' | 'penaltis' | 'tempo' | null;
   turns: number; bet: number; a: AdminFutPregoPlayer; b: AdminFutPregoPlayer;
   winnerId: number | null; goalAwarded: boolean; lostTeam: Team | null; sameIp: boolean;
+  sameTeam: boolean; // amistoso entre dois do mesmo time: vale só dinheiro
 }
 export interface AdminFutPregoPage { page: number; pages: number; total: number; rows: AdminFutPregoRow[] }
 

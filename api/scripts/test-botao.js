@@ -159,6 +159,7 @@ const o2 = await gA.wait('over', (F.reconnectSec + 5) * 1000);
 check(o2?.reason === 'wo' && !o2.refund && o2.winner === (o2.you) && (await money(A)) === bef.a + F.bet && (await money(B)) === bef.b - F.bet, `B caiu antes de jogar: W.O. = derrota do B, A leva o pote`);
 
 // treino contra o bot no Botão: o bot joga sozinho e a partida acaba
+const befBot = await money(A); // depois do W.O. (que deu o pote para A): o treino não pode mexer nisso
 gA.clear();
 gA.send({ t: 'challenge' });
 await gA.wait('waiting');
@@ -179,7 +180,7 @@ for (let i = 0; i < 40 && !last.over; i++) {
   gA.box.splice(0).filter((m) => m.t !== 'bturn').forEach((m) => gA.box.push(m));
 }
 const obot = await gA.wait('over', 15000);
-check(botSnaps > 0 && obot?.training === true && (await money(A)) === bef.a, `o bot jogou (${botSnaps} petelecos), o treino acabou e o dinheiro ficou igual`);
+check(botSnaps > 0 && obot?.training === true && (await money(A)) === befBot, `o bot jogou (${botSnaps} petelecos), o treino acabou e o dinheiro ficou igual`);
 
 for (const p of [gA, lobB]) p.close();
 await prisma.$disconnect();

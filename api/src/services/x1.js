@@ -2,7 +2,8 @@
  * Ranking X1 (decisões do dono, 15/09/2026) — conta as partidas dos dois jogos do X1 (FutPrego e Futebol de
  * Botão, um por dia: realtime/x1.js), todas na mesma tabela.
  *   - Pontos: 3 por vitória, 1 por empate, −2 por derrota (FUTPREGO.points — pode ficar negativo).
- *   - Só partida de verdade que TERMINOU conta (bot não grava; W.O. cedo = aposta devolvida, não conta);
+ *   - Só partida de verdade que TERMINOU conta (bot não grava; W.O. cedo = aposta devolvida, não conta; amistoso
+ *     entre dois do mesmo time vale só dinheiro e fica fora — X1_COUNTED);
  *     a partida entra no período em que TERMINOU (`finishedAt`).
  *   - Três recortes: rodada (fecha às 19:00 com a liga), temporada e todos os tempos. Rodada e temporada
  *     pagam prêmio (FUTPREGO.prizes) aos 3 primeiros ENTRE QUEM TEM o mínimo de partidas no período
@@ -17,8 +18,13 @@ import { FUTPREGO, X1, prizeFor } from '../lib/rules.js';
 import { nickFadeOf } from '../lib/items.js';
 import { notify } from './inbox.js';
 
-/** Só o que conta: partida de verdade que terminou; W.O. cedo e cancelada, não. */
-export const X1_COUNTED = { status: 'FINISHED', reason: { not: 'wo-cedo' } };
+/** Partida de verdade que terminou; W.O. cedo e cancelada, não (o retrospecto entre dois conta os amistosos). */
+export const X1_PLAYED = { status: 'FINISHED', reason: { not: 'wo-cedo' } };
+/** Amistoso = os dois do MESMO time na hora da partida (dono, 15/09/2026): vale só o dinheiro — sem gol e fora do ranking. */
+export const X1_SAME_TEAM = { aTeamId: { equals: prisma.x1Match.fields.bTeamId } };
+/** Só o que conta no Ranking X1, na campanha e nos prêmios: partida de verdade que terminou, sem amistoso.
+ *  Tem `NOT`: numa consulta com outro `NOT`, junte com `AND: [X1_COUNTED, …]` (espalhar sobrescreve). */
+export const X1_COUNTED = { ...X1_PLAYED, NOT: X1_SAME_TEAM };
 
 /** Filtro de período pelo fim da partida: [from, to). Sem `from` = todos os tempos. */
 export const x1Period = (from, to) => (from || to ? { finishedAt: { ...(from ? { gte: from } : {}), ...(to ? { lt: to } : {}) } } : {});

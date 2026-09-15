@@ -580,7 +580,7 @@ function FutPregoList({ onPick }: { onPick: (id: number) => void }) {
       <span className="text-[11px] font-bold text-navy-ink">
         {w ? <>venceu <b className="text-grass-deep">{w.nick}</b> por {FP_REASON[m.reason ?? ''] ?? m.reason}</> : FP_REASON[m.reason ?? ''] ?? m.reason}
         {m.turns > 0 ? ` · ${m.turns} jogada${m.turns === 1 ? '' : 's'}` : ''}
-        {w && (m.goalAwarded ? <span className="text-grass-deep"> · gol contou{m.lostTeam ? ` (${m.lostTeam.name} perdeu 1 gol)` : ''}</span> : <span className="text-muted"> · sem gol (limite do dia ou revanche repetida)</span>)}
+        {w && (m.goalAwarded ? <span className="text-grass-deep"> · gol contou{m.lostTeam ? ` (${m.lostTeam.name} perdeu 1 gol)` : ''}</span> : <span className="text-muted"> · {m.sameTeam ? 'amistoso: só dinheiro' : 'sem gol (limite do dia ou revanche repetida)'}</span>)}
       </span>
     );
   };
@@ -595,6 +595,7 @@ function FutPregoList({ onPick }: { onPick: (id: number) => void }) {
                   <span className="rounded-md bg-navy/15 px-1.5 py-0.5 font-display text-[9px] uppercase text-navy-ink">{X1_GAME[m.game] ?? m.game}</span>
                   <span>#{m.id} · {shortDt(m.at)}{m.finishedAt && m.status === 'FINISHED' ? ` → ${new Date(m.finishedAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}</span>
                   <span className="ml-auto">aposta {fmt(m.bet)}</span>
+                  {m.sameTeam && <span className="rounded-md bg-sky/25 px-1.5 py-0.5 font-display text-[9px] uppercase text-navy-ink">amistoso</span>}
                   {m.sameIp && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white">mesma internet</span>}
                 </div>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">

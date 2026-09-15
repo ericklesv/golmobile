@@ -235,7 +235,7 @@ export const MINIGAMES = [
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-target.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: 'gol + até 30 de nível' },
   { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: '1 gol a cada gol + até 30 de nível' },
   { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: 'gol + até 20 de nível + R$ 50 por alvo' },
-  { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
+  { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 20h): FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
   { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: '1 gol + 5 de nível a cada acerto' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'FRANGACO', name: 'Frangaço', unlock: 10, daily: true, route: '/frangaco', icon: '/ui/ico-crown_silver.png', desc: 'Duelo de pênaltis contra um clube da sua série: bata 5 e defenda 5. Mata-mata de 4 fases.', reward: 'gol + R$ 500 se for campeão', soon: true }, // DESATIVADO (dono, 14/09/2026: "muito bugado") — card EM BREVE e /api/frangaco/* recusa
@@ -320,9 +320,8 @@ RESET_HOUR.GANHAPERDE = 21;
 DAILY_GAMES.push('GANHAPERDE');
 KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 // X1 (jogos 1x1 ao vivo — dono, 15/09/2026: "jogos X1 rotativos, cada dia 1 jogo para não ficar
-// enjoativo"): um jogo por dia, FutPrego e Futebol de Botão se alternando (x1GameOf); o jogo troca às 19h
-// de Brasília, JUNTO com o fechamento da rodada (X1.switchHour — dono, 15/09/2026: "os jogos eram para mudar junto
-// com a rodada, às 19"; antes era às 20h). As regras de
+// enjoativo"): um jogo por dia, FutPrego e Futebol de Botão se alternando (x1GameOf); o jogo troca às 20h
+// de Brasília (X1.switchHour — dono, 15/09/2026: "coloque para mudar o jogo às 20hrs"). As regras de
 // convite, aposta, gol e travas abaixo (FUTPREGO.*) valem para TODOS os jogos do X1. Ranking do X1:
 // vitórias que valeram gol na temporada.
 //
@@ -364,8 +363,8 @@ export const FUTPREGO = {
   },
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
-export const X1 = { games: ['FUTPREGO', 'BOTAO'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' }, switchHour: 19 };
-/** O jogo do X1 no dia `day` (dayNumberAt(X1.switchHour) de lib/time.js: o dia vira às 19h, com a rodada). */
+export const X1 = { games: ['FUTPREGO', 'BOTAO'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' }, switchHour: 20 };
+/** O jogo do X1 no dia `day` (dayNumberAt(X1.switchHour) de lib/time.js: o dia vira às 20h). */
 export const x1GameOf = (day) => X1.games[((day % X1.games.length) + X1.games.length) % X1.games.length];
 // Futebol de Botão (X1; como o SnapFC, sem poderes — só no peteleco): 7 botões por time (goleiro na
 // área + 6 na linha, que não entram nas áreas). Cada vez = 2 petelecos do mesmo jogador (15 s cada); quem

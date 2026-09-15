@@ -48,7 +48,7 @@ function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.strin
 const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message });
 const rnd01 = () => randomInt(1_000_000) / 1_000_000;
 
-/** O jogo do X1 agora, o próximo e quando troca (às X1.switchHour = 19h de Brasília, com a rodada). */
+/** O jogo do X1 agora, o próximo e quando troca (às X1.switchHour = 20h de Brasília). */
 // SÓ NO PC (X1_JOGO=BOTAO ou FUTPREGO no api/.env; ignorado em produção): força o jogo do dia para testar.
 const forcedGame = () => (process.env.NODE_ENV !== 'production' && X1.games.includes(process.env.X1_JOGO) ? process.env.X1_JOGO : null);
 

@@ -9,7 +9,7 @@ import { prisma } from '../prisma.js';
 import { handle, badRequest, GameError } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { levelOf, isVip } from '../lib/rules.js';
-import { teamView } from '../services/view.js';
+import { teamView, nickFadeOf } from '../services/view.js';
 import { badgeLookup } from '../services/badges.js';
 
 export const chat = Router();
@@ -31,7 +31,7 @@ function view(m, mentions) {
   const lvl = levelOf(m.user);
   return {
     id: m.id, text: m.text, color: m.color, at: m.createdAt, mentions: mentionsOf(m.text, mentions),
-    user: { id: m.user.id, nick: m.user.nick, avatarUrl: m.user.avatarUrl ?? null, level: lvl.lvl, levelName: lvl.name, vip: isVip(m.user), nickColor: m.user.nickColor ?? null, team: teamView(m.user.team) },
+    user: { id: m.user.id, nick: m.user.nick, avatarUrl: m.user.avatarUrl ?? null, level: lvl.lvl, levelName: lvl.name, vip: isVip(m.user), nickColor: m.user.nickColor ?? null, nickFade: nickFadeOf(m.user), team: teamView(m.user.team) },
   };
 }
 

@@ -10,6 +10,7 @@ import { hourKey } from '../lib/time.js';
 import { KIND_LABEL } from '../lib/rules.js';
 import { matchPct, standingOrder, topScorers } from './league.js';
 import { teamView } from './view.js';
+import { nickFadeOf } from '../lib/items.js';
 import { withBadges } from './badges.js';
 
 const HOUR = 3_600_000;
@@ -45,9 +46,9 @@ export async function matchPage(id, now = Date.now()) {
   const bySide = { home: [], away: [] };
   for (const s of scorers.sort((a, b) => b._count._all - a._count._all)) { const k = side(s.teamId); if (k) bySide[k].push(s); }
   const pick = [...bySide.home.slice(0, TOP_PER_TEAM), ...bySide.away.slice(0, TOP_PER_TEAM)];
-  const users = await prisma.user.findMany({ where: { id: { in: pick.map((s) => s.userId) } }, select: { id: true, nick: true, avatarUrl: true, nickColor: true, vipUntil: true } });
+  const users = await prisma.user.findMany({ where: { id: { in: pick.map((s) => s.userId) } }, select: { id: true, nick: true, avatarUrl: true, nickColor: true, nickFade: true, vipUntil: true } });
   const uById = new Map(users.map((u) => [u.id, u]));
-  const row = (s) => { const u = uById.get(s.userId); return { userId: s.userId, nick: u?.nick ?? '?', avatarUrl: u?.avatarUrl ?? null, nickColor: u?.nickColor ?? null, vip: !!(u?.vipUntil && u.vipUntil.getTime() > now), goals: s._count._all }; };
+  const row = (s) => { const u = uById.get(s.userId); return { userId: s.userId, nick: u?.nick ?? '?', avatarUrl: u?.avatarUrl ?? null, nickColor: u?.nickColor ?? null, nickFade: u ? nickFadeOf(u, now) : null, vip: !!(u?.vipUntil && u.vipUntil.getTime() > now), goals: s._count._all }; };
   const tops = { home: await withBadges(bySide.home.slice(0, TOP_PER_TEAM).map(row)), away: await withBadges(bySide.away.slice(0, TOP_PER_TEAM).map(row)) };
   const best = [tops.home[0], tops.away[0]].filter(Boolean).sort((a, b) => b.goals - a.goals)[0] ?? null;
 

@@ -11,6 +11,7 @@ import { sound } from '../lib/sound';
 import { NameBadges } from '../components/Badges';
 import { AnimatePresence } from 'framer-motion';
 import { ReportModal } from '../components/Account';
+import { nickProps } from '../lib/nick';
 
 const LAST_SEEN_KEY = 'brgol.chat.lastSeen';
 export function markChatSeen(id: number) { try { localStorage.setItem(LAST_SEEN_KEY, String(id)); } catch {} }
@@ -193,7 +194,7 @@ export function ChatScreen() {
                   </Link>
                   <div className={`max-w-[78%] rounded-2xl px-3 py-1.5 ${mine ? 'rounded-tr-sm bg-sky/25' : 'rounded-tl-sm bg-sky/10'}`}>
                     <div className="flex items-center gap-1 text-[11px] font-extrabold">
-                      <Link to={`/jogador/${encodeURIComponent(m.user.nick)}`} className={m.user.nickColor ? `nick-${m.user.nickColor}` : m.user.vip ? 'text-sky-deep' : 'text-navy-ink'}>{m.user.nick}</Link>
+                      <Link to={`/jogador/${encodeURIComponent(m.user.nick)}`} className={nickProps(m.user).className} style={nickProps(m.user).style}>{m.user.nick}</Link>
                       {m.user.vip && <img src="/ui/ico-crown_silver.png" className="ico h-3.5 w-3.5" alt="VIP" />}
                       <NameBadges role={m.user.role} tops={m.user.tops} size={14} />
                       {m.user.team && <Link to={`/time/${m.user.team.slug}`}><Shield team={m.user.team} size={14} /></Link>}

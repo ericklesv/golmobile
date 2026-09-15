@@ -1,3 +1,4 @@
+import type { NickFade } from './nick';
 export type Serie = 'A' | 'B' | 'C';
 export type Kind = 'AUTO' | 'PENALTY' | 'FOUL' | 'TRAIL';
 
@@ -29,6 +30,7 @@ export interface Me {
   trail: { active: boolean; phase: number; revealed: { phase: number; index: number }[] };
   /** Itens da loja ativos (ver ShopView) e cor do nick (chave da paleta). */
   items: UserItemView[]; nickColor: string | null;
+  nickFade: NickFade; nickFadeKeys: string | null; // degradê do nick (VIP): cores para a tela + "azul>roxo" para o seletor
   /** Só em GET /api/me: o próximo chute manual exige captcha (a cada 10 chutes). */
   captchaRequired?: boolean;
   /** Diretoria: cargo no time e contrato de contratação (não troca de time até lá). */
@@ -36,7 +38,7 @@ export interface Me {
   serverTime: number;
 }
 
-export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[] }
+export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; nickFade?: NickFade; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[] }
 
 export interface MatchView {
   id: number; serie: Serie; status: 'LIVE' | 'FINISHED';
@@ -74,6 +76,8 @@ export interface TrailResult {
 export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number }
 
 export interface Meta {
+  /** Paleta do nick em degradê (VIP), NICK_FADE_COLORS em lib/items.js. */
+  nickFades?: { key: string; name: string; hex: string }[];
   /** Grupo do WhatsApp dos jogadores (COMMUNITY em rules.js). */
   community?: { whatsapp: string; everyHours: number };
   /** Diretoria e contratações (CLUB em rules.js). */
@@ -145,7 +149,7 @@ export interface League {
 }
 
 export interface PublicPlayer {
-  id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number;
+  id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number; nickColor?: string | null; nickFade?: NickFade;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
   positions: { geral: number; penal: number; falta: number; trilha: number };
@@ -164,11 +168,11 @@ export interface TeamPage {
   board: ClubBoard;
 }
 
-export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: number; avatarUrl: string | null; lastSeenAt: string; online: boolean; vip: boolean; team: Team | null }
+export interface ActivePlayer { nick: string; goalsTotal: number; goalsRound: number; avatarUrl: string | null; lastSeenAt: string; online: boolean; vip: boolean; nickColor?: string | null; nickFade?: NickFade; team: Team | null }
 
 export type ChatRoom = 'geral' | 'time';
 export interface ChatMention { nick: string; avatarUrl: string | null }
-export interface ChatMessage { id: number; text: string; color: string | null; at: string; mentions: Record<string, ChatMention> | null; user: { id: number; nick: string; avatarUrl: string | null; level: number; levelName: string; vip: boolean; nickColor: string | null; team: Team | null; role?: ClubRole | null; tops?: TopBadge[] } }
+export interface ChatMessage { id: number; text: string; color: string | null; at: string; mentions: Record<string, ChatMention> | null; user: { id: number; nick: string; avatarUrl: string | null; level: number; levelName: string; vip: boolean; nickColor: string | null; nickFade?: NickFade; team: Team | null; role?: ClubRole | null; tops?: TopBadge[] } }
 export interface ChatPage { room: string; messages: ChatMessage[]; online: number; colorLevel: number; colors: string[]; canColor: boolean }
 
 export interface MinigameCard {
@@ -280,7 +284,7 @@ export interface GanhaPerdeSpin {
 // ─── Painel de admin (/api/painel — só usuários com isAdmin) ───────────────
 export interface AdminGeo { country: string | null; region: string | null; city: string | null; isp: string | null }
 export interface AdminUserRow {
-  id: number; nick: string; email: string; avatarUrl: string | null; nickColor: string | null;
+  id: number; nick: string; email: string; avatarUrl: string | null; nickColor: string | null; nickFade?: NickFade;
   team: Team | null; level: { lvl: number; name: string }; levelPoints: number;
   goalsTotal: number; money: number; vip: boolean; vipDays: number;
   banned: boolean; bannedUntil: string | null; isAdmin: boolean; lastSeenAt: string; online: boolean;
@@ -421,7 +425,7 @@ export interface RefInviter { nick: string; avatarUrl: string | null; team: Team
 
 // ─── Página da partida (/partida/:id) ─────────────────────────────────────────
 type KindTally = { AUTO: number; PENALTY: number; FOUL: number; TRAIL: number; MINI: number };
-type MatchScorer = { userId: number; nick: string; avatarUrl: string | null; nickColor: string | null; vip: boolean; goals: number; role?: ClubRole | null; tops?: TopBadge[] };
+type MatchScorer = { userId: number; nick: string; avatarUrl: string | null; nickColor: string | null; nickFade?: NickFade; vip: boolean; goals: number; role?: ClubRole | null; tops?: TopBadge[] };
 type MatchStanding = { position: number; of: number; points: number; played: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number };
 export interface MatchPage {
   id: number; status: 'LIVE' | 'FINISHED'; serie: Serie;

@@ -10,6 +10,7 @@ import { api } from '../lib/api';
 import { SeriesNoticeWatcher } from './SeriesNotice';
 import { ChatFab } from './ChatFab';
 import { WhatsInviteWatcher } from './WhatsInvite';
+import { nickProps } from '../lib/nick';
 import { VipBar } from './VipBar';
 import { FutPregoInviteWatcher } from './FutPregoInvite';
 
@@ -60,7 +61,7 @@ export function Layout() {
           <button onClick={() => nav('/perfil')} className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left min-[480px]:flex-none" aria-label="Meu perfil">
             <Avatar url={me.avatarUrl} size={44} />
             <div className="min-w-[52px] flex-1 overflow-hidden min-[480px]:flex-none">
-              <div className={`t-display truncate text-[15px] leading-tight ${me.vip ? 'text-sky-light' : 'text-white'}`}>{me.nick}{me.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}</div>
+              <div className={`t-display truncate text-[15px] leading-tight ${nickProps(me, { plain: 'text-white', vipClass: 'text-sky-light', dark: true }).className}`} style={nickProps(me, { dark: true }).style}>{me.nick}{me.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}</div>
               <div className="bar mt-0.5 w-full max-w-[96px]" style={{ height: 14 }}>
                 <i style={{ width: `calc(${Math.min(100, lvlPct)}% + 6px)` }} />
                 <span style={{ fontSize: 9 }}>{me.levelPoints}/{me.level.next?.goals ?? me.levelPoints}</span>

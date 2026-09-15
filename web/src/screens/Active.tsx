@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { nickProps } from '../lib/nick';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { ActivePlayer } from '../lib/types';
@@ -24,7 +25,7 @@ export function ActiveScreen() {
                   <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className="relative shrink-0"><Avatar url={r.avatarUrl} size={36} />{r.online && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-grass" />}</Link>
                   {r.team ? <Link to={`/time/${r.team.slug}`} className="shrink-0"><Shield team={r.team} size={22} /></Link> : <Shield team={r.team} size={22} />}
                   <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className="min-w-0 flex-1">
-                    <div className={`break-all text-[15px] font-extrabold leading-tight ${r.vip ? 'text-sky-deep' : 'text-navy-ink'}`}>{r.nick}{r.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}</div>
+                    <div className={`break-all text-[15px] font-extrabold leading-tight ${nickProps(r).className}`} style={nickProps(r).style}>{r.nick}{r.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}</div>
                     <div className="text-[11px] font-bold text-muted">{r.team?.name} · {r.goalsTotal} gols · {r.online ? 'online agora' : `visto há ${timeAgo(r.lastSeenAt)}`}</div>
                   </Link>
                   <span className="font-display text-base text-grass-deep">{r.goalsRound}</span>

@@ -1,6 +1,7 @@
 /** Projeções de dados para o cliente (nunca expõe hash, e-mail alheio, layout da trilha). */
 import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel } from '../lib/rules.js';
-import { itemsView } from '../lib/items.js';
+import { itemsView, nickFadeOf } from '../lib/items.js';
+export { nickFadeOf };
 import { hourKey } from '../lib/time.js';
 import { liveRound } from './league.js';
 
@@ -57,6 +58,7 @@ export function meView(user, now = Date.now()) {
     cooldowns: cooldownsView(user, now),
     trail: user.trailState?.active ? { active: true, phase: user.trailState.phase, revealed: user.trailState.revealed || [] } : { active: false, phase: 0, revealed: [] },
     items: itemsView(user, now), nickColor: user.nickColor ?? null, // itens da loja ativos (carregar o usuário com meInclude() de items.js)
+    nickFade: nickFadeOf(user, now), nickFadeKeys: user.nickFade ?? null, // degradê (VIP): cores para a tela + chaves para o seletor do perfil
     // diretoria (services/club.js): cargo no time atual e contrato de contratação (não troca de time até lá)
     role: user.teamRole && user.teamRole.teamId === user.teamId ? user.teamRole.role : null,
     contractUntil: user.contractUntil && new Date(user.contractUntil).getTime() > now ? new Date(user.contractUntil).getTime() : null,
@@ -68,7 +70,7 @@ export function publicView(user, now = Date.now()) {
   const level = levelOf(user);
   return {
     id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, avatarUrl: user.avatarUrl ?? null, createdAt: user.createdAt,
-    team: teamView(user.team), vip: isVip(user, now), dexterity: user.dexterity,
+    team: teamView(user.team), vip: isVip(user, now), dexterity: user.dexterity, nickColor: user.nickColor ?? null, nickFade: nickFadeOf(user, now),
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     stats: {

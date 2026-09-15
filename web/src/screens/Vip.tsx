@@ -23,6 +23,7 @@ const PERKS: { icon: React.ReactNode; title: string; text: string; offline?: boo
   { offline: true, icon: <svg viewBox="-11 -11 22 22" className="h-9 w-9"><CartoonBall r={10} /></svg>, title: 'Gol com o app fechado', text: 'O chute direto sai sozinho a cada 5 minutos, mesmo com o JogaGol fechado.' },
   { icon: <img src="/ui/ico-energy.png" alt="" className="h-9 w-9" />, title: 'Recargas pela metade', text: 'Chute direto, pênalti, falta e trilha voltam na metade do tempo.' },
   { icon: <img src="/ui/ico-chat.png" alt="" className="h-9 w-9" />, title: 'Nome azul e selo VIP', text: 'No chat, nos rankings e no seu perfil.' },
+  { icon: <span className="t-display text-[22px] leading-none" style={{ backgroundImage: 'linear-gradient(90deg, #2EA8FF, #E0479E)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextFillColor: 'transparent' }}>Aa</span>, title: 'Nick em degradê', text: 'Escolha duas cores no seu perfil e seu nome aparece com o fade no chat, nos rankings e na página do jogador.' },
   { icon: <img src="/ui/ico-goldpouch.png" alt="" className="h-9 w-9" />, title: 'Moeda da loja', text: 'Itens da loja também saem por VIP.' },
 ];
 

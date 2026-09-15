@@ -2,6 +2,7 @@
  * Liga — temporadas, rodadas de 24h (fecham às 19:00), partidas time x time,
  * classificação por série, premiações e recordes. Porta do BRGOL original.
  */
+import { nickFadeOf } from '../lib/items.js';
 import { prisma } from '../prisma.js';
 import { config } from '../config.js';
 import { nextRoundClose, hourKey } from '../lib/time.js';
@@ -145,6 +146,7 @@ export async function topScorers(where, take = 10, tx = prisma) {
       nick: u?.nick,
       avatarUrl: u?.avatarUrl ?? null,
       nickColor: u?.nickColor ?? null,
+      nickFade: u ? nickFadeOf(u) : null,
       goals: g._count._all,
       team: u?.team,
       vip: !!(u?.vipUntil && u.vipUntil > new Date()),

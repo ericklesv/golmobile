@@ -42,6 +42,7 @@ export const api = {
   heartbeat: () => req<{ ok: boolean; online: number; active: number; offers: number; serverTime: number }>('POST', '/api/me/heartbeat'),
   opponent: () => req<{ opponent: import('./types').Team | null }>('GET', '/api/me/opponent'),
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
+  setNickFade: (from: string | null, to: string | null) => req<Me>('POST', '/api/me/nick-fade', { from, to }),
   buyDexterity: (qty = 1) => req<Me>('POST', '/api/me/buy-dexterity', { qty }),
   nerf: (nick: string) => req<{ ok: boolean; me: Me }>('POST', `/api/me/nerf/${encodeURIComponent(nick)}`),
   activateVip: (days: number) => req<Me>('POST', '/api/me/activate-vip', { days }),

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { nickProps } from '../lib/nick';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
@@ -93,7 +94,7 @@ function ScorerCol({ team, rows, side }: { team: Team; rows: MatchPage['tops']['
           {rows.map((r, i) => (
             <li key={r.userId} className={`flex items-center gap-1.5 rounded-lg px-1.5 py-1 ${i === 0 ? 'bg-gold/25' : 'bg-sky/10'} ${side === 'away' ? 'flex-row-reverse text-right' : ''}`}>
               <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className="shrink-0"><Avatar url={r.avatarUrl} size={22} /></Link>
-              <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className={`min-w-0 flex-1 truncate text-[12px] font-extrabold ${r.nickColor ? `nick-${r.nickColor}` : r.vip ? 'text-sky-deep' : 'text-navy-ink'}`}>{r.nick}</Link>
+              <Link to={`/jogador/${encodeURIComponent(r.nick)}`} className={`min-w-0 flex-1 truncate text-[12px] font-extrabold ${nickProps(r).className}`} style={nickProps(r).style}>{r.nick}</Link>
               <span className="font-display text-[14px] text-grass-deep">{r.goals}</span>
             </li>
           ))}

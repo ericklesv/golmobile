@@ -14,6 +14,8 @@ import { money as fmt, num } from '../lib/format';
 import { sound } from '../lib/sound';
 import { AnimatePresence } from 'framer-motion';
 import { DeleteAccountModal } from '../components/Account';
+import { NickFadePanel } from '../components/NickFade';
+import { nickProps } from '../lib/nick';
 
 function Stat({ label, value, sub, icon }: { label: string; value: React.ReactNode; sub?: string; icon?: string }) {
   return (
@@ -79,7 +81,7 @@ export function ProfileScreen() {
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={pickAvatar} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className={`t-display truncate text-3xl ${me.vip ? 'text-sky-light' : 't-out'}`}>{me.nick} {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}<NameBadges role={me.role} tops={pub?.tops} size={20} /></div>
+            <div className={`t-display truncate text-3xl ${nickProps(me, { plain: 't-out', vipClass: 'text-sky-light', dark: true }).className}`} style={nickProps(me, { dark: true }).style}>{me.nick} {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}<NameBadges role={me.role} tops={pub?.tops} size={20} /></div>
             <div className="text-[12px] font-extrabold text-white/90">{me.gender === 'F' ? 'Jogadora' : 'Jogador'} do <Link to={`/time/${me.team.slug}`} className="t-gold t-display">{me.team.name}</Link></div>
             <div className="trap trap-orange mt-1 text-[11px] uppercase">Lvl {me.level.lvl} · {me.level.name}</div>
             {(me.role || me.contractUntil) && (
@@ -132,6 +134,8 @@ export function ProfileScreen() {
       <WhatsButton />
       {me.isAdmin && <Link to="/admin" className="btn btn-gray btn-md w-full"><img src="/ui/pi-setting.png" className="h-5 w-5" alt="" /> Painel de admin</Link>}
       <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL} · <Link to="/niveis" className="t-gold t-display">níveis</Link> · <Link to="/regras" className="t-gold t-display">regras</Link></p>
+
+      <NickFadePanel />
 
       <Panel title="TEXTO PESSOAL" ribbon="green">
         <textarea className="field min-h-[80px] text-sm" maxLength={400} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Grite para a torcida (máx. 400 caracteres)" />

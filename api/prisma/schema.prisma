@@ -63,6 +63,7 @@ model User {
   bio          String?
   avatarUrl    String?   // /api/uploads/avatars/<id>.<ext>
   nickColor    String?   // cor do nick (chave da paleta em lib/items.js; habilidade "Mensagem com cores", lvl 8)
+  nickFade     String?   // nick em degradê, só para VIP ativo: "<cor>><cor>" (chaves de NICK_FADE_COLORS em lib/items.js)
   isAdmin      Boolean   @default(false)
   bannedUntil  DateTime?
   createdAt    DateTime  @default(now())

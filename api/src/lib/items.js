@@ -46,6 +46,41 @@ export const NICK_COLORS = [
 export const NICK_RULE = /^[a-zA-Z0-9_.\-]{3,14}$/;
 
 /**
+ * Nick em DEGRADÊ — benefício do VIP (pedido do dono, 15/09/2026, estilo speedrun.com): o VIP escolhe
+ * duas cores no perfil e o nome aparece com o fade no chat, rankings, partida e perfil. Fica gravado
+ * em User.nickFade ("azul>roxo") e só é MOSTRADO enquanto o VIP estiver ativo (nickFadeOf); expirou o
+ * VIP, some; renovou, volta. Tem prioridade sobre a cor sólida da loja (nickColor). Tons médios de
+ * propósito: têm de ler bem tanto no painel branco quanto no fundo azul-marinho.
+ */
+export const NICK_FADE_COLORS = [
+  { key: 'azul', name: 'Azul', hex: '#2EA8FF' },
+  { key: 'ciano', name: 'Ciano', hex: '#00C2D1' },
+  { key: 'menta', name: 'Menta', hex: '#2ECC9A' },
+  { key: 'verde', name: 'Verde', hex: '#4CD137' },
+  { key: 'dourado', name: 'Dourado', hex: '#E9A400' },
+  { key: 'laranja', name: 'Laranja', hex: '#FF8A2A' },
+  { key: 'coral', name: 'Coral', hex: '#FF5470' },
+  { key: 'rosa', name: 'Rosa', hex: '#E0479E' },
+  { key: 'fucsia', name: 'Fúcsia', hex: '#FF6FD8' },
+  { key: 'lavanda', name: 'Lavanda', hex: '#B388FF' },
+  { key: 'roxo', name: 'Roxo', hex: '#9B59B6' },
+  { key: 'vermelho', name: 'Vermelho', hex: '#E5322D' },
+];
+const FADE_BY_KEY = Object.fromEntries(NICK_FADE_COLORS.map((c) => [c.key, c]));
+/** Degradê para a tela: só com VIP ativo (vipUntil no futuro). */
+export function nickFadeOf(user, now = Date.now()) {
+  if (!user?.nickFade || !user.vipUntil || new Date(user.vipUntil).getTime() <= now) return null;
+  return parseNickFade(user.nickFade);
+}
+/** "azul>roxo" → { a: '#2EA8FF', b: '#9B59B6' } ou null se inválido. */
+export function parseNickFade(value) {
+  if (typeof value !== 'string') return null;
+  const [ka, kb] = value.split('>');
+  const a = FADE_BY_KEY[ka], b = FADE_BY_KEY[kb];
+  return a && b ? { a: a.hex, b: b.hex } : null;
+}
+
+/**
  * Catálogo. `kind`: 'boost' (validade 28 h), 'boot' (chuteira, 30 dias, só uma
  * equipada), 'service' (troca de nick / cor — sem UserItem, efeito imediato).
  * `icon` é um PNG do kit em web/public/ui/ (nada de emoji).

@@ -7,6 +7,7 @@ import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { Panel, Spinner, Tabs, Empty } from '../components/ui';
 import { toast } from '../components/Toast';
+import { nickProps } from '../lib/nick';
 import { money as fmt, num, timeAgo } from '../lib/format';
 
 /**
@@ -67,7 +68,7 @@ function UserList({ onPick, order = 'recentes' }: { onPick: (id: number) => void
                   <Avatar url={u.avatarUrl} size={34} />
                   {u.team ? <Shield team={u.team} size={22} /> : null}
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-[14px] font-extrabold leading-tight ${u.nickColor ? `nick-${u.nickColor}` : u.vip ? 'text-sky-deep' : 'text-navy-ink'}`}>{u.nick}</span>
+                    <span className={`block truncate text-[14px] font-extrabold leading-tight ${nickProps(u).className}`} style={nickProps(u).style}>{u.nick}</span>
                     <span className="block truncate text-[10px] font-bold text-muted">{criadas ? u.email : `${u.email} · lvl ${u.level.lvl} · visto ${timeAgo(u.lastSeenAt)}`}</span>
                     {criadas && <span className="block text-[10px] font-extrabold leading-snug text-navy-ink">criada {shortDt(u.createdAt)}{u.invitedBy && <span className="text-grass-deep"> · convite de {u.invitedBy}</span>}</span>}
                     {criadas && <span className="mt-0.5 block"><Badges u={u} /></span>}

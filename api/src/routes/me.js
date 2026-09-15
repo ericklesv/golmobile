@@ -5,8 +5,8 @@ import { handle, GameError, notFound, badRequest } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { meView, publicView, teamView } from '../services/view.js';
 import { liveMatchForTeam } from '../services/league.js';
-import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf } from '../lib/rules.js';
-import { meInclude } from '../lib/items.js';
+import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf, isVip } from '../lib/rules.js';
+import { meInclude, parseNickFade } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
 import { clientIp } from '../lib/ip.js';
 import { leaveClub, pendingOffers } from '../services/club.js';
@@ -78,6 +78,19 @@ me.post('/nerf/:nick', handle(async (req) => {
     await tx.activity.create({ data: { userId: req.user.id, teamId: req.user.teamId, kind: 'AUTO', goal: false, text: `${req.user.nick} nerfou a destreza de ${victim.nick}!` } });
   });
   return { ok: true, me: meView(await fresh(req.user.id)), victim: publicView(await prisma.user.findUnique({ where: { id: victim.id }, include: { team: true } })) };
+}));
+
+// Nick em degradê (benefício do VIP): {from, to} = chaves de NICK_FADE_COLORS; {from: null} tira.
+me.post('/nick-fade', handle(async (req) => {
+  const from = req.body?.from ?? null, to = req.body?.to ?? null;
+  let value = null;
+  if (from !== null || to !== null) {
+    if (!isVip(req.user)) throw new GameError(403, 'vip', 'O nick em degradê é um benefício do VIP. Ative seus dias de VIP para usar.');
+    value = `${from}>${to ?? from}`;
+    if (!parseNickFade(value)) throw badRequest('Escolha duas cores da paleta.');
+  }
+  const u = await prisma.user.update({ where: { id: req.user.id }, data: { nickFade: value }, include: meInclude() });
+  return meView(u);
 }));
 
 // Ativar dias de VIP do banco (unidades ganhas em prêmios)

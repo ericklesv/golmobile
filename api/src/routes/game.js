@@ -4,10 +4,10 @@ import { prisma } from '../prisma.js';
 import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
-import { teamView, publicView, periodGoals } from '../services/view.js';
+import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
 import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
-import { catalogView } from '../lib/items.js';
+import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { boardView, playerClub } from '../services/club.js';
@@ -30,6 +30,7 @@ function matchView(m) {
 game.get('/meta', handle(async () => {
   const teams = await prisma.team.findMany({ orderBy: [{ serie: 'asc' }, { name: 'asc' }] });
   return {
+    nickFades: NICK_FADE_COLORS, // paleta do nick em degradê (VIP)
     cooldowns: COOLDOWNS, trailMin: TRAIL_MIN, money: MONEY, dexterityMax: DEXTERITY_MAX, nerfMinLevel: NERF_MIN_LEVEL,
     levels: LEVELS, prizes: PRIZES, trailLines: TRAIL_LINES, unlock: UNLOCK_LEVEL,
     chances: { penalty: 2 / 3, foul: FOUL_BASE_CHANCE, perDexterity: DEXTERITY_BONUS_PER_POINT, rebound: REBOUND_CHANCE },
@@ -96,7 +97,7 @@ game.get('/rankings/:scope', handle(async (req) => {
   const users = await prisma.user.findMany({ where: { [field]: { gt: 0 }, deletedAt: null }, orderBy: [{ [field]: 'desc' }, { id: 'asc' }], take, include: { team: teamSel } });
   return {
     scope, key: null,
-    rows: await withBadges(users.map((u, i) => ({ position: i + 1, userId: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, goals: u[field], team: u.team, vip: !!(u.vipUntil && u.vipUntil > new Date()) }))),
+    rows: await withBadges(users.map((u, i) => ({ position: i + 1, userId: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, nickFade: nickFadeOf(u), goals: u[field], team: u.team, vip: !!(u.vipUntil && u.vipUntil > new Date()) }))),
   };
 }));
 
@@ -180,9 +181,9 @@ game.get('/players/active', handle(async () => {
   const users = await prisma.user.findMany({
     where: { lastSeenAt: { gt: new Date(now - 24 * 3600_000) }, deletedAt: null },
     orderBy: { lastSeenAt: 'desc' }, take: 300,
-    select: { nick: true, goalsTotal: true, goalsRound: true, roundId: true, lastSeenAt: true, avatarUrl: true, vipUntil: true, team: teamSel },
+    select: { nick: true, goalsTotal: true, goalsRound: true, roundId: true, lastSeenAt: true, avatarUrl: true, vipUntil: true, nickColor: true, nickFade: true, team: teamSel },
   });
-  return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, goalsRound: periodGoals(u).goalsRound, avatarUrl: u.avatarUrl, lastSeenAt: u.lastSeenAt, online: u.lastSeenAt.getTime() > now - 2 * 60_000, vip: !!(u.vipUntil && u.vipUntil.getTime() > now), team: teamView(u.team) }));
+  return users.map((u) => ({ nick: u.nick, goalsTotal: u.goalsTotal, goalsRound: periodGoals(u).goalsRound, avatarUrl: u.avatarUrl, lastSeenAt: u.lastSeenAt, online: u.lastSeenAt.getTime() > now - 2 * 60_000, vip: !!(u.vipUntil && u.vipUntil.getTime() > now), nickColor: u.nickColor ?? null, nickFade: nickFadeOf(u, now), team: teamView(u.team) }));
 }));
 
 game.get('/players/search', handle(async (req) => {

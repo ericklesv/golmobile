@@ -110,6 +110,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   Os efeitos entram por `cooldownFor` (rules.js → `applyItemCooldown`), `bootBonus` nas chances e
   `shinGuard` no layout da trilha — **o usuário precisa vir com `items`**: carregue com
   `meInclude()` (items.js) em tudo que vira `meView`. Preços/regras: só em `items.js`.
+- **Nick em degradê** (benefício do VIP; pedido do dono, 15/09/2026, estilo speedrun.com): `User.nickFade`
+  = `"azul>roxo"` (chaves de `NICK_FADE_COLORS` em `lib/items.js`, 12 tons médios que leem bem no painel
+  branco e no fundo marinho); `POST /api/me/nick-fade {from,to}` (403 sem VIP; `{from:null}` tira).
+  `nickFadeOf(user)` (items.js) só devolve as cores `{a,b}` com VIP ativo — vencido, some; renovou, volta.
+  Toda view que manda nick (meView/publicView, chat, rankings, liga, partida, ativos, painel) manda
+  `nickFade`; na tela, **tudo passa por `lib/nick.ts` → `nickProps(u)`** (fade > cor da loja > azul VIP >
+  padrão) — nick novo em tela nova = usar `nickProps`, não montar classe à mão. Seletor no Perfil
+  (`components/NickFade.tsx`, paleta vem de `meta.nickFades`); benefício listado na tela do VIP.
 - **VIP pago** (decisões do dono, 13/09/2026; `services/vip.js`, `lib/efi.js`, `routes/vip.js`, tela
   `/vip` = `Vip.tsx`, tabela `VipPurchase`, migração 0018): pacotes de **dias de VIP** (`VIP_PACKS` em
   `rules.js`, preços propostos à espera do OK do dono) pagos por **PIX na Efí**. Os dias caem no banco
@@ -330,7 +338,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   também vale aqui. **Pendente: hospedar o build do ManagolTV em `/tv/` na VPS (nginx).**
 
 ## Endpoints
-`POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick` · `PUT /api/me/bio`
+`POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `nickFade`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick|nick-fade{from,to}` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
 `GET /api/pass` · `POST /api/pass/claim` (Presença da Semana — login diário) · `GET /api/ref/me` · `GET /api/ref/:code` (convites; o cadastro aceita `ref`)

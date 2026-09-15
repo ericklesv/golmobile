@@ -12,7 +12,7 @@ import { handle, badRequest, notFound, GameError } from '../lib/errors.js';
 import { requireAdmin } from '../lib/auth.js';
 import { levelOf, levelPoints, isVip, MONEY, DEXTERITY_MAX } from '../lib/rules.js';
 import { NICK_RULE, NICK_COLORS } from '../lib/items.js';
-import { teamView } from '../services/view.js';
+import { teamView, nickFadeOf } from '../services/view.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam } from '../services/league.js';
 import { geoForIp } from '../lib/ip.js';
@@ -26,7 +26,7 @@ const PAGE = 50;
 function rowView(u, now = Date.now()) {
   const level = levelOf(u);
   return {
-    id: u.id, nick: u.nick, email: u.email, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null,
+    id: u.id, nick: u.nick, email: u.email, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, nickFade: nickFadeOf(u, now),
     team: teamView(u.team), level: { lvl: level.lvl, name: level.name }, levelPoints: levelPoints(u),
     goalsTotal: u.goalsTotal, money: u.money, vip: isVip(u, now), vipDays: u.vipDays,
     banned: !!(u.bannedUntil && new Date(u.bannedUntil).getTime() > now), bannedUntil: u.bannedUntil,

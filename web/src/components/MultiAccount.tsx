@@ -18,7 +18,7 @@ export function MultiAccountScreen({ message, onRetry }: { message: string; onRe
         <img src="/ui/ico-lock01_m.png" alt="" className="mx-auto -mt-1 h-14 w-14 object-contain" />
         <div className="t-display mt-1 text-[22px] leading-tight">Contas demais nesta internet</div>
         <p className="mt-2 text-[14px] font-bold leading-snug">{message}</p>
-        <p className="mt-2 text-[12px] font-bold leading-snug text-muted">Cada internet pode ter até 3 contas jogando ao mesmo tempo.</p>
+        <p className="mt-2 text-[12px] font-bold leading-snug text-muted">Até 3 contas ao mesmo tempo no mesmo aparelho e, no computador, na mesma internet. Celulares diferentes jogam à vontade.</p>
         <button className="btn btn-green btn-md mt-4 w-full" disabled={busy} onClick={async () => { setBusy(true); try { await onRetry(); } finally { setBusy(false); } }}>
           {busy ? 'Tentando…' : 'Tentar de novo'}
         </button>

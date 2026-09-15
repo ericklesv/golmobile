@@ -26,7 +26,12 @@ async function call(method, path, body, { token, ip } = {}) {
 }
 const team = await prisma.team.findFirst();
 const tag = Date.now().toString(36).slice(-4);
-const reg = (n, extra = {}, ip = '203.0.113.10') => call('POST', '/api/auth/register', { nick: n, email: `${n}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug, elapsedMs: 10_000, ...extra }, { ip });
+// IPs de cadastro sem conta nas últimas 24 h no banco local: com IP fixo, a trava de 3 contas/IP/24 h valia entre
+// rodadas do mesmo dia e a 3ª rodada do dia falhava ("outro IP cadastra normal", "o cadastro certo ainda passa")
+const usados = new Set((await prisma.user.findMany({ where: { createdAt: { gt: new Date(Date.now() - 86_400_000) }, createdIp: { not: null } }, select: { createdIp: true } })).map((x) => x.createdIp));
+const livre = (base) => { for (;;) { const ip = `${base}.${1 + Math.floor(Math.random() * 250)}`; if (!usados.has(ip)) { usados.add(ip); return ip; } } };
+const IP_REG = livre('203.0.113'), IP_A = livre('198.51.100'), IP_OUTRO = livre('198.51.100');
+const reg = (n, extra = {}, ip = IP_REG) => call('POST', '/api/auth/register', { nick: n, email: `${n}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug, elapsedMs: 10_000, ...extra }, { ip });
 
 console.log('cadastro');
 let r = await reg(`sec${tag}a`, { website: 'http://spam' });
@@ -44,16 +49,16 @@ ok(r.status === 400, 'front antigo com relógio adiantado NÃO cai em "rápido d
 r = await reg(`sec${tag}b`, { website: 'http://spam' });
 r = await reg(`sec${tag}b`);
 ok(r.status === 200 || r.status === 201, 'depois de 7 recusas do mesmo IP, o cadastro certo ainda passa (recusa não conta no limite/h)');
-const ipA = `198.51.100.${Math.floor(Math.random() * 200) + 1}`;
+const ipA = IP_A;
 const made = [];
 for (let i = 0; i < SECURITY.registerPerIpPerDay; i++) { r = await reg(`sec${tag}${i}x`, {}, ipA); made.push(r); }
 ok(made.every((x) => x.status === 200 || x.status === 201), `${SECURITY.registerPerIpPerDay} contas do mesmo IP passam`);
 r = await reg(`sec${tag}zz`, {}, ipA);
 ok(r.status === 429 && r.data.error === 'too-many-accounts', `a ${SECURITY.registerPerIpPerDay + 1}ª conta do mesmo IP em 24 h = 429`);
-r = await reg(`sec${tag}zy`, {}, '198.51.100.250');
+r = await reg(`sec${tag}zy`, {}, IP_OUTRO);
 ok(r.status === 200 || r.status === 201, 'outro IP cadastra normal');
 const u = await prisma.user.findFirst({ where: { nickLower: `sec${tag}zy` } });
-ok(u?.createdIp === '198.51.100.250', 'createdIp gravado');
+ok(u?.createdIp === IP_OUTRO, 'createdIp gravado');
 
 console.log('login: trava por conta');
 const nick = `sec${tag}0x`;

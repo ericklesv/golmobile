@@ -353,13 +353,23 @@ depois que o novo estiver estável. Não instalar nada dele.
   (`components/Account.tsx`). **Mexeu nisso? Rode `node scripts/test-conta.js`** (pasta api/, só banco
   LOCAL): 35 conferências, tem de dar "TUDO OK". Ícone maskable `icon-512-maskable.png`; artes da loja em
   `assets/play-store/`.
-- **3 contas JOGANDO AO MESMO TEMPO por internet** (dono, 15/09/2026: "muitos usuários logando com o mesmo IP em
-  várias contas"; escolheu "ao mesmo tempo" para barrar o mínimo de gente inocente de internet de celular/CGNAT):
-  `takeIpSlot`/`assertIpHasRoom` em `lib/security.js` (`SECURITY.maxOnlinePerIp` = 3, vaga solta depois de
-  `ipOnlineMs` = 10 min sem nenhum pedido). Chamado no `requireAuth` (toda rota com login), no login, no cadastro e na
-  conexão dos WebSockets do X1 e do Cabeção; quem já tem a vaga continua, a conta a mais recebe 403 `multiconta`
-  e o site troca a tela inteira pelo aviso `components/MultiAccount.tsx` (evento `MULTI_EVENT` de `lib/api.ts`).
-  Admin e IP privado (PC) ficam de fora; aviso no Telegram (1 a cada 30 min por internet). Em memória (1 instância).
+- **Contas AO MESMO TEMPO: 3 por APARELHO e, no PC, 3 por INTERNET** (dono, 15/09/2026: "muitos usuários logando com
+  o mesmo IP em várias contas" e depois "vários celulares deve ser permitido, o mesmo PC tem que ser limitado"):
+  `takeSlot`/`assertRoom` em `lib/security.js` (`SECURITY.maxOnline` = 3, vaga solta depois de `onlineMs` = 10 min
+  sem nenhum pedido com login). Vaga por aparelho = o código que o site grava no navegador (`web/src/lib/device.ts`,
+  cabeçalho `X-Device-Id`; nos WebSockets `?device=`), vale para celular e PC; vaga por internet só para o que NÃO é
+  celular (User-Agent; app da Play Store manda `X-App: twa`/`?app=twa`) — outro navegador/janela anônima no mesmo PC
+  continua na mesma internet. Celulares diferentes na mesma internet (família, CGNAT) jogam à vontade. Chamado no
+  `requireAuth` (toda rota com login), no login, no cadastro e nos WebSockets do X1 e do Cabeção; quem já tem a vaga
+  continua, a conta a mais recebe 403 `multiconta` e o site troca a tela inteira pelo aviso
+  `components/MultiAccount.tsx` (evento `MULTI_EVENT` de `lib/api.ts`). Admin e IP privado (PC) ficam de fora; aviso
+  no Telegram (1 a cada 30 min por aparelho/internet). Em memória (1 instância). Código e "é celular" vêm do aparelho
+  (falsificável): atrapalha a multiconta comum, não é à prova de tudo.
+  **Último aparelho da conta** (`lib/device.js` `deviceOf`/`deviceData`; migração 0034): `User.deviceId` (o código do
+  navegador), `User.device` ("Android · Chrome", "Windows · Edge", "App Android") e `User.deviceMobile`, gravados no
+  cadastro, no login e no heartbeat (site antigo sem código não apaga o que havia). Painel: o aparelho em cada conta,
+  linha "Aparelho" (com um pedaço do código) no detalhe, **"Outras contas neste aparelho"** (`sameDevice`, mesmo
+  `deviceId` — quase prova de ser a mesma pessoa) e selo **"mesmo aparelho"** nos grupos da aba Multiconta.
   **O IP agora é o de VERDADE**: `clientIp` (lib/ip.js) lê o **X-Real-IP** que o nginx grava — antes lia o 1º valor do
   X-Forwarded-For, que o jogador falsifica (dava para driblar as travas por IP, a "mesma internet" do convite e da
   diretoria e o pareamento do Cabeção). Sem nginx (PC/testes) cai no X-Forwarded-For. **Mexeu? Rode

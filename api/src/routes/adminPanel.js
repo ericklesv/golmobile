@@ -35,6 +35,8 @@ function rowView(u, now = Date.now()) {
     isAdmin: u.isAdmin, lastSeenAt: u.lastSeenAt, createdAt: u.createdAt,
     invitedBy: u.referredBy?.nick ?? null, // entrou pelo link de convite de alguém (services/referral.js)
     createdIp: u.createdIp ?? null, // IP do cadastro (segurança: contas em massa)
+    // último aparelho (lib/device.js): nome, celular ou não e um pedaço do código do navegador (para comparar de olho)
+    device: u.device ?? null, deviceMobile: u.deviceMobile ?? null, deviceCode: u.deviceId ? u.deviceId.slice(0, 6) : null,
     online: new Date(u.lastSeenAt).getTime() > now - 2 * 60_000,
   };
 }
@@ -86,9 +88,15 @@ adminPanel.get('/users/:id', handle(async (req) => {
     where: { id: { not: u.id }, deletedAt: null, OR: [{ createdIp: { in: myIps } }, { lastIp: { in: myIps } }] },
     include: { team: true }, orderBy: { lastSeenAt: 'desc' }, take: 30,
   }) : [];
+  // outras contas vivas no MESMO APARELHO (mesmo código de navegador) — quase prova de ser a mesma pessoa
+  const sameDev = u.deviceId ? await prisma.user.findMany({
+    where: { id: { not: u.id }, deletedAt: null, deviceId: u.deviceId },
+    include: { team: true }, orderBy: { lastSeenAt: 'desc' }, take: 30,
+  }) : [];
   return {
     ...detailView(u, geo),
     createdIp: u.createdIp ?? null,
+    sameDevice: sameDev.map((o) => ({ id: o.id, nick: o.nick, avatarUrl: o.avatarUrl ?? null, team: teamView(o.team), goalsTotal: o.goalsTotal, lastSeenAt: o.lastSeenAt, ip: o.lastIp ?? null })),
     sameIp: others.map((o) => ({ id: o.id, nick: o.nick, avatarUrl: o.avatarUrl ?? null, team: teamView(o.team), goalsTotal: o.goalsTotal, lastSeenAt: o.lastSeenAt, ip: [o.createdIp, o.lastIp].find((ip) => ip && myIps.includes(ip)) })),
   };
 }));
@@ -277,15 +285,21 @@ adminPanel.get('/multicontas', handle(async (req) => {
     rows: slice.map((g, i) => {
       const members = users.filter((u) => u.createdIp === g.ip || u.lastIp === g.ip);
       const ids = new Set(members.map((u) => u.id));
+      // contas do grupo que dividem o mesmo aparelho (mesmo código de navegador) com outra do grupo
+      const perDevice = new Map();
+      for (const u of members) if (u.deviceId) perDevice.set(u.deviceId, (perDevice.get(u.deviceId) ?? 0) + 1);
+      const shared = (u) => !!u.deviceId && perDevice.get(u.deviceId) > 1;
       return {
         ip: g.ip, count: g.n, lastSeenAt: g.recente, geo: geos[i],
         // alguém do grupo entrou pelo convite de outro do grupo (convidou a própria conta falsa)
         inviteInside: members.some((u) => u.referredById && ids.has(u.referredById)),
+        sameDevice: members.filter(shared).length, // quantas contas do grupo estão num aparelho repetido
         users: members.map((u) => ({
           ...rowView(u, now),
           via: [u.createdIp === g.ip ? 'cadastro' : null, u.lastIp === g.ip ? 'ultimo' : null].filter(Boolean),
           otherIp: u.createdIp === g.ip ? (u.lastIp !== g.ip ? u.lastIp : null) : u.createdIp, // o outro IP dessa conta (se diferente)
           lastIpAt: u.lastIpAt,
+          sameDevice: shared(u),
         })),
       };
     }),

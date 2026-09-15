@@ -9,7 +9,8 @@ import { meView } from '../services/view.js';
 import { meInclude } from '../lib/items.js';
 import { clientIp } from '../lib/ip.js';
 import { attachReferral } from '../services/referral.js';
-import { SECURITY, isDisposableEmail, checkRegisterForm, verifyTurnstile, assertNotLocked, noteLoginFail, noteLoginOk, takeIpSlot, assertIpHasRoom } from '../lib/security.js';
+import { SECURITY, isDisposableEmail, checkRegisterForm, verifyTurnstile, assertNotLocked, noteLoginFail, noteLoginOk, takeSlot, assertRoom } from '../lib/security.js';
+import { deviceOf, deviceData } from '../lib/device.js';
 import { tg } from '../lib/telegram.js';
 
 export const auth = Router();
@@ -51,18 +52,19 @@ auth.post('/register', registerLimiter, handle(async (req) => {
     const recent = await prisma.user.count({ where: { createdIp: ip, createdAt: { gt: new Date(Date.now() - 86_400_000) } } });
     if (recent >= SECURITY.registerPerIpPerDay) { barrado(`${recent} contas em 24 h`); throw new GameError(429, 'too-many-accounts', 'Já foram criadas contas demais nesta conexão hoje. Tente amanhã.'); }
   }
-  // já tem 3 contas jogando nesta internet agora: a conta nova não entra (lib/security.js)
-  try { assertIpHasRoom(ip); } catch (e) { barrado(`${SECURITY.maxOnlinePerIp} contas jogando nesta internet`); throw e; }
+  // já tem 3 contas neste aparelho (ou, no PC, nesta internet) agora: a conta nova não entra (lib/security.js)
+  const device = deviceOf(req);
+  try { assertRoom({ ip, device }); } catch (e) { barrado(`${SECURITY.maxOnline} contas ao mesmo tempo (${device.label})`); throw e; }
   const nickLower = body.nick.toLowerCase();
   const clash = await prisma.user.findFirst({ where: { OR: [{ nickLower }, { email: body.email }] } });
   if (clash) throw new GameError(409, 'taken', clash.nickLower === nickLower ? 'Esse nick já está em uso.' : 'Esse e-mail já está cadastrado.');
   const passwordHash = await bcrypt.hash(body.password, 10);
   const user = await prisma.user.create({
-    data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id, lastIp: ip, lastIpAt: new Date(), createdIp: ip },
+    data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id, lastIp: ip, lastIpAt: new Date(), createdIp: ip, ...deviceData(req) },
     include: { team: true },
   });
   await attachReferral(user.id, body.ref, clientIp(req)).catch((e) => console.error('[convite] cadastro:', e.message));
-  try { takeIpSlot(ip, user.id, Date.now(), user.nick); } catch { /* vaga conferida acima; corrida rara: o próximo pedido decide */ }
+  try { takeSlot({ ip, device }, user.id, Date.now(), user.nick); } catch { /* vaga conferida acima; corrida rara: o próximo pedido decide */ }
   tg.info(`👤 Novo cadastro: <b>${tg.esc(user.nick)}</b> · ${tg.esc(team.name)} · ${tg.esc(body.email)} · IP <code>${tg.esc(ip)}</code>${body.ref ? ` · convite <code>${tg.esc(body.ref)}</code>` : ''}`);
   return { token: signToken(user), me: meView(user) };
 }));
@@ -82,9 +84,9 @@ auth.post('/login', limiter, handle(async (req) => {
     throw new GameError(401, 'bad-credentials', 'Nick/e-mail ou senha incorretos.');
   }
   noteLoginOk(key);
-  // já tem 3 contas jogando nesta internet agora: esta não entra (lib/security.js) — admin fica de fora
+  // já tem 3 contas neste aparelho (ou, no PC, nesta internet) agora: esta não entra (lib/security.js) — admin fica de fora
   const ip = clientIp(req);
-  if (!user.isAdmin) takeIpSlot(ip, user.id, Date.now(), user.nick);
-  await prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: ip, lastIpAt: new Date() } });
+  if (!user.isAdmin) takeSlot({ ip, device: deviceOf(req) }, user.id, Date.now(), user.nick);
+  await prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: ip, lastIpAt: new Date(), ...deviceData(req) } });
   return { token: signToken(user), me: meView(user) };
 }));

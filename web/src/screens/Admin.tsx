@@ -18,6 +18,9 @@ import { MsgText, MSG_ICONS } from '../components/MsgText';
  */
 
 const dt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR') : '—');
+/** Último aparelho em palavras: "Android · Chrome (celular)", "Windows · Edge (PC)", "App Android". */
+const deviceWord = (u: { device?: string | null; deviceMobile?: boolean | null }) =>
+  !u.device ? '' : u.device.startsWith('App ') ? u.device : `${u.device}${u.deviceMobile ? ' (celular)' : u.deviceMobile === false ? ' (PC)' : ''}`;
 // "14/09 às 16:22" (horário de Brasília) — cabe numa linha no celular
 const shortDt = (iso: string) => { const d = new Date(iso), o = { timeZone: 'America/Sao_Paulo' } as const; return `${d.toLocaleDateString('pt-BR', { ...o, day: '2-digit', month: '2-digit' })} às ${d.toLocaleTimeString('pt-BR', { ...o, hour: '2-digit', minute: '2-digit' })}`; };
 
@@ -99,7 +102,7 @@ function UserList({ onPick, order = 'recentes' }: { onPick: (id: number) => void
                   {u.team ? <Shield team={u.team} size={22} /> : null}
                   <span className="min-w-0 flex-1">
                     <span className={`block truncate text-[14px] font-extrabold leading-tight ${nickProps(u).className}`} style={nickProps(u).style}>{u.nick}</span>
-                    <span className="block truncate text-[10px] font-bold text-muted">{criadas ? u.email : `${u.email} · lvl ${u.level.lvl} · visto ${timeAgo(u.lastSeenAt)}`}</span>
+                    <span className="block truncate text-[10px] font-bold text-muted">{criadas ? u.email : `${u.email} · lvl ${u.level.lvl} · visto ${timeAgo(u.lastSeenAt)}`}{u.device ? ` · ${deviceWord(u)}` : ''}</span>
                     {criadas && <span className="block text-[10px] font-extrabold leading-snug text-navy-ink">criada {shortDt(u.createdAt)}{u.invitedBy && <span className="text-grass-deep"> · convite de {u.invitedBy}</span>}</span>}
                     {criadas && <span className="mt-0.5 block"><Badges u={u} /></span>}
                   </span>
@@ -258,12 +261,31 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] font-bold text-navy-ink">
               <span className="label">IP</span><span className="font-display">{u.conn.ip}{u.createdIp && u.createdIp !== u.conn.ip && <span className="ml-2 font-sans text-[10px] text-muted">cadastro: {u.createdIp}</span>}</span>
               <span className="label">Quando</span><span>{dt(u.conn.at)}</span>
+              <span className="label">Aparelho</span><span>{u.device ? <>{deviceWord(u)}{u.deviceCode && <span className="ml-2 font-sans text-[10px] text-muted">código {u.deviceCode}</span>}</> : 'sem dados (entra no próximo acesso)'}</span>
               <span className="label">Local</span><span>{geo ? [geo.city, geo.region, geo.country].filter(Boolean).join(', ') || 'sem dados' : 'sem dados'}</span>
               <span className="label">Provedor</span><span>{geo?.isp ?? 'sem dados'} <GeoFlags geo={geo} /></span>
             </div>
             <GeoMap geo={geo} />
           </>
         ) : <Empty text="Nenhuma conexão registrada ainda (o IP entra no próximo login ou heartbeat)." />}
+        {(u.sameDevice?.length ?? 0) > 0 && (
+          <div className="mt-3 border-t border-navy-ink/10 pt-2">
+            <div className="mb-1 text-[11px] font-extrabold uppercase text-red-600">Outras contas neste aparelho ({u.sameDevice!.length})</div>
+            <p className="mb-1 text-[10px] font-bold text-muted">Mesmo código de navegador: as contas foram abertas no mesmo celular ou PC. Quase certo que é a mesma pessoa.</p>
+            <ul className="flex flex-col gap-1">
+              {u.sameDevice!.map((o) => (
+                <li key={o.id}>
+                  <button onClick={() => onPick(o.id)} className="no-drag flex w-full items-center gap-2 rounded-xl px-1 py-1 text-left hover:bg-sky/20">
+                    <Avatar url={o.avatarUrl} size={26} />
+                    {o.team ? <Shield team={o.team} size={18} /> : null}
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-extrabold text-navy-ink">{o.nick} <span className="text-[10px] font-bold text-muted">· {num(o.goalsTotal)} gols · visto {timeAgo(o.lastSeenAt)}</span></span>
+                    <span className="font-display text-[10px] text-muted">{o.ip}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {u.sameIp.length > 0 && (
           <div className="mt-3 border-t border-navy-ink/10 pt-2">
             <div className="mb-1 text-[11px] font-extrabold uppercase text-red-600">Outras contas nesta internet ({u.sameIp.length})</div>
@@ -506,6 +528,7 @@ function MultiList({ onPick }: { onPick: (id: number) => void }) {
                 <span className="font-display text-[15px] text-navy-ink">{g.ip}</span>
                 <span className="trap trap-orange text-[10px] uppercase">{g.count} contas</span>
                 {g.inviteInside && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white" title="Uma conta do grupo entrou pelo convite de outra do grupo">convite entre elas</span>}
+                {(g.sameDevice ?? 0) > 0 && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white" title="Contas abertas no mesmo celular ou PC (mesmo código de navegador)">mesmo aparelho: {g.sameDevice}</span>}
                 <span className="ml-auto text-[10px] font-bold text-muted">visto {timeAgo(g.lastSeenAt)}</span>
               </div>
               <div className="mt-0.5 text-[11px] font-bold text-muted">
@@ -524,6 +547,8 @@ function MultiList({ onPick }: { onPick: (id: number) => void }) {
                           criada {shortDt(u.createdAt)} · visto {timeAgo(u.lastSeenAt)} · IP {u.via.map((v) => (v === 'cadastro' ? 'do cadastro' : 'atual')).join(' e ')}
                           {u.otherIp && <span className="text-muted"> · outro IP {u.otherIp}</span>}
                           {u.invitedBy && <span className="text-grass-deep"> · convite de {u.invitedBy}</span>}
+                          {u.device && <span className="text-muted"> · {deviceWord(u)}</span>}
+                          {u.sameDevice && <span className="text-red-600"> · mesmo aparelho{u.deviceCode ? ` (${u.deviceCode})` : ''}</span>}
                         </span>
                         <span className="mt-0.5 block"><Badges u={u} /></span>
                       </span>

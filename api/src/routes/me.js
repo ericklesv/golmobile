@@ -9,6 +9,7 @@ import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf, isVip } from '../lib/rul
 import { meInclude, parseNickFade } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
 import { clientIp } from '../lib/ip.js';
+import { deviceData } from '../lib/device.js';
 import { pendingOffers } from '../services/club.js';
 import { changeTeam } from '../services/shop.js';
 import { unreadCount } from '../services/inbox.js';
@@ -47,7 +48,7 @@ me.get('/opponent', handle(async (req) => {
 
 // Presença: o cliente chama a cada 60 s enquanto está aberto (necessário p/ auto-chute)
 me.post('/heartbeat', handle(async (req) => {
-  await prisma.user.update({ where: { id: req.user.id }, data: { lastSeenAt: new Date(), lastIp: clientIp(req), lastIpAt: new Date() } });
+  await prisma.user.update({ where: { id: req.user.id }, data: { lastSeenAt: new Date(), lastIp: clientIp(req), lastIpAt: new Date(), ...deviceData(req) } }); // + último aparelho (lib/device.js)
   const online = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) } } });
   const active = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 24 * 3600_000) } } });
   const offers = await pendingOffers(req.user.id); // propostas de contratação abertas (selo na aba Time)

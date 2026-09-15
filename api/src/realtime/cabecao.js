@@ -15,7 +15,8 @@ import { teamView } from '../services/view.js';
 import { nextMidnight } from '../lib/time.js';
 import { CABECAO } from '../lib/rules.js';
 import { clientIp as ipOf } from '../lib/ip.js';
-import { takeIpSlot } from '../lib/security.js';
+import { takeSlot } from '../lib/security.js';
+import { deviceOf } from '../lib/device.js';
 
 const TICK_MS = 1000 / 30;
 const RECONNECT_GRACE_MS = 20_000; // caiu no meio da partida: tem 20 s para voltar antes do W.O.
@@ -48,7 +49,7 @@ async function authenticate(req) {
   const payload = jwt.verify(token, config.jwtSecret);
   const user = await prisma.user.findUnique({ where: { id: payload.uid }, include: { team: true } });
   if (!user || (user.bannedUntil && user.bannedUntil.getTime() > Date.now())) throw new Error('unauthorized');
-  if (!user.isAdmin) takeIpSlot(clientIp(req), user.id, Date.now(), user.nick); // 3 contas ao mesmo tempo por internet
+  if (!user.isAdmin) takeSlot({ ip: clientIp(req), device: deviceOf(req) }, user.id, Date.now(), user.nick); // 3 contas ao mesmo tempo (aparelho / PC na internet)
   return user;
 }
 

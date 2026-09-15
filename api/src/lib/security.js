@@ -17,8 +17,8 @@ import { isPrivateIp } from './ip.js';
 const disposableDomains = createRequire(import.meta.url)('disposable-email-domains');
 
 export const SECURITY = {
-  maxOnlinePerIp: 3, // contas JOGANDO AO MESMO TEMPO na mesma internet (dono, 15/09/2026) — a 4ª espera
-  ipOnlineMs: 10 * 60_000, // conta sem nenhum pedido há mais que isso libera a vaga na internet dela
+  maxOnline: 3, // contas ao mesmo tempo: no mesmo aparelho e, no PC, na mesma internet (dono, 15/09/2026) — a 4ª espera
+  onlineMs: 10 * 60_000, // conta sem nenhum pedido há mais que isso solta a vaga
   registerPerIpPerDay: 3, // contas novas por IP em 24 h
   registerMinFormMs: 3000, // formulário preenchido em menos que isso = robô
   loginMaxFails: 10, // senhas erradas seguidas por conta…
@@ -127,51 +127,74 @@ export function cached(ttlMs) {
 }
 export function cacheClear() { cache.clear(); }
 
-// ─── Contas por internet, AO MESMO TEMPO (dono, 15/09/2026: "muitos usuários logando com o mesmo IP em várias
-// contas — limitar para 3") ────────────────────────────────────────────────────────────────────────────────
-// Na mesma internet, no máximo `maxOnlinePerIp` contas jogando ao mesmo tempo. "Jogando" = fez algum pedido com
-// login nos últimos `ipOnlineMs` (a tela aberta manda o heartbeat a cada 60 s, então a vaga fica presa enquanto a
-// aba está aberta e solta uns 10 min depois de fechar). Quem já tem a vaga continua; a conta a mais recebe 403
-// `multiconta` até uma vaga soltar. Por IP de VERDADE (`realIp`: o X-Real-IP que o nginx grava — o
-// X-Forwarded-For o próprio jogador falsifica). IP local/privado (PC de desenvolvimento) e admin: sem trava.
-// Em memória (1 instância PM2): se a API reinicia, as vagas começam vazias e os primeiros a voltar pegam.
-// Cuidado conhecido: internet de celular (CGNAT) põe muita gente num IP só — escolha do dono foi "ao mesmo tempo"
-// justamente para barrar o mínimo de gente inocente.
-const online = new Map(); // ip -> Map(userId -> último pedido em ms)
+// ─── Contas AO MESMO TEMPO: por aparelho e, no PC, por internet (dono, 15/09/2026) ────────────────────────
+// "Muitos usuários logando com o mesmo IP em várias contas — limitar para 3" e, depois, "vários celulares deve ser
+// permitido, o mesmo PC tem que ser limitado". Duas vagas, as duas com `maxOnline` e soltando depois de
+// `onlineMs` sem nenhum pedido com login (a tela aberta manda o heartbeat a cada 60 s):
+//   - por APARELHO (lib/device.js: o código que o site grava no navegador): até 3 contas abertas no mesmo aparelho,
+//     celular ou PC — outra aba/conta no mesmo navegador conta;
+//   - por INTERNET, só para o que NÃO é celular (PC/notebook): até 3 contas de computador na mesma internet — outro
+//     navegador ou janela anônima no mesmo PC continua na mesma internet. Celulares diferentes na mesma internet
+//     (família, operadora com IP compartilhado/CGNAT) jogam à vontade.
+// Quem já tem a vaga continua; a conta a mais recebe 403 `multiconta` (o site mostra components/MultiAccount.tsx).
+// IP de verdade (clientIp: X-Real-IP do nginx). IP local/privado (PC de desenvolvimento) e admin: sem trava.
+// Em memória (1 instância PM2): se a API reinicia, as vagas começam vazias e os primeiros a voltar pegam. Código do
+// aparelho e "é celular" vêm do próprio aparelho (dá para falsificar): atrapalha a multiconta comum, não é à prova de tudo.
+const slots = { ip: new Map(), device: new Map() }; // chave -> Map(userId -> último pedido em ms)
 let lastSweep = 0;
-function sweepOnline(now) {
+function sweepSlots(now) {
   if (now - lastSweep < 60_000) return;
   lastSweep = now;
-  for (const [ip, m] of online) {
-    for (const [id, t] of m) if (now - t > SECURITY.ipOnlineMs) m.delete(id);
-    if (!m.size) online.delete(ip);
+  for (const map of Object.values(slots)) for (const [key, m] of map) {
+    for (const [id, t] of m) if (now - t > SECURITY.onlineMs) m.delete(id);
+    if (!m.size) map.delete(key);
   }
 }
-const multiError = () => new GameError(403, 'multiconta',
-  `Já tem ${SECURITY.maxOnlinePerIp} contas jogando nesta internet agora. Para entrar com esta, saia de uma delas e espere uns ${Math.round(SECURITY.ipOnlineMs / 60_000)} minutos.`);
+/** As vagas vivas de uma chave (as vencidas saem na hora). */
+function liveSlots(map, key, now, create) {
+  let m = map.get(key);
+  if (!m) { if (!create) return new Map(); map.set(key, (m = new Map())); }
+  for (const [id, t] of m) if (now - t > SECURITY.onlineMs) m.delete(id);
+  return m;
+}
+const minutes = () => Math.round(SECURITY.onlineMs / 60_000);
+const fullDevice = () => new GameError(403, 'multiconta',
+  `Já tem ${SECURITY.maxOnline} contas abertas neste aparelho agora. Para entrar com esta, saia de uma delas e espere uns ${minutes()} minutos.`);
+const fullPc = () => new GameError(403, 'multiconta',
+  `Já tem ${SECURITY.maxOnline} contas jogando pelo computador nesta internet agora. Para entrar com esta, saia de uma delas e espere uns ${minutes()} minutos.`);
 
-/** Ocupa (ou renova) a vaga de `userId` na internet `ip`. Lança 403 `multiconta` se as vagas estão cheias
- *  (e avisa o dono no Telegram, no máximo 1 vez a cada 30 min por internet; `nick` só para o aviso). */
-export function takeIpSlot(ip, userId, now = Date.now(), nick = null) {
-  if (isPrivateIp(ip)) return;
-  sweepOnline(now);
-  let m = online.get(ip);
-  if (!m) online.set(ip, (m = new Map()));
-  for (const [id, t] of m) if (now - t > SECURITY.ipOnlineMs) m.delete(id);
-  if (!m.has(userId) && m.size >= SECURITY.maxOnlinePerIp) {
-    tg.warn(`🧱 Mais de ${SECURITY.maxOnlinePerIp} contas ao mesmo tempo na mesma internet: ${nick ? `<b>${tg.esc(nick)}</b>` : `conta #${userId}`} ficou de fora — IP <code>${tg.esc(ip)}</code>`, { key: `multi:${ip}`, every: 30 * 60_000 });
-    throw multiError();
-  }
-  m.set(userId, now);
+/** Qual vaga está cheia para `userId` (null = pode). */
+function blocked({ ip, device }, userId, now, create) {
+  const d = device?.id ? liveSlots(slots.device, device.id, now, create) : null;
+  const p = device?.mobile ? null : liveSlots(slots.ip, ip, now, create);
+  if (d && !d.has(userId) && d.size >= SECURITY.maxOnline) return { err: fullDevice(), where: `no aparelho ${device.label}`, key: `dev:${device.id}` };
+  if (p && !p.has(userId) && p.size >= SECURITY.maxOnline) return { err: fullPc(), where: 'pelo computador na mesma internet', key: `ip:${ip}` };
+  return { d, p };
 }
 
-/** Cadastro: ainda não tem conta, só confere se a internet já está cheia. */
-export function assertIpHasRoom(ip, now = Date.now()) {
+/**
+ * Ocupa (ou renova) as vagas de `userId`: a do aparelho e, se não for celular, a da internet. Lança 403 `multiconta`
+ * se alguma está cheia (e avisa o dono no Telegram, no máximo 1 vez a cada 30 min por aparelho/internet).
+ * `device` = deviceOf(req) (lib/device.js); `nick` só para o aviso.
+ */
+export function takeSlot({ ip, device }, userId, now = Date.now(), nick = null) {
   if (isPrivateIp(ip)) return;
-  const m = online.get(ip);
-  const live = m ? [...m.values()].filter((t) => now - t <= SECURITY.ipOnlineMs).length : 0;
-  if (live >= SECURITY.maxOnlinePerIp) throw multiError();
+  sweepSlots(now);
+  const r = blocked({ ip, device }, userId, now, true);
+  if (r.err) {
+    tg.warn(`🧱 Mais de ${SECURITY.maxOnline} contas ao mesmo tempo ${r.where}: ${nick ? `<b>${tg.esc(nick)}</b>` : `conta #${userId}`} ficou de fora — IP <code>${tg.esc(ip)}</code>`, { key: `multi:${r.key}`, every: 30 * 60_000 });
+    throw r.err;
+  }
+  r.d?.set(userId, now);
+  r.p?.set(userId, now);
+}
+
+/** Cadastro: a conta ainda não existe — só confere se o aparelho ou (no PC) a internet já estão cheios. */
+export function assertRoom({ ip, device }, now = Date.now()) {
+  if (isPrivateIp(ip)) return;
+  const r = blocked({ ip, device }, -1, now, false);
+  if (r.err) throw r.err;
 }
 
 /** Para teste: esvazia as vagas. */
-export function resetIpSlots() { online.clear(); lastSweep = 0; }
+export function resetSlots() { slots.ip.clear(); slots.device.clear(); lastSweep = 0; }

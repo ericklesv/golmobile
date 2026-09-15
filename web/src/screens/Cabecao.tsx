@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { token } from '../lib/api';
+import { deviceQuery } from '../lib/device';
 import { useAuth } from '../store/auth';
 import type { Team } from '../lib/types';
 import { Shield } from '../components/Shield';
@@ -63,7 +64,7 @@ export function CabecaoScreen() {
     let closed = false, tries = 0, timer: number | undefined;
     const connect = () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const ws = new WebSocket(`${proto}://${location.host}/api/ws/cabecao?token=${encodeURIComponent(token.get() ?? '')}`);
+      const ws = new WebSocket(`${proto}://${location.host}/api/ws/cabecao?token=${encodeURIComponent(token.get() ?? '')}${deviceQuery()}`);
       wsRef.current = ws;
       ws.onopen = () => { tries = 0; setConnected(true); };
       ws.onclose = () => {

@@ -346,6 +346,8 @@ export interface AdminUserRow {
   createdAt: string; invitedBy?: string | null;
   /** IP do cadastro (não muda). */
   createdIp?: string | null;
+  /** último aparelho (API lib/device.js): nome ("Android · Chrome", "App Android"), se é celular e um pedaço do código do navegador */
+  device?: string | null; deviceMobile?: boolean | null; deviceCode?: string | null;
 }
 export interface AdminUserDetail extends AdminUserRow {
   gender: string; bio: string | null; dexterity: number; levelBonus: number; vipUntil: string | null;
@@ -353,10 +355,12 @@ export interface AdminUserDetail extends AdminUserRow {
   conn: { ip: string | null; at: string | null; geo: AdminGeo | null };
   /** Outras contas vivas na mesma internet (IP do cadastro ou último visto em comum). */
   sameIp: { id: number; nick: string; avatarUrl: string | null; team: Team | null; goalsTotal: number; lastSeenAt: string; ip: string | null }[];
+  /** outras contas no MESMO APARELHO (mesmo código de navegador) */
+  sameDevice?: { id: number; nick: string; avatarUrl: string | null; team: Team | null; goalsTotal: number; lastSeenAt: string; ip: string | null }[];
 }
 /** Aba Multiconta do painel (GET /api/painel/multicontas): IPs com 2+ contas vivas, os com mais contas primeiro. */
-export interface AdminMultiUser extends AdminUserRow { via: ('cadastro' | 'ultimo')[]; otherIp: string | null; lastIpAt: string | null }
-export interface AdminMultiRow { ip: string; count: number; lastSeenAt: string; geo: AdminGeo | null; inviteInside: boolean; users: AdminMultiUser[] }
+export interface AdminMultiUser extends AdminUserRow { via: ('cadastro' | 'ultimo')[]; otherIp: string | null; lastIpAt: string | null; sameDevice?: boolean }
+export interface AdminMultiRow { ip: string; count: number; lastSeenAt: string; geo: AdminGeo | null; inviteInside: boolean; sameDevice?: number; users: AdminMultiUser[] }
 export interface AdminMultiPage { page: number; pages: number; total: number; ips: number; accounts: number; rows: AdminMultiRow[] }
 export interface AdminUsersPage { page: number; pages: number; total: number; users: AdminUserRow[] }
 /** Campos editáveis; banHours > 0 bane a partir de agora, 0 desbane. */

@@ -72,6 +72,11 @@ model User {
   lastIp       String? // último IP visto (cadastro/login/heartbeat) — painel de admin
   createdIp    String? // IP do cadastro (não muda; teto de contas por IP em 24 h — lib/security.js)
   lastIpAt     DateTime?
+  // último aparelho (lib/device.js; dono, 15/09/2026): código que o site grava no navegador (igual em todas as contas
+  // abertas nele — "mesmo aparelho" no painel), o nome ("Android · Chrome", "App Android") e se é celular
+  deviceId     String?
+  device       String?
+  deviceMobile Boolean?
   // Conta excluída pelo próprio jogador (exigência da Play Store): a linha fica anonimizada
   // (nick "excluido-<id>", e-mail/senha/foto/bio/IP apagados) e não entra mais. Ver routes/account.js.
   deletedAt    DateTime?
@@ -161,6 +166,7 @@ model User {
   @@index([goalsTotal])
   @@index([referredById])
   @@index([createdIp, createdAt])
+  @@index([deviceId])
 }
 
 // Minigames diários: 1 partida por jogador, por jogo, por dia (o dia vira à

@@ -7,6 +7,7 @@ import { prisma } from '../prisma.js';
 import { config } from '../config.js';
 import { nextRoundClose, hourKey } from '../lib/time.js';
 import { PRIZES, prizeFor } from '../lib/rules.js';
+import { settleX1Round, settleX1Season } from './x1.js';
 
 const SERIES = ['A', 'B', 'C'];
 
@@ -195,6 +196,12 @@ export async function settleDueRounds(now = new Date()) {
   for (const round of due) {
     const r = await prisma.$transaction(async (tx) => settleRound(tx, round, now), { timeout: 60_000 });
     results.push(r);
+    // Ranking X1 (services/x1.js): transação própria e idempotente, DEPOIS da liga — um erro aqui não segura
+    // o fechamento da rodada (que já está gravado), só fica no log e o prêmio sai na próxima volta do scheduler.
+    try {
+      r.x1 = await settleX1Round(round.id, now);
+      if (r.seasonFinished) r.x1Season = await settleX1Season(round.seasonId, now);
+    } catch (e) { console.error('[x1] fechamento:', e.message); }
   }
   if (due.length) await refreshLiveRound();
   return results;

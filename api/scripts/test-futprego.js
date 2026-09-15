@@ -256,6 +256,13 @@ check(kickoff.tried === kickoff.blocked, `saída do meio: ${kickoff.tried} tenta
     `ranking: ${A.nick} com ${wins}V ${draws}E ${losses}D = ${pts} pontos (linha: ${rowA?.goals}), maior sequência sem perder ${rowA?.fp?.best}`);
   const sorted = rank.rows.every((r, i) => i === 0 || rank.rows[i - 1].goals >= r.goals);
   check(sorted, 'ranking em ordem de pontos');
+  // recorte da rodada com prêmios: quem tem menos de minGames não é elegível; o 1º elegível leva o 1º prêmio
+  const rr = await (await fetch(`${API}/api/rankings/x1-rodada?limit=100`)).json();
+  const min = F.prizes.minGames;
+  const okElig = rr.rows.every((r) => r.fp.eligible === (r.fp.played >= min) && (r.fp.eligible || r.fp.prize === null));
+  const elig = rr.rows.filter((r) => r.fp.eligible);
+  const okPrize = elig.length === 0 || (elig[0].fp.prize?.money === F.prizes.round[0].money && elig[0].fp.prize?.vip === F.prizes.round[0].vip);
+  check(okElig && okPrize, `x1-rodada: elegibilidade (mín. ${min} partidas) e prêmio do 1º elegível (${elig[0]?.nick ?? 'ninguém'}: R$ ${elig[0]?.fp.prize?.money ?? 0} + ${elig[0]?.fp.prize?.vip ?? 0} VIP)`);
 }
 
 for (const p of [gA, gB, gD, lobB, lobC, lobD]) p.close();

@@ -313,8 +313,24 @@ KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 export const FUTPREGO = {
   bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, challengeMaxSec: 300,
   maxGoalWinsPerDay: 3, woMinTurns: 2, reconnectSec: 20,
-  // ranking do FutPrego (decisão do dono, 15/09/2026): 3 por vitória, 1 por empate, −2 por derrota (pode ficar negativo)
+  // Ranking X1 (decisão do dono, 15/09/2026): 3 por vitória, 1 por empate, −2 por derrota (pode ficar negativo)
   points: { win: 3, draw: 1, loss: -2 },
+  // Prêmios do Ranking X1 (decisões do dono, 15/09/2026): rodada (fecha às 19:00 com a liga) e temporada, aos 3
+  // primeiros ENTRE QUEM TEM `minGames` partidas no período — quem tem menos aparece na lista, mas o prêmio pula.
+  // Pagos em services/x1.js (settleX1Round/settleX1Season), depois da transação da liga.
+  prizes: {
+    minGames: 3,
+    round: [
+      { from: 1, to: 1, money: 10000, vip: 2 },
+      { from: 2, to: 2, money: 5000, vip: 1 },
+      { from: 3, to: 3, money: 2500, vip: 0 },
+    ],
+    season: [
+      { from: 1, to: 1, money: 100000, vip: 15 },
+      { from: 2, to: 2, money: 50000, vip: 5 },
+      { from: 3, to: 3, money: 25000, vip: 0 },
+    ],
+  },
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
 

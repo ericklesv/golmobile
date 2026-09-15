@@ -151,14 +151,23 @@ depois que o novo estiver estável. Não instalar nada dele.
   treino contra bot). Conta só partida de verdade FINISHED entre os dois, sem `wo-cedo`. A tela mostra a faixa
   `H2HStrip` entre a barra do adversário e a tábua ("Contra X: 2V · 1E · 0D" + últimas 5; "Primeiro confronto"
   se nunca jogaram). Coberto no `scripts/test-futprego.js`.
-  **Ranking X1** (= ranking do FutPrego; aba "Ranking X1" em Rankings — nome do dono, 15/09/2026; o jogo continua
-  "FutPrego", só o ranking é X1): `GET /api/rankings/futprego` →
-  `futpregoRanking` (todos os tempos): **pontos = 3 por vitória, 1 por empate, −2 por derrota** (`FUTPREGO.points`,
-  pode ficar negativo); desempate por vitórias, maior sequência sem perder, menos derrotas. Só partida de verdade
-  FINISHED sem `wo-cedo` (`COUNTED`); conta excluída não aparece. Linha = formato da artilharia (`goals` = pontos)
-  + `fp {wins, draws, losses, played, points, streak, best}` — `best` = maior sequência sem perder (V/E seguidos,
-  D zera), `streak` = a atual; `TopList` mostra a linha "3V · 1E · 0D · sem perder: máx. N (agora M)". A campanha
-  do perfil (`futpregoRecord`) usa a mesma soma (`tally`) e mostra pontos e sequências.
+  **Ranking X1** (= ranking do FutPrego; aba "Ranking X1" em Rankings com sub-abas Rodada / Temporada / Geral —
+  nome e regras do dono, 15/09/2026; o jogo continua "FutPrego", só o ranking é X1). Tudo em **`services/x1.js`**:
+  `GET /api/rankings/x1-rodada|x1-temporada|x1-geral` (`futprego` = alias de geral) → `x1Ranking`: **pontos = 3 por
+  vitória, 1 por empate, −2 por derrota** (`FUTPREGO.points`, pode ficar negativo); desempate por vitórias, maior
+  sequência sem perder, menos derrotas. Só partida de verdade FINISHED sem `wo-cedo` (`X1_COUNTED`); **a partida
+  conta no período em que TERMINOU** (`finishedAt`; rodada = `[round.startsAt, fechamento)`, temporada =
+  `season.startsAt`); conta excluída não aparece. Linha = formato da artilharia (`goals` = pontos) + `fp {wins,
+  draws, losses, played, points, streak, best, eligible?, prize?, need?}` — `best` = maior sequência sem perder
+  (V/E seguidos, D zera), `streak` = a atual; `TopList` mostra "3V · 1E · 0D · sem perder: máx. N (agora M) ·
+  prêmio R$ X + Y VIP" ou "faltam N partidas p/ prêmio". **Prêmios** (`FUTPREGO.prizes`): rodada 1º R$ 10 mil +
+  2 VIP · 2º R$ 5 mil + 1 VIP · 3º R$ 2,5 mil; temporada 1º R$ 100 mil + 15 VIP · 2º R$ 50 mil + 5 VIP · 3º
+  R$ 25 mil; **só entre quem tem `minGames` = 3 partidas no período** (quem tem menos aparece na lista, o prêmio
+  pula para o próximo). Pagamento: `settleX1Round`/`settleX1Season`, chamados em `settleDueRounds` DEPOIS da
+  transação da liga, em transação própria e idempotente (`SELECT … FOR UPDATE` na rodada/temporada; só paga se
+  `Round.x1Json`/`Season.x1Json` for null — migração 0027 — e grava ali o quadro + `paid`); um erro no X1 nunca
+  segura o fechamento da rodada. Cada premiado vira lance ao vivo ("X foi o 1º do Ranking X1 da rodada N … e
+  ganhou R$ 10.000 + 2 VIP!"). A campanha do perfil (`futpregoRecord` → `x1Record`) usa a mesma soma.
   **Lances ao vivo** (pedido do dono, 15/09/2026): todo resultado que conta entra em `Activity` (kind `FUTPREGO`) em
   `settle()` — vitória com gol (via `applyResult`, + linha do perdedor), vitória sem gol (limite do dia / revanche
   repetida, com o motivo), empate; `how` acrescenta "por W.O." / "(ele desistiu)" / "(gol contra dele)". W.O. cedo
@@ -408,7 +417,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links; não traz mensagens de quem eu bloqueei)
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
 `GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/futprego?page=` · `GET /api/painel/multicontas?page=&q=` (painel de admin)
-`GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|futprego`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
+`GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|x1-rodada|x1-temporada|x1-geral`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.

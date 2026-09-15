@@ -4,7 +4,7 @@ import { Shield } from './Shield';
 import { Avatar } from './Avatar';
 import type { TopRow } from '../lib/types';
 import { nickProps } from '../lib/nick';
-import { countdown } from '../lib/format';
+import { countdown, money } from '../lib/format';
 import { useAuth } from '../store/auth';
 import { NameBadges } from './Badges';
 
@@ -43,6 +43,8 @@ export function TopList({ rows, empty = 'Ninguém marcou ainda.', highlight }: {
             {r.fp && (
               <span className="block font-sans text-[10px] font-bold leading-tight text-muted">
                 <b className="text-grass-deep">{r.fp.wins}V</b> · {r.fp.draws}E · <b className="text-danger">{r.fp.losses}D</b> · sem perder: máx. {r.fp.best}{r.fp.streak > 0 ? ` (agora ${r.fp.streak})` : ''}
+                {r.fp.prize && (r.fp.prize.money > 0 || r.fp.prize.vip > 0) && <b className="text-orange-deep"> · prêmio {[r.fp.prize.money > 0 ? money(r.fp.prize.money) : null, r.fp.prize.vip > 0 ? `${r.fp.prize.vip} VIP` : null].filter(Boolean).join(' + ')}</b>}
+                {r.fp.eligible === false && r.fp.need !== undefined && <span> · {r.fp.need - r.fp.played === 1 ? 'falta 1 partida' : `faltam ${r.fp.need - r.fp.played} partidas`} p/ prêmio</span>}
               </span>
             )}
           </Link>

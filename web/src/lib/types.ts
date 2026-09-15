@@ -39,7 +39,11 @@ export interface Me {
 }
 
 /** Campanha no FutPrego (perfil e ranking): pontos = 3·V + 1·E − 2·D; `streak` = sequência atual sem perder, `best` = a maior. */
-export interface FutPregoStats { wins: number; draws: number; losses: number; played: number; points: number; streak: number; best: number }
+export interface FutPregoStats {
+  wins: number; draws: number; losses: number; played: number; points: number; streak: number; best: number;
+  /** Só nos recortes com prêmio (rodada/temporada): tem o mínimo de partidas? e o que a posição entre os elegíveis paga agora. */
+  eligible?: boolean; prize?: { money: number; vip: number } | null; need?: number;
+}
 export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; nickFade?: NickFade; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[]; /** só no ranking do FutPrego (`goals` = pontos) */ fp?: FutPregoStats }
 
 export interface MatchView {
@@ -103,7 +107,7 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
-  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number; points?: { win: number; draw: number; loss: number }; board?: import('../components/PregoBoard').PregoBoardData };
+  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number; points?: { win: number; draw: number; loss: number }; prizes?: { minGames: number; round: { from: number; to: number; money: number; vip: number }[]; season: { from: number; to: number; money: number; vip: number }[] }; board?: import('../components/PregoBoard').PregoBoardData };
   ganhaperde?: { start: number; drop: number; min: number; max: number; step: number; stepPrice: number; growth: number; pointsPerHit: number };
   /** Minigames jogáveis e o nível que libera cada um. */
   minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];

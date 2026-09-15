@@ -20,7 +20,8 @@ import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
 import { FUTPREGO, MINIGAMES, levelOf } from '../lib/rules.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam } from '../services/league.js';
-import { teamView, nickFadeOf } from '../services/view.js';
+import { teamView } from '../services/view.js';
+import { x1Record } from '../services/x1.js';
 import { nextMidnight } from '../lib/time.js';
 
 const F = FUTPREGO;
@@ -36,76 +37,13 @@ let nextId = 1;
 function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); }
 const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message });
 
-/** Só o que conta na campanha e no ranking: partida de verdade que terminou; W.O. cedo (aposta devolvida) e cancelada, não. */
-const COUNTED = { status: 'FINISHED', reason: { not: 'wo-cedo' } };
-
-/**
- * Soma a campanha de cada jogador a partir das partidas em ordem cronológica: vitórias, empates, derrotas,
- * pontos (FUTPREGO.points: 3 · 1 · −2 — decisão do dono, 15/09/2026), `streak` = sequência atual sem perder
- * (vitória ou empate seguidos; derrota zera) e `best` = a maior que ele já teve.
- */
-function tally(rows) {
-  const P = FUTPREGO.points;
-  const acc = new Map();
-  for (const m of rows) for (const id of [m.aId, m.bId]) {
-    let s = acc.get(id);
-    if (!s) acc.set(id, (s = { userId: id, wins: 0, draws: 0, losses: 0, streak: 0, best: 0 }));
-    if (m.winnerId === null) { s.draws++; s.streak++; } else if (m.winnerId === id) { s.wins++; s.streak++; } else { s.losses++; s.streak = 0; }
-    if (s.streak > s.best) s.best = s.streak;
-  }
-  for (const s of acc.values()) { s.played = s.wins + s.draws + s.losses; s.points = s.wins * P.win + s.draws * P.draw + s.losses * P.loss; }
-  return acc;
-}
-
 /**
  * Campanha do jogador no FutPrego (perfil): partidas de verdade que terminaram (bot não grava). Vitória =
  * ele venceu; derrota = o outro venceu; empate = 10 jogadas de cada sem gol. Partida que acabou antes de
- * cada um jogar 2 vezes (dinheiro devolvido) ou cancelada não conta. Traz também pontos e sequências.
+ * cada um jogar 2 vezes (dinheiro devolvido) ou cancelada não conta. Pontos e sequências do Ranking X1
+ * (services/x1.js — o ranking em si também está lá).
  */
-export async function futpregoRecord(userId) {
-  const rows = await prisma.futPregoMatch.findMany({ where: { ...COUNTED, OR: [{ aId: userId }, { bId: userId }] }, orderBy: { id: 'asc' }, select: { aId: true, bId: true, winnerId: true } });
-  const s = tally(rows).get(userId);
-  return s ? { wins: s.wins, losses: s.losses, draws: s.draws, points: s.points, streak: s.streak, best: s.best } : { wins: 0, losses: 0, draws: 0, points: 0, streak: 0, best: 0 };
-}
-
-/**
- * Ranking do FutPrego (aba Rankings; pedido do dono, 15/09/2026): todos os tempos, por pontos; desempate por
- * vitórias, maior sequência sem perder, menos derrotas. Conta excluída não aparece. As linhas têm o mesmo
- * formato da artilharia (`goals` = pontos) mais `fp` com a campanha, para a tela mostrar V·E·D e as sequências.
- */
-export async function futpregoRanking(take = 50) {
-  const rows = await prisma.futPregoMatch.findMany({ where: COUNTED, orderBy: { id: 'asc' }, select: { aId: true, bId: true, winnerId: true } });
-  const list = [...tally(rows).values()].sort((x, y) => y.points - x.points || y.wins - x.wins || y.best - x.best || x.losses - y.losses || x.userId - y.userId);
-  const top = list.slice(0, take + 20); // folga para as contas excluídas que saem
-  const users = await prisma.user.findMany({ where: { id: { in: top.map((s) => s.userId) }, deletedAt: null }, include: { team: true } });
-  const U = new Map(users.map((u) => [u.id, u]));
-  const now = new Date();
-  return top.filter((s) => U.has(s.userId)).slice(0, take).map((s, i) => {
-    const u = U.get(s.userId);
-    return {
-      position: i + 1, userId: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, nickFade: nickFadeOf(u),
-      team: teamView(u.team), vip: !!(u.vipUntil && u.vipUntil > now), goals: s.points,
-      fp: { wins: s.wins, draws: s.draws, losses: s.losses, played: s.played, points: s.points, streak: s.streak, best: s.best },
-    };
-  });
-}
-
-/**
- * Retrospecto entre dois jogadores (pedido do dono, 15/09/2026): partidas de verdade que terminaram entre
- * eles — W.O. cedo (aposta devolvida) e canceladas não contam. Vai na mensagem `match` de cada lado, na
- * perspectiva de quem recebe (sendMatch). `last` = quem venceu as últimas 5, a mais recente primeiro (null = empate).
- */
-async function headToHead(aId, bId) {
-  const rows = await prisma.futPregoMatch.findMany({
-    where: { status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId, bId }, { aId: bId, bId: aId }] },
-    orderBy: { id: 'desc' }, select: { winnerId: true, finishedAt: true },
-  });
-  return {
-    total: rows.length, draws: rows.filter((r) => r.winnerId === null).length,
-    wins: { [aId]: rows.filter((r) => r.winnerId === aId).length, [bId]: rows.filter((r) => r.winnerId === bId).length },
-    last: rows.slice(0, 5).map((r) => r.winnerId), lastAt: rows[0]?.finishedAt ?? null,
-  };
-}
+export const futpregoRecord = (userId) => x1Record(userId);
 
 export function futpregoStatus() {
   return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0) };

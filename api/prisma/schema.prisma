@@ -256,6 +256,7 @@ model Season {
   totalRounds Int
   status      SeasonStatus @default(ACTIVE)
   topJson     Json? // top 10 artilheiros congelado no fechamento da temporada (estatísticas de top 10 do perfil)
+  x1Json      Json? // Ranking X1 da temporada congelado + prêmios pagos (services/x1.js); null = ainda não fechou
 
   rounds    Round[]
   standings Standing[]
@@ -273,6 +274,7 @@ model Round {
   endsAt   DateTime
   status   RoundStatus @default(LIVE)
   topJson  Json? // top 10 artilheiros congelado no fechamento
+  x1Json   Json? // Ranking X1 da rodada congelado + prêmios pagos (services/x1.js); null = ainda não fechou
 
   matches Match[]
   goals   Goal[]

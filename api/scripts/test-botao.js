@@ -133,14 +133,19 @@ check(row.game === 'BOTAO' && !!row.seasonId && row.status === 'FINISHED' && row
 check((await prisma.goal.count({ where: { userId: w.id, kind: 'BOTAO' } })) === 1, 'gol gravado como BOTAO');
 check(ol.lost === true, `o time do perdedor (${ol.lostTeam}) perdeu 1 gol na rodada`);
 
-// ranking e perfil
-const rk = await (await fetch(`${API}/api/rankings/x1`)).json();
+// Ranking X1 (pontos 3·1·−2, services/x1.js) conta o Botão; perfil com o total, cada jogo e a temporada
+check(ow.h2h?.total === 1 && ow.h2h.wins === 1 && ol.h2h?.losses === 1 && !!ow.rivalry?.text && !!ol.rivalry?.text, `fim: retrospecto já com a partida e a frase ("${ol.rivalry?.text}")`);
+const rk = await (await fetch(`${API}/api/rankings/x1-temporada?limit=100`)).json();
 const inRank = rk.rows?.find((x) => x.userId === w.id);
-check(!!inRank && inRank.wins >= 1 && !('email' in inRank) && !('passwordHash' in inRank), `Ranking do X1 (temporada ${rk.key}): ${w.nick} com ${inRank?.wins} vitória(s), em ${inRank?.position}º (sem dados privados)`);
+const P = F.points;
+check(!!inRank && inRank.goals === P.win && inRank.fp.wins === 1 && !('email' in inRank) && !('passwordHash' in inRank), `Ranking X1 da temporada ${rk.key}: ${w.nick} com ${inRank?.goals} pontos (${inRank?.fp?.wins}V), em ${inRank?.position}º (sem dados privados)`);
+const lRank = rk.rows?.find((x) => x.userId === l.id);
+check(!!lRank && lRank.goals === P.loss && lRank.fp.losses === 1, `o perdedor ${l.nick} aparece com ${lRank?.goals} pontos`);
 const pw = await (await fetch(`${API}/api/players/${w.nick}`)).json();
-check(pw.x1?.wins === 1 && pw.x1.games.BOTAO.wins === 1 && pw.x1.season.wins === 1 && pw.x1.season.position === inRank?.position, `perfil: X1 ${pw.x1?.wins}V ${pw.x1?.losses}D (Botão ${pw.x1?.games?.BOTAO?.wins}V), temporada ${pw.x1?.season?.wins} vitória(s), ${pw.x1?.season?.position}º`);
+check(pw.x1?.wins === 1 && pw.x1.points === P.win && pw.x1.games.BOTAO.wins === 1 && pw.x1.games.FUTPREGO.wins === 0 && pw.x1.season?.points === P.win && pw.x1.season.position === inRank?.position,
+  `perfil: X1 ${pw.x1?.wins}V ${pw.x1?.losses}D, ${pw.x1?.points} pontos (Botão ${pw.x1?.games?.BOTAO?.wins}V), temporada ${pw.x1?.season?.points} pontos, ${pw.x1?.season?.position}º`);
 const pl = await (await fetch(`${API}/api/players/${l.nick}`)).json();
-check(pl.x1?.losses === 1 && pl.x1.games.BOTAO.losses === 1, `perfil do perdedor: ${pl.x1?.losses} derrota`);
+check(pl.x1?.losses === 1 && pl.x1.games.BOTAO.losses === 1 && pl.x1.points === P.loss, `perfil do perdedor: ${pl.x1?.losses} derrota, ${pl.x1?.points} pontos`);
 
 // W.O. cedo: B cai logo depois de começar (menos de 2 petelecos de cada) → dinheiro volta
 const bef = { a: await money(A), b: await money(B) };

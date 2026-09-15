@@ -15,7 +15,8 @@ import { FALTAPRO } from '../lib/faltapro.js';
 import { BOARD as FUTPREGO_BOARD } from '../lib/futprego.js';
 import { BOTAO_FIELD, kickoffLayout as botaoKickoff } from '../lib/botao.js';
 import { boardView, playerClub } from '../services/club.js';
-import { x1Record, x1Ranking, x1Today } from '../realtime/x1.js';
+import { x1Today } from '../realtime/x1.js';
+import { x1Ranking, x1Record } from '../services/x1.js';
 import { withBadges, badgesOf, topHistory } from '../services/badges.js';
 import { matchPage } from '../services/match.js';
 
@@ -91,16 +92,19 @@ game.get('/home', cached(5000), handle(async (req) => {
 }));
 
 // ─── Rankings ───────────────────────────────────────────────────────────────
-const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha', 'x1'];
+const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha', 'x1-rodada', 'x1-temporada', 'x1-geral', 'futprego', 'x1'];
 game.get('/rankings/:scope', cached(5000), handle(async (req) => {
   const scope = String(req.params.scope);
   if (!SCOPES.includes(scope)) throw badRequest('Ranking inválido.');
   const take = Math.min(100, Number(req.query.limit) || 50);
   const round = await currentRound();
-  if (scope === 'x1') { const r = await x1Ranking(take); return { scope, key: r.season, rows: await withBadges(r.rows) }; } // vitórias no X1 na temporada
   if (scope === 'hora') return { scope, key: hourKey(), rows: await withBadges(await topScorers({ hourKey: hourKey() }, take)) };
   if (scope === 'rodada') return { scope, key: round?.number ?? null, rows: round ? await withBadges(await topScorers({ roundId: round.id }, take)) : [] };
   if (scope === 'temporada') return { scope, key: round?.season?.number ?? null, rows: round ? await withBadges(await topScorers({ seasonId: round.seasonId }, take)) : [] };
+  // Ranking X1 (services/x1.js): rodada e temporada com prêmios (a partida conta no período em que terminou), geral = todos os tempos
+  if (scope === 'x1-rodada') return { scope, key: round?.number ?? null, rows: round ? await withBadges(await x1Ranking({ from: round.startsAt, table: FUTPREGO.prizes.round, take })) : [] };
+  if (scope === 'x1-temporada' || scope === 'x1') return { scope, key: round?.season?.number ?? null, rows: round ? await withBadges(await x1Ranking({ from: round.season.startsAt, table: FUTPREGO.prizes.season, take })) : [] };
+  if (scope === 'x1-geral' || scope === 'futprego') return { scope: 'x1-geral', key: null, rows: await withBadges(await x1Ranking({ take })) };
   const field = { geral: 'goalsTotal', penal: 'penaltyGoals', falta: 'foulGoals', trilha: 'trailGoals' }[scope];
   const users = await prisma.user.findMany({ where: { [field]: { gt: 0 }, deletedAt: null }, orderBy: [{ [field]: 'desc' }, { id: 'asc' }], take, include: { team: teamSel } });
   return {
@@ -205,19 +209,20 @@ game.get('/players/search', searchLimiter, handle(async (req) => {
 game.get('/players/:nick', handle(async (req) => {
   const user = await prisma.user.findUnique({ where: { nickLower: String(req.params.nick).toLowerCase() }, include: { team: true } });
   if (!user || user.deletedAt) throw notFound('Jogador não encontrado.');
-  const [geral, penal, falta, trilha, recent] = await Promise.all([
+  const [geral, penal, falta, trilha, recent, round] = await Promise.all([
     prisma.user.count({ where: { goalsTotal: { gt: user.goalsTotal } } }),
     prisma.user.count({ where: { penaltyGoals: { gt: user.penaltyGoals } } }),
     prisma.user.count({ where: { foulGoals: { gt: user.foulGoals } } }),
     prisma.user.count({ where: { trailGoals: { gt: user.trailGoals } } }),
     prisma.activity.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    currentRound(),
   ]);
   return {
     ...publicView(user),
     ...(await playerClub(user)), // cargo no time e contrato
     tops: (await badgesOf(user.id)).tops, // top 3 de agora (hora/rodada/temporada)
     history: await topHistory(user.id), // vezes em 1º/2º/3º e no top 10
-    x1: await x1Record(user.id), // vitórias, derrotas e empates no X1 (total, por jogo e na temporada)
+    x1: await x1Record(user.id, { season: round?.season ?? null }), // campanha no X1: total (pontos do Ranking X1), por jogo e a temporada
     positions: { geral: geral + 1, penal: penal + 1, falta: falta + 1, trilha: trilha + 1 },
     recent: recent.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt })),
   };

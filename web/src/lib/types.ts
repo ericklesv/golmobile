@@ -38,7 +38,13 @@ export interface Me {
   serverTime: number;
 }
 
-export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; nickFade?: NickFade; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[] }
+/** Campanha no FutPrego (perfil e ranking): pontos = 3·V + 1·E − 2·D; `streak` = sequência atual sem perder, `best` = a maior. */
+export interface FutPregoStats {
+  wins: number; draws: number; losses: number; played: number; points: number; streak: number; best: number;
+  /** Só nos recortes com prêmio (rodada/temporada): tem o mínimo de partidas? e o que a posição entre os elegíveis paga agora. */
+  eligible?: boolean; prize?: { money: number; vip: number } | null; need?: number;
+}
+export interface TopRow { position: number; userId: number; nick: string; avatarUrl?: string | null; nickColor?: string | null; nickFade?: NickFade; goals: number; team: Pick<Team, 'slug' | 'name' | 'abbr' | 'colorPrimary' | 'colorSecondary'>; vip: boolean; role?: ClubRole | null; tops?: TopBadge[]; /** só no ranking do FutPrego (`goals` = pontos) */ fp?: FutPregoStats }
 
 export interface MatchView {
   id: number; serie: Serie; status: 'LIVE' | 'FINISHED';
@@ -101,7 +107,12 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
-  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
+  /** Regras do X1 (os dois jogos) — o nome ficou do FutPrego. `points`/`prizes` = Ranking X1. */
+  futprego?: {
+    bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number; woMinTurns: number; reconnectSec: number;
+    points?: { win: number; draw: number; loss: number }; prizes?: { minGames: number; round: { from: number; to: number; money: number; vip: number }[]; season: { from: number; to: number; money: number; vip: number }[] };
+    board?: import('../components/PregoBoard').PregoBoardData;
+  };
   /** X1: o jogo de hoje (vira às 20h) e o campo do Futebol de Botão (com os botões na saída, para o enfeite do começo). */
   x1?: {
     names: Record<X1Game, string>; today: X1Today;
@@ -161,7 +172,7 @@ export interface PublicPlayer {
   id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number; nickColor?: string | null; nickFade?: NickFade;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
-  /** Campanha no X1 (só partidas de verdade que terminaram): total, por jogo e a temporada (vitórias que contam no ranking). */
+  /** Campanha no X1 (só partidas de verdade que terminaram): total com os pontos do Ranking X1, por jogo e a temporada. */
   x1?: X1Record;
   positions: { geral: number; penal: number; falta: number; trilha: number };
   recent: FeedItem[];
@@ -197,10 +208,12 @@ export interface MinigameCard {
 // ─── X1 (jogos 1x1 ao vivo, um por dia) ─────────────────────────────────────
 export type X1Game = 'FUTPREGO' | 'BOTAO';
 export interface X1Today { game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number; switchHour?: number }
-export interface X1Tally { wins: number; losses: number; draws: number }
+/** V/E/D, pontos do Ranking X1 (3·V + 1·E − 2·D) e sequência sem perder (`streak` = a atual, `best` = a maior). */
+export interface X1Tally { wins: number; losses: number; draws: number; points: number; streak: number; best: number }
 export interface X1Record extends X1Tally {
   games: Record<X1Game, X1Tally>;
-  season: { number: number | null; wins: number; position: number | null };
+  /** A temporada no Ranking X1 (null = sem temporada no ar). */
+  season: { number: number; points: number; played: number; position: number | null } | null;
 }
 export interface MemoriaCard { i: number; team: Team | null; matched: boolean }
 export interface MemoriaReward { goal: boolean; levelPoints: number; moves: number; text: string | null }

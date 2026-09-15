@@ -9,6 +9,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/auth';
 import { Panel } from '../components/ui';
+import { useSeo } from '../lib/seo';
 
 export const CONTACT_EMAIL = 'contato@jogagol.com.br';
 export const RESPONSIBLE = 'Managol Softwares';
@@ -36,6 +37,7 @@ function LegalFrame({ title, ribbon, children }: { title: string; ribbon: 'blue'
 }
 
 export function PrivacyScreen() {
+  useSeo('Política de privacidade', 'Como o JogaGol trata os dados da sua conta.', '/privacidade');
   return (
     <LegalFrame title="PRIVACIDADE" ribbon="blue">
       <Panel>
@@ -101,6 +103,7 @@ export function PrivacyScreen() {
 }
 
 export function TermsScreen() {
+  useSeo('Termos de uso', 'Regras de uso do JogaGol.', '/termos');
   return (
     <LegalFrame title="TERMOS DE USO" ribbon="orange">
       <Panel>
@@ -143,6 +146,7 @@ export function TermsScreen() {
 }
 
 export function DeleteAccountInfoScreen() {
+  useSeo('Excluir conta', 'Como excluir sua conta do JogaGol.', '/excluir-conta');
   const me = useAuth((s) => s.me);
   return (
     <LegalFrame title="EXCLUIR CONTA" ribbon="orange">

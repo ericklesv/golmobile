@@ -34,8 +34,9 @@ let seq = 0;
 // VIP por padrão: sem VIP há 2 min de espera para desafiar depois de cada partida (testada no passo 10)
 async function mkUser(team, money, { vip = true } = {}) {
   const nick = `fp${Date.now() % 1e5}${seq++}`;
+  // criado direto no banco local (o cadastro tem trava de contas por IP) e com o token assinado aqui
   const t = await prisma.team.findUnique({ where: { slug: team } });
-  const u = await prisma.user.create({ data: { nick, nickLower: nick.toLowerCase(), email: `${nick}@local.test`, passwordHash: 'x', teamId: t.id, money, vipUntil: vip ? new Date(Date.now() + 86_400_000) : null } });
+  const u = await prisma.user.create({ data: { nick, nickLower: nick.toLowerCase(), email: `${nick}@local.test`, passwordHash: 'x', gender: 'M', teamId: t.id, money, vipUntil: vip ? new Date(Date.now() + 86_400_000) : null } });
   return { ...u, token: jwt.sign({ uid: u.id, nick: u.nick }, config.jwtSecret, { expiresIn: '1d' }) };
 }
 const today = await (await fetch(`${API}/api/x1/status`)).json();
@@ -157,6 +158,8 @@ const after1 = { a: await money(A), b: await money(B) };
 const net = (u) => (u === A ? after1.a - before.a : after1.b - before.b);
 check(net(w1) === F.bet && net(l1) === -F.bet, `dinheiro: vencedor ${w1.nick} +R$ ${net(w1)} (levou R$ ${F.bet * 2}), perdedor −R$ ${-net(l1)}`);
 check(o1w.goal === true && /FutPrego/.test(o1w.goalText || '') && o1w.money === F.bet * 2, `vencedor: gol valeu ("${(o1w.goalText || '').slice(0, 60)}…")`);
+check(o1w.h2h?.total === 1 && o1w.h2h.wins === 1 && o1l.h2h?.losses === 1 && o1l.h2h.last[0] === 'D' && o1w.rivalry?.kind === 'estreiaV' && o1l.rivalry?.kind === 'estreiaD' && o1l.rivalry.text.includes(w1.nick),
+  `fim da partida 1: retrospecto já com ela e a frase de estreia ("${o1l.rivalry?.text}")`);
 const g1 = await prisma.goal.count({ where: { userId: w1.id, kind: 'FUTPREGO' } });
 check(g1 === 1, 'gol gravado como FUTPREGO para o vencedor');
 const row1 = await prisma.x1Match.findFirst({ where: { OR: [{ aId: A.id }, { bId: A.id }] }, orderBy: { id: 'desc' } });
@@ -176,7 +179,8 @@ gA.clear(); gB.clear();
 gB.send({ t: 'accept', id: w2wait.id });
 const goalsBefore2 = liveB ? await scoreB() : null;
 const r2 = await play(gA, gB, (side) => ((side === r1.youA) === (w1 === A) ? 'gol' : 'nada'));
-const o2w = w1 === A ? r2.oa : r2.ob;
+const o2w = w1 === A ? r2.oa : r2.ob, o2l = w1 === A ? r2.ob : r2.oa;
+check(o2w.h2h?.wins === 2 && o2w.rivalry?.kind === 'ampliou' && o2l.h2h?.losses === 2 && o2l.rivalry?.kind === 'ficandoFeio', `fim da revanche: ${w1.nick} "${o2w.rivalry?.text}" / ${l1.nick} "${o2l.rivalry?.text}"`);
 {
   const hw = w1 === A ? lastMatchMsgs.ma.h2h : lastMatchMsgs.mb.h2h, hl = w1 === A ? lastMatchMsgs.mb.h2h : lastMatchMsgs.ma.h2h;
   check(hw?.total === 1 && hw.wins === 1 && hw.losses === 0 && hw.last[0] === 'V' && hl?.wins === 0 && hl.losses === 1 && hl.last[0] === 'D', `retrospecto na revanche: ${w1.nick} vê 1V/0D (última V), ${l1.nick} vê 0V/1D (última D)`);
@@ -191,7 +195,8 @@ const w3wait = await gA.wait('waiting');
 gA.clear(); gB.clear();
 gB.send({ t: 'accept', id: w3wait.id });
 const r3 = await play(gA, gB, (side) => ((side === r1.youA) === (w1 === A) ? 'nada' : 'gol'));
-const o3w = l1 === A ? r3.oa : r3.ob;
+const o3w = l1 === A ? r3.oa : r3.ob, o3l = l1 === A ? r3.ob : r3.oa;
+check(o3w.rivalry?.kind === 'finalmente' && o3l.rivalry?.kind === 'tropecou', `perdia de 2 a 0 e venceu: "${o3w.rivalry?.text}" / o outro: "${o3l.rivalry?.text}"`);
 check(o3w.goal === true, `terceira: ${l1.nick} ganhou e o gol valeu (resultado diferente do anterior)`);
 
 // 6) empate: ninguém marca em 10 jogadas de cada → dinheiro volta
@@ -202,6 +207,7 @@ gA.clear(); gB.clear();
 gB.send({ t: 'accept', id: w6.id });
 const r6 = await play(gA, gB, () => 'nada');
 check(r6?.oa?.refund === true && r6.oa.why === 'empate' && (await money(A)) === bef6.a && (await money(B)) === bef6.b, `10 jogadas de cada sem gol: empate e os R$ ${F.bet} voltaram`);
+check(r6.oa.h2h?.draws === 1 && r6.oa.rivalry?.kind === 'acirrado' && r6.ob.rivalry?.kind === 'acirrado', `empate com o confronto 2 a 1: "${r6.oa.rivalry?.text}"`);
 
 // 7) vez errada: o peteleco de quem não é a vez é ignorado; W.O. logo no começo devolve o dinheiro
 const bef7 = { a: await money(A), b: await money(B) };
@@ -218,6 +224,7 @@ gB.close();
 const drop = await gA.wait('opp-dropped', 3000);
 const o7 = await gA.wait('over', (F.reconnectSec + 5) * 1000);
 check(!!drop && o7?.reason === 'wo' && o7.refund === true && o7.why === 'wo-cedo' && (await money(A)) === bef7.a && (await money(B)) === bef7.b, `B caiu e não voltou em ${F.reconnectSec} s antes de jogar: W.O. cedo, dinheiro devolvido aos dois`);
+check(!o7.rivalry && !o7.h2h, 'W.O. cedo não entra no retrospecto: sem frase no fim');
 
 // 8) trava de gols por hora (ganhar): com maxGoalsPerHour vitórias valendo nesta hora, a próxima leva o pote mas não o gol
 gB = phone(B, 'game', '10.0.0.2'); await gB.open;
@@ -295,6 +302,28 @@ const oBot = await gD.wait('over', 5000);
 check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinheiro igual');
 
 check(kickoff.tried === kickoff.blocked, `saída do meio: ${kickoff.tried} tentativas de gol de primeira (peteleco que entraria sem a garantia), nenhuma valeu; tábuas sorteadas: ${[...kickoff.boards].join(', ')}`);
+
+// ranking do FutPrego (3 · 1 · −2) bate com o que está no banco para A
+{
+  const rank = await (await fetch(`${API}/api/rankings/futprego?limit=100`)).json();
+  const rowA = rank.rows?.find((r) => r.userId === A.id);
+  const mine = { status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: A.id }, { bId: A.id }] };
+  const wins = await prisma.x1Match.count({ where: { ...mine, winnerId: A.id } });
+  const draws = await prisma.x1Match.count({ where: { ...mine, winnerId: null } });
+  const losses = await prisma.x1Match.count({ where: { ...mine, winnerId: { not: null }, NOT: { winnerId: A.id } } });
+  const pts = wins * F.points.win + draws * F.points.draw + losses * F.points.loss;
+  check(!!rowA && rowA.goals === pts && rowA.fp.points === pts && rowA.fp.wins === wins && rowA.fp.losses === losses && rowA.fp.best >= 1,
+    `ranking: ${A.nick} com ${wins}V ${draws}E ${losses}D = ${pts} pontos (linha: ${rowA?.goals}), maior sequência sem perder ${rowA?.fp?.best}`);
+  const sorted = rank.rows.every((r, i) => i === 0 || rank.rows[i - 1].goals >= r.goals);
+  check(sorted, 'ranking em ordem de pontos');
+  // recorte da rodada com prêmios: quem tem menos de minGames não é elegível; o 1º elegível leva o 1º prêmio
+  const rr = await (await fetch(`${API}/api/rankings/x1-rodada?limit=100`)).json();
+  const min = F.prizes.minGames;
+  const okElig = rr.rows.every((r) => r.fp.eligible === (r.fp.played >= min) && (r.fp.eligible || r.fp.prize === null));
+  const elig = rr.rows.filter((r) => r.fp.eligible);
+  const okPrize = elig.length === 0 || (elig[0].fp.prize?.money === F.prizes.round[0].money && elig[0].fp.prize?.vip === F.prizes.round[0].vip);
+  check(okElig && okPrize, `x1-rodada: elegibilidade (mín. ${min} partidas) e prêmio do 1º elegível (${elig[0]?.nick ?? 'ninguém'}: R$ ${elig[0]?.fp.prize?.money ?? 0} + ${elig[0]?.fp.prize?.vip ?? 0} VIP)`);
+}
 
 for (const p of [gA, gB, gD, lobB, lobC, lobD]) p.close();
 await prisma.$disconnect();

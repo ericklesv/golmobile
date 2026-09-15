@@ -5,6 +5,7 @@ import { api, token } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { PublicPlayer, Team, X1Game, X1Today } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
+import { RivalryResult } from '../components/Rivalry';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { PregoBoard, type PregoBoardData, type TeamPaint } from '../components/PregoBoard';
@@ -49,6 +50,8 @@ interface Over {
   score?: [number, number] | null; pen?: [boolean[], boolean[]] | null; lossLimit?: boolean;
   /** Quem não é VIP: até quando espera para desafiar de novo (null = pode já; ausente no treino). */
   cooldownUntil?: number | null;
+  /** Retrospecto já com esta partida e a frase de provocação (só partida que entrou no retrospecto). */
+  h2h?: H2H; rivalry?: { kind: string; text: string } | null;
 }
 interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number }
 interface Shown { ball: { x: number; y: number }; pieces: BotaoPiece[] }
@@ -584,16 +587,16 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
               Às {today.switchHour ?? 20}h troca para <b className="text-navy-ink">{today.nextName}</b>{today.switchAt > now ? `, daqui a ${timeLeft(today.switchAt - now)}` : ''}.
             </p>
           )}
-          <Link to="/rankings?aba=x1" className="mt-2 inline-flex items-center gap-1 text-[12px] font-extrabold text-sky-deep underline decoration-2 underline-offset-2">Ranking do X1</Link>
+          <Link to="/rankings?aba=x1" className="mt-2 inline-flex items-center gap-1 text-[12px] font-extrabold text-sky-deep underline decoration-2 underline-offset-2">Ranking X1 (com prêmios)</Link>
         </div>
       </div>
       <div className="panel-navy mt-3 px-3 py-2.5">
         <p className="text-[14px] font-extrabold leading-snug text-white">{t.main}</p>
         <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Cada jogador ganha no máximo {rules.maxGoalsPerHour} gols por hora no X1, e o time perde no máximo {rules.maxGoalsPerHour} por hora por causa dele. Ganhar da mesma pessoa duas vezes seguidas, a segunda não vale gol.</p>
       </div>
-      {season && season.season.number !== null && (season.wins + season.losses + season.draws > 0) && (
+      {season?.season && season.season.played > 0 && (
         <p className="t-out mt-2 text-center text-[12px] font-extrabold">
-          Temporada {season.season.number}: {season.season.wins} {season.season.wins === 1 ? 'vitória' : 'vitórias'} no ranking do X1{season.season.position ? `, ${season.season.position}º lugar` : ''}.
+          Temporada {season.season.number}: {season.season.points} {Math.abs(season.season.points) === 1 ? 'ponto' : 'pontos'} no Ranking X1{season.season.position ? `, ${season.season.position}º lugar` : ''}.
         </p>
       )}
       {open.length > 0 && (
@@ -781,5 +784,11 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
       : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : over.reason === 'penaltis' ? `${opp} venceu nos pênaltis (${penScore}).` : `${opp} marcou primeiro.`;
     text += over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: já foram ${limit} nesta hora.` : ' Seu time não perdeu gol.';
   }
-  return <GoalOverlay open goal={goal} title={title} text={text} money={money} team={me.team} onClose={onClose} autoClose={6000} />;
+  // retrospecto contra o adversário já com esta partida + a frase de provocação (lib/rivalidade.js na API)
+  const rival = !over.training && over.h2h ? over.h2h : null;
+  return (
+    <GoalOverlay open goal={goal} title={title} text={text} money={money} team={me.team} onClose={onClose} autoClose={rival ? 10000 : 6000}>
+      {rival && <RivalryResult h2h={rival} opp={opp} line={over.rivalry?.text ?? null} />}
+    </GoalOverlay>
+  );
 }

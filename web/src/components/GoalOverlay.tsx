@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Shield } from './Shield';
 import type { Team } from '../lib/types';
@@ -16,10 +16,12 @@ interface Props {
   team?: Team | null;
   onClose: () => void;
   autoClose?: number;
+  /** Bloco extra embaixo da narração (ex.: o retrospecto no fim do FutPrego). */
+  children?: ReactNode;
 }
 
 /** Tela de resultado estilo "Stage Clear": ribbon, estrelas, prêmio em moedas/nível, narração. */
-export function GoalOverlay({ open, goal, title, text, money = 0, levelPoints = 0, team, onClose, autoClose = 4500 }: Props) {
+export function GoalOverlay({ open, goal, title, text, money = 0, levelPoints = 0, team, onClose, autoClose = 4500, children }: Props) {
   useEffect(() => {
     if (!open) return;
     sound.play(goal ? 'goal' : 'error');
@@ -41,7 +43,8 @@ export function GoalOverlay({ open, goal, title, text, money = 0, levelPoints = 
             <motion.span key={i} initial={{ y: -40, x: `${c.x}vw`, rotate: 0, opacity: 1 }} animate={{ y: '110vh', rotate: c.rot, opacity: [1, 1, 0.6] }}
               transition={{ duration: c.dur, delay: c.delay, ease: 'easeIn' }} className="absolute top-0 rounded-sm" style={{ width: c.size, height: c.size * 0.6, background: c.color }} />
           ))}
-          <div className="relative mx-5 flex w-full max-w-sm flex-col items-center text-center">
+          {/* com bloco extra, a coluna rola se não couber (celular baixo); o px-5 no lugar do mx-5 deixa a mesma largura e dá folga para o pulo da ribbon */}
+          <div className={`relative flex w-full flex-col items-center text-center ${children ? 'no-scrollbar max-h-full max-w-[26.5rem] overflow-y-auto overflow-x-hidden px-5 py-4' : 'mx-5 max-w-sm'}`}>
             <motion.div initial={{ scale: 0.3, rotate: -8 }} animate={{ scale: [0.3, 1.15, 1], rotate: [-8, 3, 0] }} transition={{ duration: 0.55, ease: 'easeOut' }}
               className={`ribbon ribbon-lg ${goal ? 'ribbon-orange' : 'ribbon-blue'} w-full`}>
               {title ?? (goal ? 'GOOOOL!!' : 'ERROU!')}
@@ -68,6 +71,7 @@ export function GoalOverlay({ open, goal, title, text, money = 0, levelPoints = 
                 {text}
               </motion.div>
             )}
+            {children}
             <p className="mt-5 font-display text-xs uppercase tracking-widest text-white/70">toque para continuar</p>
           </div>
         </motion.div>

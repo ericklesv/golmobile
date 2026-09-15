@@ -8,8 +8,10 @@ import { Tabs } from '../components/ui';
 import type { Serie } from '../lib/types';
 import { InviteBanner, savedInvite, clearInvite } from '../components/Invite';
 import { Turnstile } from '../components/Turnstile';
+import { useSeo } from '../lib/seo';
 
 export function RegisterScreen() {
+  useSeo('Criar conta — escolha seu time', 'Crie sua conta grátis no JogaGol, escolha um clube brasileiro e comece a marcar gols na disputa de gols online.', '/cadastro');
   const register = useAuth((s) => s.register);
   const meta = useAuth((s) => s.meta);
   const nav = useNavigate();

@@ -25,8 +25,9 @@ import { FUTPREGO, BOTAO, X1, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
 import { teamView } from '../services/view.js';
+import { X1_COUNTED } from '../services/x1.js';
 import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
-import { nickFadeOf } from '../lib/items.js';
+import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
 
 const F = FUTPREGO; // regras de convite, aposta, gol e travas (valem para todo o X1)
 const BOT_NAMES = ['Zagalinho', 'Pé de Pano', 'Perna Longa', 'Canhotinha', 'Bicudo', 'Matador', 'Camisa 10', 'Prego Torto'];
@@ -58,82 +59,22 @@ const hourStart = (now) => new Date(nextHourStart(now).getTime() - 3600_000);
 
 /**
  * Retrospecto entre dois jogadores (pedido do dono, 15/09/2026): partidas de verdade que terminaram entre
- * eles no X1 (os dois jogos juntos) — W.O. cedo (aposta devolvida) e canceladas não contam. Vai na mensagem
- * `match` de cada lado, na perspectiva de quem recebe (sendMatch). `last` = quem venceu as últimas 5, a mais
- * recente primeiro (null = empate).
+ * eles no X1 (os dois jogos juntos) — W.O. cedo (aposta devolvida) e canceladas não contam —, a mais recente
+ * primeiro. Vai na mensagem `match` (sendMatch) e, já com a partida que acabou, na `over` com a frase de
+ * provocação (rivalry()) — sempre na perspectiva de quem recebe (h2hOf em lib/rivalidade.js).
  */
 async function headToHead(aId, bId) {
-  const rows = await prisma.x1Match.findMany({
-    where: { status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId, bId }, { aId: bId, bId: aId }] },
-    orderBy: { id: 'desc' }, select: { winnerId: true, finishedAt: true },
+  return prisma.x1Match.findMany({
+    where: { ...X1_COUNTED, OR: [{ aId, bId }, { aId: bId, bId: aId }] },
+    orderBy: { id: 'desc' }, select: { id: true, winnerId: true, finishedAt: true },
   });
-  return {
-    total: rows.length, draws: rows.filter((r) => r.winnerId === null).length,
-    wins: { [aId]: rows.filter((r) => r.winnerId === aId).length, [bId]: rows.filter((r) => r.winnerId === bId).length },
-    last: rows.slice(0, 5).map((r) => r.winnerId), lastAt: rows[0]?.finishedAt ?? null,
-  };
 }
 
 export function x1Status() {
   return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0), today: x1Today() };
 }
 
-// ─── Campanha e ranking (perfil e aba de rankings) ──────────────────────────
-
-const recordOf = async (userId, where = {}) => {
-  const mine = { OR: [{ aId: userId }, { bId: userId }] };
-  const [wins, losses, draws] = await Promise.all([
-    prisma.x1Match.count({ where: { ...where, status: 'FINISHED', winnerId: userId } }),
-    prisma.x1Match.count({ where: { ...where, status: 'FINISHED', winnerId: { not: null }, NOT: { winnerId: userId }, ...mine } }),
-    prisma.x1Match.count({ where: { ...where, status: 'FINISHED', reason: 'empate', ...mine } }),
-  ]);
-  return { wins, losses, draws };
-};
-
-/**
- * Campanha do jogador no X1 (perfil): total de sempre, por jogo e a temporada (vitórias que contam no
- * ranking + posição). Partida de treino com bot não grava; W.O. antes de cada um jogar 2 vezes (dinheiro
- * devolvido) e partidas canceladas não contam.
- */
-export async function x1Record(userId) {
-  const round = await currentRound();
-  const seasonId = round?.seasonId ?? null;
-  const [total, futprego, botao, seasonWins] = await Promise.all([
-    recordOf(userId), recordOf(userId, { game: 'FUTPREGO' }), recordOf(userId, { game: 'BOTAO' }),
-    seasonId ? prisma.x1Match.count({ where: { seasonId, goalAwarded: true, winnerId: userId } }) : 0,
-  ]);
-  // posição = a mesma do Ranking do X1 (mesmo desempate: menos derrotas, depois quem entrou antes)
-  const position = seasonId && seasonWins > 0 ? (await x1Ranking(100_000)).rows.find((r) => r.userId === userId)?.position ?? null : null;
-  return { ...total, games: { FUTPREGO: futprego, BOTAO: botao }, season: { number: round?.season?.number ?? null, wins: seasonWins, position } };
-}
-
-/**
- * Ranking do X1 da temporada: quem tem mais vitórias que VALERAM GOL (as mesmas travas do gol: no máximo
- * FUTPREGO.maxGoalsPerHour por hora e ganhar da mesma pessoa duas vezes seguidas não conta — senão dois
- * amigos combinados subiam sem parar). Empate: menos derrotas na temporada fica na frente.
- */
-export async function x1Ranking(take = 50) {
-  const round = await currentRound();
-  if (!round) return { season: null, rows: [] };
-  const seasonId = round.seasonId;
-  const groups = await prisma.x1Match.groupBy({ by: ['winnerId'], where: { seasonId, goalAwarded: true, winnerId: { not: null } }, _count: { _all: true } });
-  if (!groups.length) return { season: round.season?.number ?? null, rows: [] };
-  const ids = groups.map((g) => g.winnerId);
-  const [users, lossRows] = await Promise.all([
-    prisma.user.findMany({ where: { id: { in: ids }, deletedAt: null }, include: { team: { select: { id: true, slug: true, name: true, abbr: true, colorPrimary: true, colorSecondary: true, stadium: true, serie: true, state: true } } } }),
-    prisma.$queryRaw`SELECT u.id, COUNT(m.id)::int AS n FROM "User" u JOIN "FutPregoMatch" m ON (m."aId" = u.id OR m."bId" = u.id)
-      WHERE u.id = ANY(${ids}) AND m."seasonId" = ${seasonId} AND m.status = 'FINISHED' AND m."winnerId" IS NOT NULL AND m."winnerId" <> u.id GROUP BY u.id`,
-  ]);
-  const losses = new Map(lossRows.map((r) => [r.id, r.n]));
-  const byId = new Map(users.map((u) => [u.id, u]));
-  const rows = groups
-    .filter((g) => byId.has(g.winnerId))
-    .map((g) => ({ u: byId.get(g.winnerId), wins: g._count._all, losses: losses.get(g.winnerId) ?? 0 }))
-    .sort((a, b) => b.wins - a.wins || a.losses - b.losses || a.u.id - b.u.id)
-    .slice(0, take)
-    .map((r, i) => ({ position: i + 1, userId: r.u.id, nick: r.u.nick, avatarUrl: r.u.avatarUrl ?? null, nickColor: r.u.nickColor ?? null, nickFade: nickFadeOf(r.u), vip: isVip(r.u), team: r.u.team, wins: r.wins, losses: r.losses, goals: r.wins }));
-  return { season: round.season?.number ?? null, rows };
-}
+// (Campanha do perfil e Ranking X1 — pontos 3·1·−2, prêmios por rodada/temporada: services/x1.js.)
 
 /** IP de verdade: o nginx da VPS grava o X-Real-IP (o 1º valor do X-Forwarded-For o próprio jogador forja). */
 function clientIp(req) {
@@ -391,11 +332,10 @@ function startMatch(a, b, dbId, game, h2h = null) {
 
 function sendMatch(c, resumed) {
   const m = c.match;
-  const h = m.h2h, me = c.user.id, opp = m.conns[1 - c.side].user.id;
   const base = {
     t: 'match', id: m.id, game: m.game, gameName: X1.names[m.game], you: c.side, players: m.conns.map(playerView), turnEndsAt: m.turnEndsAt, bet: m.bot ? 0 : F.bet, training: m.bot, resumed,
     // retrospecto contra ESTE adversário no X1, do ponto de vista de quem recebe (null no treino contra bot)
-    h2h: h ? { total: h.total, wins: h.wins[me] ?? 0, losses: h.wins[opp] ?? 0, draws: h.draws, last: h.last.map((w) => (w === null ? 'E' : w === me ? 'V' : 'D')), lastAt: h.lastAt } : null,
+    h2h: m.h2h ? h2hOf(m.h2h, c.user.id) : null,
   };
   if (m.game === 'BOTAO') send(c.ws, { ...base, field: BOTAO_FIELD, botao: botaoView(m.bs), turn: m.bs.turn, snapSec: BOTAO.snapSec });
   else send(c.ws, { ...base, board: m.board, ball: m.ball, turn: m.turn, turns: m.turns, maxTurns: F.maxTurns, turnSec: F.turnSec });
@@ -559,19 +499,34 @@ async function finish(m, result) {
   clearTimeout(m.turnTimer); clearTimeout(m.botTimer);
   for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
-  let info = null;
+  let info = null, h2h = null;
   if (!m.bot) {
     try { info = await settle(m, result); } catch (e) { console.error('[x1] falha ao fechar a partida', e); info = { error: true }; }
+    if (!info.error) h2h = await headToHead(m.conns[0].user.id, m.conns[1].user.id).catch((e) => { console.error('[x1] retrospecto no fim:', e.message); return null; });
   }
   for (const c of m.conns) {
     if (c.bot) continue;
     // partida de verdade que fechou: quem não é VIP espera challengeCooldownSec para desafiar de novo
     const cd = !m.bot && info && !info.error ? { cooldownUntil: isVip(c.user) ? null : Date.now() + F.challengeCooldownSec * 1000 } : {};
-    const msg = { t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null, pen: m.bs?.pen?.kicks ?? null, ...personal(info, m, c.side, result), ...cd };
+    const msg = {
+      t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView),
+      score: m.bs?.score ?? null, pen: m.bs?.pen?.kicks ?? null, ...personal(info, m, c.side, result), ...rivalry(h2h, m, c), ...cd,
+    };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
     c.match = null; c.side = -1;
   }
   refreshOpenLists().catch(() => {});
+}
+
+/**
+ * Retrospecto contra o adversário já com esta partida e a frase de provocação da tela de fim (pedido do dono,
+ * 15/09/2026). Só quando a partida entrou no retrospecto (é a mais recente dos dois): W.O. cedo, treino e
+ * falha ao gravar não levam nada.
+ */
+function rivalry(rows, m, c) {
+  if (!rows || rows[0]?.id !== m.dbId) return {};
+  const before = h2hOf(rows.slice(1), c.user.id), after = h2hOf(rows, c.user.id);
+  return { h2h: after, rivalry: rivalryLine({ before, after, me: c.user, opp: m.conns[1 - c.side].user }) };
 }
 
 /** O que cada um recebe na tela de fim. */
@@ -593,7 +548,8 @@ function personal(info, m, side, result) {
  * se valer (no máximo maxGoalsPerHour gols na hora cheia no X1; a mesma dupla com o mesmo vencedor duas
  * vezes seguidas não vale — regras do dono), 1 gol para o time dele. O time do perdedor perde 1 gol na
  * partida da rodada (nunca abaixo de 0) quando o gol valeu e o perdedor ainda não fez o time perder
- * maxGoalsPerHour gols nesta hora. Só as vitórias que valeram gol contam no Ranking do X1.
+ * maxGoalsPerHour gols nesta hora. Todo resultado que conta vai para os Lances ao vivo; o Ranking X1
+ * (services/x1.js: 3 por vitória, 1 por empate, −2 por derrota) conta toda partida que terminou, menos W.O. cedo.
  */
 async function settle(m, result) {
   const [a, b] = m.conns;
@@ -605,27 +561,38 @@ async function settle(m, result) {
   return prisma.$transaction(async (tx) => {
     const closed = await tx.x1Match.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'FINISHED', finishedAt: now, turns: m.shots[0] + m.shots[1], reason: result.reason, ...score } });
     if (!closed.count) return { error: true };
+    // todo resultado que conta vai para os Lances ao vivo (pedido do dono, 15/09/2026); W.O. cedo (aposta devolvida) não
+    const feed = (user, text) => tx.activity.create({ data: { userId: user.id, teamId: user.teamId, kind: m.game, goal: false, text } });
     if (result.winner === null || early) {
       await tx.user.updateMany({ where: { id: { in: [a.user.id, b.user.id] } }, data: { money: { increment: F.bet } } });
       if (early) await tx.x1Match.update({ where: { id: m.dbId }, data: { reason: 'wo-cedo' } });
+      else await feed(a.user, m.game === 'BOTAO'
+        ? `${a.user.nick} e ${b.user.nick} empataram no ${label}, até nos pênaltis: aposta devolvida.`
+        : `${a.user.nick} e ${b.user.nick} empataram no ${label}: ninguém marcou em ${F.maxTurns} jogadas, aposta devolvida.`);
       return { refund: true, why: early ? 'wo-cedo' : 'empate' };
     }
     const w = m.conns[result.winner], l = m.conns[1 - result.winner];
     const pot = F.bet * 2;
+    const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)', penaltis: ' nos pênaltis' }[result.reason] ?? '';
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
     await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
     const since = hourStart(now); // a trava conta na hora cheia de Brasília
     const wonThisHour = await tx.x1Match.count({ where: { winnerId: w.user.id, goalAwarded: true, finishedAt: { gte: since } } });
-    if (wonThisHour >= F.maxGoalsPerHour) return { pot, goal: false, why: 'limite' };
+    if (wonThisHour >= F.maxGoalsPerHour) {
+      await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (já fez os ${F.maxGoalsPerHour} gols desta hora no X1).`);
+      return { pot, goal: false, why: 'limite' };
+    }
     const prev = await tx.x1Match.findFirst({
       where: { id: { not: m.dbId }, status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: a.user.id, bId: b.user.id }, { aId: b.user.id, bId: a.user.id }] },
       orderBy: { id: 'desc' }, select: { winnerId: true },
     });
-    if (prev && prev.winnerId === w.user.id) return { pot, goal: false, why: 'repetido' };
+    if (prev && prev.winnerId === w.user.id) {
+      await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (revanche repetida: sem gol).`);
+      return { pot, goal: false, why: 'repetido' };
+    }
 
     const winner = await loadUser(tx, w.user.id);
     const live = await liveMatchForTeam(winner.teamId, tx);
-    const how = result.reason === 'gol-contra' ? ' (gol contra dele)' : result.reason === 'penaltis' ? ' nos pênaltis' : '';
     const phrase = `venceu ${l.user.nick} no ${label}${how}`;
     const { text } = await applyResult(tx, winner, { kind: m.game, goal: true, now, match: live, money: 0, phrase });
     // o time do perdedor perde 1 gol na partida da rodada (nunca abaixo de 0), até maxGoalsPerHour por hora

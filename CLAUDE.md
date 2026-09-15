@@ -149,32 +149,63 @@ depois que o novo estiver estável. Não instalar nada dele.
   substituiu o card do FutPrego). `realtime/x1.js` (WebSocket `/api/ws/x1`, e `/api/ws/futprego` como nome antigo;
   `mode=game` na tela `/x1` = `screens/X1.tsx`, `mode=lobby` no convite `components/X1Invite.tsx`). O jogo do dia
   alterna **às 20h de Brasília** (dono, 15/09/2026; `X1.switchHour`, `x1GameOf(dayNumberAt(20))` em `rules.js`/`x1.js`,
-  `X1.games`): **FutPrego** (futebol de
-  prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão** (`lib/botao.js` = física
-  determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de dinheiro e travas
-  iguais para os dois (`FUTPREGO` em rules.js): cada um põe R$ 200, quem vence leva R$ 400 + 1 gol e o time do
-  outro perde 1 gol na rodada; **até 10 gols por hora por jogador, para ganhar e para perder** (dono, 15/09/2026;
-  `FUTPREGO.maxGoalsPerHour`, hora cheia de Brasília: com 10 vitórias valendo gol na hora, a próxima leva o pote sem
-  gol; quem já fez o time perder 10 na hora perde a partida sem tirar gol do time — `lossLimit` na tela); **quem não
-  é VIP espera 2 min depois de terminar uma partida para DESAFIAR de novo** (aceitar pode na hora; dono, 15/09/2026:
-  "como o X1 ficou ilimitado, o vip perdeu valor" — `FUTPREGO.challengeCooldownSec`, `challengeCooldownUntil` em
-  x1.js lê a última partida FINISHED no banco; a tela recebe `cooldown`/`over.cooldownUntil`, desliga o botão com o
-  relógio e mostra "Vire VIP e jogue o X1 ilimitado!"; item "X1 ilimitado" na tela do VIP); mesma dupla com o mesmo vencedor duas vezes seguidas = a
-  2ª não vale gol; W.O./desistência antes de cada um jogar 2 vezes = aposta devolvida; bot de treino depois de
-  1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por time (goleiro preso na área; os de linha não
-  entram em área), 2 petelecos por vez num botão seu (quem começa dá 1 na 1ª vez — medido: assim quem começa
-  vence ~45%), 15 s cada; **o 1º gol acaba** (dono: "4 minutos é muito tempo"); sem gol em 9 vezes (somando os
-  dois) = pênaltis (3 de cada, depois alternadas). Partidas na tabela `FutPregoMatch` (modelo Prisma `X1Match`,
-  migração 0027: `game`, `seasonId`, `scoreA/B`). **Ranking do X1** (`x1Ranking`, aba X1 em Rankings,
-  `GET /api/rankings/x1`): vitórias que VALERAM GOL na temporada (as travas acima impedem dois amigos de subirem
-  combinados); desempate: menos derrotas. **Perfil**: `x1` em `GET /api/players/:nick` (`x1Record`: total, por
-  jogo e temporada com posição) → `components/X1Record.tsx`. **Retrospecto contra o adversário** (`headToHead`):
-  a mensagem `match` de cada lado traz `h2h` na perspectiva de quem recebe (`{total, wins, losses, draws, last:
-  ['V'|'D'|'E' × até 5], lastAt}`; `null` no treino), contando os dois jogos do X1; faixa `H2HStrip` na tela.
-  Teste no PC: `X1_JOGO=BOTAO` ou `FUTPREGO` força o jogo do dia e `FUTPREGO_MESMO_IP=1` deixa jogar com duas
-  janelas na mesma internet (os dois ignorados com NODE_ENV=production) — **NUNCA no .env da VPS**. Mexeu? Rode
-  (pasta api/, só banco LOCAL, API no ar com o `X1_JOGO` certo) `node scripts/test-botao.js`,
-  `node scripts/test-futprego.js` e, sem banco, `node scripts/botao-balance.js` (física e equilíbrio do Botão).
+  `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão**
+  (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de
+  dinheiro e travas iguais para os dois (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva
+  R$ 400 + 1 gol e o time do outro perde 1 gol na rodada; **até 10 gols por hora por jogador, para ganhar e para
+  perder** (dono, 15/09/2026; `FUTPREGO.maxGoalsPerHour`, hora cheia de Brasília: com 10 vitórias valendo gol na hora,
+  a próxima leva o pote sem gol; quem já fez o time perder 10 na hora perde a partida sem tirar gol do time —
+  `lossLimit` na tela); **quem não é VIP espera 2 min depois de terminar uma partida para DESAFIAR de novo** (aceitar
+  pode na hora; dono, 15/09/2026: "como o X1 ficou ilimitado, o vip perdeu valor" — `FUTPREGO.challengeCooldownSec`,
+  `challengeCooldownUntil` em x1.js lê a última partida FINISHED no banco; a tela recebe `cooldown`/`over.cooldownUntil`,
+  desliga o botão com o relógio e mostra "Vire VIP e jogue o X1 ilimitado!"; item "X1 ilimitado" na tela do VIP);
+  mesma dupla com o mesmo vencedor duas vezes seguidas = a 2ª não vale gol; W.O./desistência antes de cada um jogar
+  2 vezes = aposta devolvida; bot de treino depois de 1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por
+  time (goleiro preso na área; os de linha não entram em área), 2 petelecos por vez num botão seu (quem começa dá 1 na
+  1ª vez — medido: assim quem começa vence ~45%), 15 s cada; **o 1º gol acaba** (dono: "4 minutos é muito tempo");
+  sem gol em 9 vezes (somando os dois) = pênaltis (3 de cada, depois alternadas). Partidas na tabela `FutPregoMatch`
+  (modelo Prisma `X1Match`, migração 0028: `game`, `seasonId`, `scoreA/B`). **Perfil**: `x1` em
+  `GET /api/players/:nick` (`x1Record` em `services/x1.js`: total com pontos e sequência sem perder, cada jogo e a
+  temporada no Ranking X1 com a posição) → `components/X1Record.tsx`. Teste no PC: `X1_JOGO=BOTAO` ou `FUTPREGO`
+  força o jogo do dia e `FUTPREGO_MESMO_IP=1` deixa jogar com duas janelas na mesma internet (os dois ignorados com
+  NODE_ENV=production) — **NUNCA no .env da VPS**. Mexeu? Rode (pasta api/, só banco LOCAL, API no ar com o
+  `X1_JOGO` certo) `node scripts/test-botao.js`, `node scripts/test-futprego.js` (os dois criam os jogadores direto no
+  banco, VIP por padrão) e, sem banco, `node scripts/botao-balance.js` (física e equilíbrio do Botão) e
+  `node scripts/test-rivalidade.js`.
+  **Retrospecto contra o adversário** (pedido do dono, 15/09/2026; `headToHead` em `realtime/x1.js`, os dois jogos
+  juntos): ao casar a partida, a mensagem `match` de cada lado traz `h2h` na perspectiva de quem recebe (`{total, wins,
+  losses, draws, last: ['V'|'D'|'E' × até 5, a mais recente primeiro], lastAt, streak}`; `null` no treino contra bot).
+  Conta só partida de verdade FINISHED entre os dois, sem `wo-cedo`. A tela mostra a faixa `H2HStrip` entre a barra do
+  adversário e o campo ("Contra X: 2V · 1E · 0D" + últimas 5; "Primeiro confronto" se nunca jogaram).
+  **No fim da partida** (pedido do dono, 15/09/2026): a mensagem `over` traz `h2h` já com a partida que acabou e
+  `rivalry {kind, text}` = frase de provocação que faz jus ao confronto (freguês, tabu quebrado, paternidade, virada no
+  confronto, clássico…), escolhida em `lib/rivalidade.js` (puro: `h2hOf` = retrospecto na perspectiva de quem lê,
+  `rivalryKind` = o momento, na ordem de prioridade, `rivalryLine` = sorteia uma frase do momento; o gênero vira
+  freguês/freguesa, o/a, ele/ela). Só quando a partida entrou no retrospecto (W.O. cedo e treino: nada). Tela:
+  `components/Rivalry.tsx` dentro do `GoalOverlay` (prop `children`; o resultado novo carimba na frente das últimas 5,
+  o número que mudou pula e a frase entra por último; a janela fica 10 s). Frase nova = entra na lista do momento em
+  `LINES`.
+  **Ranking X1** (aba "Ranking X1" em Rankings com sub-abas Rodada / Temporada / Geral — nome e regras do dono,
+  15/09/2026; conta os DOIS jogos do X1; `/rankings?aba=x1` ou `?aba=x1-temporada` abre direto). Tudo em
+  **`services/x1.js`**: `GET /api/rankings/x1-rodada|x1-temporada|x1-geral` (`futprego` = alias de geral, `x1` = da
+  temporada) → `x1Ranking`: **pontos = 3 por vitória, 1 por empate, −2 por derrota** (`FUTPREGO.points`, pode ficar
+  negativo); desempate por vitórias, maior sequência sem perder, menos derrotas. Só partida de verdade FINISHED sem
+  `wo-cedo` (`X1_COUNTED`); **a partida conta no período em que TERMINOU** (`finishedAt`; rodada =
+  `[round.startsAt, fechamento)`, temporada = `season.startsAt`); conta excluída não aparece. Linha = formato da
+  artilharia (`goals` = pontos) + `fp {wins, draws, losses, played, points, streak, best, eligible?, prize?, need?}` —
+  `best` = maior sequência sem perder (V/E seguidos, D zera), `streak` = a atual; `TopList` mostra "3V · 1E · 0D · sem
+  perder: máx. N (agora M) · prêmio R$ X + Y VIP" ou "faltam N partidas p/ prêmio". **Prêmios** (`FUTPREGO.prizes`):
+  rodada 1º R$ 10 mil + 2 VIP · 2º R$ 5 mil + 1 VIP · 3º R$ 2,5 mil; temporada 1º R$ 100 mil + 15 VIP · 2º R$ 50 mil +
+  5 VIP · 3º R$ 25 mil; **só entre quem tem `minGames` = 3 partidas no período** (quem tem menos aparece na lista, o
+  prêmio pula para o próximo). Pagamento: `settleX1Round`/`settleX1Season`, chamados em `settleDueRounds` DEPOIS da
+  transação da liga, em transação própria e idempotente (`SELECT … FOR UPDATE` na rodada/temporada; só paga se
+  `Round.x1Json`/`Season.x1Json` for null — migração 0027 — e grava ali o quadro + `paid`); um erro no X1 nunca
+  segura o fechamento da rodada. Cada premiado vira lance ao vivo ("X foi o 1º do Ranking X1 da rodada N … e
+  ganhou R$ 10.000 + 2 VIP!").
+  **Lances ao vivo** (pedido do dono, 15/09/2026): todo resultado que conta entra em `Activity` (kind = o jogo,
+  `FUTPREGO` ou `BOTAO`) em `settle()` — vitória com gol (via `applyResult`, + linha do perdedor), vitória sem gol
+  (limite de 10 por hora / revanche repetida, com o motivo), empate; `how` acrescenta "por W.O." / "(ele desistiu)" /
+  "(gol contra dele)" / "nos pênaltis". W.O. cedo (aposta devolvida) não gera lance.
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi
@@ -419,8 +450,9 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/frangaco/state` · `POST /api/frangaco/run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}` (Frangaço — contrato do cliente Unity em /tv/?mode=penalty) · `GET /api/daily/frangaco` (estado do slider)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links; não traz mensagens de quem eu bloqueei)
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
-`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/x1?page=` · `GET /api/painel/multicontas?page=&q=` (painel de admin)
-`GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
+`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/x1?page=` (ou `/futprego`) · `GET /api/painel/multicontas?page=&q=` (painel de admin)
+`GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|x1-rodada|x1-temporada|x1-geral`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
+`GET /api/x1/status` (jogo do dia, desafios abertos, jogando) · WebSocket `/api/ws/x1?token=&mode=lobby|game` (X1: convite, partida, fim)
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)
 Erros: JSON `{error, message}`; recarga = HTTP 429 `{error:'cooldown', remainingMs}`.
@@ -495,6 +527,16 @@ servidos pelo próprio Express em `/api/uploads/`.
   miolo (caps que somam a largura toda não renderizam no CSS). Fontes: Lilita One + Nunito.
   Fundo: céu + gramado (`.app-frame` + `.stadium-bg`). **Nada de emoji nem "cara de site/IA"**
   (glassmorphism escuro, gradientes neon): botão é sprite, título é ribbon, ícone é PNG do pack.
+- **SEO e preview do link** (pedido do dono, 15/09/2026): tudo no **`web/index.html`** — título/descrição com as
+  palavras que o público procura (BRGOL/BR GOL, jogo de fazer gols, disputa de gols online), Open Graph + Twitter
+  card (`/og.jpg` 1200×630 < 300 KB e `/og-square.jpg` 600×600, gerados de `assets/play-store/destaque-1024x500.png`
+  e `icone-512.png` com PIL; URLs absolutas), JSON-LD (VideoGame + WebSite + FAQPage) e um **bloco estático dentro
+  de `#root`** (h1, seções, FAQ) que é o que os robôs sem JavaScript leem e a tela até o React montar (`createRoot`
+  troca tudo). Os robôs de WhatsApp/Telegram/Facebook NÃO rodam JS: mudou texto de apresentação, mudar no
+  `index.html` E na `Landing.tsx` (mesmos assuntos; conferir os fatos com as regras). Páginas públicas usam
+  `useSeo()` (`lib/seo.ts`: título, descrição, canonical, og:* por rota; volta ao padrão ao sair). `robots.txt`
+  (bloqueia /api, /admin, /debug*) e `sitemap.xml` (só páginas públicas) em `web/public/`. Preview em cache nos
+  apps: depois de mudar, forçar com o depurador do Facebook / @WebpageBot no Telegram.
 - Escudos reais em `web/public/escudos/<slug>.svg|png` (projeto privado para amigos);
   `Shield.tsx` renderiza `<img>` com fallback de sigla.
 - 3D: modelos glTF em `web/public/3d/` gerados dos packs comprados via `tools/3d/` (README lá).

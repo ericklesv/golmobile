@@ -7,10 +7,14 @@ import type { ClubRole, TopBadge, TopScope, TopTally } from '../lib/types';
  */
 
 const METAL = ['gold', 'silver', 'bronze'] as const;
-const FILE: Record<TopScope, string> = { HOUR: 'ico-star', ROUND: 'ico-medal', SEASON: 'ico-trophy' };
+// Ranking X1 (pedido do dono, 15/09/2026): caveira = rodada, caveira coroada ("super caveira") = temporada,
+// caveira com louros = geral. Ícones gerados do pack Layer Lab (FantasyRPG icon_skull + crown + laurel, tingidos).
+const FILE: Record<TopScope, string> = { HOUR: 'ico-star', ROUND: 'ico-medal', SEASON: 'ico-trophy', X1_ROUND: 'ico-skull', X1_SEASON: 'ico-skullking', X1_ALL: 'ico-skullwreath' };
 export const topIcon = (scope: TopScope, pos: number) => `/ui/${FILE[scope]}_${METAL[pos - 1]}.png`;
-const OF: Record<TopScope, string> = { HOUR: 'da hora', ROUND: 'da rodada', SEASON: 'da temporada' };
-const NAME: Record<TopScope, string> = { HOUR: 'Hora', ROUND: 'Rodada', SEASON: 'Temporada' };
+const OF: Record<TopScope, string> = { HOUR: 'da hora', ROUND: 'da rodada', SEASON: 'da temporada', X1_ROUND: 'do X1 na rodada', X1_SEASON: 'do X1 na temporada', X1_ALL: 'do X1 geral' };
+const NAME: Record<TopScope, string> = { HOUR: 'Hora', ROUND: 'Rodada', SEASON: 'Temporada', X1_ROUND: 'Rodada', X1_SEASON: 'Temporada', X1_ALL: 'Geral' };
+/** Só estes aparecem ao lado do nick (o geral do X1 muda pouco e fica no perfil — evita 6 ícones no nome). */
+const NAME_SCOPES: TopScope[] = ['HOUR', 'ROUND', 'SEASON', 'X1_ROUND', 'X1_SEASON'];
 
 export function RoleChip({ role, size = 16 }: { role?: ClubRole | null; size?: number }) {
   if (!role) return null;
@@ -23,10 +27,11 @@ export function RoleChip({ role, size = 16 }: { role?: ClubRole | null; size?: n
 }
 
 export function TopIcons({ tops, size = 16 }: { tops?: TopBadge[]; size?: number }) {
-  if (!tops?.length) return null;
+  const shown = tops?.filter((t) => NAME_SCOPES.includes(t.scope));
+  if (!shown?.length) return null;
   return (
     <>
-      {tops.map((t) => (
+      {shown.map((t) => (
         <img key={t.scope} src={topIcon(t.scope, t.pos)} title={`${t.pos}º ${OF[t.scope]} agora`} alt={`${t.pos}º ${OF[t.scope]}`}
           className="ico shrink-0 object-contain" style={{ width: size, height: size }} />
       ))}
@@ -41,13 +46,12 @@ export function NameBadges({ role, tops, size = 16 }: { role?: ClubRole | null; 
 }
 
 /** Quadro de top 10 do perfil: por hora/rodada/temporada, quantas vezes em 1º, 2º, 3º e no top 10. */
-export function TopHistory({ history }: { history: Record<TopScope, TopTally> }) {
-  const scopes: TopScope[] = ['HOUR', 'ROUND', 'SEASON'];
-  const none = scopes.every((s) => history[s].top10 === 0);
+export function TopHistory({ history, scopes = ['HOUR', 'ROUND', 'SEASON'], emptyText = 'Ainda não ficou no top 10 de uma hora fechada. Marque gols para aparecer aqui.' }: { history: Record<TopScope, TopTally>; scopes?: TopScope[]; emptyText?: string }) {
+  const none = scopes.every((s) => !history[s] || history[s].top10 === 0);
   return (
     <div className="flex flex-col gap-1.5">
       {scopes.map((s) => {
-        const h = history[s];
+        const h = history[s] ?? { gold: 0, silver: 0, bronze: 0, top10: 0 };
         return (
           <div key={s} className="flex items-center gap-2 rounded-xl bg-sky/10 px-2 py-1.5">
             <span className="t-display w-[76px] shrink-0 text-[14px] text-navy-ink">{NAME[s]}</span>
@@ -63,7 +67,15 @@ export function TopHistory({ history }: { history: Record<TopScope, TopTally> })
           </div>
         );
       })}
-      {none && <p className="text-center text-[11px] font-bold text-muted">Ainda não ficou no top 10 de uma hora fechada. Marque gols para aparecer aqui.</p>}
+      {none && <p className="text-center text-[11px] font-bold text-muted">{emptyText}</p>}
     </div>
   );
+}
+
+/** Posição de agora num recorte do Ranking X1, com a caveira quando está no top 3 (rodada/temporada: só entre os elegíveis). */
+export function X1Now({ scope, position, eligible, size = 28 }: { scope: TopScope; position: number | null; eligible?: boolean; size?: number }) {
+  const medal = position !== null && position <= 3 && (scope === 'X1_ALL' || eligible);
+  return medal
+    ? <img src={topIcon(scope, position!)} alt={`${position}º`} title={`${position}º ${OF[scope]} agora`} className="object-contain" style={{ width: size, height: size }} />
+    : <span className="font-display leading-none text-navy-ink" style={{ fontSize: Math.round(size * 0.7) }}>{position ? `${position}º` : '–'}</span>;
 }

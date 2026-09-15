@@ -95,7 +95,7 @@ export function PlayerScreen() {
         </div>
       </Panel>
 
-      <X1Record record={p.x1} isMe={isMe} />
+      <X1Record record={p.x1} history={p.history} isMe={isMe} />
 
       {!isMe && (me.role || sameTeam) && (
         <div className="flex flex-col gap-2">

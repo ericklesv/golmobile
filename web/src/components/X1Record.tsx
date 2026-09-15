@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Panel } from './ui';
-import type { X1Game, X1Record as Rec, X1Tally } from '../lib/types';
+import { TopHistory, X1Now } from './Badges';
+import type { TopScope, TopTally, X1Game, X1Record as Rec, X1Tally } from '../lib/types';
 
 /**
  * Campanha no X1 no perfil (pedido do dono, 15/09/2026: "no perfil os dados do X1 ao invés de FUTPREGO"):
@@ -9,12 +10,35 @@ import type { X1Game, X1Record as Rec, X1Tally } from '../lib/types';
  * cada jogo. Sem partidas: no próprio perfil, convite para jogar.
  */
 const GAMES: { id: X1Game; name: string }[] = [{ id: 'FUTPREGO', name: 'FutPrego' }, { id: 'BOTAO', name: 'Futebol de Botão' }];
-const medal = ['/ui/ico-medal_gold.png', '/ui/ico-medal_silver.png', '/ui/ico-medal_bronze.png'];
 const pts = (n: number) => `${n} ${Math.abs(n) === 1 ? 'ponto' : 'pontos'}`;
 
-export function X1Record({ record, isMe = false }: { record?: Rec; isMe?: boolean }) {
+/** Medalhas do X1 (pedido do dono, 15/09/2026): posição de agora na rodada, na temporada e no geral (caveira no
+ *  top 3) + quantas vezes levou 1º/2º/3º e ficou no top 10 nas rodadas e temporadas fechadas. */
+function X1Medals({ record, history }: { record: Rec; history?: Record<TopScope, TopTally> }) {
+  const rows: { scope: TopScope; label: string; st: { position: number | null; eligible: boolean; played: number } | null; to: string }[] = [
+    { scope: 'X1_ROUND', label: record.round ? `Rodada ${record.round.number}` : 'Rodada', st: record.round, to: '/rankings?aba=x1-rodada' },
+    { scope: 'X1_SEASON', label: record.season ? `Temporada ${record.season.number}` : 'Temporada', st: record.season, to: '/rankings?aba=x1-temporada' },
+    { scope: 'X1_ALL', label: 'Geral', st: record.all, to: '/rankings?aba=x1-geral' },
+  ];
+  return (
+    <div className="mb-2 flex flex-col gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
+        {rows.map((r) => (
+          <Link key={r.scope} to={r.to} className="flex flex-col items-center rounded-xl bg-gold/20 px-1 py-1.5 ring-1 ring-gold/60">
+            <span className="flex h-8 items-center justify-center"><X1Now scope={r.scope} position={r.st?.position ?? null} eligible={r.st?.eligible} /></span>
+            <span className="mt-0.5 text-center text-[10px] font-extrabold leading-tight text-navy-ink">{r.label}</span>
+            {r.st && r.scope !== 'X1_ALL' && r.st.position !== null && !r.st.eligible && <span className="text-center text-[9px] font-bold leading-tight text-muted">sem o mínimo p/ prêmio</span>}
+          </Link>
+        ))}
+      </div>
+      {history && <TopHistory history={history} scopes={['X1_ROUND', 'X1_SEASON']} emptyText="Nenhuma medalha do X1 ainda: fique no top 3 de uma rodada ou temporada." />}
+    </div>
+  );
+}
+
+export function X1Record({ record, history, isMe = false }: { record?: Rec; history?: Record<TopScope, TopTally>; isMe?: boolean }) {
   if (!record) return null;
-  const { wins, losses, draws, season } = record;
+  const { wins, losses, draws } = record;
   const games = wins + losses + draws;
   return (
     <Panel title="X1" ribbon="orange">
@@ -25,19 +49,7 @@ export function X1Record({ record, isMe = false }: { record?: Rec; isMe?: boolea
         </div>
       ) : (
         <>
-          {season && (
-            <Link to="/rankings?aba=x1-temporada" className="mb-2 flex items-center gap-2 rounded-xl bg-gold/20 px-2 py-1.5 ring-1 ring-gold/60">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center">
-                {season.position && season.position <= 3 ? <img src={medal[season.position - 1]} className="ico h-9 w-9" alt="" /> : <span className="font-display text-[20px] leading-none text-navy-ink">{season.position ? `${season.position}º` : '–'}</span>}
-              </span>
-              <span className="min-w-0 flex-1 leading-tight">
-                <span className="block text-[12px] font-extrabold text-muted">Ranking X1, temporada {season.number}</span>
-                <span className="block text-[14px] font-extrabold text-navy-ink">
-                  {season.played > 0 ? `${pts(season.points)} em ${season.played} ${season.played === 1 ? 'partida' : 'partidas'}` : 'Nenhuma partida nesta temporada'}
-                </span>
-              </span>
-            </Link>
-          )}
+          <X1Medals record={record} history={history} />
           <div className="grid grid-cols-3 gap-2 text-center">
             <Tile value={wins} label={wins === 1 ? 'vitória' : 'vitórias'} className="text-grass-deep" />
             <Tile value={losses} label={losses === 1 ? 'derrota' : 'derrotas'} className="text-danger" />

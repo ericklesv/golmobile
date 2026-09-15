@@ -47,20 +47,23 @@ const order = (x, y) => y.points - x.points || y.wins - x.wins || y.best - x.bes
  * Futebol de Botão) e, com `season` ({number, startsAt}), a temporada: pontos, partidas e a posição no
  * Ranking X1 da temporada (mesma ordem da aba; conta excluída não ocupa lugar).
  */
-export async function x1Record(userId, { season = null } = {}, db = prisma) {
+export async function x1Record(userId, { season = null, round = null } = {}, db = prisma) {
   const rows = await db.x1Match.findMany({ where: { ...X1_COUNTED, OR: [{ aId: userId }, { bId: userId }] }, orderBy: { id: 'asc' }, select: { aId: true, bId: true, winnerId: true, game: true } });
   const pick = (s) => (s ? { wins: s.wins, losses: s.losses, draws: s.draws, points: s.points, streak: s.streak, best: s.best } : { wins: 0, losses: 0, draws: 0, points: 0, streak: 0, best: 0 });
   const games = Object.fromEntries(X1.games.map((g) => [g, pick(x1Tally(rows.filter((r) => r.game === g)).get(userId))]));
-  let seasonView = null;
-  if (season) {
-    const srows = await db.x1Match.findMany({ where: { ...X1_COUNTED, ...x1Period(season.startsAt) }, orderBy: { id: 'asc' }, select: { aId: true, bId: true, winnerId: true } });
-    const list = [...x1Tally(srows).values()].sort(order);
+  // posição num recorte (mesma ordem da aba; conta excluída não ocupa lugar): temporada, rodada e geral
+  const standing = async (from) => {
+    const prow = await db.x1Match.findMany({ where: { ...X1_COUNTED, ...x1Period(from) }, orderBy: { id: 'asc' }, select: { aId: true, bId: true, winnerId: true } });
+    const list = [...x1Tally(prow).values()].sort(order);
     const gone = new Set((await db.user.findMany({ where: { id: { in: list.map((s) => s.userId) }, deletedAt: { not: null } }, select: { id: true } })).map((u) => u.id));
     const shown = list.filter((s) => !gone.has(s.userId));
     const i = shown.findIndex((s) => s.userId === userId);
-    seasonView = { number: season.number, points: i >= 0 ? shown[i].points : 0, played: i >= 0 ? shown[i].played : 0, position: i >= 0 ? i + 1 : null };
-  }
-  return { ...pick(x1Tally(rows).get(userId)), games, season: seasonView };
+    return { points: i >= 0 ? shown[i].points : 0, played: i >= 0 ? shown[i].played : 0, position: i >= 0 ? i + 1 : null, eligible: i >= 0 && shown[i].played >= X1.prizes.minGames };
+  };
+  const seasonView = season ? { number: season.number, ...(await standing(season.startsAt)) } : null;
+  const roundView = round ? { number: round.number, ...(await standing(round.startsAt)) } : null;
+  const allView = await standing(null);
+  return { ...pick(x1Tally(rows).get(userId)), games, season: seasonView, round: roundView, all: allView };
 }
 
 const teamSel = { select: { id: true, slug: true, name: true, abbr: true, colorPrimary: true, colorSecondary: true, stadium: true, serie: true, state: true } };

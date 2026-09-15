@@ -130,7 +130,7 @@ export function ProfileScreen() {
         </div>
       </Panel>
 
-      <X1Record record={pub?.x1} isMe />
+      <X1Record record={pub?.x1} history={pub?.history} isMe />
 
       <button onClick={() => { sound.setEnabled(!som); setSom(!som); }} className={`btn btn-md w-full ${som ? 'btn-sky' : 'btn-gray'}`}><img src={som ? '/ui/pi-sound_on.png' : '/ui/pi-sound_off.png'} className="h-6 w-6" alt="" /> Sons da interface: {som ? 'ligados' : 'desligados'}</button>
       <Link to="/loja" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-goldpouch.png" className="h-6 w-6" alt="" /> Loja: destreza, VIP e itens</Link>

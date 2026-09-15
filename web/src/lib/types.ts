@@ -212,10 +212,14 @@ export type X1Game = 'FUTPREGO' | 'BOTAO';
 export interface X1Today { game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number; switchHour?: number }
 /** V/E/D, pontos do Ranking X1 (3·V + 1·E − 2·D) e sequência sem perder (`streak` = a atual, `best` = a maior). */
 export interface X1Tally { wins: number; losses: number; draws: number; points: number; streak: number; best: number }
+/** Posição num recorte do Ranking X1 (mesma ordem da aba); `eligible` = tem o mínimo de partidas para o prêmio. */
+export interface X1Standing { points: number; played: number; position: number | null; eligible: boolean }
 export interface X1Record extends X1Tally {
   games: Record<X1Game, X1Tally>;
-  /** A temporada no Ranking X1 (null = sem temporada no ar). */
-  season: { number: number; points: number; played: number; position: number | null } | null;
+  /** A temporada / a rodada no Ranking X1 (null = sem liga no ar) e o geral (todos os tempos). */
+  season: (X1Standing & { number: number }) | null;
+  round: (X1Standing & { number: number }) | null;
+  all: X1Standing;
 }
 export interface MemoriaCard { i: number; team: Team | null; matched: boolean }
 export interface MemoriaReward { goal: boolean; levelPoints: number; moves: number; text: string | null }
@@ -469,7 +473,8 @@ export interface PassState {
 }
 
 // ─── Distintivos: P/D do cargo e top 3 de agora; quadro de top 10 do perfil ───
-export type TopScope = 'HOUR' | 'ROUND' | 'SEASON';
+/** Artilharia (hora/rodada/temporada) e Ranking X1 (rodada = caveira, temporada = caveira coroada, geral = caveira com louros). */
+export type TopScope = 'HOUR' | 'ROUND' | 'SEASON' | 'X1_ROUND' | 'X1_SEASON' | 'X1_ALL';
 export interface TopBadge { scope: TopScope; pos: number }
 export interface TopTally { gold: number; silver: number; bronze: number; top10: number }
 

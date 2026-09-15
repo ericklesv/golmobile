@@ -222,7 +222,7 @@ game.get('/players/:nick', handle(async (req) => {
     ...(await playerClub(user)), // cargo no time e contrato
     tops: (await badgesOf(user.id)).tops, // top 3 de agora (hora/rodada/temporada)
     history: await topHistory(user.id), // vezes em 1º/2º/3º e no top 10
-    x1: await x1Record(user.id, { season: round?.season ?? null }), // campanha no X1: total (pontos do Ranking X1), por jogo e a temporada
+    x1: await x1Record(user.id, { season: round?.season ?? null, round: round ?? null }), // campanha no X1: total, por jogo, posição na rodada/temporada/geral
     positions: { geral: geral + 1, penal: penal + 1, falta: falta + 1, trilha: trilha + 1 },
     recent: recent.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt })),
   };

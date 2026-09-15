@@ -7,7 +7,8 @@ import type { Team } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
-import { PregoBall, PregoBoard, type PregoBoardData, type TeamPaint } from '../components/PregoBoard';
+import { PregoBoard, type PregoBoardData, type TeamPaint } from '../components/PregoBoard';
+import { TriondaBall, type TriondaApi } from '../components/TriondaBall';
 import { toast } from '../components/Toast';
 import { sound } from '../lib/sound';
 import { money as fmt } from '../lib/format';
@@ -64,6 +65,8 @@ export function FutPregoScreen() {
   const wsRef = useRef<WebSocket | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ballRef = useRef<SVGGElement | null>(null);
+  const ballApi = useRef<TriondaApi | null>(null); // bola Trionda: rola conforme anda (TriondaBall.tsx)
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const raf = useRef<number | null>(null);
   const queue = useRef<any[]>([]); // mensagens que esperam a animação do peteleco acabar
@@ -73,7 +76,12 @@ export function FutPregoScreen() {
   matchRef.current = match;
 
   const send = (m: object) => { const ws = wsRef.current; if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m)); };
-  const placeBall = (x: number, y: number) => ballRef.current?.setAttribute('transform', `translate(${x} ${y})`);
+  const placeBall = (x: number, y: number) => {
+    ballRef.current?.setAttribute('transform', `translate(${x} ${y})`);
+    const p = lastPos.current;
+    if (p) ballApi.current?.roll(x - p.x, y - p.y); // teleporte (partida nova) não gira: só anda
+    lastPos.current = { x, y };
+  };
 
   // relógio da vez / da espera
   useEffect(() => { const iv = setInterval(() => tick((n) => n + 1), 250); return () => clearInterval(iv); }, []);
@@ -120,6 +128,7 @@ export function FutPregoScreen() {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setOppDropped(false); setConfirmLeave(false);
         setMatch({ id: m.id, you: m.you, players: m.players, board: m.board, ball: m.ball, turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns, maxTurns: m.maxTurns, turnSec: m.turnSec, bet: m.bet, training: m.training });
         setPhase('match');
+        lastPos.current = null;
         requestAnimationFrame(() => placeBall(m.ball.x, m.ball.y));
         if (!m.resumed) { if (!m.training) refresh(); sound.play('pop'); }
         break;
@@ -282,7 +291,7 @@ export function FutPregoScreen() {
         <PlayerBar p={match.players[opp]} turns={match.turns[opp]} max={match.maxTurns} active={match.turn === opp && !animating} left={left} total={match.turnSec} label={oppDropped ? 'caiu, esperando voltar' : match.turn === opp && !animating ? 'vez dele' : null} />
         <div className="relative my-1.5" style={{ width: 'min(92vw, 380px, calc((100dvh - 250px) * 0.62))' }}>
           <PregoBoard ref={svgRef} board={match.board} flip={you === 1} paint={paint} glowGoal={goalFlash} overlay={overlay}
-            ball={<g ref={ballRef} transform={`translate(${b.x} ${b.y})`}><PregoBall r={match.board.ball} /></g>}
+            ball={<g ref={ballRef} transform={`translate(${b.x} ${b.y})`}><TriondaBall ref={ballApi} r={match.board.ball} /></g>}
             className={`w-full drop-shadow-[0_6px_0_rgba(0,0,0,0.25)] ${myTurn ? 'cursor-grab' : ''}`}
             onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} />
           <AnimatePresence>
@@ -352,7 +361,7 @@ function Lobby({ rules, open, busy, me, lastResult, onChallenge, onAccept, board
       {lastResult && <LastResult o={lastResult} />}
       {board && (
         <div className="mx-auto mt-2" style={{ width: 'min(44vw, 180px, calc((100dvh - 470px) * 0.62))', minWidth: 96 }}>
-          <PregoBoard board={board} paint={[paintOf(me.team), { primary: '#FFFFFF', secondary: '#123C8A' }]} ball={<g transform={`translate(${board.W / 2} ${board.H / 2})`}><PregoBall r={board.ball} /></g>} className="w-full drop-shadow-[0_6px_0_rgba(0,0,0,0.25)]" />
+          <PregoBoard board={board} paint={[paintOf(me.team), { primary: '#FFFFFF', secondary: '#123C8A' }]} ball={<g transform={`translate(${board.W / 2} ${board.H / 2})`}><TriondaBall r={board.ball} idle /></g>} className="w-full drop-shadow-[0_6px_0_rgba(0,0,0,0.25)]" />
         </div>
       )}
       <div className="panel-navy mt-3 px-3 py-2.5">

@@ -16,6 +16,7 @@ import { toast } from '../components/Toast';
 import { X1GameSwitchWatcher } from '../components/X1GameSwitch';
 import { sound } from '../lib/sound';
 import { money as fmt, timeLeft } from '../lib/format';
+import { paintOf, reservePaint } from '../lib/paint';
 
 /**
  * X1 — jogos 1x1 ao vivo, um por dia (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar
@@ -71,15 +72,7 @@ const MAX_PULL_BOTAO = 110; // Botão: idem, puxando o botão
 const XRAY_NICKS = ['MVGIC', 'ericklesv']; // Raio-X (tecla R): quem pode usar — e quem fica sabendo quando o outro usa
 const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
 const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
-const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary, tertiary: t.colorTertiary ?? null, design: t.kitDesign ?? null });
-/**
- * Uniforme reserva do amistoso (dono, 15/09/2026: os dois do mesmo time ficavam com peças iguais): o lado 1 (quem
- * aceitou) joga com as cores invertidas — primária vira secundária e vice-versa, mesmo desenho. Time de uma cor só:
- * branco com a cor do time no detalhe.
- */
-const reservePaint = (p: TeamPaint): TeamPaint => (p.primary.toLowerCase() === p.secondary.toLowerCase()
-  ? { primary: '#FFFFFF', secondary: p.primary, tertiary: null, design: p.design }
-  : { primary: p.secondary, secondary: p.primary, tertiary: p.tertiary ?? null, design: p.design });
+// paintOf / reservePaint (uniforme reserva do amistoso): lib/paint.ts
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
 
 /** Botões que `side` pode tocar agora (no pênalti, só o cobrador). */

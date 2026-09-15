@@ -22,6 +22,7 @@ const FaltaProScreen = lazy(() => import('./screens/FaltaPro').then((m) => ({ de
 const FrangacoScreen = lazy(() => import('./screens/Frangaco').then((m) => ({ default: m.FrangacoScreen })));
 const Debug3DScreen = lazy(() => import('./screens/Debug3D').then((m) => ({ default: m.Debug3DScreen })));
 const DebugFaltaProScreen = lazy(() => import('./screens/DebugFaltaPro').then((m) => ({ default: m.DebugFaltaProScreen })));
+const DebugX1KitsScreen = lazy(() => import('./screens/DebugX1Kits').then((m) => ({ default: m.DebugX1KitsScreen })));
 // Painel de admin: só carrega para quem abre /admin (e o servidor exige isAdmin)
 const AdminScreen = lazy(() => import('./screens/Admin').then((m) => ({ default: m.AdminScreen })));
 import { PartyScreen } from './screens/Party';
@@ -139,6 +140,7 @@ export default function App() {
         <Route path="/quiz" element={<Private><QuizScreen /></Private>} />
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/debug-faltapro" element={<Suspense fallback={<Splash />}><DebugFaltaProScreen /></Suspense>} />
+        <Route path="/debug-x1-kits" element={<Suspense fallback={<Splash />}><DebugX1KitsScreen /></Suspense>} />
         <Route path="/admin" element={<Private><Suspense fallback={<Splash />}><AdminScreen /></Suspense></Private>} />
         <Route path="/mensagens" element={<Private><InboxScreen /></Private>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />

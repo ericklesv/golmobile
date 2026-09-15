@@ -111,8 +111,8 @@ export function HomeScreen() {
         {m ? (
           <div>
             <div className="flex items-center justify-between gap-2">
-              <Link to={`/time/${m.home.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.home} size={58} /><span className="t-display text-center text-[12px] leading-tight">{m.home.name}</span></Link>
-              <Link to={`/partida/${m.id}`} className="flex flex-col items-center" aria-label="Ver a partida">
+              <Link to={`/time/${m.home.slug}`} className="flex min-w-0 flex-1 flex-col items-center gap-1"><Shield team={m.home} size={58} /><span className="t-display text-center text-[12px] leading-tight">{m.home.name}</span></Link>
+              <Link to={`/partida/${m.id}`} className="flex shrink-0 flex-col items-center" aria-label="Ver a partida">
                 <div className="flex items-baseline gap-2 font-display text-5xl tabular-nums">
                   <span className={mine === 'home' ? 't-gold' : 't-out'}>{m.homeGoals}</span>
                   <span className="text-2xl text-white/60">x</span>
@@ -120,7 +120,7 @@ export function HomeScreen() {
                 </div>
                 <span className="trap trap-blue mt-1 text-[9px] uppercase">ver partida</span>
               </Link>
-              <Link to={`/time/${m.away.slug}`} className="flex flex-1 flex-col items-center gap-1"><Shield team={m.away} size={58} /><span className="t-display text-center text-[12px] leading-tight">{m.away.name}</span></Link>
+              <Link to={`/time/${m.away.slug}`} className="flex min-w-0 flex-1 flex-col items-center gap-1"><Shield team={m.away} size={58} /><span className="t-display text-center text-[12px] leading-tight">{m.away.name}</span></Link>
             </div>
             <div className="bar mt-3"><i className={mine === 'home' ? 'yellow' : ''} style={{ width: `calc(${m.pct}% + 6px)` }} /><span>{pct(m.pct)} · {pct(100 - m.pct)}</span></div>
             <div className="mt-1 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider">

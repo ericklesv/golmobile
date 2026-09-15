@@ -77,13 +77,16 @@ export function LeagueScreen() {
           </div>
           {matches === null ? <div className="flex justify-center py-8"><Spinner /></div> : matches.filter((m) => m.serie === serie).length === 0 ? <Empty text="Sem jogos nesta série." /> : matches.filter((m) => m.serie === serie).map((m) => (
             <div key={m.id} className="panel">
-              <div className="flex items-center gap-2">
-                <Link to={`/time/${m.home.slug}`} className="flex flex-1 items-center gap-2 text-[13px] font-extrabold text-navy-ink"><Shield team={m.home} size={30} /><span className="truncate">{m.home.name}</span></Link>
-                <Link to={`/partida/${m.id}`} className="flex flex-col items-center" aria-label="Ver a partida">
-                  <span className="font-display text-2xl tabular-nums text-navy-ink">{m.homeGoals} <span className="text-muted">x</span> {m.awayGoals}</span>
+              {/* placar sempre numa linha só e no centro (shrink-0 + nowrap); o nome fica EMBAIXO do escudo, como na
+                  Home, e quebra só em espaço ("XV de / Piracicaba") — em tela estreita "267 x 325" quebrava em duas
+                  linhas e "Flamengo" em "Flameng-o" (bug de 15/09/2026) */}
+              <div className="flex items-center gap-1">
+                <Link to={`/time/${m.home.slug}`} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 text-center text-[11px] font-extrabold leading-tight text-navy-ink"><Shield team={m.home} size={34} /><span className="line-clamp-2">{m.home.name}</span></Link>
+                <Link to={`/partida/${m.id}`} className="flex shrink-0 flex-col items-center px-1" aria-label="Ver a partida">
+                  <span className="whitespace-nowrap font-display text-2xl tabular-nums text-navy-ink">{m.homeGoals} <span className="text-muted">x</span> {m.awayGoals}</span>
                   <span className="text-[9px] font-extrabold uppercase text-sky-deep">ver partida</span>
                 </Link>
-                <Link to={`/time/${m.away.slug}`} className="flex flex-1 items-center justify-end gap-2 text-right text-[13px] font-extrabold text-navy-ink"><span className="truncate">{m.away.name}</span><Shield team={m.away} size={30} /></Link>
+                <Link to={`/time/${m.away.slug}`} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 text-center text-[11px] font-extrabold leading-tight text-navy-ink"><Shield team={m.away} size={34} /><span className="line-clamp-2">{m.away.name}</span></Link>
               </div>
               <div className="bar mt-2" style={{ height: 16 }}><i style={{ width: `calc(${m.pct}% + 6px)` }} /><span style={{ fontSize: 10 }}>{pct(m.pct)} · {pct(100 - m.pct)}</span></div>
             </div>

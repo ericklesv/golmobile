@@ -393,10 +393,12 @@ servidos pelo próprio Express em `/api/uploads/`.
 ## Regras de trabalho (valem para todo mundo e toda IA no projeto)
 - **Commit + push em `main` a cada alteração concluída** (não acumular trabalho local): o
   outro colaborador precisa sempre ter a versão atual pelo git. Commits em PT-BR.
-- **Ramo `prod`** (desde 15/09/2026): quando o `main` tem trabalho inacabado do outro colaborador, o que já
-  está pronto vai para produção por cherry-pick no ramo `prod` e deploy com
-  `sed 's/^BRANCH=main/BRANCH=prod/' /usr/local/bin/brgol-deploy.sh | bash` na VPS. O deploy padrão
-  publica o `main` inteiro — usar só quando tudo que está lá pode ir ao ar.
+- **Publicar só uma parte do `main`** (usado em 15/09/2026): se o `main` tiver trabalho inacabado de alguém,
+  criar um ramo `prod` a partir do commit que está em produção (`grep "commit " /var/log/brgol-deploy.log |
+  tail -1` na VPS), cherry-pick do que vai subir e deploy com
+  `sed 's/^BRANCH=main/BRANCH=prod/' /usr/local/bin/brgol-deploy.sh | bash`. **Antes, avisar o outro
+  colaborador**: se ele rodar o deploy padrão no meio, o `main` inteiro vai ao ar por cima (aconteceu em
+  15/09 — o Futprego foi publicado por ele mesmo e o `prod` foi aposentado). Apagar o ramo `prod` depois.
 - **O jogo roda SOMENTE na VPS do Managol** (`root@187.127.17.121`, projeto em
   `/var/www/brgol/app`). Não existe ambiente local nem outra hospedagem. Todo deploy é
   `bash /usr/local/bin/brgol-deploy.sh` na VPS, rodado manualmente via SSH (faz `git reset --hard

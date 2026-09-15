@@ -151,6 +151,15 @@ depois que o novo estiver estável. Não instalar nada dele.
   treino contra bot). Conta só partida de verdade FINISHED entre os dois, sem `wo-cedo`. A tela mostra a faixa
   `H2HStrip` entre a barra do adversário e a tábua ("Contra X: 2V · 1E · 0D" + últimas 5; "Primeiro confronto"
   se nunca jogaram). Coberto no `scripts/test-futprego.js`.
+  **No fim da partida** (pedido do dono, 15/09/2026): a mensagem `over` traz `h2h` já com a partida que acabou e
+  `rivalry {kind, text}` = frase de provocação que faz jus ao confronto (freguês, tabu quebrado, paternidade, virada no
+  confronto, clássico…), escolhida em `lib/rivalidade.js` (puro: `h2hOf` = retrospecto na perspectiva de quem lê,
+  `rivalryKind` = o momento, na ordem de prioridade, `rivalryLine` = sorteia uma frase do momento; o gênero vira
+  freguês/freguesa, o/a, ele/ela). Só quando a partida entrou no retrospecto (W.O. cedo e treino: nada). Tela:
+  `components/Rivalry.tsx` dentro do `GoalOverlay` (prop `children`; o resultado novo carimba na frente das últimas 5,
+  o número que mudou pula e a frase entra por último; a janela fica 10 s). Frase nova = entra na lista do momento em
+  `LINES`. Mexeu? `node scripts/test-rivalidade.js` (sem banco: todo momento e toda frase nos dois gêneros) +
+  `test-futprego.js` (o `mkUser` dele manda um X-Forwarded-For por jogador, senão a trava de 3 contas por IP barra).
   **Ranking X1** (= ranking do FutPrego; aba "Ranking X1" em Rankings com sub-abas Rodada / Temporada / Geral —
   nome e regras do dono, 15/09/2026; o jogo continua "FutPrego", só o ranking é X1). Tudo em **`services/x1.js`**:
   `GET /api/rankings/x1-rodada|x1-temporada|x1-geral` (`futprego` = alias de geral) → `x1Ranking`: **pontos = 3 por

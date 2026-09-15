@@ -21,8 +21,9 @@ import { FUTPREGO, MINIGAMES, levelOf } from '../lib/rules.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam } from '../services/league.js';
 import { teamView } from '../services/view.js';
-import { x1Record } from '../services/x1.js';
+import { x1Record, X1_COUNTED } from '../services/x1.js';
 import { nextMidnight } from '../lib/time.js';
+import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
 
 const F = FUTPREGO;
 const BOT_NAMES = ['Zagalinho', 'Pé de Pano', 'Perna Longa', 'Canhotinha', 'Bicudo', 'Matador', 'Camisa 10', 'Prego Torto'];
@@ -44,6 +45,19 @@ const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message }
  * (services/x1.js — o ranking em si também está lá).
  */
 export const futpregoRecord = (userId) => x1Record(userId);
+
+/**
+ * Retrospecto entre dois jogadores (pedido do dono, 15/09/2026): partidas de verdade que terminaram entre
+ * eles — W.O. cedo (aposta devolvida) e canceladas não contam —, a mais recente primeiro. Vai na mensagem
+ * `match` (sendMatch) e, já com a partida que acabou, na `over` com a frase de provocação (rivalry()) —
+ * sempre na perspectiva de quem recebe (h2hOf em lib/rivalidade.js).
+ */
+async function headToHead(aId, bId) {
+  return prisma.futPregoMatch.findMany({
+    where: { ...X1_COUNTED, OR: [{ aId, bId }, { aId: bId, bId: aId }] },
+    orderBy: { id: 'desc' }, select: { id: true, winnerId: true, finishedAt: true },
+  });
+}
 
 export function futpregoStatus() {
   return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0) };
@@ -270,13 +284,12 @@ function startMatch(a, b, dbId, h2h = null) {
 
 function sendMatch(c, resumed) {
   const m = c.match;
-  const h = m.h2h, me = c.user.id, opp = m.conns[1 - c.side].user.id;
   send(c.ws, {
     t: 'match', id: m.id, you: c.side, players: m.conns.map(playerView), board: m.board, ball: m.ball,
     turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns, maxTurns: F.maxTurns, turnSec: F.turnSec,
     bet: m.bot ? 0 : F.bet, training: m.bot, resumed,
     // retrospecto contra ESTE adversário, do ponto de vista de quem recebe (null no treino contra bot)
-    h2h: h ? { total: h.total, wins: h.wins[me] ?? 0, losses: h.wins[opp] ?? 0, draws: h.draws, last: h.last.map((w) => (w === null ? 'E' : w === me ? 'V' : 'D')), lastAt: h.lastAt } : null,
+    h2h: m.h2h ? h2hOf(m.h2h, c.user.id) : null,
   });
 }
 
@@ -379,17 +392,29 @@ async function finish(m, result) {
   clearTimeout(m.turnTimer); clearTimeout(m.botTimer);
   for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
-  let info = null;
+  let info = null, h2h = null;
   if (!m.bot) {
     try { info = await settle(m, result); } catch (e) { console.error('[futprego] falha ao fechar a partida', e); info = { error: true }; }
+    if (!info.error) h2h = await headToHead(m.conns[0].user.id, m.conns[1].user.id).catch((e) => { console.error('[futprego] retrospecto no fim:', e.message); return null; });
   }
   for (const c of m.conns) {
     if (c.bot) continue;
-    const msg = { t: 'over', winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView), ...personal(info, m, c.side, result) };
+    const msg = { t: 'over', winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView), ...personal(info, m, c.side, result), ...rivalry(h2h, m, c) };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
     c.match = null; c.side = -1;
   }
   refreshOpenLists().catch(() => {});
+}
+
+/**
+ * Retrospecto contra o adversário já com esta partida e a frase de provocação da tela de fim (pedido do dono,
+ * 15/09/2026). Só quando a partida entrou no retrospecto (é a mais recente dos dois): W.O. cedo, treino e
+ * falha ao gravar não levam nada.
+ */
+function rivalry(rows, m, c) {
+  if (!rows || rows[0]?.id !== m.dbId) return {};
+  const before = h2hOf(rows.slice(1), c.user.id), after = h2hOf(rows, c.user.id);
+  return { h2h: after, rivalry: rivalryLine({ before, after, me: c.user, opp: m.conns[1 - c.side].user }) };
 }
 
 /** O que cada um recebe na tela de fim. */

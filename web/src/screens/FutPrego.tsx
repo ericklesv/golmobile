@@ -5,6 +5,7 @@ import { token } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { Team } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
+import { RivalryResult } from '../components/Rivalry';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { PregoBoard, type PregoBoardData, type TeamPaint } from '../components/PregoBoard';
@@ -34,6 +35,8 @@ interface Match {
 interface Over {
   winner: Side | null; reason: string; you: Side; training: boolean; money: number; pot?: number; goal?: boolean; why?: string | null;
   goalText?: string | null; lost?: boolean; lostTeam?: string | null; refund?: boolean; players?: Player[]; text?: string; late?: boolean;
+  /** Retrospecto já com esta partida e a frase de provocação (só partida que entrou no retrospecto). */
+  h2h?: H2H; rivalry?: { kind: string; text: string } | null;
 }
 interface OpenChallenge { id: number; from: Player; at: number }
 
@@ -483,6 +486,11 @@ function OverResult({ over, me, onClose }: { over: Over | null; me: { team: Team
     text = over.reason === 'wo' ? `Você ficou fora e perdeu por W.O. para ${opp}.` : over.reason === 'desistiu' ? 'Você desistiu da partida.' : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : `${opp} marcou primeiro.`;
     text += over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : ' Seu time não perdeu gol.';
   }
-  return <GoalOverlay open goal={goal} title={title} text={text} money={money} team={me.team} onClose={onClose} autoClose={6000} />;
+  const rival = !over.training && over.h2h ? over.h2h : null;
+  return (
+    <GoalOverlay open goal={goal} title={title} text={text} money={money} team={me.team} onClose={onClose} autoClose={rival ? 10000 : 6000}>
+      {rival && <RivalryResult h2h={rival} opp={opp} line={over.rivalry?.text ?? null} />}
+    </GoalOverlay>
+  );
 }
 

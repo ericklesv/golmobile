@@ -27,10 +27,15 @@ import { money as fmt, timeLeft } from '../lib/format';
 
 type Side = 0 | 1;
 interface Player { id: number; nick: string; avatarUrl: string | null; team: Team; bot: boolean }
+/** Provocar: careta (`icon`, em /ui/emotes/) ou frase (`text`); `vip` = só com VIP ativo (catálogo vem do servidor). */
+interface ProvocarItem { key: string; icon?: string; text?: string; label?: string; vip?: boolean }
+interface Provocar { gapMs: number; burst: number; burstMs: number; punishMs: number; showMs: number; list: ProvocarItem[] }
 interface Rules {
   bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number;
   botao?: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; penalties: number };
+  provocar?: Provocar;
 }
+interface Bubble { item: ProvocarItem; id: number }
 /** Retrospecto contra o adversário desta partida no X1 (só partidas de verdade que terminaram; null no treino). */
 interface H2H { total: number; wins: number; losses: number; draws: number; last: ('V' | 'D' | 'E')[]; lastAt: string | null }
 // sameTeam = amistoso entre dois do mesmo time: vale só dinheiro (sem gol e fora do Ranking X1)
@@ -107,6 +112,11 @@ export function X1Screen() {
   const [busy, setBusy] = useState(false);
   const [season, setSeason] = useState<PublicPlayer['x1'] | null>(null);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null); // sem VIP: espera para desafiar de novo
+  // Provocar (caretas e frases prontas durante a partida; pedido do dono, 15/09/2026)
+  const [tray, setTray] = useState(false);
+  const [bubbles, setBubbles] = useState<[Bubble | null, Bubble | null]>([null, null]); // o balão de cada lado
+  const [muted, setMuted] = useState(false); // silenciei o adversário nesta partida (só na minha tela)
+  const [provocarUntil, setProvocarUntil] = useState(0); // próxima permitida (ritmo de 2 s ou castigo)
   const [, tick] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -122,8 +132,12 @@ export function X1Screen() {
   const matchRef = useRef<Match | null>(null);
   const shownRef = useRef<Shown | null>(null);
   const acceptId = useRef<number | null>(Number(params.get('aceitar')) || null);
+  const provocarRef = useRef<Provocar | null>(null); // onMessage é o do 1º render: catálogo e "silenciado" por ref
+  const mutedRef = useRef(false);
+  const bubbleSeq = useRef(0);
   matchRef.current = match;
   shownRef.current = shown;
+  mutedRef.current = muted;
 
   const send = (m: object) => { const ws = wsRef.current; if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m)); };
   const placeBall = (x: number, y: number) => {
@@ -176,6 +190,7 @@ export function X1Screen() {
     switch (m.t) {
       case 'hello':
         setRules(m.rules ?? DEFAULT_RULES);
+        provocarRef.current = m.rules?.provocar ?? null;
         if (m.today) setToday(m.today);
         setPhase((p) => (p === 'connecting' || p === 'offline' ? 'lobby' : p));
         if (acceptId.current) { send({ t: 'accept', id: acceptId.current }); acceptId.current = null; setParams({}, { replace: true }); }
@@ -191,6 +206,7 @@ export function X1Screen() {
       case 'kicked': setPhase('kicked'); break;
       case 'match': {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setBigText(null); setOppDropped(false); setConfirmLeave(false);
+        setTray(false); setBubbles([null, null]); setProvocarUntil(0); if (!m.resumed) setMuted(false);
         const base = { id: m.id, you: m.you, players: m.players, turnEndsAt: m.turnEndsAt, bet: m.bet, training: m.training, sameTeam: !!m.sameTeam, h2h: m.h2h ?? null };
         let ball: { x: number; y: number };
         if (m.game === 'BOTAO') {
@@ -280,6 +296,19 @@ export function X1Screen() {
       }
       case 'opp-dropped': setOppDropped(true); break;
       case 'opp-back': setOppDropped(false); break;
+      case 'provocar': {
+        const mt = matchRef.current;
+        const item = provocarRef.current?.list.find((e) => e.key === m.key);
+        if (!mt || !item) break;
+        const side = m.side as Side;
+        if (side !== mt.you && mutedRef.current) break; // silenciado: nem balão nem som
+        const id = ++bubbleSeq.current;
+        setBubbles((b) => { const n: [Bubble | null, Bubble | null] = [b[0], b[1]]; n[side] = { item, id }; return n; });
+        window.setTimeout(() => setBubbles((b) => { if (b[side]?.id !== id) return b; const n: [Bubble | null, Bubble | null] = [b[0], b[1]]; n[side] = null; return n; }), provocarRef.current?.showMs ?? 2800);
+        if (side !== mt.you) sound.play('pop');
+        break;
+      }
+      case 'provocar-wait': setProvocarUntil(m.until ?? 0); toast('Calma, campeão: 10 s sem provocar.', 'error'); break;
       case 'over': showOver(m as Over); break;
     }
   }
@@ -308,7 +337,7 @@ export function X1Screen() {
   function flashNotice(text: string) { setNotice(text); window.setTimeout(() => setNotice((n) => (n === text ? null : n)), 2400); }
 
   function showOver(o: Over) {
-    setOver(o); setLastResult(o); setAim(null); setSent(false);
+    setOver(o); setLastResult(o); setAim(null); setSent(false); setTray(false);
     if (o.cooldownUntil !== undefined) setCooldownUntil(o.cooldownUntil); // o relógio começa quando a partida acaba
     if (!o.training) refresh();
   }
@@ -329,6 +358,17 @@ export function X1Screen() {
     send({ t: 'accept', id });
     window.setTimeout(() => setBusy(false), 4000);
   }
+  /** Manda uma provocação: o balão só aparece quando o servidor devolve (as duas telas ficam iguais). */
+  function provocar(item: ProvocarItem) {
+    if (item.vip && !me.vip) { toast('Essa é só para VIP. Vire VIP e provoque à vontade!', 'error'); return; }
+    const n = now();
+    if (provocarUntil > n) return;
+    send({ t: 'provocar', key: item.key });
+    setProvocarUntil(n + (rules.provocar?.gapMs ?? 2000));
+    setTray(false);
+    sound.play('tap');
+  }
+  function muteOpp() { setMuted(true); setTray(false); setBubbles((b) => (match ? [match.you === 0 ? b[0] : null, match.you === 1 ? b[1] : null] : b)); }
   function leave() {
     if (phase === 'match' && match && !over) { setConfirmLeave(true); return; }
     if (phase === 'waiting') send({ t: 'cancel' });
@@ -496,17 +536,20 @@ export function X1Screen() {
 
     body = (
       <div className="flex flex-1 flex-col items-center">
-        <PlayerBar p={match.players[opp]} active={oppActive} left={left} total={total} label={oppLabel} />
+        <PlayerBar p={match.players[opp]} active={oppActive} left={left} total={total} label={oppLabel} bubble={bubbles[opp]} muted={muted} onMute={muteOpp} />
         {h2hOn && <H2HStrip h2h={match.h2h!} opp={match.players[opp].nick} />}
         {match.game === 'BOTAO' && <BotaoStrip bv={match.bv} you={you} oppNick={match.players[opp].nick} firstSnaps={rules.botao?.firstTurnSnaps ?? 1} />}
         <div className="relative my-1.5" style={{ width: `min(92vw, 380px, calc((100dvh - ${250 + (h2hOn ? 26 : 0) + extraH}px) * 0.62))` }}>
           {center}
           {bigOverlay}
         </div>
-        <PlayerBar p={match.players[you]} me active={meActive} left={left} total={total} label={meLabel} />
-        <div className="mt-1 flex w-full max-w-[380px] items-center justify-between px-1">
-          <span className="text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}</span>
-          <button onClick={() => setConfirmLeave(true)} className="btn btn-gray btn-sm">Desistir</button>
+        <PlayerBar p={match.players[you]} me active={meActive} left={left} total={total} label={meLabel} bubble={bubbles[you]} />
+        <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 px-1">
+          <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <ProvocarButton left={Math.max(0, provocarUntil - now())} gapMs={rules.provocar?.gapMs ?? 2000} punishMs={rules.provocar?.punishMs ?? 10000} onClick={() => setTray(true)} />
+            <button onClick={() => setConfirmLeave(true)} className="btn btn-gray btn-sm">Desistir</button>
+          </div>
         </div>
       </div>
     );
@@ -520,6 +563,10 @@ export function X1Screen() {
         {header}
         <div className="relative mx-auto flex w-full max-w-[440px] flex-1 flex-col px-3" style={{ paddingBottom: 'calc(var(--sab) + 12px)' }}>{body}</div>
         <AnimatePresence>
+          {tray && match && (
+            <ProvocarTray key="provocar" items={rules.provocar?.list ?? []} vip={me.vip} oppNick={match.players[1 - match.you].nick} muted={muted}
+              onPick={provocar} onMute={muteOpp} onUnmute={() => setMuted(false)} onClose={() => setTray(false)} />
+          )}
           {confirmLeave && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 left-1/2 z-[80] flex w-full max-w-[480px] -translate-x-1/2 items-center bg-navy-deep/70 px-4" role="dialog" aria-modal="true">
               <div className="panel w-full text-center text-navy-ink">
@@ -671,15 +718,34 @@ function Waiting({ rules, gameName, elapsed, botOffer, onCancel, onBot, onKeep }
 }
 
 /** Faixa de cada jogador: foto, nick, escudo, o que está acontecendo e o relógio da vez. */
-function PlayerBar({ p, me = false, active, left, total, label }: { p: Player; me?: boolean; active: boolean; left: number; total: number; label: string | null }) {
+/**
+ * Barra do jogador. `bubble` = a provocação dele agora (balão ao lado do avatar: o meu sobe, o do adversário desce,
+ * como a torre do Clash Royale); no balão do adversário há o X de silenciar. `muted` = já silenciei este adversário.
+ */
+function PlayerBar({ p, me = false, active, left, total, label, bubble, muted, onMute }: { p: Player; me?: boolean; active: boolean; left: number; total: number; label: string | null; bubble?: Bubble | null; muted?: boolean; onMute?: () => void }) {
   const pct = Math.max(0, Math.min(1, left / total));
   return (
-    <div className={`flex w-full max-w-[380px] items-center gap-2 rounded-2xl px-2 py-1 ${active ? 'bg-gold/30 ring-2 ring-gold' : 'bg-navy-deep/40'}`}>
+    <div className={`relative z-10 flex w-full max-w-[380px] items-center gap-2 rounded-2xl px-2 py-1 ${active ? 'bg-gold/30 ring-2 ring-gold' : 'bg-navy-deep/40'}`}>
       <Avatar url={p.avatarUrl} size={34} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1"><span className="t-display t-out truncate text-[14px] leading-tight">{me ? 'Você' : p.nick}</span><Shield team={p.team} size={16} /></div>
         <div className="truncate text-[11px] font-extrabold text-white/85">{label ?? p.team.name}</div>
       </div>
+      {muted && <span className="flex shrink-0 items-center gap-1 rounded-full bg-navy-deep/70 px-2 py-0.5 text-[10px] font-black text-white/90"><img src="/ui/pi-sound_off.png" className="h-3 w-3" alt="" />silenciado</span>}
+      <AnimatePresence>
+        {bubble && (
+          <motion.div key={bubble.id} initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0, y: me ? 6 : -6 }} transition={{ type: 'spring', stiffness: 380, damping: 16 }}
+            className={`pointer-events-none absolute left-2 z-20 flex min-h-[52px] items-center rounded-2xl border-[3px] border-navy-deep bg-white px-3 py-1.5 text-navy-deep shadow-[0_4px_0_rgba(0,0,0,0.25)] ${me ? 'bottom-full mb-1.5 origin-bottom-left' : 'top-full mt-1.5 origin-top-left'}`}>
+            <span className={`absolute left-5 h-3.5 w-3.5 rotate-45 border-navy-deep bg-white ${me ? '-bottom-2 border-b-[3px] border-r-[3px]' : '-top-2 border-l-[3px] border-t-[3px]'}`} />
+            {bubble.item.icon ? <img src={`/ui/emotes/${bubble.item.icon}`} alt={bubble.item.label ?? ''} className="h-12 w-12 object-contain" /> : <span className="t-display whitespace-nowrap text-[18px]">{bubble.item.text}</span>}
+            {onMute && !muted && (
+              <button onClick={onMute} className="no-drag pointer-events-auto absolute -right-3 -top-3 flex h-7 w-7 items-center justify-center rounded-full border-[3px] border-navy-deep bg-danger" aria-label={`Silenciar ${p.nick}`}>
+                <img src="/ui/pi-sound_off.png" className="h-3 w-3" alt="" />
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {active && (
         <svg viewBox="0 0 36 36" className="h-9 w-9 shrink-0" aria-label={`${left} segundos`}>
           <circle cx="18" cy="18" r="15" fill="rgba(11,45,107,0.75)" />
@@ -688,6 +754,70 @@ function PlayerBar({ p, me = false, active, left, total, label }: { p: Player; m
         </svg>
       )}
     </div>
+  );
+}
+
+/** Botão que abre o Provocar; com o anel da espera (2 s entre provocações, 10 s de castigo). */
+function ProvocarButton({ left, gapMs, punishMs, onClick }: { left: number; gapMs: number; punishMs: number; onClick: () => void }) {
+  const total = left > gapMs ? punishMs : gapMs;
+  const pct = Math.max(0, Math.min(1, left / total));
+  return (
+    <button onClick={onClick} disabled={left > 0} className="btn-sq btn-sq-white no-drag relative h-12 w-12 shrink-0" aria-label="Provocar">
+      <img src="/ui/ico-chat.png" className={`h-6 w-6 ${left > 0 ? 'opacity-40' : ''}`} alt="" />
+      {left > 0 && (
+        <svg viewBox="0 0 36 36" className="pointer-events-none absolute inset-0 m-auto h-11 w-11" aria-hidden="true">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="#FFC63D" strokeWidth="4" strokeDasharray={`${pct * 94.2} 94.2`} transform="rotate(-90 18 18)" strokeLinecap="round" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Bandeja do Provocar (pedido do dono, 15/09/2026): caretas em cima, frases embaixo. Sem VIP só as 4 caras
+ * básicas; o resto aparece com cadeado e leva para a tela do VIP. "Silenciar" vale só nesta partida e só aqui.
+ */
+function ProvocarTray({ items, vip, oppNick, muted, onPick, onMute, onUnmute, onClose }: {
+  items: ProvocarItem[]; vip: boolean; oppNick: string; muted: boolean; onPick: (i: ProvocarItem) => void; onMute: () => void; onUnmute: () => void; onClose: () => void;
+}) {
+  const icons = items.filter((i) => i.icon), phrases = items.filter((i) => !i.icon);
+  const locked = (i: ProvocarItem) => !!i.vip && !vip;
+  return (
+    <>
+      <motion.div key="provocar-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-y-0 left-1/2 z-[68] w-full max-w-[480px] -translate-x-1/2 bg-navy-deep/40" />
+      <motion.div key="provocar-tray" initial={{ y: '110%' }} animate={{ y: 0 }} exit={{ y: '110%' }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 px-2" style={{ paddingBottom: 'calc(var(--sab) + 8px)' }} role="dialog" aria-modal="true" aria-label="Provocar">
+        <div className="panel-navy">
+          <div className="mb-1.5 flex items-center justify-between">
+            <div><span className="t-display text-[20px] text-gold" style={{ textShadow: '0 2px 0 rgba(0,0,0,0.35)' }}>PROVOCAR</span><span className="ml-2 text-[11px] font-extrabold text-white/75">{oppNick} vê na hora</span></div>
+            <button onClick={onClose} className="btn-sq btn-sq-white no-drag h-9 w-9" aria-label="Fechar"><img src="/ui/pi-close.png" className="h-3.5 w-3.5" alt="" /></button>
+          </div>
+          <div className="grid grid-cols-4 justify-items-center gap-1.5">
+            {icons.map((i) => (
+              <button key={i.key} onClick={() => onPick(i)} aria-label={i.label ?? i.key}
+                className={`no-drag relative flex h-16 w-16 items-center justify-center rounded-full border-[3px] border-navy-deep bg-white shadow-[0_4px_0_rgba(0,0,0,0.3)] active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.3)] ${locked(i) ? 'grayscale' : ''}`}>
+                <img src={`/ui/emotes/${i.icon}`} className={`h-12 w-12 object-contain ${locked(i) ? 'opacity-40' : ''}`} alt="" />
+                {locked(i) && <img src="/ui/ico-lock01_s.png" className="absolute -bottom-1 -right-1 h-6 w-6" alt="Só VIP" />}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-1.5 gap-y-1">
+            {phrases.map((i) => (
+              <button key={i.key} onClick={() => onPick(i)} className={`btn btn-sm no-drag ${locked(i) ? 'btn-gray' : 'btn-white'}`} style={{ minHeight: 34, fontSize: 13 }}>
+                {locked(i) && <img src="/ui/ico-lock01_s.png" className="-ml-1 h-4 w-4" alt="Só VIP" />}{i.text}
+              </button>
+            ))}
+          </div>
+          {!vip && <Link to="/vip" className="btn btn-yellow btn-sm mt-2 w-full"><img src="/ui/ico-crown_silver.png" className="h-5 w-5" alt="" /> Vire VIP e libere tudo</Link>}
+          <div className="mt-1.5 flex items-center justify-between text-[11px] font-extrabold text-white/80">
+            <span>1 a cada 2 s</span>
+            <button onClick={muted ? onUnmute : onMute} className={`no-drag flex items-center gap-1 rounded-lg px-2 py-1 font-black text-white ${muted ? 'bg-danger/40' : ''}`}>
+              <img src="/ui/pi-sound_off.png" className="h-3.5 w-3.5" alt="" />{muted ? `Ouvir ${oppNick} de novo` : `Silenciar ${oppNick}`}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </>
   );
 }
 

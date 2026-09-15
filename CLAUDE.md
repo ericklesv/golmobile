@@ -226,6 +226,21 @@ depois que o novo estiver estável. Não instalar nada dele.
   `components/Rivalry.tsx` dentro do `GoalOverlay` (prop `children`; o resultado novo carimba na frente das últimas 5,
   o número que mudou pula e a frase entra por último; a janela fica 10 s). Frase nova = entra na lista do momento em
   `LINES`.
+  **Provocar — caretas e frases prontas durante a partida, estilo Clash Royale** (pedido do dono, 15/09/2026;
+  catálogo `PROVOCAR` em `rules.js`, mandado no `hello` do WebSocket como `rules.provocar` — a tela não duplica;
+  `onProvocar` em `realtime/x1.js`; ícones em `web/public/ui/emotes/` = pictogramas do pack Layer Lab pintados +
+  `frango.svg` desenhado). Botão de balão ao lado de "Desistir" abre a bandeja (`ProvocarTray` em `X1.tsx`): 8 caretas
+  (Risada, Choro, Raiva, Espanto, Joinha, Coroa, Dormindo, Frango) e 10 frases (Boa!, Bem jogado!, Anda logo!, Tá
+  tremendo?, Freguês!, É só isso?, Nem doeu!, Hoje não!, Cheirinho de gol…, Vai chorar?). **Sem VIP só as 4 caras
+  básicas; o resto (caretas extras e TODAS as frases) é do VIP** (decisão do dono, 15/09/2026; item na tela do VIP;
+  os trancados aparecem com cadeado e "Vire VIP e libere tudo"). Cliente manda `{t:'provocar', key}`; o servidor
+  confere partida ao vivo, chave da lista, VIP (**lendo `vipUntil` do banco** a cada provocação do VIP — ativou ou
+  perdeu o VIP com a tela aberta, vale o banco) e ritmo (1 a cada `gapMs` = 2 s, fora do ritmo = ignorada; 5 em 15 s
+  = 10 s de castigo, `provocar-wait`) e devolve `{t:'provocar', side, key}` para os DOIS (quem mandou vê o próprio
+  balão pela volta do servidor). Nada no banco. Balão ao lado do avatar (`PlayerBar`: o meu sobe, o do adversário
+  desce), some em `showMs` (2,8 s); som "pop" ao receber. **Silenciar** (X vermelho no balão do adversário ou na
+  bandeja): só na tela de quem silenciou, vale a partida (zera na próxima; `resumed` mantém). No treino, o bot
+  responde com uma sorteada. Mexeu? `node scripts/test-botao.js` tem o caso (relay, ritmo, chave inválida, VIP).
   **Ranking X1** (aba "Ranking X1" em Rankings com sub-abas Rodada / Temporada / Geral — nome e regras do dono,
   15/09/2026; conta os DOIS jogos do X1; `/rankings?aba=x1` ou `?aba=x1-temporada` abre direto). Tudo em
   **`services/x1.js`**: `GET /api/rankings/x1-rodada|x1-temporada|x1-geral` (`futprego` = alias de geral, `x1` = da

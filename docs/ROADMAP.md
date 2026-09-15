@@ -9,6 +9,8 @@ derrota, uniforme do time escolhido pelo presidente (Camisas + X1 + 3D), Santa C
 "Saco de dinheiro" (1 VIP = R$ 50 mil), roleta 500/1.500 com 5 giros (VIP 10), R$ 500 por vitória nos minigames,
 convite paga aos dois lados, painel de admin (X1, Multiconta com mapa, VIP/saldo, mensagens, avisos), SEO/preview
 do link, PWA com banner "Atualizar", cadastro sem o falso "rápido demais". Pendências no fim daquele arquivo.
+**Tarde de 15/09:** **Provocar** no X1 — caretas e frases prontas durante a partida, estilo Clash Royale (4 caras
+para todos; o resto e as frases só VIP; silenciar; ritmo de 2 s). Ver `CLAUDE.md` → X1 → Provocar.
 
 ## Próximos passos (atualizado 14/09/2026 — fazer nesta ordem)
 0. [~] **Google Play** (14/09/2026, decisões do dono; guia completo em **`docs/PLAY_STORE.md`**):

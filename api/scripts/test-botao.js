@@ -118,6 +118,29 @@ otherPhone.send({ t: 'snap', idx: ma0.botao.pieces.findIndex((p) => p.side !== t
 const oppPiece = ma0.botao.pieces.findIndex((p) => p.side !== turnSide);
 turnPhone.send({ t: 'snap', idx: oppPiece, dx: 0, dy: -1, power: 1 });
 check(!(await gA.wait('snap', 1500)), 'peteleco fora da vez e em botão do adversário: ignorados');
+
+// Provocar (dono, 15/09/2026): careta/frase pronta vai para os dois lados; chave inválida e fora do ritmo são
+// ignoradas; as marcadas `vip` (caretas extras e todas as frases) só com VIP ativo
+gA.clear(); gB.clear();
+gA.send({ t: 'provocar', key: 'risada' });
+const pa = await gA.wait('provocar', 1500), pb = await gB.wait('provocar', 1500);
+check(pa?.key === 'risada' && pa.side === ma0.you && pb?.key === 'risada' && pb.side === ma0.you, 'Provocar: a careta de A chega nos dois com o lado de A');
+gA.send({ t: 'provocar', key: 'choro' });
+check(!(await gB.wait('provocar', 700)), 'Provocar: a segunda dentro de 2 s é ignorada');
+await sleep(2100);
+gA.send({ t: 'provocar', key: 'hacker' });
+check(!(await gB.wait('provocar', 700)), 'Provocar: chave fora do catálogo é ignorada');
+gA.send({ t: 'provocar', key: 'fregues' });
+check((await gB.wait('provocar', 1500))?.key === 'fregues', 'Provocar: frase "Freguês!" de um VIP chega no outro');
+await gA.wait('provocar', 1500); // a volta do servidor para quem mandou (as duas telas ficam iguais)
+await prisma.user.update({ where: { id: B.id }, data: { vipUntil: null } }); // B deixa de ser VIP com a tela aberta
+gB.send({ t: 'provocar', key: 'frango' });
+const ev = await gB.wait('error', 1500);
+check(ev?.code === 'vip' && !(await gA.wait('provocar', 500)), `Provocar: sem VIP, careta do VIP é recusada ("${ev?.message}")`);
+gB.send({ t: 'provocar', key: 'raiva' });
+check((await gA.wait('provocar', 1500))?.key === 'raiva', 'Provocar: sem VIP, as 4 caras básicas passam');
+await prisma.user.update({ where: { id: B.id }, data: { vipUntil: new Date(Date.now() + 86_400_000) } });
+gA.clear(); gB.clear();
 // devolve as mensagens de partida para o play() (ele espera a 'match')
 gA.box.unshift(ma0); gB.box.unshift(mb0);
 

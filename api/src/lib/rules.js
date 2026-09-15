@@ -374,6 +374,35 @@ export const x1GameOf = (day) => X1.games[((day % X1.games.length) + X1.games.le
 export const BOTAO = { snapsPerTurn: 2, firstTurnSnaps: 1, snapSec: 15, goalsToWin: 1, maxTurns: 9, penalties: 3, suddenDeath: 7 };
 KIND_LABEL.BOTAO = 'Futebol de Botão';
 
+// Provocar — caretas e frases prontas durante a partida do X1, estilo Clash Royale (pedido do dono, 15/09/2026;
+// realtime/x1.js → onProvocar). Sem texto livre: o servidor só aceita as chaves daqui. Quem NÃO é VIP só manda
+// as 4 caras básicas; o resto (caretas extras e TODAS as frases) é do VIP (decisão do dono). Ícones em
+// web/public/ui/emotes/<icon> (pictogramas do pack Layer Lab pintados; o frango é desenho nosso). Ritmo: 1 a cada
+// `gapMs` (fora do ritmo = ignorada); `burst` em `burstMs` = `punishMs` sem mandar. O balão fica `showMs` na tela.
+export const PROVOCAR = {
+  gapMs: 2000, burst: 5, burstMs: 15_000, punishMs: 10_000, showMs: 2800,
+  list: [
+    { key: 'risada', icon: 'risada.png', label: 'Risada' },
+    { key: 'choro', icon: 'choro.png', label: 'Choro' },
+    { key: 'raiva', icon: 'raiva.png', label: 'Raiva' },
+    { key: 'espanto', icon: 'espanto.png', label: 'Espanto' },
+    { key: 'joinha', icon: 'joinha.png', label: 'Joinha', vip: true },
+    { key: 'coroa', icon: 'coroa.png', label: 'Coroa', vip: true },
+    { key: 'zzz', icon: 'zzz.png', label: 'Dormindo', vip: true },
+    { key: 'frango', icon: 'frango.svg', label: 'Frango', vip: true },
+    { key: 'boa', text: 'Boa!', vip: true },
+    { key: 'bem-jogado', text: 'Bem jogado!', vip: true },
+    { key: 'anda-logo', text: 'Anda logo!', vip: true },
+    { key: 'tremendo', text: 'Tá tremendo?', vip: true },
+    { key: 'fregues', text: 'Freguês!', vip: true },
+    { key: 'so-isso', text: 'É só isso?', vip: true },
+    { key: 'nem-doeu', text: 'Nem doeu!', vip: true },
+    { key: 'hoje-nao', text: 'Hoje não!', vip: true },
+    { key: 'cheirinho', text: 'Cheirinho de gol…', vip: true },
+    { key: 'vai-chorar', text: 'Vai chorar?', vip: true },
+  ],
+};
+
 /** Chance de GANHA (%) sem pagar nada, depois de `wins` acertos no dia. */
 export const ganhaPerdeBase = (wins) => Math.max(GANHAPERDE.min, GANHAPERDE.start - GANHAPERDE.drop * wins);
 /** Preço (R$) para girar com `chance`% depois de `wins` acertos: o n-ésimo degrau de +5% custa

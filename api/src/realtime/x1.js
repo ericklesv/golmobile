@@ -23,7 +23,7 @@ import { prisma } from '../prisma.js';
 import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
 import { BOTAO_FIELD } from '../lib/botao.js';
 import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove } from '../lib/botaoMatch.js';
-import { FUTPREGO, BOTAO, X1, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
+import { FUTPREGO, BOTAO, X1, PROVOCAR, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
 import { teamView } from '../services/view.js';
@@ -34,6 +34,7 @@ import { takeSlot } from '../lib/security.js';
 import { deviceOf } from '../lib/device.js';
 
 const F = FUTPREGO; // regras de convite, aposta, gol e travas (valem para todo o X1)
+const PROVOCAR_BY_KEY = new Map(PROVOCAR.list.map((e) => [e.key, e]));
 const BOT_NAMES = ['Zagalinho', 'Pé de Pano', 'Perna Longa', 'Canhotinha', 'Bicudo', 'Matador', 'Camisa 10', 'Prego Torto'];
 const INVITE_GAP_MS = 20_000; // uma tela não recebe mais de um convite novo a cada 20 s
 const MAX_TIMEOUTS = 3;       // perdeu a vez 3 vezes seguidas = W.O.
@@ -99,6 +100,7 @@ const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user
 const rulesView = () => ({
   bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalsPerHour: F.maxGoalsPerHour, challengeCooldownSec: F.challengeCooldownSec,
   botao: { snapsPerTurn: BOTAO.snapsPerTurn, firstTurnSnaps: BOTAO.firstTurnSnaps, snapSec: BOTAO.snapSec, goalsToWin: BOTAO.goalsToWin, maxTurns: BOTAO.maxTurns, penalties: BOTAO.penalties },
+  provocar: PROVOCAR, // caretas e frases prontas (a tela não duplica o catálogo)
 });
 /** Jogador ocupado: numa partida ou com desafio aberto (em qualquer conexão). */
 const busyUser = (userId) => [...conns].some((c) => c.user.id === userId && (c.match || c.challenge));
@@ -172,6 +174,7 @@ async function onMessage(conn, m) {
   if (m.t === 'bot') return startBot(conn);
   if (m.t === 'flick') return onFlick(conn, m);
   if (m.t === 'snap') return onSnap(conn, m);
+  if (m.t === 'provocar') return onProvocar(conn, m);
   // desistir = derrota (se o resultado já está decidido e só falta a animação, vale ele — não a desistência)
   if (m.t === 'giveup' && conn.match && !conn.match.done) return finish(conn.match, conn.match.pending ?? { winner: 1 - conn.side, reason: 'desistiu' });
 }
@@ -514,10 +517,53 @@ function onDisconnect(conn) {
   }, F.reconnectSec * 1000);
 }
 
+// ─── Provocar (pedido do dono, 15/09/2026) ──────────────────────────────────
+
+/**
+ * Careta ou frase pronta durante a partida, estilo Clash Royale. Só chaves de PROVOCAR.list; as marcadas `vip`
+ * pedem VIP ativo (quem não é VIP fica com as 4 caras básicas — decisão do dono). Ritmo: 1 a cada gapMs (fora do
+ * ritmo = ignorada, a tela já segura o botão); `burst` dentro de burstMs = punishMs de castigo (`provocar-wait`).
+ * Vai para os DOIS lados — quem mandou vê o próprio balão pela volta do servidor, assim as duas telas ficam
+ * iguais. Nada vai para o banco; silenciar é só na tela de quem silenciou. No treino, o bot responde com uma
+ * sorteada (dá vida ao recurso e mostra as do VIP).
+ */
+async function onProvocar(conn, msg) {
+  const m = conn.match;
+  if (!m || m.done) return;
+  const e = PROVOCAR_BY_KEY.get(String(msg.key));
+  if (!e) return;
+  if (e.vip) {
+    // o VIP pode ter sido ativado (ou tirado pelo painel) com a tela do X1 aberta: a resposta é a do banco, não a
+    // da conexão (uma consulta por provocação do VIP, no máximo 1 a cada 2 s por jogador)
+    const fresh = await prisma.user.findUnique({ where: { id: conn.user.id }, select: { vipUntil: true } }).catch(() => null);
+    if (fresh) conn.user.vipUntil = fresh.vipUntil;
+    if (!isVip(conn.user)) return send(conn.ws, { t: 'error', code: 'vip', message: 'Essa provocação é só para VIP. Vire VIP e provoque à vontade!' });
+  }
+  if (!conn.match || conn.match !== m || m.done) return;
+  const now = Date.now();
+  if ((conn.provocarBlockedUntil ?? 0) > now) return;
+  const recent = (conn.provocarAt ?? []).filter((t) => now - t < PROVOCAR.burstMs);
+  if (recent.length && now - recent[recent.length - 1] < PROVOCAR.gapMs) return;
+  recent.push(now); conn.provocarAt = recent;
+  for (const c of m.conns) send(c.ws, { t: 'provocar', side: conn.side, key: e.key, at: now });
+  if (recent.length >= PROVOCAR.burst) {
+    conn.provocarBlockedUntil = now + PROVOCAR.punishMs; conn.provocarAt = [];
+    send(conn.ws, { t: 'provocar-wait', until: conn.provocarBlockedUntil });
+  }
+  if (m.bot) {
+    clearTimeout(m.provocarTimer);
+    m.provocarTimer = setTimeout(() => {
+      if (m.done) return;
+      const r = PROVOCAR.list[randomInt(PROVOCAR.list.length)];
+      for (const c of m.conns) send(c.ws, { t: 'provocar', side: 1 - conn.side, key: r.key, at: Date.now() });
+    }, 1200 + randomInt(900));
+  }
+}
+
 async function finish(m, result) {
   if (m.done) return;
   m.done = true;
-  clearTimeout(m.turnTimer); clearTimeout(m.botTimer);
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer);
   for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
   let info = null, h2h = null;

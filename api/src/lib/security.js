@@ -11,11 +11,14 @@
 import { createRequire } from 'node:module';
 import { GameError, badRequest } from './errors.js';
 import { tg } from './telegram.js';
+import { isPrivateIp } from './ip.js';
 
 // lista JSON (~120 mil domínios de e-mail temporário); require porque é JSON puro
 const disposableDomains = createRequire(import.meta.url)('disposable-email-domains');
 
 export const SECURITY = {
+  maxOnlinePerIp: 3, // contas JOGANDO AO MESMO TEMPO na mesma internet (dono, 15/09/2026) — a 4ª espera
+  ipOnlineMs: 10 * 60_000, // conta sem nenhum pedido há mais que isso libera a vaga na internet dela
   registerPerIpPerDay: 3, // contas novas por IP em 24 h
   registerMinFormMs: 3000, // formulário preenchido em menos que isso = robô
   loginMaxFails: 10, // senhas erradas seguidas por conta…
@@ -123,3 +126,52 @@ export function cached(ttlMs) {
   };
 }
 export function cacheClear() { cache.clear(); }
+
+// ─── Contas por internet, AO MESMO TEMPO (dono, 15/09/2026: "muitos usuários logando com o mesmo IP em várias
+// contas — limitar para 3") ────────────────────────────────────────────────────────────────────────────────
+// Na mesma internet, no máximo `maxOnlinePerIp` contas jogando ao mesmo tempo. "Jogando" = fez algum pedido com
+// login nos últimos `ipOnlineMs` (a tela aberta manda o heartbeat a cada 60 s, então a vaga fica presa enquanto a
+// aba está aberta e solta uns 10 min depois de fechar). Quem já tem a vaga continua; a conta a mais recebe 403
+// `multiconta` até uma vaga soltar. Por IP de VERDADE (`realIp`: o X-Real-IP que o nginx grava — o
+// X-Forwarded-For o próprio jogador falsifica). IP local/privado (PC de desenvolvimento) e admin: sem trava.
+// Em memória (1 instância PM2): se a API reinicia, as vagas começam vazias e os primeiros a voltar pegam.
+// Cuidado conhecido: internet de celular (CGNAT) põe muita gente num IP só — escolha do dono foi "ao mesmo tempo"
+// justamente para barrar o mínimo de gente inocente.
+const online = new Map(); // ip -> Map(userId -> último pedido em ms)
+let lastSweep = 0;
+function sweepOnline(now) {
+  if (now - lastSweep < 60_000) return;
+  lastSweep = now;
+  for (const [ip, m] of online) {
+    for (const [id, t] of m) if (now - t > SECURITY.ipOnlineMs) m.delete(id);
+    if (!m.size) online.delete(ip);
+  }
+}
+const multiError = () => new GameError(403, 'multiconta',
+  `Já tem ${SECURITY.maxOnlinePerIp} contas jogando nesta internet agora. Para entrar com esta, saia de uma delas e espere uns ${Math.round(SECURITY.ipOnlineMs / 60_000)} minutos.`);
+
+/** Ocupa (ou renova) a vaga de `userId` na internet `ip`. Lança 403 `multiconta` se as vagas estão cheias
+ *  (e avisa o dono no Telegram, no máximo 1 vez a cada 30 min por internet; `nick` só para o aviso). */
+export function takeIpSlot(ip, userId, now = Date.now(), nick = null) {
+  if (isPrivateIp(ip)) return;
+  sweepOnline(now);
+  let m = online.get(ip);
+  if (!m) online.set(ip, (m = new Map()));
+  for (const [id, t] of m) if (now - t > SECURITY.ipOnlineMs) m.delete(id);
+  if (!m.has(userId) && m.size >= SECURITY.maxOnlinePerIp) {
+    tg.warn(`🧱 Mais de ${SECURITY.maxOnlinePerIp} contas ao mesmo tempo na mesma internet: ${nick ? `<b>${tg.esc(nick)}</b>` : `conta #${userId}`} ficou de fora — IP <code>${tg.esc(ip)}</code>`, { key: `multi:${ip}`, every: 30 * 60_000 });
+    throw multiError();
+  }
+  m.set(userId, now);
+}
+
+/** Cadastro: ainda não tem conta, só confere se a internet já está cheia. */
+export function assertIpHasRoom(ip, now = Date.now()) {
+  if (isPrivateIp(ip)) return;
+  const m = online.get(ip);
+  const live = m ? [...m.values()].filter((t) => now - t <= SECURITY.ipOnlineMs).length : 0;
+  if (live >= SECURITY.maxOnlinePerIp) throw multiError();
+}
+
+/** Para teste: esvazia as vagas. */
+export function resetIpSlots() { online.clear(); lastSweep = 0; }

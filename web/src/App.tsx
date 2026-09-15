@@ -1,9 +1,11 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './store/auth';
 import { ToastHost } from './components/Toast';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { MultiAccountScreen } from './components/MultiAccount';
+import { MULTI_EVENT } from './lib/api';
 import { LevelUpWatcher } from './components/LevelUp';
 import { PassWatcher } from './components/Pass';
 import { InviteRoute } from './components/Invite';
@@ -77,7 +79,15 @@ export default function App() {
   const loading = useAuth((s) => s.loading);
   const me = useAuth((s) => s.me);
   const loc = useLocation();
-  useEffect(() => { boot(); const a = installDragScroll(); const b = installClickSounds(); return () => { a(); b(); }; }, []);
+  // 403 `multiconta` em qualquer pedido (3 contas jogando nesta internet): a tela inteira vira o aviso
+  const [multi, setMulti] = useState<string | null>(null);
+  useEffect(() => {
+    const onMulti = (e: Event) => setMulti((e as CustomEvent<string>).detail || 'Contas demais nesta internet.');
+    window.addEventListener(MULTI_EVENT, onMulti); // antes do boot: o /api/me dele já pode voltar barrado
+    boot(); const a = installDragScroll(); const b = installClickSounds();
+    return () => { window.removeEventListener(MULTI_EVENT, onMulti); a(); b(); };
+  }, []);
+  if (multi) return <MultiAccountScreen message={multi} onRetry={async () => { setMulti(null); await boot(); }} />;
   if (loading) return <Splash />;
   return (
     <>

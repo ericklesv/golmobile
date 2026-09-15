@@ -18,13 +18,17 @@ await new Promise((r) => setTimeout(r, 800));
 
 let fails = 0;
 const ok = (cond, msg) => { if (cond) console.log('  ok  ', msg); else { fails++; console.log('  FALHA', msg); } };
-async function call(method, path, body, token) {
-  const res = await fetch(API + path, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
+async function call(method, path, body, token, headers = {}) {
+  const res = await fetch(API + path, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers }, body: body ? JSON.stringify(body) : undefined });
   return { status: res.status, data: await res.json().catch(() => ({})) };
 }
 const team = await prisma.team.findFirst();
+// cada cadastro numa "internet" própria (X-Forwarded-For, como os outros testes): sem isso, 3 rodadas no mesmo dia
+// esgotam a trava de 3 contas por IP em 24 h do PC (::1) e o teste cai no 429
+let ipSeq = 0;
+const regIp = () => ({ 'x-forwarded-for': `10.77.${Date.now() % 250}.${++ipSeq}` });
 async function register(nick) {
-  const r = await call('POST', '/api/auth/register', { nick, email: `${nick}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug });
+  const r = await call('POST', '/api/auth/register', { nick, email: `${nick}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug }, null, regIp());
   if (r.status !== 200 && r.status !== 201) throw new Error('register ' + JSON.stringify(r));
   return r.data.token;
 }
@@ -113,7 +117,7 @@ res = await call('GET', `/api/players/search?q=beta${suffix}`, null, A);
 ok(Array.isArray(res.data) && !res.data.some((u) => u.nick.toLowerCase() === nickB), 'busca não acha');
 res = await call('GET', '/api/rankings/geral', null, A);
 ok(!res.data.rows?.some((r) => r.nick === `excluido-${bUser.id}`), 'ranking geral sem a conta excluída');
-res = await call('POST', '/api/auth/register', { nick: nickB, email: `${nickB}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug }, null);
+res = await call('POST', '/api/auth/register', { nick: nickB, email: `${nickB}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug }, null, regIp());
 ok(res.status === 200 || res.status === 201, 'nick e e-mail ficam livres para cadastro novo');
 
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');

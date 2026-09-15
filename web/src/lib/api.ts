@@ -10,6 +10,9 @@ export class ApiError extends Error {
   }
 }
 
+/** A API recusou por "contas demais nesta internet" (403 `multiconta`): o App ouve e mostra components/MultiAccount. */
+export const MULTI_EVENT = 'brgol:multiconta';
+
 export const token = {
   get: () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
   set: (t: string | null) => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {} },
@@ -28,6 +31,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const { error, message, ...extra } = data as any;
+    if (error === 'multiconta') window.dispatchEvent(new CustomEvent(MULTI_EVENT, { detail: message }));
     throw new ApiError(res.status, error || 'error', message || 'Falha na requisição.', extra);
   }
   return data as T;

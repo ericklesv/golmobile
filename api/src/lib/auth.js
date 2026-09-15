@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import { prisma } from '../prisma.js';
 import { unauthorized, forbidden } from './errors.js';
+import { takeIpSlot } from './security.js';
+import { clientIp } from './ip.js';
 
 export function signToken(user) {
   return jwt.sign({ uid: user.id, nick: user.nick }, config.jwtSecret, { expiresIn: '30d' });
@@ -23,6 +25,8 @@ export async function requireAuth(req, res, next) {
     if (user.bannedUntil && user.bannedUntil.getTime() > Date.now()) {
       throw forbidden(`Conta suspensa até ${user.bannedUntil.toLocaleString('pt-BR', { timeZone: config.tz })}.`);
     }
+    // no máximo 3 contas jogando ao mesmo tempo na mesma internet (lib/security.js) — admin fica de fora
+    if (!user.isAdmin) takeIpSlot(clientIp(req), user.id, Date.now(), user.nick);
     req.user = user;
     next();
   } catch (e) {

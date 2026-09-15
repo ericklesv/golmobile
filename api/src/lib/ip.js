@@ -6,11 +6,18 @@
  * 24 h e timeout curto. Nunca chamar esse serviço do front.
  */
 
-/** Primeiro valor do X-Forwarded-For (Nginx na VPS) ou req.ip. */
+/**
+ * IP do jogador. Na VPS vem do **X-Real-IP**, que o nginx grava com o endereço da conexão — o jogador não consegue
+ * trocar. Antes vinha do 1º valor do X-Forwarded-For, que o próprio jogador manda do jeito que quiser (o nginx só
+ * ACRESCENTA o IP real no fim): com um script dava para driblar a trava de contas por IP, a "mesma internet" do
+ * convite/diretoria e o painel (corrigido em 15/09/2026). Sem nginx (PC de desenvolvimento e os scripts de teste,
+ * que mandam um X-Forwarded-For por jogador), cai no X-Forwarded-For e depois no endereço do socket.
+ */
 export function clientIp(req) {
+  const real = req.headers['x-real-ip'];
   const fwd = req.headers['x-forwarded-for'];
   const first = typeof fwd === 'string' && fwd.length ? fwd.split(',')[0].trim() : null;
-  const ip = (first || req.ip || '').replace(/^::ffff:/, '');
+  const ip = String((typeof real === 'string' && real.trim()) || first || req.ip || req.socket?.remoteAddress || '').trim().replace(/^::ffff:/, '');
   return ip || null;
 }
 

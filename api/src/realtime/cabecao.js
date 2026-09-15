@@ -14,6 +14,8 @@ import { liveMatchForTeam } from '../services/league.js';
 import { teamView } from '../services/view.js';
 import { nextMidnight } from '../lib/time.js';
 import { CABECAO } from '../lib/rules.js';
+import { clientIp as ipOf } from '../lib/ip.js';
+import { takeIpSlot } from '../lib/security.js';
 
 const TICK_MS = 1000 / 30;
 const RECONNECT_GRACE_MS = 20_000; // caiu no meio da partida: tem 20 s para voltar antes do W.O.
@@ -35,10 +37,9 @@ function broadcastQueue() {
   for (const q of queue) send(q.conn.ws, { t: 'queue', ...st });
 }
 
-function clientIp(req) {
-  const xf = req.headers['x-forwarded-for'];
-  return (xf ? String(xf).split(',')[0].trim() : req.socket.remoteAddress) || '?';
-}
+// IP de verdade (X-Real-IP do nginx; lib/ip.js) — antes era o 1º valor do X-Forwarded-For, que o jogador falsifica
+// (dava para parear duas contas suas "de internets diferentes")
+const clientIp = (req) => ipOf(req) || '?';
 
 /** Verifica o token e carrega o jogador (time incluso). */
 async function authenticate(req) {
@@ -47,6 +48,7 @@ async function authenticate(req) {
   const payload = jwt.verify(token, config.jwtSecret);
   const user = await prisma.user.findUnique({ where: { id: payload.uid }, include: { team: true } });
   if (!user || (user.bannedUntil && user.bannedUntil.getTime() > Date.now())) throw new Error('unauthorized');
+  if (!user.isAdmin) takeIpSlot(clientIp(req), user.id, Date.now(), user.nick); // 3 contas ao mesmo tempo por internet
   return user;
 }
 

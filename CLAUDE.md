@@ -353,6 +353,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   (`components/Account.tsx`). **Mexeu nisso? Rode `node scripts/test-conta.js`** (pasta api/, só banco
   LOCAL): 35 conferências, tem de dar "TUDO OK". Ícone maskable `icon-512-maskable.png`; artes da loja em
   `assets/play-store/`.
+- **3 contas JOGANDO AO MESMO TEMPO por internet** (dono, 15/09/2026: "muitos usuários logando com o mesmo IP em
+  várias contas"; escolheu "ao mesmo tempo" para barrar o mínimo de gente inocente de internet de celular/CGNAT):
+  `takeIpSlot`/`assertIpHasRoom` em `lib/security.js` (`SECURITY.maxOnlinePerIp` = 3, vaga solta depois de
+  `ipOnlineMs` = 10 min sem nenhum pedido). Chamado no `requireAuth` (toda rota com login), no login, no cadastro e na
+  conexão dos WebSockets do X1 e do Cabeção; quem já tem a vaga continua, a conta a mais recebe 403 `multiconta`
+  e o site troca a tela inteira pelo aviso `components/MultiAccount.tsx` (evento `MULTI_EVENT` de `lib/api.ts`).
+  Admin e IP privado (PC) ficam de fora; aviso no Telegram (1 a cada 30 min por internet). Em memória (1 instância).
+  **O IP agora é o de VERDADE**: `clientIp` (lib/ip.js) lê o **X-Real-IP** que o nginx grava — antes lia o 1º valor do
+  X-Forwarded-For, que o jogador falsifica (dava para driblar as travas por IP, a "mesma internet" do convite e da
+  diretoria e o pareamento do Cabeção). Sem nginx (PC/testes) cai no X-Forwarded-For. **Mexeu? Rode
+  `node scripts/test-contas-por-ip.js`** (pasta api/, banco LOCAL, API no ar; tem de dar "TUDO OK").
 - **Segurança** (`lib/security.js`; plano completo, Cloudflare e comandos da VPS em **`docs/SEGURANCA.md`**;
   pedido do dono, 15/09/2026): cadastro com honeypot (`website`) + 3 s mínimos no formulário (`startedAt`),
   e-mail descartável barrado (`disposable-email-domains`), **5 cadastros/h por IP** e **3 contas por IP em

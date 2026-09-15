@@ -30,6 +30,7 @@ import { teamView } from '../services/view.js';
 import { X1_PLAYED, X1_COUNTED } from '../services/x1.js';
 import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
+import { takeIpSlot } from '../lib/security.js';
 
 const F = FUTPREGO; // regras de convite, aposta, gol e travas (valem para todo o X1)
 const BOT_NAMES = ['Zagalinho', 'Pé de Pano', 'Perna Longa', 'Canhotinha', 'Bicudo', 'Matador', 'Camisa 10', 'Prego Torto'];
@@ -89,6 +90,7 @@ async function authenticate(req) {
   const payload = jwt.verify(url.searchParams.get('token') || '', config.jwtSecret);
   const user = await prisma.user.findUnique({ where: { id: payload.uid }, include: { team: true } });
   if (!user || user.deletedAt || (user.bannedUntil && user.bannedUntil.getTime() > Date.now())) throw new Error('unauthorized');
+  if (!user.isAdmin) takeIpSlot(clientIp(req), user.id, Date.now(), user.nick); // 3 contas ao mesmo tempo por internet (lib/security.js)
   return { user, mode: url.searchParams.get('mode') === 'game' ? 'game' : 'lobby' };
 }
 

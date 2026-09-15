@@ -7,6 +7,7 @@ import { money } from '../lib/format';
 import { useEffect, useRef } from 'react';
 import { toast } from './Toast';
 import { api } from '../lib/api';
+import { SeriesNoticeWatcher } from './SeriesNotice';
 import { ChatFab } from './ChatFab';
 import { WhatsInviteWatcher } from './WhatsInvite';
 import { VipBar } from './VipBar';
@@ -83,6 +84,7 @@ export function Layout() {
       <main className="relative flex-1 px-3 pb-28 pt-3">
         <ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary>
       </main>
+      <SeriesNoticeWatcher />
       <ChatFab />
       <WhatsInviteWatcher />
       <FutPregoInviteWatcher />

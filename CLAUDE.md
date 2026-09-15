@@ -47,6 +47,18 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Mexeu na liga? Rode `node scripts/sim-liga.js`** (pasta api/, só banco LOCAL, schema
   `liga_sim` criado e apagado por ele): temporada inteira de 30 rodadas + virada, com gols no
   instante do fechamento; ~7 mil conferências, tem de dar 0 falha.
+- **Troca de séries de 14/09/2026** (decisão do dono, na rodada 3 da temporada 1; feita SÓ no banco, sem
+  código): 5 times da A sem nenhum jogador davam ponto de graça. Subiram para a A os 5 com mais gols na
+  temporada fora dela (Náutico, Ceará, Brasiliense, Santa Cruz, XV de Piracicaba); Botafogo, Grêmio,
+  Fortaleza, Athletico-PR e Internacional (vazios) foram para a B; Remo e Guarani (vazios, lanterna da B)
+  para a C. Todos mantiveram pontos e gols; os 24 jogos da rodada 3 foram refeitos com `roundRobinPairs`
+  das séries novas e cada time levou os gols que já tinha nela (`Goal.matchId` repontado). A série mora em
+  DOIS lugares — `Team.serie` (sorteio das rodadas) e `Standing.serie` da temporada (tabela, título,
+  acesso) —: trocar só um quebra a tabela. O seed não mexe na série. Backup de antes na VPS:
+  `/root/brgol-antes-troca-series-2026-09-14.dump`. Aviso para os jogadores: `components/SeriesNotice.tsx`
+  (1x por conta, só contas criadas antes da troca, some depois de 22/09; o convite do WhatsApp espera ele).
+  **Atenção no fim da temporada:** com a B quase sem jogador, o 2º que sobe pode ser um time vazio
+  (desempate por saldo/nome) — o dono ainda não decidiu se muda a regra de acesso.
 - Auto-chute: o cliente dispara `POST /api/play/auto` quando o timer zera com a aba aberta
   (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
   O chute do VIP com o app FECHADO está pronto mas **desligado** (`VIP_OFFLINE_AUTO = false`; ver "VIP pago").

@@ -654,7 +654,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
       </div>
       <div className="panel-navy mt-3 px-3 py-2.5">
         <p className="text-[14px] font-extrabold leading-snug text-white">{t.main}</p>
-        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Cada jogador ganha no máximo {rules.maxGoalsPerHour} gols por hora no X1, e o time perde no máximo {rules.maxGoalsPerHour} por hora por causa dele. Ganhar da mesma pessoa duas vezes seguidas, sem jogar com mais ninguém no meio, a segunda não vale gol. Contra alguém do seu time é amistoso: vale só o dinheiro, sem gol e sem ponto no Ranking X1.</p>
+        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Só as {rules.maxGoalsPerHour} primeiras partidas de cada jogador em cada hora mexem no placar (empate também conta); depois, até a hora virar, vale só o dinheiro. Ganhar da mesma pessoa duas vezes seguidas, sem jogar com mais ninguém no meio, a segunda não vale gol e não conta nas {rules.maxGoalsPerHour}. Contra alguém do seu time é amistoso: vale só o dinheiro, sem gol e sem ponto no Ranking X1.</p>
       </div>
       {season?.season && season.season.played > 0 && (
         <p className="t-out mt-2 text-center text-[12px] font-extrabold">
@@ -926,16 +926,18 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   } else if (won) {
     goal = true; money = over.money;
     title = over.goal ? 'GOOOL!!!' : 'VENCEU!';
-    const why = over.why === 'limite' ? ` O gol não valeu: você já fez os ${limit} gols desta hora no X1.` : over.why === 'repetido' ? ` O gol não valeu: você ganhou de ${opp} duas vezes seguidas.`
+    const why = over.why === 'limite' ? ` O gol não valeu: você já jogou as ${limit} partidas desta hora que valem gol.` : over.why === 'repetido' ? ` O gol não valeu: você ganhou de ${opp} duas vezes seguidas.`
       : over.why === 'mesmo-time' ? ' Amistoso do seu time: não vale gol.' : '';
     const how = over.reason === 'penaltis' ? ` nos pênaltis (${penScore})` : '';
     const narr = over.goalText ?? `Você venceu ${opp}${how}!`;
-    text = over.goal ? `${narr}${/[.!?]$/.test(narr) ? '' : '.'}${over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : ''}` : `Você venceu ${opp}${how} e levou ${fmt(over.money)}.${why}`;
+    // o time do outro pode perder gol mesmo quando o seu não valeu: cada um conta as 10 partidas dele na hora
+    const lostTxt = over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : '';
+    text = over.goal ? `${narr}${/[.!?]$/.test(narr) ? '' : '.'}${lostTxt}` : `Você venceu ${opp}${how} e levou ${fmt(over.money)}.${why}${lostTxt}`;
   } else {
     text = over.reason === 'wo' ? `Você ficou fora e perdeu por W.O. para ${opp}.` : over.reason === 'desistiu' ? 'Você desistiu da partida.'
       : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : over.reason === 'penaltis' ? `${opp} venceu nos pênaltis (${penScore}).` : `${opp} marcou primeiro.`;
     text += over.why === 'mesmo-time' ? ' Amistoso do seu time: não vale gol.'
-      : over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: já foram ${limit} nesta hora.` : ' Seu time não perdeu gol.';
+      : over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: você já jogou as ${limit} partidas desta hora que valem gol.` : ' Seu time não perdeu gol.';
   }
   // retrospecto contra o adversário já com esta partida + a frase de provocação (lib/rivalidade.js na API)
   const rival = !over.training && !over.canceled && over.h2h ? over.h2h : null;

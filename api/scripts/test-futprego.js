@@ -2,8 +2,8 @@
  * FutPrego ponta a ponta contra a API LOCAL rodando (FP_API, padrão http://localhost:4320), com
  * jogadores de teste conectados por WebSocket como se fossem celulares (IPs diferentes via X-Real-IP):
  * convite só para quem pode (time/internet/dinheiro), aceitar, cobrança dos R$ 200, gol do vencedor,
- * pote de R$ 400, o time do perdedor perdendo 1 gol, a regra da mesma dupla com o mesmo vencedor, a trava
- * de 10 gols por hora (para ganhar e para perder), empate (devolve), W.O. cedo (devolve), vez de quem não é a vez, treino com bot, e a
+ * pote de R$ 400, o time do perdedor perdendo 1 gol, a regra da mesma dupla com o mesmo vencedor, as 10 primeiras
+ * partidas da hora de cada um (empate gasta, revanche repetida não; passo 13), empate (devolve), W.O., vez de quem não é a vez, treino com bot, e a
  * SAÍDA DO MEIO: em toda partida a 1ª jogada tenta de propósito o peteleco que entraria sem a garantia.
  * Cria jogadores fp…
  *
@@ -261,7 +261,7 @@ check(!!o7.h2h && o7.h2h.wins >= 1, 'W.O. entra no retrospecto');
   }
 }
 
-// 8) trava de gols por hora (ganhar): com maxGoalsPerHour vitórias valendo nesta hora, a próxima leva o pote mas não o gol
+// 8) as 10 partidas da hora (quem ganha): A já jogou maxGoalsPerHour partidas valendo nesta hora — a próxima leva o pote mas não o gol
 gB = phone(B, 'game', '10.0.0.2'); await gB.open;
 // (as partidas de mentira ficam no começo desta hora cheia — se a hora virar no meio do teste, não contam)
 const nowH = new Date(); nowH.setUTCMinutes(0, 0, 0); const inHour = new Date(Math.max(nowH.getTime(), Date.now() - 1000));
@@ -273,9 +273,9 @@ gA.clear(); gB.clear();
 gB.send({ t: 'accept', id: w8.id });
 const r8 = await play(gA, gB, (side) => (side === (r1.youA) ? 'gol' : 'nada'));
 const o8 = r8.oa;
-check(o8.winner === r8.youA && o8.goal === false && o8.why === 'limite' && o8.money === F.bet * 2, `A já tinha ${F.maxGoalsPerHour} gols nesta hora: levou o pote, sem gol`);
+check(o8.winner === r8.youA && o8.goal === false && o8.why === 'limite' && o8.money === F.bet * 2, `A já tinha jogado ${F.maxGoalsPerHour} partidas valendo nesta hora: levou o pote, sem gol`);
 
-// 8b) trava de gols por hora (perder): B já fez o time perder maxGoalsPerHour gols nesta hora; C ganha dele:
+// 8b) as 10 partidas da hora (quem perde): B já jogou maxGoalsPerHour partidas valendo nesta hora; C ganha dele:
 // o gol de C vale, mas o time de B não perde mais
 for (const t of [C.teamId, B.teamId]) { const m = await liveMatchForTeam(t); if (m) await prisma.match.update({ where: { id: m.id }, data: m.homeTeamId === t ? { homeGoals: 3 } : { awayGoals: 3 } }); }
 for (let i = 0; i < F.maxGoalsPerHour; i++) await prisma.x1Match.create({ data: { aId: D.id, bId: B.id, aTeamId: D.teamId, bTeamId: B.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: D.id, reason: 'gol', goalAwarded: true, lostTeamId: B.teamId, finishedAt: inHour } });
@@ -287,7 +287,7 @@ gC.clear(); gB.clear();
 gB.send({ t: 'accept', id: w8b.id });
 const r8b = await play(gC, gB, (side) => (side === 0 ? 'gol' : 'nada')); // quem desafia é o lado 0
 const oC = r8b?.oa, oB = r8b?.ob;
-check(oC?.winner === r8b?.youA && oC.goal === true && oB?.lost === false && oB.lossLimit === true, `B já tinha feito o time perder ${F.maxGoalsPerHour} gols nesta hora: o gol de C valeu e o time de B não perdeu`);
+check(oC?.winner === r8b?.youA && oC.goal === true && oB?.lost === false && oB.lossLimit === true, `B já tinha jogado as ${F.maxGoalsPerHour} partidas da hora: o gol de C valeu e o time de B não perdeu`);
 if (bef8b.c !== null && bef8b.b !== null) check((await teamScore(C.teamId)) === bef8b.c + 1 && (await teamScore(B.teamId)) === bef8b.b, `placar: time de C ${bef8b.c} → ${await teamScore(C.teamId)}, time de B ficou em ${await teamScore(B.teamId)}`);
 gC.close();
 
@@ -405,6 +405,59 @@ check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinhe
   const o6 = await round(gI);
   check(o6?.goal === false && o6.why === 'repetido', 'H ganha de I com só um amistoso no meio: continua revanche repetida (amistoso não quebra a sequência)');
   for (const p of [gH, gI, gJ, gH2]) p.close();
+}
+
+// 13) só as 10 PRIMEIRAS partidas válidas de cada jogador na hora mexem no placar (dono, 15/09/2026): empate gasta
+// uma das 10; revanche repetida não; e cada um conta as suas (o vencedor fora das 10 não dá gol, mas o perdedor
+// dentro das 10 dele ainda faz o time perder)
+{
+  // a hora não pode virar no meio (as partidas de mentira e as de verdade têm de cair na mesma hora cheia)
+  const left = 3600_000 - (Date.now() % 3600_000);
+  if (left < 4 * 60_000) { console.log(`   (esperando a hora virar: ${Math.ceil(left / 1000)} s)`); await sleep(left + 5_000); }
+  const inH = new Date();
+  const P = await mkUser('sport', 5000), Q = await mkUser('fortaleza', 5000), R = await mkUser('bahia', 5000), S = await mkUser('nautico', 5000), T = await mkUser('fortaleza', 5000), Z = await mkUser('nautico', 5000);
+  // partidas de mentira desta hora: `uid` perdeu para Z (não vira "revanche" de ninguém do teste)
+  const fakes = (u, n) => Promise.all(Array.from({ length: n }, () => prisma.x1Match.create({ data: { aId: u.id, bId: Z.id, aTeamId: u.teamId, bTeamId: Z.teamId, aIp: 'x', bIp: 'z', bet: F.bet, status: 'FINISHED', winnerId: Z.id, reason: 'gol', finishedAt: inH } })));
+  const score = async (t) => { const m = await liveMatchForTeam(t); if (m) await prisma.match.update({ where: { id: m.id }, data: m.homeTeamId === t ? { homeGoals: 5 } : { awayGoals: 5 } }); };
+  for (const t of [P.teamId, Q.teamId, R.teamId, S.teamId, T.teamId]) await score(t);
+  const phones = { P: phone(P, 'game', '10.0.2.1'), Q: phone(Q, 'game', '10.0.2.2'), R: phone(R, 'game', '10.0.2.3'), S: phone(S, 'game', '10.0.2.4'), T: phone(T, 'game', '10.0.2.5') };
+  await Promise.all(Object.values(phones).map((p) => p.open));
+  const duel = async (a, b, winnerIsA) => { // `a` desafia (lado 0), `b` aceita; winnerIsA: true/false, null = empate
+    a.clear(); b.clear();
+    a.send({ t: 'challenge' });
+    const w = await a.wait('waiting');
+    b.send({ t: 'accept', id: w?.id });
+    const r = await play(a, b, (side) => (winnerIsA === null ? 'nada' : (side === 0) === winnerIsA ? 'gol' : 'nada'));
+    return { oa: r?.oa, ob: r?.ob };
+  };
+  const goalsOf = (u) => prisma.goal.count({ where: { userId: u.id, kind: 'FUTPREGO' } });
+
+  // empate gasta: P com 9 partidas valendo na hora + 1 empate com Q = 10; a vitória seguinte sobre Q é a 11ª
+  await fakes(P, F.maxGoalsPerHour - 1);
+  const d1 = await duel(phones.P, phones.Q, null);
+  check(d1.oa?.refund === true && d1.oa.why === 'empate', 'P empata com Q (a 10ª partida de P na hora)');
+  const qTeam0 = await teamScore(Q.teamId), pTeam0 = await teamScore(P.teamId), pGoals0 = await goalsOf(P);
+  const d2 = await duel(phones.P, phones.Q, true);
+  check(d2.oa?.winner === d2.oa?.you && d2.oa.goal === false && d2.oa.why === 'limite' && d2.oa.money === F.bet * 2,
+    `P vence Q na 11ª partida da hora (o empate gastou uma): leva R$ ${F.bet * 2}, sem gol`);
+  check((await goalsOf(P)) === pGoals0 && (await teamScore(P.teamId)) === pTeam0, 'nenhum gol para P nem para o time dele');
+  check(d2.ob?.lost === true && d2.ob.lossLimit === false && (qTeam0 === null || (await teamScore(Q.teamId)) === qTeam0 - 1),
+    `mas Q ainda estava nas 10 dele: o time de Q perdeu 1 gol (${qTeam0} → ${await teamScore(Q.teamId)}) — cada um conta as suas`);
+
+  // revanche repetida não gasta: R com 8 na hora; vence S (9ª, gol), vence S de novo (repetida: não conta), vence T (10ª: gol)
+  await fakes(R, F.maxGoalsPerHour - 2);
+  const e1 = await duel(phones.R, phones.S, true);
+  check(e1.oa?.goal === true, 'R vence S: a 9ª partida de R na hora, gol valeu');
+  const e2 = await duel(phones.R, phones.S, true);
+  const rep = await prisma.x1Match.findFirst({ where: { OR: [{ aId: R.id }, { bId: R.id }], winnerId: R.id }, orderBy: { id: 'desc' } });
+  check(e2.oa?.goal === false && e2.oa.why === 'repetido' && rep?.repeated === true && e2.ob?.lost === false, 'R vence S de novo, logo em seguida: revanche repetida (sem gol, S não perde gol) e marcada no banco');
+  const e3 = await duel(phones.R, phones.T, true);
+  check(e3.oa?.goal === true, 'R vence T: a revanche repetida não gastou vaga, então esta é a 10ª e o gol vale');
+  const e4 = await duel(phones.R, phones.S, true);
+  check(e4.oa?.goal === false && e4.oa.why === 'limite', 'R vence S depois (11ª válida da hora): sem gol');
+  const admin = await prisma.x1Match.findUnique({ where: { id: rep.id } });
+  check(admin.goalAwarded === false && admin.lostTeamId === null, 'no banco, a revanche repetida ficou sem gol e sem gol tirado');
+  for (const p of Object.values(phones)) p.close();
 }
 
 check(kickoff.tried === kickoff.blocked, `saída do meio: ${kickoff.tried} tentativas de gol de primeira (peteleco que entraria sem a garantia), nenhuma valeu; tábuas sorteadas: ${[...kickoff.boards].join(', ')}`);

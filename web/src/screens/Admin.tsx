@@ -605,7 +605,8 @@ function FutPregoList({ onPick }: { onPick: (id: number) => void }) {
       <span className="text-[11px] font-bold text-navy-ink">
         {w ? <>venceu <b className="text-grass-deep">{w.nick}</b> por {FP_REASON[m.reason ?? ''] ?? m.reason}</> : FP_REASON[m.reason ?? ''] ?? m.reason}
         {m.turns > 0 ? ` · ${m.turns} jogada${m.turns === 1 ? '' : 's'}` : ''}
-        {w && (m.goalAwarded ? <span className="text-grass-deep"> · gol contou{m.lostTeam ? ` (${m.lostTeam.name} perdeu 1 gol)` : ''}</span> : <span className="text-muted"> · {m.sameTeam ? 'amistoso: só dinheiro' : 'sem gol (limite do dia ou revanche repetida)'}</span>)}
+        {w && (m.goalAwarded ? <span className="text-grass-deep"> · gol contou</span> : <span className="text-muted"> · {m.sameTeam ? 'amistoso: só dinheiro' : m.repeated ? 'sem gol (revanche repetida)' : 'sem gol (já tinha jogado as 10 partidas da hora)'}</span>)}
+        {w && m.lostTeam && <span className="text-danger"> · {m.lostTeam.name} perdeu 1 gol</span>}
       </span>
     );
   };

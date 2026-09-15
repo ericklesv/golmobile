@@ -674,7 +674,7 @@ function personal(info, m, side, result) {
   return {
     money: won ? info.pot : 0, pot: info.pot, goal: info.goal, why: info.why ?? null,
     goalText: won ? info.goalText ?? null : null, lost: info.lost ?? false, lostTeam: info.lostTeam ?? null, remaining: info.remaining ?? null,
-    lossLimit: !won && !!info.lossLimit, // o perdedor já fez o time perder o máximo desta hora: não tirou gol
+    lossLimit: !won && !!info.lossLimit, // o perdedor já tinha jogado as 10 partidas da hora que valem gol: não tirou gol
   };
 }
 
@@ -682,11 +682,14 @@ function personal(info, m, side, result) {
  * Fecha a partida no banco (uma vez só: só a linha PLAYING vira FINISHED). Empate = devolve a aposta.
  * **W.O. e desistência são SEMPRE derrota de quem saiu** (decisão do dono, 15/09/2026: jogadores fechavam o app
  * ou desistiam ao ver que iam perder e, antes de cada um jogar 2 vezes, a aposta voltava e nada contava — o
- * "W.O. cedo" acabou; as linhas antigas `wo-cedo` ficam no histórico e fora do ranking). Vitória: o vencedor leva o pote e,
- * se valer (no máximo maxGoalsPerHour gols na hora cheia no X1; ganhar do mesmo adversário duas vezes SEGUIDAS
- * — sem outra partida do vencedor no meio — não vale; regras do dono), 1 gol para o time dele. O time do perdedor perde 1 gol na
- * partida da rodada (nunca abaixo de 0) quando o gol valeu e o perdedor ainda não fez o time perder
- * maxGoalsPerHour gols nesta hora. Todo resultado que conta vai para os Lances ao vivo; o Ranking X1
+ * "W.O. cedo" acabou; as linhas antigas `wo-cedo` ficam no histórico e fora do ranking). Vitória: o vencedor leva o pote.
+ * **Só as `maxGoalsPerHour` (10) primeiras partidas válidas de CADA jogador na hora cheia de Brasília mexem no placar**
+ * (dono, 15/09/2026 — antes eram dois contadores separados, 10 vitórias com gol e 10 derrotas, e quem jogava muito
+ * terminava a hora no zero a zero): empate gasta uma das 10; revanche repetida (`repeated`) e amistoso não. Cada um
+ * conta as suas: vitória dentro das 10 do vencedor = 1 gol para o time dele; derrota dentro das 10 do perdedor = o
+ * time dele perde 1 gol na partida da rodada (nunca abaixo de 0). Da 11ª em diante, até a hora virar, só dinheiro.
+ * Ganhar do mesmo adversário duas vezes SEGUIDAS (sem outra partida do vencedor no meio) = revanche repetida: sem gol,
+ * sem tirar gol e fora das 10 dos dois. Todo resultado que conta vai para os Lances ao vivo; o Ranking X1
  * (services/x1.js: 3 por vitória, 1 por empate, −2 por derrota) conta toda partida que terminou, menos W.O. cedo
  * e amistoso. **Amistoso (os dois do mesmo time, `m.sameTeam`)**: o vencedor leva o pote e mais nada — nenhum
  * gol ganho ou tirado, e ele não entra nas travas por hora nem na regra da mesma dupla.
@@ -717,50 +720,54 @@ async function settle(m, result) {
       await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (amistoso do ${w.user.team?.name ?? 'mesmo time'}: sem gol).`);
       return { pot, goal: false, why: 'mesmo-time' };
     }
-    const since = hourStart(now); // a trava conta na hora cheia de Brasília
-    const wonThisHour = await tx.x1Match.count({ where: { winnerId: w.user.id, goalAwarded: true, finishedAt: { gte: since } } });
-    if (wonThisHour >= F.maxGoalsPerHour) {
-      await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (já fez os ${F.maxGoalsPerHour} gols desta hora no X1).`);
-      return { pot, goal: false, why: 'limite' };
-    }
-    // "duas vezes seguidas" = a partida ANTERIOR do vencedor (das que contam: amistoso, W.O. cedo e cancelada não)
-    // foi contra este mesmo adversário e ele ganhou também. Jogou com outra pessoa no meio: a sequência quebrou e o
-    // gol vale (bug de 15/09/2026: olhava só o último confronto dos dois, mesmo com dezenas de partidas no meio).
+    // revanche repetida ANTES das 10 da hora (dono, 15/09/2026: "não gasta, já que não conta gol"). "Duas vezes
+    // seguidas" = a partida ANTERIOR do vencedor (das que contam: amistoso, W.O. cedo e cancelada não) foi contra este
+    // mesmo adversário e ele ganhou também; jogou com outra pessoa no meio, a sequência quebrou (bug de 15/09/2026:
+    // olhava só o último confronto dos dois, mesmo com dezenas de partidas no meio).
     const prev = await tx.x1Match.findFirst({
       where: { AND: [X1_COUNTED, { id: { not: m.dbId } }, { OR: [{ aId: w.user.id }, { bId: w.user.id }] }] },
       orderBy: { id: 'desc' }, select: { aId: true, bId: true, winnerId: true },
     });
     if (prev && (prev.aId === l.user.id || prev.bId === l.user.id) && prev.winnerId === w.user.id) {
+      await tx.x1Match.update({ where: { id: m.dbId }, data: { repeated: true } }); // fica fora das 10 da hora dos dois
       await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (revanche repetida: sem gol).`);
       return { pot, goal: false, why: 'repetido' };
     }
 
-    const winner = await loadUser(tx, w.user.id);
-    const live = await liveMatchForTeam(winner.teamId, tx);
-    const phrase = `venceu ${l.user.nick} no ${label}${how}`;
-    const { text } = await applyResult(tx, winner, { kind: m.game, goal: true, now, match: live, money: 0, phrase });
-    // o time do perdedor perde 1 gol na partida da rodada (nunca abaixo de 0), até maxGoalsPerHour por hora
-    // por perdedor (gols que ele já fez o time perder nesta hora no X1)
+    // as 10 primeiras partidas válidas de CADA um na hora cheia de Brasília (empate gasta; repetida e amistoso não)
+    const since = hourStart(now);
+    const usedThisHour = (uid) => tx.x1Match.count({ where: { AND: [X1_COUNTED, { id: { not: m.dbId }, repeated: false, finishedAt: { gte: since } }, { OR: [{ aId: uid }, { bId: uid }] }] } });
+    const wUsed = await usedThisHour(w.user.id), lUsed = await usedThisHour(l.user.id);
+    const wCounts = wUsed < F.maxGoalsPerHour, lCounts = lUsed < F.maxGoalsPerHour;
+
+    let text = null;
+    if (wCounts) {
+      const winner = await loadUser(tx, w.user.id);
+      const live = await liveMatchForTeam(winner.teamId, tx);
+      ({ text } = await applyResult(tx, winner, { kind: m.game, goal: true, now, match: live, money: 0, phrase: `venceu ${l.user.nick} no ${label}${how}` }));
+    } else {
+      await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (já jogou as ${F.maxGoalsPerHour} partidas desta hora que valem gol).`);
+    }
+    // derrota dentro das 10 do perdedor: o time dele perde 1 gol na partida da rodada (nunca abaixo de 0)
     const loser = await tx.user.findUnique({ where: { id: l.user.id }, include: { team: true } });
     let lost = null;
-    const lostThisHour = await tx.x1Match.count({
-      where: { id: { not: m.dbId }, status: 'FINISHED', lostTeamId: { not: null }, winnerId: { not: loser.id }, OR: [{ aId: loser.id }, { bId: loser.id }], finishedAt: { gte: since } },
-    });
-    const lossLimit = lostThisHour >= F.maxGoalsPerHour;
-    const lm = lossLimit ? null : await liveMatchForTeam(loser.teamId, tx);
+    const lm = lCounts ? await liveMatchForTeam(loser.teamId, tx) : null;
     if (lm) {
       const field = lm.homeTeamId === loser.teamId ? 'homeGoals' : 'awayGoals';
       const { count } = await tx.match.updateMany({ where: { id: lm.id, status: 'LIVE', [field]: { gt: 0 } }, data: { [field]: { decrement: 1 } } });
       if (count) lost = { matchId: lm.id, teamId: loser.teamId };
     }
-    await tx.x1Match.update({ where: { id: m.dbId }, data: { goalAwarded: true, lostMatchId: lost?.matchId ?? null, lostTeamId: lost?.teamId ?? null } });
+    await tx.x1Match.update({ where: { id: m.dbId }, data: { goalAwarded: wCounts, lostMatchId: lost?.matchId ?? null, lostTeamId: lost?.teamId ?? null } });
     await tx.activity.create({
       data: {
         userId: loser.id, teamId: loser.teamId, kind: m.game, goal: false,
         text: lost ? `${loser.team.name} perdeu 1 gol: ${loser.nick} perdeu para ${w.user.nick} no ${label}.` : `${loser.nick} perdeu para ${w.user.nick} no ${label}.`,
       },
     });
-    return { pot, goal: true, goalText: text, lost: !!lost, lostTeam: loser.team.name, lossLimit, remaining: F.maxGoalsPerHour - wonThisHour - 1 };
+    return {
+      pot, goal: wCounts, goalText: text, why: wCounts ? null : 'limite', lost: !!lost, lostTeam: loser.team.name,
+      lossLimit: !lCounts, remaining: Math.max(0, F.maxGoalsPerHour - wUsed - 1), // partidas que ainda valem gol nesta hora
+    };
   });
 }
 

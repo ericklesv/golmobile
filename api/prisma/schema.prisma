@@ -531,6 +531,9 @@ model X1Match {
   scoreA      Int       @default(0)
   scoreB      Int       @default(0)
   goalAwarded Boolean   @default(false)
+  // revanche repetida (o vencedor ganhou do mesmo adversário na partida anterior dele): não vale gol nem gasta
+  // uma das 10 partidas da hora de nenhum dos dois (dono, 15/09/2026; realtime/x1.js settle)
+  repeated    Boolean   @default(false)
   lostMatchId Int?
   lostTeamId  Int?
   createdAt   DateTime  @default(now())

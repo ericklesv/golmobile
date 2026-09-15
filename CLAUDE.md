@@ -181,10 +181,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão**
   (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de
   dinheiro e travas iguais para os dois (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva
-  R$ 400 + 1 gol e o time do outro perde 1 gol na rodada; **até 10 gols por hora por jogador, para ganhar e para
-  perder** (dono, 15/09/2026; `FUTPREGO.maxGoalsPerHour`, hora cheia de Brasília: com 10 vitórias valendo gol na hora,
-  a próxima leva o pote sem gol; quem já fez o time perder 10 na hora perde a partida sem tirar gol do time —
-  `lossLimit` na tela); **quem não é VIP espera 2 min depois de terminar uma partida para DESAFIAR de novo** (aceitar
+  R$ 400 + 1 gol e o time do outro perde 1 gol na rodada; **só as 10 PRIMEIRAS PARTIDAS válidas de cada jogador em
+  cada hora cheia de Brasília mexem no placar** (dono, 15/09/2026; `FUTPREGO.maxGoalsPerHour` — o nome ficou): empate
+  gasta uma das 10; revanche repetida (`X1Match.repeated`, migração 0035) e amistoso não; cada um conta as suas —
+  vitória dentro das 10 do vencedor dá o gol, derrota dentro das 10 do perdedor tira 1 gol do time dele (mesmo que o
+  gol do vencedor não tenha valido); da 11ª em diante, até a hora virar, só dinheiro (`why: 'limite'`/`lossLimit` na
+  tela). Antes eram dois contadores separados (10 vitórias com gol e 10 derrotas) e quem jogava muito terminava a
+  hora no zero a zero; `test-futprego.js` passo 13 cobre; **quem não é VIP espera 2 min depois de terminar uma partida para DESAFIAR de novo** (aceitar
   pode na hora; dono, 15/09/2026: "como o X1 ficou ilimitado, o vip perdeu valor" — `FUTPREGO.challengeCooldownSec`,
   `challengeCooldownUntil` em x1.js lê a última partida FINISHED no banco; a tela recebe `cooldown`/`over.cooldownUntil`,
   desliga o botão com o relógio e mostra "Vire VIP e jogue o X1 ilimitado!"; item "X1 ilimitado" na tela do VIP);

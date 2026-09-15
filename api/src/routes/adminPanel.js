@@ -333,6 +333,7 @@ adminPanel.get(['/x1', '/futprego'], handle(async (req) => {
       a: player(m.aId, m.aTeamId), b: player(m.bId, m.bTeamId),
       winnerId: m.winnerId, goalAwarded: m.goalAwarded, lostTeam: teamView(T.get(m.lostTeamId)), sameIp: !!m.aIp && m.aIp === m.bIp,
       sameTeam: m.aTeamId === m.bTeamId, // amistoso: vale só dinheiro
+      repeated: !!m.repeated, // revanche repetida: sem gol e fora das 10 partidas da hora
     })),
   };
 }));

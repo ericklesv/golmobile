@@ -329,10 +329,11 @@ KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 // espera; quem está nas telas com as abas recebe um convite pequeno por 10 s (nunca dentro de minigame
 // ou chute). Cada um paga R$ 200 e quem marcar primeiro leva os R$ 400 + 1 gol para o time, e o time
 // do perdedor PERDE 1 gol na partida da rodada (nunca abaixo de 0). Travas: internets diferentes (mesmo
-// time pode: é amistoso, vale só dinheiro — realtime/x1.js); no máximo 10 gols por hora por jogador, tanto para ganhar quanto para perder (dono,
-// 15/09/2026: "até 10 gols por hora nos X1, marcar ou perder gols" — hora cheia de Brasília, como a
-// artilharia da hora); ganhar do mesmo adversário duas vezes SEGUIDAS (sem outra partida do vencedor no
-// meio) = o 2º não vale gol (nem tira); W.O. antes de cada um jogar 2 vezes = devolve o dinheiro. Sem gol em 10 jogadas de cada =
+// time pode: é amistoso, vale só dinheiro — realtime/x1.js); só as `maxGoalsPerHour` (10) PRIMEIRAS PARTIDAS válidas
+// de cada jogador na hora cheia de Brasília mexem no placar — vitória dá gol ao time dele, derrota tira —; empate
+// gasta uma das 10, revanche repetida e amistoso não; da 11ª em diante, só dinheiro (dono, 15/09/2026 — antes eram
+// 10 vitórias com gol E 10 derrotas por hora, contadas separadas, e quem jogava muito terminava no zero a zero);
+// ganhar do mesmo adversário duas vezes SEGUIDAS (sem outra partida do vencedor no meio) = o 2º não vale gol (nem tira); W.O. antes de cada um jogar 2 vezes = devolve o dinheiro. Sem gol em 10 jogadas de cada =
 // empate, dinheiro devolvido. Ninguém aceitou em 1 min = oferece treino com bot (não vale gol nem
 // dinheiro). Quem NÃO é VIP espera challengeCooldownSec (2 min) depois de terminar uma partida para
 // DESAFIAR de novo; aceitar desafio pode na hora (dono, 15/09/2026: "como o X1 ficou ilimitado, o vip

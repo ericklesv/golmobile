@@ -1,10 +1,14 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, MouseEvent } from 'react';
+import { Link } from 'react-router-dom';
 
 /**
- * Texto de mensagem da caixa com ícones inline e links (pedido do dono, 15/09/2026): tokens entre colchetes viram
- * PNG do pack — `[vip]` coroa, `[coin]` moeda, `[gol]` bola, `[trofeu]`, `[medalha]`, `[estrela]`, `[presente]`,
- * `[caveira]` (Ranking X1), `[energia]`, `[alvo]`, `[aviso]`, `[whatsapp]` — e todo https://… vira link clicável
- * (abre em aba nova). Token desconhecido fica como texto. Vale no jogador e no admin.
+ * Texto de mensagem da caixa (pedido do dono, 15/09/2026) com:
+ *  - ícones inline: `[vip]` coroa, `[coin]` moeda, `[gol]` bola, `[trofeu]`, `[medalha]`, `[estrela]`, `[presente]`,
+ *    `[caveira]` (Ranking X1), `[energia]`, `[alvo]`, `[aviso]`, `[whatsapp]` (PNG do pack);
+ *  - links escondidos num texto: `[clique aqui](https://…)` — e https://… solto também vira link (abre em aba nova);
+ *  - menção a jogador: `@nick` vira link para o perfil dele (incentiva quem dá sugestão).
+ * Token desconhecido fica como texto. Vale no jogador e no admin. Os links NÃO podem ficar dentro de um <button>
+ * (o clique só abriria/fechava a mensagem): o corpo da mensagem fica fora do botão do cabeçalho.
  */
 export const MSG_ICONS: Record<string, string> = {
   vip: '/ui/ico-crown_silver.png', coin: '/ui/ico-coin01_s.png', saldo: '/ui/ico-coin01_s.png', dinheiro: '/ui/ico-goldpouch.png',
@@ -12,28 +16,29 @@ export const MSG_ICONS: Record<string, string> = {
   presente: '/ui/ico-gift_purple.png', caveira: '/ui/ico-skull_gold.png', energia: '/ui/ico-energy.png', alvo: '/ui/ico-target.png',
   aviso: '/ui/pi-bell.png', whatsapp: '/ui/ico-whatsapp.png',
 };
-const TOKEN = /\[(\w+)\]|(https?:\/\/[^\s<>"')\]]+)/g;
+// 1 = link com texto [texto](url) · 2/3 = seus grupos · 4 = ícone [nome] · 5 = URL solta · 6 = @nick
+const TOKEN = /(\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\))|\[(\w+)\]|(https?:\/\/[^\s<>"')\]]+)|@([A-Za-z0-9_.\-]{3,14})/g;
+const stop = (e: MouseEvent) => e.stopPropagation();
 
 export function MsgText({ text, className = '', iconSize = 16 }: { text: string; className?: string; iconSize?: number }) {
   const out: ReactNode[] = [];
   let last = 0, i = 0;
+  const push = (node: ReactNode, at: number, len: number) => { if (at > last) out.push(text.slice(last, at)); out.push(node); last = at + len; };
   for (const m of text.matchAll(TOKEN)) {
     const at = m.index!;
-    if (m[2]) {
-      // link: texto curto (domínio) para não estourar a linha no celular
-      const url = m[2];
-      let label = url;
-      try { const u = new URL(url); label = u.hostname.includes('whatsapp') ? 'grupo do WhatsApp' : u.hostname + (u.pathname !== '/' ? u.pathname : ''); } catch { /* fica a URL */ }
-      if (at > last) out.push(text.slice(last, at));
-      out.push(<a key={i++} href={url} target="_blank" rel="noopener noreferrer" className="font-extrabold text-sky-deep underline">{label}</a>);
-      last = at + m[0].length;
-      continue;
+    if (m[1]) { // [texto](url)
+      push(<a key={i++} href={m[3]} target="_blank" rel="noopener noreferrer" onClick={stop} className="font-extrabold text-sky-deep underline">{m[2]}</a>, at, m[0].length);
+    } else if (m[4]) { // [ícone]
+      const src = MSG_ICONS[m[4].toLowerCase()];
+      if (!src) continue;
+      push(<img key={i++} src={src} alt={m[4]} className="inline-block align-[-3px]" style={{ width: iconSize, height: iconSize }} />, at, m[0].length);
+    } else if (m[5]) { // URL solta: mostra só o domínio
+      let label = m[5];
+      try { const u = new URL(m[5]); label = u.hostname.includes('whatsapp') ? 'grupo do WhatsApp' : u.hostname; } catch { /* fica a URL */ }
+      push(<a key={i++} href={m[5]} target="_blank" rel="noopener noreferrer" onClick={stop} className="font-extrabold text-sky-deep underline">{label}</a>, at, m[0].length);
+    } else if (m[6]) { // @nick → perfil
+      push(<Link key={i++} to={`/jogador/${encodeURIComponent(m[6])}`} onClick={stop} className="font-extrabold text-orange-deep">@{m[6]}</Link>, at, m[0].length);
     }
-    const src = MSG_ICONS[m[1].toLowerCase()];
-    if (!src) continue;
-    if (at > last) out.push(text.slice(last, at));
-    out.push(<img key={i++} src={src} alt={m[1]} className="inline-block align-[-3px]" style={{ width: iconSize, height: iconSize }} />);
-    last = at + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));
   return <span className={`whitespace-pre-wrap ${className}`}>{out}</span>;

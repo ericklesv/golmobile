@@ -62,8 +62,9 @@ export function InboxScreen() {
                 {data.messages.map((m) => {
                   const k = KIND[m.kind] ?? KIND.AVISO;
                   return (
-                    <li key={m.id}>
-                      <button onClick={() => openMsg(m)} className={`no-drag w-full rounded-xl px-2 py-2 text-left ${m.read ? 'bg-sky/10' : 'bg-gold/25 ring-1 ring-gold/70'}`}>
+                    <li key={m.id} className={`rounded-xl ${m.read ? 'bg-sky/10' : 'bg-gold/25 ring-1 ring-gold/70'}`}>
+                      {/* cabeçalho = botão (abre/fecha e marca lida); o corpo fica FORA do botão para os links funcionarem */}
+                      <button onClick={() => openMsg(m)} className="no-drag w-full px-2 py-2 text-left">
                         <div className="flex items-center gap-2">
                           <img src={m.icon ?? k.icon} alt="" className="h-7 w-7 shrink-0 object-contain" />
                           <span className="min-w-0 flex-1">
@@ -72,8 +73,13 @@ export function InboxScreen() {
                           </span>
                           {!m.read && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-orange-deep" aria-label="não lida" />}
                         </div>
-                        {open === m.id && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-[13px] font-bold leading-snug text-navy-ink"><MsgText text={m.text} /></motion.p>}
                       </button>
+                      {open === m.id && (
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="px-2 pb-2 text-[13px] font-bold leading-snug text-navy-ink">
+                          <MsgText text={m.text} />
+                          <button onClick={() => setOpen(null)} className="btn btn-gray btn-sm mt-2 w-full">Fechar</button>
+                        </motion.div>
+                      )}
                     </li>
                   );
                 })}

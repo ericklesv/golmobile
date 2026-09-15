@@ -27,6 +27,7 @@ import { RankingsScreen } from './screens/Rankings';
 import { LeagueScreen } from './screens/League';
 import { TeamScreen } from './screens/Team';
 import { ProfileScreen } from './screens/Profile';
+import { InboxScreen } from './screens/Inbox';
 import { PlayerScreen } from './screens/Player';
 import { RulesScreen } from './screens/Rules';
 import { LandingScreen } from './screens/Landing';
@@ -129,6 +130,7 @@ export default function App() {
         <Route path="/debug3d" element={<Suspense fallback={<Splash />}><Debug3DScreen /></Suspense>} />
         <Route path="/debug-faltapro" element={<Suspense fallback={<Splash />}><DebugFaltaProScreen /></Suspense>} />
         <Route path="/admin" element={<Private><Suspense fallback={<Splash />}><AdminScreen /></Suspense></Private>} />
+        <Route path="/mensagens" element={<Private><InboxScreen /></Private>} />
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />
         <Route path="/chat" element={<Private><ChatScreen /></Private>} />
         <Route path="/esqueci-senha" element={me ? <Navigate to="/" replace /> : <EsqueciSenhaScreen />} /><Route path="/redefinir-senha" element={<RedefinirSenhaScreen />} />

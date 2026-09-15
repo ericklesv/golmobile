@@ -42,14 +42,15 @@ check(await R.attachReferral(c0.id, 'NAOEXI', '10.9.9.9') === null, 'código inv
 await goals(a, 24); await R.referralSweep();
 check((await vip(ref.id)) === 0, '24 gols: ainda nada');
 await goals(a, 25); await R.referralSweep();
-check((await vip(ref.id)) === 1, '25 gols: +1 VIP para quem convidou');
+check((await vip(ref.id)) === 1 && (await vip(a.id)) === 1, '25 gols: +1 VIP para quem convidou E +1 para o convidado (dono, 15/09/2026)');
 await R.referralSweep();
 check((await vip(ref.id)) === 1, 'conferindo de novo: não paga duas vezes');
 await goals(a, 130);
 await Promise.all([R.referralSweep(), R.referralSweep(), R.referralSweep()]);
 check((await vip(ref.id)) === 3, '130 gols (3 conferências ao mesmo tempo): +1 do 50 e +1 do 100, uma vez só');
 await goals(a, 1000); await R.referralSweep();
-check((await vip(ref.id)) === 16 && (await prisma.referralReward.count({ where: { referredId: a.id } })) === 7, '1000 gols: 200, 400, 800 (+3) e 1000 (+10) → 16 VIP no total');
+check((await vip(ref.id)) === 16 && (await vip(a.id)) === 16 && (await prisma.referralReward.count({ where: { referredId: a.id } })) === 14, '1000 gols: 200, 400, 800 (+3) e 1000 (+10) → 16 VIP para cada lado (7 marcos × 2 lados)');
+check((await prisma.message.count({ where: { userId: a.id, kind: 'PRESENTE' } })) === 7 && (await prisma.message.count({ where: { userId: ref.id, kind: 'PRESENTE' } })) === 7, 'cada marco pago virou mensagem na caixa dos dois');
 
 // mesma internet depois do cadastro / suspenso: o marco espera
 const c = await mk({ lastIp: '10.3.3.3' });

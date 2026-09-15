@@ -1,4 +1,4 @@
-import type { AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -39,7 +39,13 @@ export const api = {
   login: (b: { login: string; password: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/login', b),
   // me
   me: () => req<Me>('GET', '/api/me'),
-  heartbeat: () => req<{ ok: boolean; online: number; active: number; offers: number; serverTime: number }>('POST', '/api/me/heartbeat'),
+  heartbeat: () => req<{ ok: boolean; online: number; active: number; offers: number; unread: number; serverTime: number }>('POST', '/api/me/heartbeat'),
+  vipToMoney: (qtd = 1) => req<Me & { money_added: number }>('POST', '/api/me/vip-to-money', { qtd }), // 1 VIP guardado → R$ (meta.money.VIP_TO_MONEY)
+  // caixa de mensagens
+  inbox: (page = 1) => req<InboxPage>('GET', `/api/inbox?page=${page}`),
+  inboxRead: (id: number) => req<{ ok: boolean; unread: number }>('POST', `/api/inbox/${id}/read`),
+  inboxReadAll: () => req<{ ok: boolean; unread: number }>('POST', '/api/inbox/read-all'),
+  adminMessage: (body: { userId?: number; all?: boolean; title: string; text: string }) => req<{ ok: boolean; sent: number }>('POST', '/api/painel/mensagens', body),
   opponent: () => req<{ opponent: import('./types').Team | null }>('GET', '/api/me/opponent'),
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
   setNickFade: (from: string | null, to: string | null) => req<Me>('POST', '/api/me/nick-fade', { from, to }),

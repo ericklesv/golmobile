@@ -27,6 +27,8 @@ export function Layout() {
   const me = useAuth((s) => s.me);
   const active = useAuth((s) => s.active);
   const offers = useAuth((s) => s.offers);
+  const unread = useAuth((s) => s.unread);
+  const lastUnread = useRef(-1); // -1 = ainda não sabemos: o 1º heartbeat só anota (sem toast)
   const lastOffers = useRef(0);
   const nav = useNavigate();
   const loc = useLocation();
@@ -39,7 +41,9 @@ export function Layout() {
       // proposta de contratação nova: avisa uma vez (o selo na aba Time fica até responder)
       if ((r.offers ?? 0) > lastOffers.current) toast(r.offers === 1 ? 'Você recebeu uma proposta de contratação!' : `Você tem ${r.offers} propostas de contratação!`, 'success');
       lastOffers.current = r.offers ?? 0;
-      useAuth.setState({ online: r.online, active: r.active, offers: r.offers ?? 0, offset: r.serverTime - Date.now() });
+      if ((r.unread ?? 0) > lastUnread.current && lastUnread.current >= 0) toast(r.unread === 1 ? 'Você tem uma mensagem nova!' : `Você tem ${r.unread} mensagens não lidas!`, 'success');
+      lastUnread.current = r.unread ?? 0;
+      useAuth.setState({ online: r.online, active: r.active, offers: r.offers ?? 0, unread: r.unread ?? 0, offset: r.serverTime - Date.now() });
     }).catch(() => {});
     beat();
     const iv = setInterval(beat, 60_000);
@@ -78,6 +82,10 @@ export function Layout() {
             <button onClick={() => nav('/loja')} className="resbar text-[14px]" aria-label="Dinheiro"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-7 w-7" alt="" />{money(me.money)}</button>
             <VipBar onClick={() => nav('/vip')} className="text-[14px]" />
           </div>
+          <button onClick={() => nav('/mensagens')} className="relative shrink-0" aria-label={unread > 0 ? `${unread} mensagens não lidas` : 'Mensagens'}>
+            <img src="/ui/ico-mail.png" alt="" className="h-8 w-8 object-contain drop-shadow" />
+            {unread > 0 && <span className="absolute -right-1.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-orange-deep px-1 font-display text-[10px] leading-none text-white">{unread > 99 ? '99+' : unread}</span>}
+          </button>
           <button onClick={() => nav(`/time/${me.team.slug}`)} className="shrink-0" aria-label={me.team.name}><Shield team={me.team} size={34} /></button>
         </div>
       </header>

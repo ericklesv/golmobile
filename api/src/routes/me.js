@@ -10,6 +10,7 @@ import { meInclude, parseNickFade } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
 import { clientIp } from '../lib/ip.js';
 import { leaveClub, pendingOffers } from '../services/club.js';
+import { unreadCount } from '../services/inbox.js';
 
 export const me = Router();
 me.use(requireAuth);
@@ -20,7 +21,19 @@ async function fresh(id) {
 
 me.get('/', handle(async (req) => {
   const u = await fresh(req.user.id);
-  return { ...meView(u), captchaRequired: captchaRequired(u) }; // captcha dos chutes manuais (lib/captcha.js)
+  return { ...meView(u), captchaRequired: captchaRequired(u), unread: await unreadCount(u.id) }; // captcha dos chutes manuais (lib/captcha.js); mensagens não lidas
+}));
+
+// Troca VIP guardado por saldo (pedido do dono/erickles, 15/09/2026: "1 VIP por 100k"): MONEY.VIP_TO_MONEY por VIP.
+me.post('/vip-to-money', handle(async (req) => {
+  const qtd = Math.max(1, Math.min(1000, Math.floor(Number(req.body?.qtd || 1))));
+  const u = await prisma.$transaction(async (tx) => {
+    const res = await tx.user.updateMany({ where: { id: req.user.id, vipDays: { gte: qtd } }, data: { vipDays: { decrement: qtd }, money: { increment: qtd * MONEY.VIP_TO_MONEY } } });
+    if (res.count === 0) throw badRequest('Você não tem VIP guardado suficiente.');
+    await tx.shopLog.create({ data: { userId: req.user.id, itemKey: 'VIP_MONEY', price: qtd, currency: 'vip' } });
+    return tx.user.findUnique({ where: { id: req.user.id }, include: meInclude() });
+  });
+  return { ...meView(u), money_added: qtd * MONEY.VIP_TO_MONEY };
 }));
 
 // Adversário da rodada atual (goleiro/barreira das cenas 3D vestem a camisa dele)
@@ -37,7 +50,8 @@ me.post('/heartbeat', handle(async (req) => {
   const online = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) } } });
   const active = await prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 24 * 3600_000) } } });
   const offers = await pendingOffers(req.user.id); // propostas de contratação abertas (selo na aba Time)
-  return { ok: true, online, active, offers, serverTime: Date.now() };
+  const unread = await unreadCount(req.user.id); // mensagens não lidas (selo no envelope do topo)
+  return { ok: true, online, active, offers, unread, serverTime: Date.now() };
 }));
 
 me.put('/bio', handle(async (req) => {

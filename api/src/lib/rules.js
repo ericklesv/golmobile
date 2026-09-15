@@ -23,6 +23,7 @@ export const MONEY = {
   PARTY_BET: 50,
   PARTY_PRIZE: 150,
   DEXTERITY_PRICE: 1000,
+  VIP_TO_MONEY: 100000, // Loja: 1 VIP guardado vira R$ 100 mil (pedido do dono/erickles, 15/09/2026: "1 vip por 100k")
   NERF_PRICE: 1000,
 };
 export const DEXTERITY_MAX = 30;
@@ -373,16 +374,16 @@ export function ganhaPerdePrice(wins, chance) {
 // Decisões do dono (13/09/2026): pacotes de DIAS de VIP — 1 VIP = 1 dia; vão para o banco de VIPs do
 // jogador (User.vipDays), que ativa quando quiser (POST /api/me/activate-vip). Pagamento por PIX na Efí
 // (services/vip.js, lib/efi.js). PREÇOS aprovados pelo dono em 13/09/2026 — mudar só aqui.
-// `money` = saldo do jogo que vem junto (pedido do dono, 15/09/2026: "1.000 no de 3,99 e ir progredindo + bônus
-// quanto maior o pacote"): R$ 100 do jogo por dia de VIP nos pequenos, subindo para R$ 120/dia nos grandes —
+// `money` = saldo do jogo que vem junto (pedido do dono, 15/09/2026). Escala casada com a Loja, onde 1 VIP vira
+// R$ 100 mil (MONEY.VIP_TO_MONEY): o bônus vale ~10 % do pacote em VIP no menor e sobe até ~20 % no maior —
 // proposta à espera do OK do dono; mudar só aqui (a compra guarda o valor em VipPurchase.money).
 export const VIP_PACKS = [
-  { key: 'vip10', days: 10, price: 3.99, money: 1000 },
-  { key: 'vip30', days: 30, price: 9.9, money: 3000 },
-  { key: 'vip60', days: 60, price: 17.9, money: 6000, tag: 'Mais vendido' },
-  { key: 'vip120', days: 120, price: 29.9, money: 12000 },
-  { key: 'vip250', days: 250, price: 54.9, money: 30000 },
-  { key: 'vip500', days: 500, price: 89.9, money: 60000, tag: 'Melhor preço' },
+  { key: 'vip10', days: 10, price: 3.99, money: 100000 },
+  { key: 'vip30', days: 30, price: 9.9, money: 400000 },
+  { key: 'vip60', days: 60, price: 17.9, money: 900000, tag: 'Mais vendido' },
+  { key: 'vip120', days: 120, price: 29.9, money: 2000000 },
+  { key: 'vip250', days: 250, price: 54.9, money: 4500000 },
+  { key: 'vip500', days: 500, price: 89.9, money: 10000000, tag: 'Melhor preço' },
 ];
 /** O QR do PIX vale 30 min; no máximo 3 cobranças abertas por jogador ao mesmo tempo. */
 export const VIP_PIX = { expiresSec: 30 * 60, maxOpen: 3 };

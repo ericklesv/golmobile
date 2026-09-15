@@ -52,6 +52,7 @@ export function ShopScreen() {
   const [, tick] = useState(0);
   const vipLeft = useVipLeft();
   const dexPrice = meta?.money.DEXTERITY_PRICE ?? 1000;
+  const vipToMoney = meta?.money?.VIP_TO_MONEY ?? 100000; // Loja: 1 VIP guardado vira saldo (rules.js MONEY.VIP_TO_MONEY)
   const dexMax = meta?.dexterityMax ?? 30;
   const catalog = shop?.catalog ?? meta?.items ?? [];
 
@@ -184,6 +185,14 @@ export function ShopScreen() {
             onClick={() => run('vip', async () => {
               const r = await api.activateVip(1);
               toast(r.vipUntil ? `VIP ativado! Agora vai até ${untilLabel(new Date(r.vipUntil).getTime())}.` : 'VIP ativado por 1 dia!', 'success');
+              return r;
+            })} />
+          <Row icon="ico-goldpouch" title="Saco de dinheiro" desc={`Troque 1 VIP guardado por ${fmt(vipToMoney)} de saldo, na hora. Quantas vezes quiser.`} busy={busy}
+            price="1 VIP" cta="Trocar" busyKey="vipmoney" disabled={me.vipDays < 1}
+            onClick={() => run('vipmoney', async () => {
+              if (!window.confirm(`Trocar 1 VIP por ${fmt(vipToMoney)}?`)) throw new Error('cancelado');
+              const r = await api.vipToMoney(1);
+              toast(`+${fmt(r.money_added)} no seu saldo!`, 'success');
               return r;
             })} />
           <Link to="/vip" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-crown_silver.png" className="h-6 w-6" alt="" /> Comprar dias de VIP</Link>

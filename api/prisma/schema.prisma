@@ -154,6 +154,8 @@ model User {
   refRewards  ReferralReward[] @relation("RefFrom")
   adminActions AdminAction[] @relation("AdminActionBy")
   adminTargeted AdminAction[] @relation("AdminActionTo")
+  messages    Message[]       @relation("MsgTo")
+  messagesSent Message[]      @relation("MsgFrom")
 
   @@index([teamId])
   @@index([goalsTotal])
@@ -648,8 +650,27 @@ model ReferralReward {
   referred   User     @relation("RefFrom", fields: [referredId], references: [id])
   milestone  Int // gols da carreira do convidado (25, 50, 100, …)
   vip        Int
+  side       String   @default("REFERRER") // REFERRER = quem convidou recebeu; REFERRED = o convidado recebeu (os dois ganham, dono 15/09/2026)
   createdAt  DateTime @default(now())
 
-  @@unique([referredId, milestone])
+  @@unique([referredId, milestone, side])
   @@index([referrerId])
+}
+
+// Caixa de mensagens (pedido do dono, 15/09/2026; services/inbox.js): avisos dos admins e do jogo — compra
+// aprovada, VIP/saldo recebidos, presentes (convite, doação, prêmio do X1), atualizações (uma linha por jogador).
+model Message {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation("MsgTo", fields: [userId], references: [id])
+  fromId    Int?
+  from      User?     @relation("MsgFrom", fields: [fromId], references: [id])
+  kind      String // ADMIN | AVISO | COMPRA | PRESENTE | PREMIO
+  title     String
+  text      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
 }

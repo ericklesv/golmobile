@@ -132,6 +132,8 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   const [form, setForm] = useState<{ nick: string; email: string; bio: string; money: string; vipDays: string; dexterity: string; teamSlug: string; nickColor: string }>({ nick: '', email: '', bio: '', money: '', vipDays: '', dexterity: '', teamSlug: '', nickColor: '' });
   const [gols, setGols] = useState('10');
   const [vipQtd, setVipQtd] = useState('5');
+  const [msgTitle, setMsgTitle] = useState('');
+  const [msgText, setMsgText] = useState('');
   const [saldoQtd, setSaldoQtd] = useState('1000');
   const [exp, setExp] = useState('100');
   const [banHours, setBanHours] = useState('24');
@@ -291,6 +293,14 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
         <p className="mt-2 text-center text-[10px] font-bold text-muted">Gols valem de verdade: placar da partida, rodada e artilharias. Exp soma no bônus de nível.</p>
       </Panel>
 
+      <Panel title="MENSAGEM" ribbon="blue">
+        <div className="flex flex-col gap-2">
+          <input className="field" placeholder="Título" maxLength={80} value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)} />
+          <textarea className="field min-h-[80px]" placeholder="Texto (chega na caixa de mensagens do jogador)" maxLength={2000} value={msgText} onChange={(e) => setMsgText(e.target.value)} />
+          <button className="btn btn-blue btn-sm" disabled={busy || !msgTitle.trim() || !msgText.trim()} onClick={() => run(async () => { await api.adminMessage({ userId: id, title: msgTitle.trim(), text: msgText.trim() }); toast(`Mensagem enviada para ${u!.nick}.`, 'success'); setMsgTitle(''); setMsgText(''); })}>Enviar para {u.nick}</button>
+        </div>
+      </Panel>
+
       <Panel title="VIP E SALDO" ribbon="yellow">
         <div className="flex items-center gap-2">
           <input className="field w-24" type="number" min={1} value={vipQtd} onChange={(e) => setVipQtd(e.target.value)} />
@@ -344,8 +354,32 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   );
 }
 
+// ─── Aviso para todos (caixa de mensagens de cada jogador) ──────────────────
+function BroadcastPanel() {
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function send() {
+    if (busy || !title.trim() || !text.trim()) return;
+    if (!window.confirm('Enviar este aviso para TODOS os jogadores? Cada um recebe uma mensagem na caixa.')) return;
+    setBusy(true);
+    try { const r = await api.adminMessage({ all: true, title: title.trim(), text: text.trim() }); toast(`Aviso enviado para ${r.sent} jogadores.`, 'success'); setTitle(''); setText(''); }
+    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
+  }
+  return (
+    <Panel title="AVISO PARA TODOS" ribbon="orange">
+      <p className="mb-2 text-[11px] font-bold leading-snug text-muted">Atualizações, compensações, novidades: uma mensagem na caixa de cada jogador (o envelope no topo mostra o selo). Para falar com um jogador só, abra o perfil dele na aba Jogadores.</p>
+      <div className="flex flex-col gap-2">
+        <input className="field" placeholder="Título (até 80 caracteres)" maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <textarea className="field min-h-[120px]" placeholder="Texto (até 2000 caracteres)" maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} />
+        <button className="btn btn-orange btn-md" disabled={busy || !title.trim() || !text.trim()} onClick={send}>{busy ? 'Enviando…' : 'Enviar para todos'}</button>
+      </div>
+    </Panel>
+  );
+}
+
 // ─── Log de auditoria ───────────────────────────────────────────────────────
-const ACTION_LABEL: Record<string, string> = { editar: 'editou', gols: 'deu gols para', exp: 'deu exp para', vip: 'deu VIP para', 'vip-retirar': 'retirou VIP de', saldo: 'deu saldo para', 'saldo-retirar': 'retirou saldo de', banir: 'baniu', desbanir: 'desbaniu', denuncia: 'resolveu denúncia de' };
+const ACTION_LABEL: Record<string, string> = { editar: 'editou', gols: 'deu gols para', exp: 'deu exp para', vip: 'deu VIP para', 'vip-retirar': 'retirou VIP de', saldo: 'deu saldo para', 'saldo-retirar': 'retirou saldo de', mensagem: 'mandou mensagem para', aviso: 'enviou aviso para todos', banir: 'baniu', desbanir: 'desbaniu', denuncia: 'resolveu denúncia de' };
 
 function payloadLabel(r: AdminLogRow): string {
   const p = r.payload ?? {};
@@ -601,7 +635,7 @@ function ReportList({ onPick }: { onPick: (id: number) => void }) {
 export function AdminScreen() {
   const me = useAuth((s) => s.me)!;
   const nav = useNavigate();
-  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'multi' | 'denuncias' | 'futprego' | 'log'>('jogadores');
+  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'multi' | 'denuncias' | 'futprego' | 'avisos' | 'log'>('jogadores');
   const [picked, setPicked] = useState<number | null>(null);
 
   if (!me.isAdmin) return <Navigate to="/" replace />;
@@ -615,10 +649,10 @@ export function AdminScreen() {
         <span className="trap trap-blue text-[11px] uppercase">{me.nick}</span>
       </div>
       <div className="relative px-3 pb-2">
-        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'multi', label: 'Multiconta' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'X1' }, { id: 'log', label: 'Log' }]} />
+        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'multi', label: 'Multiconta' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'X1' }, { id: 'avisos', label: 'Avisos' }, { id: 'log', label: 'Log' }]} />
       </div>
       <div className="relative flex-1 px-3 pb-4">
-        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail key={picked} id={picked} onBack={() => setPicked(null)} onPick={setPicked} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : tab === 'multi' ? <MultiList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
+        {tab === 'log' ? <LogList /> : tab === 'avisos' ? <BroadcastPanel /> : picked !== null ? <UserDetail key={picked} id={picked} onBack={() => setPicked(null)} onPick={setPicked} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : tab === 'multi' ? <MultiList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
       </div>
     </div>
   );

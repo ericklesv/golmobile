@@ -18,6 +18,7 @@ import { liveMatchForTeam } from '../services/league.js';
 import { geoForIp } from '../lib/ip.js';
 import { leaveClub } from '../services/club.js';
 import { tg } from '../lib/telegram.js';
+import { notify, sendMessage, broadcast } from '../services/inbox.js';
 
 export const adminPanel = Router();
 adminPanel.use(requireAdmin);
@@ -193,6 +194,7 @@ adminPanel.post('/users/:id/vip', handle(async (req) => {
   const delta = Math.max(qtd, -u.vipDays);
   const after = await prisma.user.update({ where: { id: u.id }, data: { vipDays: { increment: delta } }, include: { team: true } });
   await audit(req.user.id, u.id, delta >= 0 ? 'vip' : 'vip-retirar', { qtd: delta });
+  if (delta) await notify.adminVip(u.id, delta, req.user.id).catch((e) => console.error('[inbox] vip:', e.message));
   return { ok: true, qtd: delta, user: rowView(after) };
 }));
 adminPanel.post('/users/:id/saldo', handle(async (req) => {
@@ -201,6 +203,7 @@ adminPanel.post('/users/:id/saldo', handle(async (req) => {
   const delta = Math.max(qtd, -u.money);
   const after = await prisma.user.update({ where: { id: u.id }, data: { money: { increment: delta } }, include: { team: true } });
   await audit(req.user.id, u.id, delta >= 0 ? 'saldo' : 'saldo-retirar', { qtd: delta });
+  if (delta) await notify.adminMoney(u.id, delta, req.user.id).catch((e) => console.error('[inbox] saldo:', e.message));
   return { ok: true, qtd: delta, user: rowView(after) };
 }));
 
@@ -317,6 +320,22 @@ adminPanel.get(['/x1', '/futprego'], handle(async (req) => {
       winnerId: m.winnerId, goalAwarded: m.goalAwarded, lostTeam: teamView(T.get(m.lostTeamId)), sameIp: !!m.aIp && m.aIp === m.bIp,
     })),
   };
+}));
+
+// ─── Mensagens (pedido do dono, 15/09/2026): recado para um jogador ou aviso para todos ──────
+// POST /api/painel/mensagens {userId?, all?, title, text}: com `all` cria uma linha por jogador vivo.
+adminPanel.post('/mensagens', handle(async (req) => {
+  const body = z.object({ userId: z.number().int().positive().optional(), all: z.boolean().optional(), title: z.string().trim().min(1).max(80), text: z.string().trim().min(1).max(2000) }).parse(req.body);
+  if (body.all) {
+    const n = await broadcast({ title: body.title, text: body.text, fromId: req.user.id });
+    await audit(req.user.id, null, 'aviso', { title: body.title, para: n });
+    return { ok: true, sent: n };
+  }
+  if (!body.userId) throw badRequest('Escolha o jogador ou marque "todos".');
+  const u = await fullUser(body.userId);
+  await sendMessage(u.id, { kind: 'ADMIN', title: body.title, text: body.text, fromId: req.user.id });
+  await audit(req.user.id, u.id, 'mensagem', { title: body.title });
+  return { ok: true, sent: 1 };
 }));
 
 // ─── Denúncias (política de conteúdo gerado por usuário da Play Store) ──────

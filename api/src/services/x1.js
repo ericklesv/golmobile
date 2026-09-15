@@ -15,6 +15,7 @@
 import { prisma } from '../prisma.js';
 import { FUTPREGO, X1, prizeFor } from '../lib/rules.js';
 import { nickFadeOf } from '../lib/items.js';
+import { notify } from './inbox.js';
 
 /** Só o que conta: partida de verdade que terminou; W.O. cedo e cancelada, não. */
 export const X1_COUNTED = { status: 'FINISHED', reason: { not: 'wo-cedo' } };
@@ -110,6 +111,7 @@ async function payX1(tx, { from, to, table, label }) {
     if (!p || (!p.money && !p.vip)) continue;
     const pos = paid.length + 1;
     await tx.user.update({ where: { id: r.userId }, data: { money: { increment: p.money }, vipDays: { increment: p.vip } } });
+    await notify.x1Prize(r.userId, { label, pos, money: p.money, vip: p.vip }, tx).catch((e) => console.error('[inbox] prêmio X1:', e.message));
     await tx.activity.create({
       data: {
         userId: r.userId, teamId: r.team.id, kind: 'FUTPREGO', goal: false,

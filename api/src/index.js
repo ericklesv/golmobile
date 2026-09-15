@@ -26,6 +26,7 @@ import { vip, pay } from './routes/vip.js';
 import { club } from './routes/club.js';
 import { pass } from './routes/pass.js';
 import { referral } from './routes/referral.js';
+import { inbox } from './routes/inbox.js';
 import { account } from './routes/account.js';
 import { ensureSeason } from './services/league.js';
 import { startScheduler } from './services/scheduler.js';
@@ -64,6 +65,7 @@ app.use('/api/vip', vip);
 app.use('/api/club', club);
 app.use('/api/pass', pass);
 app.use('/api/ref', referral);
+app.use('/api/inbox', inbox); // caixa de mensagens do jogador
 app.use('/api/pay', pay); // aviso de PIX da Efí (sem login)
 app.use('/api/account', account); // exclusão de conta, bloqueios e denúncias (Play Store)
 app.get('/api/cabecao/status', (_req, res) => res.json(cabecaoStatus())); // fila do Cabeção (WebSocket em /api/ws/cabecao)

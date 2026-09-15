@@ -11,6 +11,7 @@
  */
 import { prisma } from '../prisma.js';
 import { tg } from '../lib/telegram.js';
+import { notify } from './inbox.js';
 import { GameError } from '../lib/errors.js';
 import { VIP_PACKS, VIP_PIX, VIP_OFFLINE_AUTO, isVip } from '../lib/rules.js';
 import { efiReady, efiFake, newTxid, createCharge, getCharge, fakePay } from '../lib/efi.js';
@@ -73,6 +74,7 @@ async function credit(purchase, e2eId) {
     if (r.count === 1) {
       const bonus = purchase.money ?? 0;
       const u = await tx.user.update({ where: { id: purchase.userId }, data: { vipDays: { increment: purchase.days }, money: { increment: bonus } }, select: { nick: true } });
+      await notify.purchase(purchase.userId, { days: purchase.days, money: bonus, purchaseId: purchase.id }, tx).catch((e) => console.error('[inbox] compra:', e.message));
       console.log(`[vip] compra ${purchase.id} paga: +${purchase.days} VIP e +R$ ${bonus} para o jogador ${purchase.userId}`);
       tg.info(`💰 <b>VIP pago</b>: <b>${tg.esc(u.nick)}</b> comprou ${purchase.days} dias por ${tg.money(purchase.amountCents / 100)} (+R$ ${bonus} de saldo; compra #${purchase.id})`);
     }

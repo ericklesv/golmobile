@@ -14,6 +14,8 @@ export interface Team {
 export interface Cooldown { cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean }
 
 export interface Me {
+  /** Mensagens não lidas na caixa (/api/me e heartbeat). */
+  unread?: number;
   id: number; nick: string; email: string; gender: string; bio: string | null; avatarUrl: string | null; isAdmin: boolean; createdAt: string;
   team: Team;
   money: number; vipDays: number; vipUntil: string | null; vip: boolean; dexterity: number;
@@ -490,7 +492,13 @@ export interface RefMilestone { goals: number; vip: number }
 export interface RefState {
   code: string; milestones: RefMilestone[]; perFriend: number; count: number; earned: number;
   invited: { nick: string; avatarUrl: string | null; team: Team; goals: number; since: number; earned: number; next: RefMilestone | null }[];
+  /** Eu entrei pelo convite de alguém: o convidado também ganha VIP nos marcos (dono, 15/09/2026). */
+  invitee: { by: string; earned: number; next: RefMilestone | null } | null;
 }
+
+// ─── Caixa de mensagens (services/inbox.js) ──────────────────────────────────
+export interface InboxMessage { id: number; kind: 'ADMIN' | 'AVISO' | 'COMPRA' | 'PRESENTE' | 'PREMIO'; title: string; text: string; read: boolean; at: number; from: string | null }
+export interface InboxPage { page: number; pages: number; total: number; unread: number; messages: InboxMessage[] }
 export interface RefInviter { nick: string; avatarUrl: string | null; team: Team; perFriend: number }
 
 // ─── Página da partida (/partida/:id) ─────────────────────────────────────────

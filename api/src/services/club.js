@@ -18,6 +18,7 @@ import { GameError, badRequest, notFound, forbidden } from '../lib/errors.js';
 import { CLUB, isVip, KIT_DESIGNS, KIT_DESIGN_IDS } from '../lib/rules.js';
 import { teamView } from './view.js';
 import { invalidateRoles } from './badges.js';
+import { notify } from './inbox.js';
 
 const DAY = 86_400_000;
 const ROLE_NAME = { PRESIDENTE: 'Presidente', DIRETOR: 'Diretor' };
@@ -365,6 +366,7 @@ export async function giftVip(userId, nick, days) {
     if (!paid.count) throw new GameError(402, 'no-vip', `Você não tem ${n} VIP guardados.`);
     await tx.user.update({ where: { id: u.id }, data: { vipDays: { increment: n } } });
     await tx.vipGift.create({ data: { fromUserId: userId, toUserId: u.id, teamId: me.teamId, days: n } });
+    await notify.gift(u.id, { from: me.nick, days: n }, tx).catch((e) => console.error('[inbox] doação:', e.message));
   });
   return { ok: true, to: u.nick, days: n };
 }

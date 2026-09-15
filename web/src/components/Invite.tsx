@@ -57,7 +57,7 @@ function Ladder({ st }: { st: RefState }) {
           </li>
         ))}
       </ol>
-      <p className="mt-1 text-center text-[11px] font-bold text-muted">Gols do seu amigo. Até <b className="text-navy-ink">{st.perFriend} VIP</b> por amigo, e os VIPs caem no seu banco.</p>
+      <p className="mt-1 text-center text-[11px] font-bold text-muted">Gols do seu amigo. Até <b className="text-navy-ink">{st.perFriend} VIP</b> por amigo, e os VIPs caem no seu banco. <b className="text-navy-ink">O amigo ganha o mesmo</b> a cada marco.</p>
     </div>
   );
 }
@@ -87,6 +87,11 @@ export function InvitePanel() {
           </div>
 
           <div className="mt-3"><Ladder st={st} /></div>
+          {st.invitee && (
+            <p className="mt-2 rounded-xl bg-gold/20 px-2 py-1.5 text-center text-[12px] font-extrabold text-navy-ink">
+              Você entrou pelo convite de {st.invitee.by}: já ganhou <b>{st.invitee.earned} VIP</b>{st.invitee.next ? ` — próximo: +${st.invitee.next.vip} VIP aos ${st.invitee.next.goals} gols` : ' — todos os marcos batidos!'}.
+            </p>
+          )}
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-center">
             <div className="rounded-xl bg-sky/10 py-1.5"><div className="font-display text-[22px] text-navy-ink">{st.count}</div><div className="label">{st.count === 1 ? 'amigo convidado' : 'amigos convidados'}</div></div>

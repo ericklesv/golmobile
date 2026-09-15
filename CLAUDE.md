@@ -136,8 +136,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   webhook todo txid "JG"+32 hex (`isJogaGolTxid`) — **não mudar o formato do `newTxid()`** sem mexer lá.
   Sem credenciais, a tela mostra "A compra por PIX abre em breve". **Os pacotes dão saldo junto** (pedido do dono,
   15/09/2026; `VIP_PACKS[].money`, guardado em `VipPurchase.money` na compra — migração 0031 — e creditado na mesma
-  transação do VIP): R$ 1.000 · 3.000 · 6.000 · 12.000 · 30.000 · 60.000 (proposta: R$ 100/dia nos pequenos,
-  R$ 120/dia nos grandes; mudar só em `rules.js`). A tela mostra "+ R$ X de saldo" no pacote e no PIX confirmado.
+  transação do VIP): R$ 100 mil · 400 mil · 900 mil · 2 mi · 4,5 mi · 10 mi (~10 % a 20 % do pacote em VIP, na
+  escala da Loja onde 1 VIP = R$ 100 mil; proposta — mudar só em `rules.js`). A tela mostra "+ R$ X de saldo" no pacote e no PIX confirmado.
   Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
   **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do
   scheduler): quem tem `vipUntil` no futuro e não está suspenso chuta sozinho quando a recarga do
@@ -232,8 +232,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   e aviso "Convite de fulano" no cadastro). Código fixo de 6 letras (não é o nick — nick muda). Quem cria conta pelo
   link vira convidado (**só no cadastro**; conta criada na MESMA internet de quem convidou não vira convidado). Quem
   convidou ganha VIP **no banco** quando o convidado chega a 25/50/100/200/400/800 gols da carreira (1 VIP cada) e
-  1000 (10 VIP) = 16 por amigo. `referralSweep` no scheduler (2 min) paga; `@@unique([referredId, milestone])` =
-  cada marco paga uma vez. Jogando na mesma internet ou suspenso, o marco **espera**. A sugestão original (% dos VIPs
+  1000 (10 VIP) = 16 por amigo — **e o CONVIDADO ganha o mesmo em cada marco** (decisão do dono, 15/09/2026;
+  `ReferralReward.side` REFERRER/REFERRED, migração 0032; quem já tinha marco pago só para quem convidou recebe o
+  seu na próxima varredura). `referralSweep` no scheduler (2 min) paga; `@@unique([referredId, milestone, side])`
+  = cada marco paga uma vez por lado; os dois recebem mensagem na caixa. A tela do convite mostra "Você entrou pelo
+  convite de X" (`invitee`). Jogando na mesma internet ou suspenso, o marco **espera**. A sugestão original (% dos VIPs
   comprados pelo convidado) NÃO foi feita. Mexeu? **`node scripts/test-referral.js`** (pasta api/, só banco LOCAL).
 - **Uniforme do time — desenho escolhido pelo presidente** (pedido do dono, 15/09/2026): `Team.kitDesign`
   (+ `kitChangedAt`, migração 0030; `KIT_DESIGNS` em `rules.js`, exposto em `meta.kitDesigns`: clássico (faixa no
@@ -246,6 +249,16 @@ depois que o novo estiver estável. Não instalar nada dele.
   (uniforme 3D — pinta as ilhas da camisa da `kit-mask.png` por cima; goleiro e barreira do pênalti, falta e Falta
   PRO vestem o desenho do ADVERSÁRIO via `GET /api/me/opponent`, que já traz `kitDesign`/`colorTertiary`). Desenho
   novo = entrada em `KIT_DESIGNS` + os pintores em `kit.ts`.
+- **Caixa de mensagens** (pedido do dono, 15/09/2026; `services/inbox.js`, `routes/inbox.js` em `/api/inbox`,
+  tabela `Message` — migração 0032; tela `/mensagens` = `screens/Inbox.tsx`, envelope com selo no topo do Layout,
+  `unread` vem no `/api/me` e no heartbeat). Tipos: ADMIN (recado do admin) · AVISO (para todos) · COMPRA · PRESENTE
+  · PREMIO. **Avisos automáticos** (`notify.*`, sempre em `catch` — nunca derrubam a ação): PIX aprovado (dias +
+  saldo), VIP/saldo dado ou retirado pelo admin, marco de convite (os dois lados), doação de VIP de colega, prêmio
+  do Ranking X1. Admin: `POST /api/painel/mensagens {userId | all, title, text}` — painel "MENSAGEM" no detalhe do
+  jogador e aba **Avisos** (uma linha por jogador vivo, em lotes de 500); ações `mensagem`/`aviso` no log.
+- **VIP vira saldo** (pedido do dono/erickles, 15/09/2026): Loja → "Saco de dinheiro": `POST /api/me/vip-to-money
+  {qtd}` troca VIP guardado por `MONEY.VIP_TO_MONEY` (R$ 100 mil) cada, sem limite (ShopLog `VIP_MONEY`). Por isso o
+  bônus de saldo dos pacotes subiu para a mesma escala (R$ 100 mil · 400 mil · 900 mil · 2 mi · 4,5 mi · 10 mi).
 - **Distintivos ao lado do nome** (pedido do dono, 13/09/2026; `services/badges.js`, `components/Badges.tsx`): **P**
   (Presidente) / **D** (Diretor) do cargo no time e o **top 3 de AGORA** — hora = estrela, rodada = medalha, temporada
   = troféu; 1º ouro, 2º prata, 3º bronze (`/ui/ico-{star,medal,trophy}_{gold,silver,bronze}.png`; estrela/troféu prata

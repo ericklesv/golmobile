@@ -23,7 +23,11 @@ export function setupPwa() {
   });
 }
 
-/** Aplica a versão nova e recarrega. */
+/** Aplica a versão nova e recarrega a página. O `apply(true)` manda o service worker novo assumir e recarrega
+ *  quando ele assume; se isso não acontecer em 1,5 s (registro perdido, aba antiga), recarrega na marra. */
 export function applyUpdate() {
-  if (apply) apply(true); else window.location.reload();
+  useAuth.setState({ updateReady: false });
+  const fallback = setTimeout(() => window.location.reload(), 1500);
+  if (apply) apply(true).catch(() => { clearTimeout(fallback); window.location.reload(); });
+  else { clearTimeout(fallback); window.location.reload(); }
 }

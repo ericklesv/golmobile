@@ -317,8 +317,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   tabela `Message` — migração 0032; tela `/mensagens` = `screens/Inbox.tsx`, envelope com selo no topo do Layout,
   `unread` vem no `/api/me` e no heartbeat). Tipos: ADMIN (recado do admin) · AVISO (para todos) · COMPRA · PRESENTE
   · PREMIO. **Avisos automáticos** (`notify.*`, sempre em `catch` — nunca derrubam a ação): PIX aprovado (dias +
-  saldo), VIP/saldo dado ou retirado pelo admin, marco de convite (os dois lados), doação de VIP de colega, prêmio
-  do Ranking X1. Admin: `POST /api/painel/mensagens {userId | all, title, text}` — painel "MENSAGEM" no detalhe do
+  saldo), VIP/saldo dado ou retirado pelo admin, marco de convite (os dois lados), doação de VIP de colega e
+  **TODA premiação** (pedido do dono, 15/09/2026): artilharia da rodada/temporada (`leaguePrize`, em `payPrizes`
+  da liga), recorde da rodada (`roundRecord`), time campeão/vice (`teamPrize`, para quem marcou pelo time) e
+  Ranking X1 (`x1Prize`). Prêmio novo = pagar + `notify.*` na mesma transação. O texto aceita `[texto](/rota)` =
+  link de dentro do jogo (react-router) além de `[texto](https://…)`. Admin: `POST /api/painel/mensagens {userId | all, title, text}` — painel "MENSAGEM" no detalhe do
   jogador e aba **Avisos** (uma linha por jogador vivo, em lotes de 500); ações `mensagem`/`aviso` no log. O detalhe
   do jogador mostra a caixa dele (`GET /api/painel/users/:id/mensagens`, últimas 30, lida/não lida).
 - **VIP vira saldo** (pedido do dono/erickles, 15/09/2026): Loja → "Saco de dinheiro": `POST /api/me/vip-to-money

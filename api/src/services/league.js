@@ -9,6 +9,7 @@ import { nextRoundClose, hourKey } from '../lib/time.js';
 import { PRIZES, prizeFor, SERIE_A_SWAP } from '../lib/rules.js';
 import { tg } from '../lib/telegram.js';
 import { settleX1Round, settleX1Season } from './x1.js';
+import { notify } from './inbox.js';
 
 const SERIES = ['A', 'B', 'C'];
 
@@ -171,7 +172,8 @@ async function applyRecord(tx, scope, seasonId, top) {
   return null;
 }
 
-async function payPrizes(tx, top, table) {
+/** Paga o top 10 da artilharia (`table` = PRIZES.round/season) e avisa cada premiado na caixa de mensagens. */
+async function payPrizes(tx, top, table, { scope, number }) {
   for (const row of top) {
     const p = prizeFor(table, row.position);
     if (!p) continue;
@@ -179,6 +181,7 @@ async function payPrizes(tx, top, table) {
       where: { id: row.userId },
       data: { money: { increment: p.money }, vipDays: { increment: p.vip } },
     });
+    await notify.leaguePrize(row.userId, { scope, number, pos: row.position, goals: row.goals, money: p.money, vip: p.vip }, tx).catch((e) => console.error('[inbox] prêmio da artilharia:', e.message));
   }
 }
 
@@ -300,10 +303,11 @@ async function settleRound(tx, round, now) {
 
   // Artilharia da rodada: prêmios + recorde
   const top = await topScorers({ roundId: round.id }, 10, tx);
-  await payPrizes(tx, top, PRIZES.round);
+  await payPrizes(tx, top, PRIZES.round, { scope: 'rodada', number: round.number });
   const rec = await applyRecord(tx, 'ROUND', season.id, top);
   if (rec) {
     await tx.user.update({ where: { id: rec.userId }, data: { vipDays: { increment: PRIZES.roundRecord.vip } } });
+    await notify.roundRecord(rec.userId, { number: round.number, goals: rec.goals, vip: PRIZES.roundRecord.vip }, tx).catch((e) => console.error('[inbox] recorde da rodada:', e.message));
   }
   await tx.round.update({ where: { id: round.id }, data: { status: 'FINISHED', topJson: top } });
 
@@ -329,10 +333,10 @@ async function finishSeason(tx, season, now) {
     const table = standings.filter((s) => s.serie === serie).sort(standingOrder);
     if (!table.length) continue;
     await tx.title.create({ data: { seasonId: season.id, teamId: table[0].teamId, competition: `Série ${serie}`, place: 1 } });
-    teamPrizes.push({ teamId: table[0].teamId, vip: PRIZES.team[serie].champion });
+    teamPrizes.push({ teamId: table[0].teamId, team: table[0].team.name, serie, place: 1, vip: PRIZES.team[serie].champion });
     if (table[1]) {
       await tx.title.create({ data: { seasonId: season.id, teamId: table[1].teamId, competition: `Série ${serie}`, place: 2 } });
-      teamPrizes.push({ teamId: table[1].teamId, vip: PRIZES.team[serie].runnerUp });
+      teamPrizes.push({ teamId: table[1].teamId, team: table[1].team.name, serie, place: 2, vip: PRIZES.team[serie].runnerUp });
     }
     // Acesso e rebaixamento: 2 sobem / 2 caem (o original tinha Divisão de Acesso)
     if (serie !== 'A') promote.push(...table.slice(0, 2).map((s) => ({ teamId: s.teamId, to: serie === 'B' ? 'A' : 'B' })));
@@ -344,18 +348,21 @@ async function finishSeason(tx, season, now) {
   // Prêmio de time (decisão do dono, 13/09/2026): VIP para quem marcou pelo menos 1 gol pelo campeão
   // ou vice na temporada — não para quem só está no time (trocar de time é livre: daria para pular
   // para o líder no fim só pelo prêmio). Quem marcou por dois times premiados leva só o maior.
-  const teamVip = new Map();
-  for (const { teamId, vip } of teamPrizes) {
-    const scorers = await tx.goal.groupBy({ by: ['userId'], where: { seasonId: season.id, teamId } });
-    for (const { userId } of scorers) teamVip.set(userId, Math.max(teamVip.get(userId) ?? 0, vip));
+  const teamVip = new Map(); // userId -> o prêmio de time que ele leva (o maior)
+  for (const prize of teamPrizes) {
+    const scorers = await tx.goal.groupBy({ by: ['userId'], where: { seasonId: season.id, teamId: prize.teamId } });
+    for (const { userId } of scorers) if ((teamVip.get(userId)?.vip ?? 0) < prize.vip) teamVip.set(userId, prize);
   }
-  for (const vip of new Set(teamVip.values())) {
-    const ids = [...teamVip].filter(([, v]) => v === vip).map(([id]) => id);
+  for (const vip of new Set([...teamVip.values()].map((p) => p.vip))) {
+    const ids = [...teamVip].filter(([, p]) => p.vip === vip).map(([id]) => id);
     await tx.user.updateMany({ where: { id: { in: ids } }, data: { vipDays: { increment: vip } } });
+  }
+  for (const [userId, p] of teamVip) {
+    await notify.teamPrize(userId, { team: p.team, serie: p.serie, place: p.place, season: season.number, vip: p.vip }, tx).catch((e) => console.error('[inbox] prêmio de time:', e.message));
   }
   // Artilharia da temporada: prêmios + recorde
   const top = await topScorers({ seasonId: season.id }, 10, tx);
-  await payPrizes(tx, top, PRIZES.season);
+  await payPrizes(tx, top, PRIZES.season, { scope: 'temporada', number: season.number });
   await applyRecord(tx, 'SEASON', season.id, top);
   // top 10 congelado (igual Round.topJson / HourResult.topJson) — estatísticas de top 10 do perfil
   await tx.season.update({ where: { id: season.id }, data: { status: 'FINISHED', endsAt: now, topJson: top } });

@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
  *  - ícones inline: `[vip]` coroa, `[coin]` moeda, `[gol]` bola, `[trofeu]`, `[medalha]`, `[estrela]`, `[presente]`,
  *    `[caveira]` (Ranking X1), `[energia]`, `[alvo]`, `[aviso]`, `[whatsapp]` (PNG do pack);
  *  - links escondidos num texto: `[clique aqui](https://…)` — e https://… solto também vira link (abre em aba nova);
+ *    `[texto](/rota)` é link de dentro do jogo (react-router, sem recarregar) — usado nas mensagens de prêmio;
  *  - menção a jogador: `@nick` vira link para o perfil dele (incentiva quem dá sugestão).
  * Token desconhecido fica como texto. Vale no jogador e no admin. Os links NÃO podem ficar dentro de um <button>
  * (o clique só abriria/fechava a mensagem): o corpo da mensagem fica fora do botão do cabeçalho.
@@ -17,7 +18,7 @@ export const MSG_ICONS: Record<string, string> = {
   aviso: '/ui/pi-bell.png', whatsapp: '/ui/ico-whatsapp.png',
 };
 // 1 = link com texto [texto](url) · 2/3 = seus grupos · 4 = ícone [nome] · 5 = URL solta · 6 = @nick
-const TOKEN = /(\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\))|\[(\w+)\]|(https?:\/\/[^\s<>"')\]]+)|@([A-Za-z0-9_.\-]{3,14})/g;
+const TOKEN = /(\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\))|\[(\w+)\]|(https?:\/\/[^\s<>"')\]]+)|@([A-Za-z0-9_.\-]{3,14})/g;
 const stop = (e: MouseEvent) => e.stopPropagation();
 
 export function MsgText({ text, className = '', iconSize = 16 }: { text: string; className?: string; iconSize?: number }) {
@@ -26,7 +27,9 @@ export function MsgText({ text, className = '', iconSize = 16 }: { text: string;
   const push = (node: ReactNode, at: number, len: number) => { if (at > last) out.push(text.slice(last, at)); out.push(node); last = at + len; };
   for (const m of text.matchAll(TOKEN)) {
     const at = m.index!;
-    if (m[1]) { // [texto](url)
+    if (m[1] && m[3].startsWith('/')) { // [texto](/rota) — dentro do jogo
+      push(<Link key={i++} to={m[3]} onClick={stop} className="font-extrabold text-sky-deep underline">{m[2]}</Link>, at, m[0].length);
+    } else if (m[1]) { // [texto](url)
       push(<a key={i++} href={m[3]} target="_blank" rel="noopener noreferrer" onClick={stop} className="font-extrabold text-sky-deep underline">{m[2]}</a>, at, m[0].length);
     } else if (m[4]) { // [ícone]
       const src = MSG_ICONS[m[4].toLowerCase()];

@@ -69,6 +69,13 @@ export async function markAllRead(userId) {
 }
 
 /** Atalhos com o texto padrão (PT-BR). Falha aqui nunca derruba a ação principal: quem chama envolve em catch. */
+const brl = (v) => `R$ ${Math.round(v).toLocaleString('pt-BR')}`;
+/** "[coin] R$ 30.000 + [vip] 5 VIP" (só o que tiver). */
+const prizeTags = (money, vip) => [money > 0 ? `[coin] ${brl(money)}` : null, vip > 0 ? `[vip] ${vip} VIP` : null].filter(Boolean).join(' + ');
+const prizeWhere = (money, vip) => (money > 0 && vip > 0 ? 'já no seu saldo e no banco de dias' : money > 0 ? 'já no seu saldo' : 'já no seu banco de dias');
+
+// TODA premiação chega numa mensagem na caixa (pedido do dono, 15/09/2026): artilharia da rodada/temporada, recorde
+// da rodada, time campeão/vice, Ranking X1. Sempre em `catch` em quem chama — nunca derrubam o fechamento.
 export const notify = {
   purchase: (userId, { days, money, purchaseId }, db) => sendMessage(userId, { kind: 'COMPRA', icon: 'vip', title: 'Compra aprovada!', text: `Seu PIX foi confirmado: [vip] +${days} VIP guardados${money > 0 ? ` e [coin] +R$ ${money.toLocaleString('pt-BR')} de saldo` : ''} na sua conta. Obrigado por apoiar o JogaGol! (compra #${purchaseId})` }, db),
   adminVip: (userId, qtd, fromId, db) => sendMessage(userId, { kind: qtd > 0 ? 'PRESENTE' : 'ADMIN', icon: 'vip', title: qtd > 0 ? `Você recebeu ${qtd} VIP` : `${-qtd} VIP retirados`, text: qtd > 0 ? `A administração colocou [vip] ${qtd} VIP no seu banco de dias. Ative quando quiser na Loja.` : `A administração retirou [vip] ${-qtd} VIP do seu banco de dias.`, fromId }, db),
@@ -77,5 +84,27 @@ export const notify = {
   referralInvitee: (userId, { inviter, goals, vip }, db) => sendMessage(userId, { kind: 'PRESENTE', icon: 'presente', title: `+${vip} VIP: ${goals} gols!`, text: `Você entrou pelo convite de ${inviter} e chegou a [gol] ${goals} gols na carreira: [vip] ${vip} VIP no seu banco de dias. Continue marcando — tem mais nos próximos marcos.` }, db),
   // VIP de doação chega JÁ ATIVO (club.js activateVip) — `until` = até quando o VIP vai agora
   gift: (userId, { from, days, until }, db) => sendMessage(userId, { kind: 'PRESENTE', icon: 'vip', title: `${from} mandou ${days} VIP`, text: `${from}, seu colega de time, doou [vip] ${days} VIP para você, e ele já começou a contar${until ? `: seu VIP agora vai até ${new Date(until).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' })} às ${new Date(until).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}` : ''}. Aproveite no time!` }, db),
-  x1Prize: (userId, { label, pos, money, vip }, db) => sendMessage(userId, { kind: 'PREMIO', icon: 'caveira', title: `${pos}º do Ranking X1 da ${label}`, text: `[caveira] Você ficou em ${pos}º no Ranking X1 da ${label} e ganhou ${[money > 0 ? `[coin] R$ ${money.toLocaleString('pt-BR')}` : null, vip > 0 ? `[vip] ${vip} VIP` : null].filter(Boolean).join(' + ')}. Parabéns!` }, db),
+  x1Prize: (userId, { label, pos, money, vip }, db) => sendMessage(userId, {
+    kind: 'PREMIO', icon: 'caveira', title: pos === 1 ? `Campeão do Ranking X1 da ${label}!` : `${pos}º do Ranking X1 da ${label}`,
+    text: `[caveira] Você terminou em ${pos}º no Ranking X1 da ${label} e ganhou ${prizeTags(money, vip)} — ${prizeWhere(money, vip)}. ${pos === 1 ? 'Ninguém segurou você no X1. Parabéns, craque!' : 'Parabéns! Na próxima dá para subir mais.'} [Ver o Ranking X1](/rankings?aba=${label.startsWith('temporada') ? 'x1-temporada' : 'x1-rodada'})`,
+  }, db),
+  // artilharia da rodada (medalha) ou da temporada (troféu): top 10 com prêmio (PRIZES.round / PRIZES.season)
+  leaguePrize: (userId, { scope, number, pos, goals, money, vip }, db) => {
+    const round = scope === 'rodada';
+    return sendMessage(userId, {
+      kind: 'PREMIO', icon: round ? 'medalha' : 'trofeu',
+      title: pos === 1 ? `Artilheiro da ${scope} ${number}!` : `${pos}º artilheiro da ${scope} ${number}`,
+      text: `[${round ? 'medalha' : 'trofeu'}] Você marcou [gol] ${goals} gol${goals === 1 ? '' : 's'} e terminou em ${pos}º na artilharia da ${scope} ${number}. Prêmio: ${prizeTags(money, vip)} — ${prizeWhere(money, vip)}. ${pos === 1 ? `O ${round ? 'melhor da rodada' : 'artilheiro da temporada'} é você. Parabéns, craque!` : 'Parabéns! Continue marcando.'} [Ver a artilharia](/rankings?aba=${round ? 'rodada' : 'temporada'})`,
+    }, db);
+  },
+  // quebrou o recorde de gols numa rodada nesta temporada (PRIZES.roundRecord)
+  roundRecord: (userId, { number, goals, vip }, db) => sendMessage(userId, {
+    kind: 'PREMIO', icon: 'estrela', title: 'Novo recorde da rodada!',
+    text: `[estrela] [gol] ${goals} gols numa rodada só — ninguém tinha feito tanto nesta temporada. O recorde da rodada ${number} é seu e vale [vip] ${vip} VIP no banco de dias. Monstro!`,
+  }, db),
+  // time campeão/vice da série (PRIZES.team): VIP para quem marcou pelo time na temporada
+  teamPrize: (userId, { team, serie, place, season, vip }, db) => sendMessage(userId, {
+    kind: 'PREMIO', icon: 'trofeu', title: place === 1 ? `${team} campeão da Série ${serie}!` : `${team} vice da Série ${serie}`,
+    text: `[trofeu] O ${team} ${place === 1 ? 'foi CAMPEÃO' : 'ficou em 2º'} da Série ${serie} na temporada ${season}, e você marcou pelo time: [vip] ${vip} VIP no seu banco de dias. ${place === 1 ? 'É campeão! Comemora!' : 'Quase lá — na próxima é título.'} [Ver a Liga](/liga)`,
+  }, db),
 };

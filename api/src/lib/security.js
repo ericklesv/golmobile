@@ -10,6 +10,7 @@
  */
 import { createRequire } from 'node:module';
 import { GameError, badRequest } from './errors.js';
+import { tg } from './telegram.js';
 
 // lista JSON (~120 mil domínios de e-mail temporário); require porque é JSON puro
 const disposableDomains = createRequire(import.meta.url)('disposable-email-domains');
@@ -87,7 +88,7 @@ export function noteLoginFail(key, now = Date.now()) {
   const f = fails.get(key);
   if (!f || now - f.first > SECURITY.loginFailWindowMs) { fails.set(key, { count: 1, first: now, lockedUntil: 0 }); return; }
   f.count += 1;
-  if (f.count >= SECURITY.loginMaxFails) { f.lockedUntil = now + SECURITY.loginLockMs; f.count = 0; f.first = now; console.warn(`[login] conta trancada por ${SECURITY.loginLockMs / 60000} min: ${key}`); }
+  if (f.count >= SECURITY.loginMaxFails) { f.lockedUntil = now + SECURITY.loginLockMs; f.count = 0; f.first = now; console.warn(`[login] conta trancada por ${SECURITY.loginLockMs / 60000} min: ${key}`); tg.warn(`🔒 Conta <code>${tg.esc(key)}</code> trancada por ${SECURITY.loginLockMs / 60000} min: ${SECURITY.loginMaxFails} senhas erradas`, { key: `lock:${key}`, every: 30 * 60_000 }); }
 }
 export function noteLoginOk(key) { fails.delete(key); }
 

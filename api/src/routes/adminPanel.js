@@ -17,6 +17,7 @@ import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam } from '../services/league.js';
 import { geoForIp } from '../lib/ip.js';
 import { leaveClub } from '../services/club.js';
+import { tg } from '../lib/telegram.js';
 
 export const adminPanel = Router();
 adminPanel.use(requireAdmin);
@@ -54,8 +55,10 @@ async function fullUser(id) {
 }
 
 /** Auditoria: toda ação do painel entra em AdminAction. */
-function audit(adminId, targetId, action, payload) {
-  return prisma.adminAction.create({ data: { adminId, targetId, action, payload } });
+async function audit(adminId, targetId, action, payload) {
+  const row = await prisma.adminAction.create({ data: { adminId, targetId, action, payload }, include: { admin: { select: { nick: true } }, target: { select: { nick: true } } } });
+  tg.info(`🛡️ Painel: <b>${tg.esc(row.admin.nick)}</b> → ${tg.esc(action)} ${row.target ? `<b>${tg.esc(row.target.nick)}</b>` : ''} <code>${tg.esc(JSON.stringify(payload ?? {}).slice(0, 200))}</code>`);
+  return row;
 }
 
 // ─── Lista/busca paginada (50 por página) ───────────────────────────────────

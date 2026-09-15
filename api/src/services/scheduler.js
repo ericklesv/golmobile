@@ -1,6 +1,7 @@
 import { settleDueRounds, closePastHours, ensureSeason, refreshLiveRound } from './league.js';
 import { vipOfflineAutoKicks } from './play.js';
 import { VIP_OFFLINE_AUTO } from '../lib/rules.js';
+import { tg } from '../lib/telegram.js';
 import { vipReconcile } from './vip.js';
 import { clubSweep } from './club.js';
 import { referralSweep } from './referral.js';
@@ -42,6 +43,7 @@ async function tick() {
     }
   } catch (e) {
     console.error('[scheduler] erro:', e);
+    tg.error(`Scheduler (liga/hora/rodada): ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'scheduler', every: 10 * 60_000 });
   } finally {
     ticking = false;
   }

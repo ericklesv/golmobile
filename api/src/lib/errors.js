@@ -1,3 +1,4 @@
+import { tg } from './telegram.js';
 export class GameError extends Error {
   constructor(status, code, message, extra = {}) {
     super(message);
@@ -27,6 +28,7 @@ export function handle(fn) {
         res.status(400).json({ error: 'validation', message: e.issues?.[0]?.message || 'Dados inválidos.' });
       } else {
         console.error(e);
+        tg.error(`Erro 500 em <code>${tg.esc(req.method)} ${tg.esc(req.originalUrl?.split('?')[0])}</code>${req.user ? ` (${tg.esc(req.user.nick)})` : ''}: ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: `500:${req.method} ${req.route?.path || req.path}`, every: 5 * 60_000 });
         res.status(500).json({ error: 'internal', message: 'Erro interno. Tente novamente.' });
       }
     }

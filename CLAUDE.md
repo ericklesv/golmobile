@@ -232,6 +232,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   nginx), SSH só por chave, unattended-upgrades. **Backup:** diário na VPS (`/usr/local/bin/brgol-backup.sh`
   = `tools/vps/brgol-backup.sh`, 03:40, `/var/backups/brgol`) + cópia mensal no PC do Guilherme
   (`tools/backup-local.ps1`, tarefa "JogaGol backup mensal"). Restaurar: `docs/SEGURANCA.md` → Backup.
+- **Telegram** (`lib/telegram.js`, `tg.info/warn/error`, mesmo bot/chat do Managol via `TELEGRAM_BOT_TOKEN`/
+  `TELEGRAM_CHAT_ID`; pedido do dono, 15/09/2026): cadastro, cadastro barrado, conta trancada, PIX gerado/pago,
+  denúncia, exclusão de conta, ações do painel, erro 500, scheduler, exceção, "API subiu". `{ key, every }`
+  agrupa repetidos. Evento novo importante para o dono = chamar `tg.*` (com `tg.esc()` em dado de usuário).
+  Na VPS: `brgol-watchdog.sh` (API caiu/voltou a cada 2 min; resumo 09h) e fail2ban → Telegram.
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
   `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).

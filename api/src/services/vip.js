@@ -10,6 +10,7 @@
  * Confirmação por 3 caminhos: webhook, a tela perguntando (a cada 4 s) e a conferência do scheduler.
  */
 import { prisma } from '../prisma.js';
+import { tg } from '../lib/telegram.js';
 import { GameError } from '../lib/errors.js';
 import { VIP_PACKS, VIP_PIX, VIP_OFFLINE_AUTO, isVip } from '../lib/rules.js';
 import { efiReady, efiFake, newTxid, createCharge, getCharge, fakePay } from '../lib/efi.js';
@@ -55,10 +56,12 @@ export async function vipBuy(userId, packKey) {
       txid, amount: pack.price, description: `JogaGol - ${pack.days} dias de VIP`, expiresSec: VIP_PIX.expiresSec,
       info: [{ nome: 'jogo', valor: 'jogagol' }, { nome: 'compra', valor: String(row.id) }],
     });
+    tg.info(`🛒 PIX gerado: compra #${row.id}, ${pack.days} dias, ${tg.money(pack.price)} — jogador #${row.userId}`);
     return { purchase: purchaseView(await prisma.vipPurchase.update({ where: { id: row.id }, data: { pixCode: ch.pixCode, qrImage: ch.qrImage } })) };
   } catch (e) {
     await prisma.vipPurchase.update({ where: { id: row.id }, data: { status: 'FAILED' } });
     console.error('[vip] cobrança Efí falhou:', e.message);
+    tg.error(`Efí: não gerou o PIX da compra #${row.id} — ${tg.esc(e.message)}`, { key: 'efi-charge', every: 5 * 60_000 });
     throw new GameError(502, 'pix-error', 'Não deu para gerar o PIX agora. Tente de novo em instantes.');
   }
 }
@@ -68,8 +71,9 @@ async function credit(purchase, e2eId) {
   return prisma.$transaction(async (tx) => {
     const r = await tx.vipPurchase.updateMany({ where: { id: purchase.id, status: 'PENDING' }, data: { status: 'PAID', e2eId, paidAt: new Date() } });
     if (r.count === 1) {
-      await tx.user.update({ where: { id: purchase.userId }, data: { vipDays: { increment: purchase.days } } });
+      const u = await tx.user.update({ where: { id: purchase.userId }, data: { vipDays: { increment: purchase.days } }, select: { nick: true } });
       console.log(`[vip] compra ${purchase.id} paga: +${purchase.days} VIP para o jogador ${purchase.userId}`);
+      tg.info(`💰 <b>VIP pago</b>: <b>${tg.esc(u.nick)}</b> comprou ${purchase.days} dias por ${tg.money(purchase.amountCents / 100)} (compra #${purchase.id})`);
     }
     return tx.vipPurchase.findUnique({ where: { id: purchase.id } });
   });
@@ -89,6 +93,7 @@ export async function settlePurchase(purchase, { force = false } = {}) {
     const paidCents = Math.round(Number(pix?.valor ?? 0) * 100);
     if (!pix?.endToEndId || paidCents < purchase.amountCents) {
       console.error(`[vip] cobrança ${purchase.txid} concluída sem PIX válido — conferir na Efí`);
+      tg.error(`Efí: cobrança da compra #${purchase.id} CONCLUÍDA sem PIX válido (valor menor ou sem e2eId) — conferir na Efí`, { key: `efi-invalid:${purchase.id}`, every: 60 * 60_000 });
       return purchase;
     }
     return credit(purchase, pix.endToEndId);

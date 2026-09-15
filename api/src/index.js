@@ -8,6 +8,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
+import { tg } from './lib/telegram.js';
 import { prisma } from './prisma.js';
 import { auth } from './routes/auth.js';
 import { me } from './routes/me.js';
@@ -77,9 +78,14 @@ ensureSeason()
     const server = http.createServer(app);
     attachCabecao(server);
     attachFutPrego(server);
-    server.listen(config.port, () => console.log(`brgol-api na porta ${config.port}`));
+    server.listen(config.port, () => { console.log(`brgol-api na porta ${config.port}`); if (process.env.NODE_ENV === 'production') tg.info(`🚀 API subiu (pid ${process.pid}${process.env.GIT_COMMIT ? `, ${process.env.GIT_COMMIT.slice(0, 7)}` : ''})`); });
   })
   .catch((e) => {
     console.error('Falha ao iniciar a temporada:', e);
-    process.exit(1);
+    tg.error(`API NÃO subiu: ${tg.esc(String(e?.message || e).slice(0, 300))}`);
+    setTimeout(() => process.exit(1), 1500);
   });
+
+// exceção fora das rotas: avisa e deixa o PM2 reiniciar
+process.on('unhandledRejection', (e) => { console.error('[unhandledRejection]', e); tg.error(`unhandledRejection: ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'unhandled', every: 5 * 60_000 }); });
+process.on('uncaughtException', (e) => { console.error('[uncaughtException]', e); tg.error(`uncaughtException (API vai reiniciar): ${tg.esc(String(e?.message || e).slice(0, 300))}`); setTimeout(() => process.exit(1), 1500); });

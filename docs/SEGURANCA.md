@@ -125,6 +125,27 @@ Decisão do dono: "não é o recomendado, mas é o que tem pra hoje".
   `DATABASE_URL` ou restaurar por cima do `brgol` com `--clean`) → fotos: `tar -xzf $T/uploads-<data>.tgz
   -C /var/www/brgol/` → `.env`: copiar para `api/.env` → `pm2 restart brgol-api`.
 
+## Avisos no Telegram — FEITO em 15/09/2026
+Mesmo bot e mesmo chat do Managol (o dono pediu "da mesmíssima forma"): `TELEGRAM_BOT_TOKEN` +
+`TELEGRAM_CHAT_ID` no `api/.env` da VPS (copiados do `.env` do Managol) e em `/etc/brgol-telegram.conf`
+(root, para os scripts). Toda mensagem começa com "⚽ JogaGol". Vazio = desligado.
+- **API** (`api/src/lib/telegram.js`, `tg.info/warn/error`): 👤 cadastro novo (nick, time, e-mail, IP,
+  convite) · 🧱 cadastro barrado (honeypot, rápido demais, captcha, e-mail descartável, teto por IP — 1
+  aviso por IP a cada 10 min, repetidos viram "+N iguais") · 🔒 conta trancada por senhas erradas ·
+  🛒 PIX gerado · 💰 **VIP pago** (nick, dias, valor) · Efí com problema · 🚩 denúncia (com o texto) ·
+  🗑️ conta excluída · 🛡️ toda ação do painel de admin · 🔴 erro 500 (rota + mensagem, 1 por rota a
+  cada 5 min) · scheduler com erro · exceção não tratada · 🚀 API subiu (todo restart do PM2 avisa —
+  restart sem deploy = suspeito). Fila de 1 msg/s; rajada vira uma mensagem só.
+- **VPS**: `brgol-watchdog.sh` (`tools/vps/`) a cada 2 min → 🔴 "API fora do ar" quando `/api/health`
+  para de responder e ✅ "voltou" com o tempo fora; 09h → resumo do dia (disco, último backup, reinícios
+  do PM2, bans do fail2ban) e ⚠️ se o disco passar de 85 % ou o backup não tiver rodado em 26 h.
+  **fail2ban** manda 🚫 a cada ban (SSH, limit_req do nginx, varredura de arquivos) — `action.d/brgol-telegram.conf`.
+- O que este esquema NÃO pega: a VPS inteira fora do ar (o vigia mora nela). Para isso, quando quiser:
+  https://uptimerobot.com → monitor em `https://jogagol.com.br/api/health` com alerta por Telegram
+  (integração nativa deles) — precisa da conta do dono.
+- Teste: `node -e "import('./src/lib/telegram.js').then(({tg})=>{tg.info('teste'); setTimeout(()=>process.exit(),3000)})"`
+  na pasta `api/` da VPS (como `brgol`, com o `.env` carregado) ou `/usr/local/bin/brgol-watchdog.sh --daily`.
+
 ## 5. Multi-conta (parcial)
 Já existe: contas da mesma conexão não negociam nem trocam VIP (diretoria), `lastIp` no painel.
 Feito 15/09: `createdIp` no painel. Ideias para depois: impressão digital do aparelho no cadastro,

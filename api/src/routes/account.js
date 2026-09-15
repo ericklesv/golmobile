@@ -15,6 +15,7 @@ import { handle, badRequest, notFound, GameError } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { leaveClub, closeOffer } from '../services/club.js';
 import { removeOld } from './uploads.js';
+import { tg } from '../lib/telegram.js';
 
 export const account = Router();
 account.use(requireAuth);
@@ -63,6 +64,7 @@ export async function deleteAccount(userId) {
   }, { timeout: 30_000 });
   removeOld(u.avatarUrl);
   console.log(`[conta] ${u.nick} (#${u.id}) excluiu a conta`);
+  tg.info(`🗑️ Conta excluída pelo jogador: <b>${tg.esc(u.nick)}</b> (#${u.id})`);
   return { ok: true };
 }
 
@@ -116,5 +118,6 @@ account.post('/reports', handle(async (req) => {
   if (dup) return { ok: true, id: dup.id, repeated: true };
   const r = await prisma.report.create({ data: { reporterId: req.user.id, targetId: target.id, messageId: body.messageId ?? null, messageText, reason: body.reason, details: body.details || null } });
   console.log(`[denuncia] #${r.id} ${req.user.nick} → ${target.nick} (${body.reason}${body.messageId ? `, msg ${body.messageId}` : ''})`);
+  tg.warn(`🚩 Denúncia #${r.id}: <b>${tg.esc(req.user.nick)}</b> denunciou <b>${tg.esc(target.nick)}</b> (${tg.esc(body.reason)})${messageText ? `: “${tg.esc(messageText.slice(0, 120))}”` : ''}${body.details ? ` — ${tg.esc(body.details.slice(0, 120))}` : ''} · painel → Denúncias`);
   return { ok: true, id: r.id, repeated: false };
 }));

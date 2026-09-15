@@ -442,8 +442,9 @@ function MultiList({ onPick }: { onPick: (id: number) => void }) {
   );
 }
 
-// ─── FutPrego: histórico dos confrontos (a partida mais recente primeiro) ───
-const FP_REASON: Record<string, string> = { gol: 'gol', 'gol-contra': 'gol contra', wo: 'W.O.', desistiu: 'desistência', empate: 'empate (0 gols em 10 jogadas)', 'wo-cedo': 'W.O. cedo (aposta devolvida)', reinicio: 'API reiniciou (aposta devolvida)' };
+// ─── X1 (FutPrego e Futebol de Botão): histórico dos confrontos (a partida mais recente primeiro) ───
+const FP_REASON: Record<string, string> = { gol: 'gol', 'gol-contra': 'gol contra', wo: 'W.O.', desistiu: 'desistência', empate: 'empate (aposta devolvida)', 'wo-cedo': 'W.O. cedo (aposta devolvida)', reinicio: 'API reiniciou (aposta devolvida)', penaltis: 'pênaltis', tempo: 'mais gols no fim' };
+const X1_GAME: Record<string, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Botão' };
 
 function FutPregoList({ onPick }: { onPick: (id: number) => void }) {
   const [page, setPage] = useState(1);
@@ -478,11 +479,12 @@ function FutPregoList({ onPick }: { onPick: (id: number) => void }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="panel p-2">
-        {data.rows.length === 0 ? <Empty text="Nenhuma partida de FutPrego ainda." /> : (
+        {data.rows.length === 0 ? <Empty text="Nenhuma partida de X1 ainda." /> : (
           <ul className="flex flex-col gap-1">
             {data.rows.map((m) => (
               <li key={m.id} className="rounded-xl px-2 py-1.5 odd:bg-sky/10">
                 <div className="flex items-center gap-2 text-[10px] font-bold text-muted">
+                  <span className="rounded-md bg-navy/15 px-1.5 py-0.5 font-display text-[9px] uppercase text-navy-ink">{X1_GAME[m.game] ?? m.game}</span>
                   <span>#{m.id} · {shortDt(m.at)}{m.finishedAt && m.status === 'FINISHED' ? ` → ${new Date(m.finishedAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}</span>
                   <span className="ml-auto">aposta {fmt(m.bet)}</span>
                   {m.sameIp && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white">mesma internet</span>}
@@ -586,7 +588,7 @@ export function AdminScreen() {
         <span className="trap trap-blue text-[11px] uppercase">{me.nick}</span>
       </div>
       <div className="relative px-3 pb-2">
-        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'multi', label: 'Multiconta' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'FutPrego' }, { id: 'log', label: 'Log' }]} />
+        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'multi', label: 'Multiconta' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'X1' }, { id: 'log', label: 'Log' }]} />
       </div>
       <div className="relative flex-1 px-3 pb-4">
         {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail key={picked} id={picked} onBack={() => setPicked(null)} onPick={setPicked} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : tab === 'multi' ? <MultiList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}

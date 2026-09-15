@@ -8,14 +8,14 @@ import { useCountdown } from './ui';
 import { countdown } from '../lib/format';
 import { toast } from './Toast';
 
-/** Texto ao vivo do card: fila do Cabeção ou desafios abertos do FutPrego (null = mostra a descrição). */
+/** Texto ao vivo do card: fila do Cabeção, ou o jogo de hoje do X1 e os desafios abertos (null = mostra a descrição). */
 function liveText(g: MinigameCard): string | null {
   const l = g.live;
   if (!l) return null;
   if (l.queue !== undefined) return `${l.queue} na fila · ${l.playing} jogando`;
-  if (l.open) return l.open === 1 ? '1 pessoa desafiando agora' : `${l.open} pessoas desafiando agora`;
-  if (l.playing) return `${l.playing} jogando agora`;
-  return null;
+  const now = l.open ? (l.open === 1 ? '1 desafiando agora' : `${l.open} desafiando agora`) : l.playing ? `${l.playing} jogando agora` : null;
+  if (l.today) return `Hoje: ${l.today.name}.${now ? ` ${now}` : ''}`;
+  return now;
 }
 
 /**

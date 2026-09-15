@@ -12,7 +12,7 @@ import { ChatFab } from './ChatFab';
 import { WhatsInviteWatcher } from './WhatsInvite';
 import { nickProps } from '../lib/nick';
 import { VipBar } from './VipBar';
-import { FutPregoInviteWatcher } from './FutPregoInvite';
+import { X1InviteWatcher } from './X1Invite';
 
 const tabs = [
   { to: '/', label: 'Jogar', icon: '/ui/pi-home.png', end: true },
@@ -88,7 +88,7 @@ export function Layout() {
       <SeriesNoticeWatcher />
       <ChatFab />
       <WhatsInviteWatcher />
-      <FutPregoInviteWatcher />
+      <X1InviteWatcher />
 
       {/* Barra de abas */}
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[480px] bg-navy-deep/90 px-1 pt-1 backdrop-blur" style={{ paddingBottom: 'calc(var(--sab) + 4px)' }}>

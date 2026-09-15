@@ -150,7 +150,7 @@ export const api = {
   adminGols: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow; text: string | null }>('POST', `/api/painel/users/${id}/gols`, { qtd }),
   adminExp: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow }>('POST', `/api/painel/users/${id}/exp`, { qtd }),
   adminLog: (page = 1) => req<AdminLogPage>('GET', `/api/painel/log?page=${page}`),
-  adminFutprego: (page = 1) => req<AdminFutPregoPage>('GET', `/api/painel/futprego?page=${page}`),
+  adminFutprego: (page = 1) => req<AdminFutPregoPage>('GET', `/api/painel/x1?page=${page}`),
   adminMulti: (q = '', page = 1) => req<AdminMultiPage>('GET', `/api/painel/multicontas?q=${encodeURIComponent(q)}&page=${page}`),
   // conta (Play Store): exclusão, bloqueios e denúncias — routes/account.js
   deleteAccount: (password: string) => req<{ ok: boolean }>('DELETE', '/api/account', { password }),

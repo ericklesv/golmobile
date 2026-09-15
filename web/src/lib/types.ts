@@ -102,6 +102,13 @@ export interface Meta {
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
   futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
+  /** X1: o jogo de hoje (vira à meia-noite) e o campo do Futebol de Botão (com os botões na saída, para o enfeite do começo). */
+  x1?: {
+    names: Record<X1Game, string>; today: X1Today;
+    botao: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; penalties: number; suddenDeath: number };
+    field: import('../components/BotaoField').BotaoFieldData;
+    kickoff: { pieces: import('../components/BotaoField').BotaoPiece[]; ball: { x: number; y: number } };
+  };
   ganhaperde?: { start: number; drop: number; min: number; max: number; step: number; stepPrice: number; growth: number; pointsPerHit: number };
   /** Minigames jogáveis e o nível que libera cada um. */
   minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];
@@ -154,8 +161,8 @@ export interface PublicPlayer {
   id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number; nickColor?: string | null; nickFade?: NickFade;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
-  /** Campanha no FutPrego (só partidas de verdade que terminaram). */
-  futprego?: { wins: number; losses: number; draws: number };
+  /** Campanha no X1 (só partidas de verdade que terminaram): total, por jogo e a temporada (vitórias que contam no ranking). */
+  x1?: X1Record;
   positions: { geral: number; penal: number; falta: number; trilha: number };
   recent: FeedItem[];
   role: ClubRole | null; contractUntil: number | null;
@@ -183,8 +190,17 @@ export interface MinigameCard {
   id: string; name: string; desc: string; icon: string; route: string; rewardLabel: string; daily: boolean;
   unlockLevel: number; unlocked: boolean; soon: boolean;
   available: boolean; started: boolean; finished: boolean; won: boolean; nextAt: number | null;
-  /** Cabeção: fila; FutPrego: desafios abertos (open). */
-  live?: { queue?: number; open?: number; playing: number };
+  /** Cabeção: fila; X1: desafios abertos (open) e o jogo de hoje. */
+  live?: { queue?: number; open?: number; playing: number; today?: X1Today };
+}
+
+// ─── X1 (jogos 1x1 ao vivo, um por dia) ─────────────────────────────────────
+export type X1Game = 'FUTPREGO' | 'BOTAO';
+export interface X1Today { game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number }
+export interface X1Tally { wins: number; losses: number; draws: number }
+export interface X1Record extends X1Tally {
+  games: Record<X1Game, X1Tally>;
+  season: { number: number | null; wins: number; position: number | null };
 }
 export interface MemoriaCard { i: number; team: Team | null; matched: boolean }
 export interface MemoriaReward { goal: boolean; levelPoints: number; moves: number; text: string | null }
@@ -321,11 +337,11 @@ export interface AdminPatch {
 }
 export interface AdminLogRow { id: number; admin: string; target: string | null; targetAvatar: string | null; action: string; payload: any; at: string }
 export interface AdminLogPage { page: number; pages: number; total: number; rows: AdminLogRow[] }
-/** Histórico do FutPrego no painel (GET /api/painel/futprego): partidas de verdade, a mais recente primeiro. */
+/** Histórico do X1 no painel (GET /api/painel/x1): partidas de verdade, a mais recente primeiro. */
 export interface AdminFutPregoPlayer { id: number; nick: string; avatarUrl: string | null; nickColor: string | null; deleted: boolean; team: Team | null }
 export interface AdminFutPregoRow {
-  id: number; at: string; finishedAt: string | null; status: 'PLAYING' | 'FINISHED' | 'CANCELED';
-  reason: 'gol' | 'gol-contra' | 'wo' | 'desistiu' | 'empate' | 'wo-cedo' | 'reinicio' | null;
+  id: number; game: X1Game; at: string; finishedAt: string | null; status: 'PLAYING' | 'FINISHED' | 'CANCELED';
+  reason: 'gol' | 'gol-contra' | 'wo' | 'desistiu' | 'empate' | 'wo-cedo' | 'reinicio' | 'penaltis' | 'tempo' | null;
   turns: number; bet: number; a: AdminFutPregoPlayer; b: AdminFutPregoPlayer;
   winnerId: number | null; goalAwarded: boolean; lostTeam: Team | null; sameIp: boolean;
 }
@@ -462,7 +478,7 @@ export interface MatchPage {
   best: MatchScorer | null; tops: { home: MatchScorer[]; away: MatchScorer[] };
   scorersCount: { home: number; away: number };
   byKind: { home: KindTally; away: KindTally }; minigames: { kind: string; label: string; home: number; away: number }[];
-  /** Gols tirados do placar porque alguém do time perdeu no FutPrego. */
+  /** Gols tirados do placar porque alguém do time perdeu no X1. */
   lost?: { home: number; away: number };
   timeline: { key: string; hour: number; home: number; away: number }[];
   standing: { home: MatchStanding | null; away: MatchStanding | null };

@@ -175,7 +175,7 @@ export function MatchScreen() {
       <Panel title="GOLS POR TIPO" ribbon="orange">
         {KIND_ROWS.map((k) => <Mirror key={k.key} label={k.label} home={m.byKind.home[k.key]} away={m.byKind.away[k.key]} bars={[m.byKind.home[k.key], m.byKind.away[k.key]]} max={maxKind} colors={colors} />)}
         {m.minigames.length > 0 && <p className="mt-1 text-center text-[10px] font-bold text-muted">Minigames: {m.minigames.map((g) => `${g.label} ${g.home} x ${g.away}`).join(' · ')}</p>}
-        {m.lost && m.lost.home + m.lost.away > 0 && <p className="mt-1 text-center text-[11px] font-extrabold text-danger">Gols perdidos no FutPrego: {m.home.abbr} −{m.lost.home} · {m.away.abbr} −{m.lost.away}</p>}
+        {m.lost && m.lost.home + m.lost.away > 0 && <p className="mt-1 text-center text-[11px] font-extrabold text-danger">Gols perdidos no X1: {m.home.abbr} −{m.lost.home} · {m.away.abbr} −{m.lost.away}</p>}
       </Panel>
 
       <Panel title="EM NÚMEROS" ribbon="yellow">

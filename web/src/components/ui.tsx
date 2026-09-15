@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield } from './Shield';
 import { Avatar } from './Avatar';
@@ -100,10 +100,18 @@ export function Empty({ text }: { text: string }) {
 }
 
 export function Tabs<T extends string>({ value, onChange, items }: { value: T; onChange: (v: T) => void; items: { id: T; label: string }[] }) {
+  // a aba aberta sempre à vista (quem chega por link numa aba do fim, como Rankings > X1, via ela escondida à direita)
+  const box = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = box.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!box.current || !el) return;
+    const c = box.current;
+    if (el.offsetLeft < c.scrollLeft || el.offsetLeft + el.offsetWidth > c.scrollLeft + c.clientWidth) c.scrollLeft = el.offsetLeft - (c.clientWidth - el.offsetWidth) / 2;
+  }, [value]);
   return (
-    <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl bg-navy-deep/35 p-1">
+    <div ref={box} className="no-scrollbar relative flex gap-1 overflow-x-auto rounded-2xl bg-navy-deep/35 p-1" role="tablist">
       {items.map((it) => (
-        <button key={it.id} onClick={() => onChange(it.id)} className={`whitespace-nowrap rounded-xl px-3 py-2 font-display text-[13px] uppercase tracking-wide transition ${value === it.id ? 'bg-white text-navy-ink shadow' : 'text-white/80'}`}>
+        <button key={it.id} role="tab" aria-selected={value === it.id} onClick={() => onChange(it.id)} className={`whitespace-nowrap rounded-xl px-3 py-2 font-display text-[13px] uppercase tracking-wide transition ${value === it.id ? 'bg-white text-navy-ink shadow' : 'text-white/80'}`}>
           {it.label}
         </button>
       ))}

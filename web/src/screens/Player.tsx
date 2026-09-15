@@ -13,7 +13,7 @@ import { OfferModal, GiftModal, roleLabel, dayMonth } from '../components/Club';
 import { NameBadges, TopHistory } from '../components/Badges';
 import { ReportModal } from '../components/Account';
 import { nickProps } from '../lib/nick';
-import { FutPregoRecord } from '../components/FutPregoRecord';
+import { X1Record } from '../components/X1Record';
 
 export function PlayerScreen() {
   const { nick } = useParams();
@@ -95,7 +95,7 @@ export function PlayerScreen() {
         </div>
       </Panel>
 
-      <FutPregoRecord record={p.futprego} isMe={isMe} />
+      <X1Record record={p.x1} isMe={isMe} />
 
       {!isMe && (me.role || sameTeam) && (
         <div className="flex flex-col gap-2">

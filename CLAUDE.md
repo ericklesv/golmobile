@@ -145,6 +145,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   pedido do dono em 14/09/2026 para gravar vídeo de propaganda): chutes sem recarga (`cooldownFor` = 0), sem captcha e
   minigames sem limite do dia (`routes/daily.js` apaga as partidas terminadas do jogador a cada chamada). Junte com
   `MINIGAMES_LIVRES=1` (Hat Trick/Falta PRO/Frangaço). **NUNCA no .env da VPS.**
+- **FutPrego — retrospecto contra o adversário** (pedido do dono, 15/09/2026; `headToHead` em
+  `realtime/futprego.js`): ao casar a partida, a mensagem `match` de cada lado traz `h2h` na perspectiva de quem
+  recebe (`{total, wins, losses, draws, last: ['V'|'D'|'E' × até 5, a mais recente primeiro], lastAt}`; `null` no
+  treino contra bot). Conta só partida de verdade FINISHED entre os dois, sem `wo-cedo`. A tela mostra a faixa
+  `H2HStrip` entre a barra do adversário e a tábua ("Contra X: 2V · 1E · 0D" + últimas 5; "Primeiro confronto"
+  se nunca jogaram). Coberto no `scripts/test-futprego.js`.
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi

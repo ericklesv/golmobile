@@ -82,9 +82,11 @@ function findFlick(ball, side, want, board) {
  * Devolve a mensagem 'over' de cada um.
  */
 const kickoff = { tried: 0, blocked: 0, boards: new Set() };
+let lastMatchMsgs = null; // { ma, mb } da última partida (retrospecto)
 async function play(pa, pb, plan) {
   const ma = await pa.wait('match'), mb = await pb.wait('match');
   if (!ma || !mb) return null;
+  lastMatchMsgs = { ma, mb };
   const board = ma.board;
   kickoff.boards.add(board.id);
   const bySide = { [ma.you]: pa, [mb.you]: pb };
@@ -143,6 +145,7 @@ check(!!closed, 'aceitou: o convite some das outras telas');
 const before = { a: 1000, b: 1000, teamA: await teamScore(A.teamId), teamB: await teamScore(B.teamId) }; // a aposta saiu no aceite (passo 2)
 const r1 = await play(gA, gB, () => 'gol');
 check(!!r1?.oa && !!r1?.ob, 'partida 1 terminou para os dois');
+check(lastMatchMsgs?.ma.h2h?.total === 0 && lastMatchMsgs?.mb.h2h?.total === 0 && lastMatchMsgs.ma.h2h.last.length === 0, 'retrospecto no 1º confronto: 0 partidas para os dois');
 const w1 = r1.oa.winner === r1.youA ? A : B, l1 = w1 === A ? B : A;
 const o1w = w1 === A ? r1.oa : r1.ob, o1l = w1 === A ? r1.ob : r1.oa;
 const after1 = { a: await money(A), b: await money(B) };
@@ -169,6 +172,10 @@ gB.send({ t: 'accept', id: w2wait.id });
 const goalsBefore2 = liveB ? await scoreB() : null;
 const r2 = await play(gA, gB, (side) => ((side === r1.youA) === (w1 === A) ? 'gol' : 'nada'));
 const o2w = w1 === A ? r2.oa : r2.ob;
+{
+  const hw = w1 === A ? lastMatchMsgs.ma.h2h : lastMatchMsgs.mb.h2h, hl = w1 === A ? lastMatchMsgs.mb.h2h : lastMatchMsgs.ma.h2h;
+  check(hw?.total === 1 && hw.wins === 1 && hw.losses === 0 && hw.last[0] === 'V' && hl?.wins === 0 && hl.losses === 1 && hl.last[0] === 'D', `retrospecto na revanche: ${w1.nick} vê 1V/0D (última V), ${l1.nick} vê 0V/1D (última D)`);
+}
 check(r2.oa.winner === (w1 === A ? r2.youA : r2.youB), `revanche: ${w1.nick} ganhou de novo`);
 check(o2w.goal === false && o2w.why === 'repetido' && o2w.money === F.bet * 2, 'mesma dupla, mesmo vencedor 2 vezes seguidas: o 2º não vale gol, mas leva o pote');
 check((await prisma.goal.count({ where: { userId: w1.id, kind: 'FUTPREGO' } })) === 1 && (!liveB || (await scoreB()) === goalsBefore2), 'nenhum gol a mais e nenhum gol tirado');

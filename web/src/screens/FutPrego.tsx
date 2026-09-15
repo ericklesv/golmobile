@@ -24,9 +24,12 @@ import { money as fmt } from '../lib/format';
 type Side = 0 | 1;
 interface Player { id: number; nick: string; avatarUrl: string | null; team: Team; bot: boolean }
 interface Rules { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalWinsPerDay: number }
+/** Retrospecto contra o adversário desta partida (só partidas de verdade que terminaram; null no treino). */
+interface H2H { total: number; wins: number; losses: number; draws: number; last: ('V' | 'D' | 'E')[]; lastAt: string | null }
 interface Match {
   id: number; you: Side; players: [Player, Player]; board: PregoBoardData; ball: { x: number; y: number };
   turn: Side; turnEndsAt: number; turns: [number, number]; maxTurns: number; turnSec: number; bet: number; training: boolean;
+  h2h: H2H | null;
 }
 interface Over {
   winner: Side | null; reason: string; you: Side; training: boolean; money: number; pot?: number; goal?: boolean; why?: string | null;
@@ -126,7 +129,7 @@ export function FutPregoScreen() {
       case 'kicked': setPhase('kicked'); break;
       case 'match': {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setOppDropped(false); setConfirmLeave(false);
-        setMatch({ id: m.id, you: m.you, players: m.players, board: m.board, ball: m.ball, turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns, maxTurns: m.maxTurns, turnSec: m.turnSec, bet: m.bet, training: m.training });
+        setMatch({ id: m.id, you: m.you, players: m.players, board: m.board, ball: m.ball, turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns, maxTurns: m.maxTurns, turnSec: m.turnSec, bet: m.bet, training: m.training, h2h: m.h2h ?? null });
         setPhase('match');
         lastPos.current = null;
         requestAnimationFrame(() => placeBall(m.ball.x, m.ball.y));
@@ -289,7 +292,8 @@ export function FutPregoScreen() {
     body = (
       <div className="flex flex-1 flex-col items-center">
         <PlayerBar p={match.players[opp]} turns={match.turns[opp]} max={match.maxTurns} active={match.turn === opp && !animating} left={left} total={match.turnSec} label={oppDropped ? 'caiu, esperando voltar' : match.turn === opp && !animating ? 'vez dele' : null} />
-        <div className="relative my-1.5" style={{ width: 'min(92vw, 380px, calc((100dvh - 250px) * 0.62))' }}>
+        {!match.training && match.h2h && <H2HStrip h2h={match.h2h} opp={match.players[opp].nick} />}
+        <div className="relative my-1.5" style={{ width: `min(92vw, 380px, calc((100dvh - ${!match.training && match.h2h ? 276 : 250}px) * 0.62))` }}>
           <PregoBoard ref={svgRef} board={match.board} flip={you === 1} paint={paint} glowGoal={goalFlash} overlay={overlay}
             ball={<g ref={ballRef} transform={`translate(${b.x} ${b.y})`}><TriondaBall ref={ballApi} r={match.board.ball} /></g>}
             className={`w-full drop-shadow-[0_6px_0_rgba(0,0,0,0.25)] ${myTurn ? 'cursor-grab' : ''}`}
@@ -435,6 +439,29 @@ function PlayerBar({ p, me = false, turns, max, active, left, total, label }: { 
         </svg>
       )}
     </div>
+  );
+}
+
+/** Retrospecto contra este adversário, logo abaixo da barra dele: V·E·D e as últimas 5 (a mais recente primeiro). */
+function H2HStrip({ h2h, opp }: { h2h: H2H; opp: string }) {
+  const tone = h2h.wins > h2h.losses ? 'text-[#7DFF5C]' : h2h.wins < h2h.losses ? 'text-[#FF8A80]' : 'text-gold';
+  return (
+    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 rounded-xl bg-navy-deep/50 px-2 py-0.5">
+      {h2h.total === 0 ? (
+        <span className="text-[11px] font-extrabold text-white/85">Primeiro confronto contra {opp}</span>
+      ) : (
+        <>
+          <span className="truncate text-[11px] font-extrabold text-white/85">
+            Contra {opp}: <b className={tone}>{h2h.wins}V</b> · <b className="text-white">{h2h.draws}E</b> · <b className={h2h.losses > h2h.wins ? 'text-[#FF8A80]' : 'text-white'}>{h2h.losses}D</b>
+          </span>
+          <span className="flex shrink-0 gap-0.5" aria-label="últimas partidas, a mais recente primeiro">
+            {h2h.last.map((r, i) => (
+              <span key={i} className={`flex h-4 w-4 items-center justify-center rounded font-display text-[10px] leading-none text-white ${r === 'V' ? 'bg-[#2E9E3A]' : r === 'D' ? 'bg-[#C0392B]' : 'bg-white/30'}`}>{r}</span>
+            ))}
+          </span>
+        </>
+      )}
+    </motion.div>
   );
 }
 

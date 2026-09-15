@@ -51,6 +51,23 @@ export async function futpregoRecord(userId) {
   return { wins, losses, draws };
 }
 
+/**
+ * Retrospecto entre dois jogadores (pedido do dono, 15/09/2026): partidas de verdade que terminaram entre
+ * eles — W.O. cedo (aposta devolvida) e canceladas não contam. Vai na mensagem `match` de cada lado, na
+ * perspectiva de quem recebe (sendMatch). `last` = quem venceu as últimas 5, a mais recente primeiro (null = empate).
+ */
+async function headToHead(aId, bId) {
+  const rows = await prisma.futPregoMatch.findMany({
+    where: { status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId, bId }, { aId: bId, bId: aId }] },
+    orderBy: { id: 'desc' }, select: { winnerId: true, finishedAt: true },
+  });
+  return {
+    total: rows.length, draws: rows.filter((r) => r.winnerId === null).length,
+    wins: { [aId]: rows.filter((r) => r.winnerId === aId).length, [bId]: rows.filter((r) => r.winnerId === bId).length },
+    last: rows.slice(0, 5).map((r) => r.winnerId), lastAt: rows[0]?.finishedAt ?? null,
+  };
+}
+
 export function futpregoStatus() {
   return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0) };
 }
@@ -241,7 +258,8 @@ async function acceptChallenge(conn, id) {
     if (e.who === 'b') { err(b, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`); return createChallenge(a); } // o desafio dele volta
     throw e;
   }
-  startMatch(a, b, row.id);
+  const h2h = await headToHead(a.user.id, b.user.id).catch((e) => { console.error('[futprego] retrospecto:', e.message); return null; });
+  startMatch(a, b, row.id, h2h);
   for (const c of [a, b]) if (!conns.has(c)) onDisconnect(c);
 }
 
@@ -264,9 +282,9 @@ async function startBot(conn) {
   startMatch(conn, bot, null);
 }
 
-function startMatch(a, b, dbId) {
+function startMatch(a, b, dbId, h2h = null) {
   const board = BOARDS[randomInt(BOARDS.length)]; // um desenho de tábua por partida (ninguém decora a jogada)
-  const m = { id: nextId++, dbId, conns: [a, b], bot: !!b.bot, board, ball: { ...board.center }, turn: randomInt(2), turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0 };
+  const m = { id: nextId++, dbId, conns: [a, b], bot: !!b.bot, board, ball: { ...board.center }, turn: randomInt(2), turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
   a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo na tábua do servidor
   matches.set(m.id, m);
   scheduleTurn(m, 1500, false);
@@ -275,10 +293,13 @@ function startMatch(a, b, dbId) {
 
 function sendMatch(c, resumed) {
   const m = c.match;
+  const h = m.h2h, me = c.user.id, opp = m.conns[1 - c.side].user.id;
   send(c.ws, {
     t: 'match', id: m.id, you: c.side, players: m.conns.map(playerView), board: m.board, ball: m.ball,
     turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns, maxTurns: F.maxTurns, turnSec: F.turnSec,
     bet: m.bot ? 0 : F.bet, training: m.bot, resumed,
+    // retrospecto contra ESTE adversário, do ponto de vista de quem recebe (null no treino contra bot)
+    h2h: h ? { total: h.total, wins: h.wins[me] ?? 0, losses: h.wins[opp] ?? 0, draws: h.draws, last: h.last.map((w) => (w === null ? 'E' : w === me ? 'V' : 'D')), lastAt: h.lastAt } : null,
   });
 }
 

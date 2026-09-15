@@ -34,7 +34,7 @@ export function FutPregoRecord({ record, isMe = false }: { record?: { wins: numb
           </p>
           {record.points !== undefined && (
             <p className="text-center text-[12px] font-extrabold text-navy-ink">
-              <b className={record.points < 0 ? 'text-danger' : 'text-grass-deep'}>{record.points} {Math.abs(record.points) === 1 ? 'ponto' : 'pontos'}</b> no ranking · sem perder: máx. {record.best ?? 0}{(record.streak ?? 0) > 0 ? ` (agora ${record.streak})` : ''}
+              <b className={record.points < 0 ? 'text-danger' : 'text-grass-deep'}>{record.points} {Math.abs(record.points) === 1 ? 'ponto' : 'pontos'}</b> no Ranking X1 · sem perder: máx. {record.best ?? 0}{(record.streak ?? 0) > 0 ? ` (agora ${record.streak})` : ''}
             </p>
           )}
         </>

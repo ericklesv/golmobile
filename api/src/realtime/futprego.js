@@ -481,27 +481,37 @@ async function settle(m, result) {
   return prisma.$transaction(async (tx) => {
     const closed = await tx.futPregoMatch.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'FINISHED', finishedAt: now, turns: m.turns[0] + m.turns[1], reason: result.reason } });
     if (!closed.count) return { error: true };
+    // todo resultado que conta vai para os Lances ao vivo (pedido do dono, 15/09/2026); W.O. cedo (aposta devolvida) não
+    const feed = (user, text) => tx.activity.create({ data: { userId: user.id, teamId: user.teamId, kind: 'FUTPREGO', goal: false, text } });
     if (result.winner === null || early) {
       await tx.user.updateMany({ where: { id: { in: [a.user.id, b.user.id] } }, data: { money: { increment: F.bet } } });
       if (early) await tx.futPregoMatch.update({ where: { id: m.dbId }, data: { reason: 'wo-cedo' } });
+      else await feed(a.user, `${a.user.nick} e ${b.user.nick} empataram no FutPrego: ninguém marcou em ${F.maxTurns} jogadas, aposta devolvida.`);
       return { refund: true, why: early ? 'wo-cedo' : 'empate' };
     }
     const w = m.conns[result.winner], l = m.conns[1 - result.winner];
     const pot = F.bet * 2;
+    const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)' }[result.reason] ?? '';
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
     await tx.futPregoMatch.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
     const dayStart = new Date(nextMidnight(now).getTime() - 24 * 3600_000);
     const todays = await tx.futPregoMatch.count({ where: { winnerId: w.user.id, goalAwarded: true, createdAt: { gte: dayStart } } });
-    if (todays >= F.maxGoalWinsPerDay) return { pot, goal: false, why: 'limite' };
+    if (todays >= F.maxGoalWinsPerDay) {
+      await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no FutPrego${how} e levou R$ ${pot} (já fez os ${F.maxGoalWinsPerDay} gols do dia no FutPrego).`);
+      return { pot, goal: false, why: 'limite' };
+    }
     const prev = await tx.futPregoMatch.findFirst({
       where: { id: { not: m.dbId }, status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: a.user.id, bId: b.user.id }, { aId: b.user.id, bId: a.user.id }] },
       orderBy: { id: 'desc' }, select: { winnerId: true },
     });
-    if (prev && prev.winnerId === w.user.id) return { pot, goal: false, why: 'repetido' };
+    if (prev && prev.winnerId === w.user.id) {
+      await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no FutPrego${how} e levou R$ ${pot} (revanche repetida: sem gol).`);
+      return { pot, goal: false, why: 'repetido' };
+    }
 
     const winner = await loadUser(tx, w.user.id);
     const live = await liveMatchForTeam(winner.teamId, tx);
-    const phrase = result.reason === 'gol-contra' ? `venceu ${l.user.nick} no FutPrego (gol contra dele)` : `venceu ${l.user.nick} no FutPrego`;
+    const phrase = `venceu ${l.user.nick} no FutPrego${how}`;
     const { text } = await applyResult(tx, winner, { kind: 'FUTPREGO', goal: true, now, match: live, money: 0, phrase });
     // o time do perdedor perde 1 gol na partida da rodada (nunca abaixo de 0)
     const loser = await tx.user.findUnique({ where: { id: l.user.id }, include: { team: true } });

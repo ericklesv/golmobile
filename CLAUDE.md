@@ -151,13 +151,18 @@ depois que o novo estiver estável. Não instalar nada dele.
   treino contra bot). Conta só partida de verdade FINISHED entre os dois, sem `wo-cedo`. A tela mostra a faixa
   `H2HStrip` entre a barra do adversário e a tábua ("Contra X: 2V · 1E · 0D" + últimas 5; "Primeiro confronto"
   se nunca jogaram). Coberto no `scripts/test-futprego.js`.
-  **Ranking do FutPrego** (aba FutPrego em Rankings; decisão do dono, 15/09/2026): `GET /api/rankings/futprego` →
+  **Ranking X1** (= ranking do FutPrego; aba "Ranking X1" em Rankings — nome do dono, 15/09/2026; o jogo continua
+  "FutPrego", só o ranking é X1): `GET /api/rankings/futprego` →
   `futpregoRanking` (todos os tempos): **pontos = 3 por vitória, 1 por empate, −2 por derrota** (`FUTPREGO.points`,
   pode ficar negativo); desempate por vitórias, maior sequência sem perder, menos derrotas. Só partida de verdade
   FINISHED sem `wo-cedo` (`COUNTED`); conta excluída não aparece. Linha = formato da artilharia (`goals` = pontos)
   + `fp {wins, draws, losses, played, points, streak, best}` — `best` = maior sequência sem perder (V/E seguidos,
   D zera), `streak` = a atual; `TopList` mostra a linha "3V · 1E · 0D · sem perder: máx. N (agora M)". A campanha
   do perfil (`futpregoRecord`) usa a mesma soma (`tally`) e mostra pontos e sequências.
+  **Lances ao vivo** (pedido do dono, 15/09/2026): todo resultado que conta entra em `Activity` (kind `FUTPREGO`) em
+  `settle()` — vitória com gol (via `applyResult`, + linha do perdedor), vitória sem gol (limite do dia / revanche
+  repetida, com o motivo), empate; `how` acrescenta "por W.O." / "(ele desistiu)" / "(gol contra dele)". W.O. cedo
+  (aposta devolvida) não gera lance.
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi

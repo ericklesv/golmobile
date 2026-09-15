@@ -7,7 +7,8 @@ modernos: mobile-first, PWA, "cara de jogo". Você escolhe um clube, faz gols (c
 automático, pênalti, falta, trilha), cada gol soma no placar do time na rodada de 24h, e
 disputa a artilharia da hora/rodada/temporada. Todas as regras originais estão em
 **`docs/BRGOL_ORIGINAL.md`** (fonte da verdade — consultar antes de mudar qualquer número).
-Roadmap em `docs/ROADMAP.md`.
+Roadmap em `docs/ROADMAP.md`. **Resumo das mudanças grandes de 15/09/2026** (Ranking X1 com prêmios e medalhas,
+uniforme do presidente, caixa de mensagens, economia, PWA com banner de atualização): `docs/MUDANCAS-2026-09-15.md`.
 
 Produção: **https://jogagol.com.br** (VPS do Managol; `www.` e `brgol.managol.com.br` redirecionam 301 para lá).
 Repo: https://github.com/ericklesv/golmobile (branch `main` = prod; deploy manual via SSH, **sem GitHub Actions**).

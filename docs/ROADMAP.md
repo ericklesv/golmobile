@@ -2,6 +2,14 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## Feito em 15/09/2026 (madrugada) — resumo em `docs/MUDANCAS-2026-09-15.md`
+Ranking X1 (3·1·−2, sequência, prêmios por rodada/temporada, medalhas caveira no perfil), sair da partida =
+derrota, uniforme do time escolhido pelo presidente (Camisas + X1 + 3D), Santa Cruz tricolor, caixa de mensagens
+(avisos automáticos, admin, ícones/links/@nick), pacotes de VIP com saldo + compensação dos 7 compradores, Loja
+"Saco de dinheiro" (1 VIP = R$ 50 mil), roleta 500/1.500 com 5 giros (VIP 10), R$ 500 por vitória nos minigames,
+convite paga aos dois lados, painel de admin (X1, Multiconta com mapa, VIP/saldo, mensagens, avisos), SEO/preview
+do link, PWA com banner "Atualizar", cadastro sem o falso "rápido demais". Pendências no fim daquele arquivo.
+
 ## Próximos passos (atualizado 14/09/2026 — fazer nesta ordem)
 0. [~] **Google Play** (14/09/2026, decisões do dono; guia completo em **`docs/PLAY_STORE.md`**):
    app = TWA com Bubblewrap; Play Billing dentro do app + PIX só no site (modelo Pokémon GO); conta

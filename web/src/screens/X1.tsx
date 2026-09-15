@@ -72,6 +72,14 @@ const XRAY_NICKS = ['MVGIC', 'ericklesv']; // Raio-X (tecla R): quem pode usar �
 const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
 const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
 const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary, tertiary: t.colorTertiary ?? null, design: t.kitDesign ?? null });
+/**
+ * Uniforme reserva do amistoso (dono, 15/09/2026: os dois do mesmo time ficavam com peças iguais): o lado 1 (quem
+ * aceitou) joga com as cores invertidas — primária vira secundária e vice-versa, mesmo desenho. Time de uma cor só:
+ * branco com a cor do time no detalhe.
+ */
+const reservePaint = (p: TeamPaint): TeamPaint => (p.primary.toLowerCase() === p.secondary.toLowerCase()
+  ? { primary: '#FFFFFF', secondary: p.primary, tertiary: null, design: p.design }
+  : { primary: p.secondary, secondary: p.primary, tertiary: p.tertiary ?? null, design: p.design });
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
 
 /** Botões que `side` pode tocar agora (no pênalti, só o cobrador). */
@@ -504,7 +512,7 @@ export function X1Screen() {
   );
   else if (phase === 'match' && match) {
     const you = match.you, opp = (1 - you) as Side;
-    const paint: [TeamPaint, TeamPaint] = [paintOf(match.players[0].team), paintOf(match.players[1].team)];
+    const paint: [TeamPaint, TeamPaint] = [paintOf(match.players[0].team), match.sameTeam ? reservePaint(paintOf(match.players[1].team)) : paintOf(match.players[1].team)];
     const h2hOn = !match.training && !!match.h2h;
     const bigOverlay = (
       <AnimatePresence>
@@ -522,6 +530,7 @@ export function X1Screen() {
     );
 
     let center: React.ReactNode, oppLabel: string | null, meLabel: string | null, oppActive: boolean, meActive: boolean, left: number, total: number, extraH = 0, foot = '';
+    const reserve = match.sameTeam ? (you === 1 ? ' · você de uniforme reserva (cores invertidas)' : ' · o adversário de uniforme reserva (cores invertidas)') : '';
     if (match.game === 'FUTPREGO') {
       left = Math.max(0, Math.ceil((match.turnEndsAt - now()) / 1000)); total = match.turnSec;
       oppActive = match.turn === opp && !animating; meActive = myTurn;
@@ -597,7 +606,7 @@ export function X1Screen() {
         </div>
         <PlayerBar p={match.players[you]} me active={meActive} left={left} total={total} label={meLabel} bubble={bubbles[you]} />
         <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 px-1">
-          <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}{xray && <span className="ml-1 rounded bg-gold px-1 text-[9px] text-navy-deep">RAIO-X</span>}</span>
+          <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}{reserve}{xray && <span className="ml-1 rounded bg-gold px-1 text-[9px] text-navy-deep">RAIO-X</span>}</span>
           <div className="flex shrink-0 items-center gap-2">
             <ProvocarButton left={Math.max(0, provocarUntil - now())} gapMs={rules.provocar?.gapMs ?? 2000} punishMs={rules.provocar?.punishMs ?? 10000} onClick={() => setTray(true)} />
             <button onClick={() => setConfirmLeave(true)} className="btn btn-gray btn-sm">Desistir</button>

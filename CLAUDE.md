@@ -298,6 +298,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   `FUTPREGO` ou `BOTAO`) em `settle()` — vitória com gol (via `applyResult`, + linha do perdedor), vitória sem gol
   (limite de 10 por hora / revanche repetida, com o motivo), empate; `how` acrescenta "por W.O." / "(ele desistiu)" /
   "(gol contra dele)" / "nos pênaltis".
+  **Amistoso (mesmo time) = uniforme reserva** (dono, 15/09/2026: os dois ficavam com peças iguais): na tela, o lado 1
+  (quem aceitou) joga com as cores invertidas — `reservePaint` em `X1.tsx` troca primária ↔ secundária, mesmo desenho
+  (time de uma cor só: branco com a cor no detalhe); o rodapé diz quem está de reserva. Só na pintura das peças
+  (Prego e Botão), nada no servidor.
   **3ª cor do time** (`Team.colorTertiary`, migração 0029; `c3` em `data/teams.js`; só Santa Cruz = branco por
   enquanto, pedido da torcida 15/09/2026): no X1 a peça fica listrada na horizontal primária · terciária · secundária
   (prego em `PregoBoard`, botão em `BotaoField` com o aro na 3ª cor) — a 3ª cor no meio separa as outras ("sem o

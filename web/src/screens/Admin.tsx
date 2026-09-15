@@ -518,7 +518,7 @@ function MultiList({ onPick }: { onPick: (id: number) => void }) {
                       <Avatar url={u.avatarUrl} size={34} />
                       {u.team ? <Shield team={u.team} size={22} /> : null}
                       <span className="min-w-0 flex-1">
-                        <span className={`block truncate text-[14px] font-extrabold leading-tight ${nickProps(u).className}`} style={nickProps(u).style}>{u.nick} <span className="font-sans text-[10px] font-bold text-muted">· {u.team?.name ?? 'sem time'} · lvl {u.level.lvl}</span></span>
+                        <span className="block truncate text-[14px] font-extrabold leading-tight"><span className={nickProps(u).className} style={nickProps(u).style}>{u.nick}</span> <span className="font-sans text-[10px] font-bold text-muted">· {u.team?.name ?? 'sem time'} · lvl {u.level.lvl}</span></span>
                         <span className="block truncate text-[10px] font-bold text-muted">{u.email}</span>
                         <span className="block text-[10px] font-extrabold leading-snug text-navy-ink">
                           criada {shortDt(u.createdAt)} · visto {timeAgo(u.lastSeenAt)} · IP {u.via.map((v) => (v === 'cadastro' ? 'do cadastro' : 'atual')).join(' e ')}

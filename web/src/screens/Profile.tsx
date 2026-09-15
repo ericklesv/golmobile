@@ -82,7 +82,7 @@ export function ProfileScreen() {
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={pickAvatar} />
           </button>
           <div className="min-w-0 flex-1">
-            <div className={`t-display truncate text-3xl ${nickProps(me, { plain: 't-out', vipClass: 'text-sky-light', dark: true }).className}`} style={nickProps(me, { dark: true }).style}>{me.nick} {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}<NameBadges role={me.role} tops={pub?.tops} size={20} /></div>
+            <div className="t-display truncate text-3xl"><span className={nickProps(me, { plain: 't-out', vipClass: 'text-sky-light', dark: true }).className} style={nickProps(me, { dark: true }).style}>{me.nick}</span> {me.vip && <img src="/ui/ico-crown_silver.png" className="ico h-6 w-6" alt="VIP" />}<NameBadges role={me.role} tops={pub?.tops} size={20} /></div>
             <div className="text-[12px] font-extrabold text-white/90">{me.gender === 'F' ? 'Jogadora' : 'Jogador'} do <Link to={`/time/${me.team.slug}`} className="t-gold t-display">{me.team.name}</Link></div>
             <div className="trap trap-orange mt-1 text-[11px] uppercase">Lvl {me.level.lvl} · {me.level.name}</div>
             {(me.role || me.contractUntil) && (

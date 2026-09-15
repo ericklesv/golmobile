@@ -122,7 +122,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   `nickFadeOf(user)` (items.js) só devolve as cores `{a,b}` com VIP ativo — vencido, some; renovou, volta.
   Toda view que manda nick (meView/publicView, chat, rankings, liga, partida, ativos, painel) manda
   `nickFade`; na tela, **tudo passa por `lib/nick.ts` → `nickProps(u)`** (fade > cor da loja > azul VIP >
-  padrão) — nick novo em tela nova = usar `nickProps`, não montar classe à mão. Seletor no Perfil
+  padrão) — nick novo em tela nova = usar `nickProps`, não montar classe à mão. **O `nickProps` vai num `<span>` SÓ
+  com o nick**: o degradê é texto recortado e é herdado — o "P"/"D" do cargo, a linha do X1 ou outro texto dentro
+  dele ficam transparentes (bug de 15/09/2026). Seletor no Perfil
   (`components/NickFade.tsx`, paleta vem de `meta.nickFades`); benefício listado na tela do VIP.
 - **VIP pago** (decisões do dono, 13/09/2026; `services/vip.js`, `lib/efi.js`, `routes/vip.js`, tela
   `/vip` = `Vip.tsx`, tabela `VipPurchase`, migração 0018): pacotes de **dias de VIP** (`VIP_PACKS` em

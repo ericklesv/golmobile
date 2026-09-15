@@ -49,8 +49,8 @@ export const NICK_RULE = /^[a-zA-Z0-9_.\-]{3,14}$/;
  * Nick em DEGRADÊ — benefício do VIP (pedido do dono, 15/09/2026, estilo speedrun.com): o VIP escolhe
  * duas cores no perfil e o nome aparece com o fade no chat, rankings, partida e perfil. Fica gravado
  * em User.nickFade ("azul>roxo") e só é MOSTRADO enquanto o VIP estiver ativo (nickFadeOf); expirou o
- * VIP, some; renovou, volta. Tem prioridade sobre a cor sólida da loja (nickColor). Tons médios de
- * propósito: têm de ler bem tanto no painel branco quanto no fundo azul-marinho.
+ * VIP, some; renovou, volta. Tem prioridade sobre a cor sólida da loja (nickColor). A tela desenha um
+ * brilho atrás do nome (lib/nick.ts), por isso até branco e preto ficam legíveis nos dois fundos.
  */
 export const NICK_FADE_COLORS = [
   { key: 'azul', name: 'Azul', hex: '#2EA8FF' },
@@ -65,6 +65,16 @@ export const NICK_FADE_COLORS = [
   { key: 'lavanda', name: 'Lavanda', hex: '#B388FF' },
   { key: 'roxo', name: 'Roxo', hex: '#9B59B6' },
   { key: 'vermelho', name: 'Vermelho', hex: '#E5322D' },
+  // 15/09: mais opções, inclusive claras/escuras — a tela põe um brilho atrás (lib/nick.ts) que mantém
+  // branco legível no painel branco e preto legível no fundo marinho
+  { key: 'branco', name: 'Branco', hex: '#FFFFFF' },
+  { key: 'gelo', name: 'Gelo', hex: '#CFEFFF' },
+  { key: 'prata', name: 'Prata', hex: '#C9D1D9' },
+  { key: 'amarelo', name: 'Amarelo', hex: '#FFD400' },
+  { key: 'limao', name: 'Limão', hex: '#A4E020' },
+  { key: 'marinho', name: 'Marinho', hex: '#1467D9' },
+  { key: 'magenta', name: 'Magenta', hex: '#E020C0' },
+  { key: 'preto', name: 'Preto', hex: '#202020' },
 ];
 const FADE_BY_KEY = Object.fromEntries(NICK_FADE_COLORS.map((c) => [c.key, c]));
 /** Degradê para a tela: só com VIP ativo (vipUntil no futuro). */

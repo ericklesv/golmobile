@@ -22,6 +22,10 @@ export const LAYOUTS = [
   { id: 'classico', name: 'Clássico', shape: [[150,186], [135,29], [151,29], [60,80], [123,93], [161,78], [254,99], [27,174], [104,157], [180,187], [255,168], [98,202], [198,186]] },
   { id: 'peteleco', name: 'Peteleco', shape: [[150,204], [139,21], [155,21], [82,72], [210,50], [143,70], [113,134], [185,102], [33,145], [136,124], [260,136], [89,165], [213,165]] },
   { id: 'diagrama', name: 'Diagrama', shape: [[150,202], [123,28], [139,28], [63,54], [146,43], [222,52], [100,100], [195,121], [18,119], [74,129], [217,152], [288,133]] },
+  // desenho do dono (15/09/2026, imagem da tábua medida prego a prego e convertida para 300 x 460): 1 no gol, 2 abertos,
+  // 1 central, linha de 4, 1 central e 2 abertos perto do meio. Simétrico: o "espelho" dele é a mesma tábua (fica
+  // mesmo assim na lista para o sorteio dar a mesma chance a cada desenho).
+  { id: 'losango', name: 'Losango', shape: [[150,167], [150,18], [87,61], [213,61], [150,80], [29,117], [118,117], [182,117], [271,117], [73,202], [227,202]] },
 ];
 
 export function makeBoard(shape, id = 'custom', name = id) {

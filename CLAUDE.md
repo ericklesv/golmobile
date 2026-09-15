@@ -170,7 +170,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   pode na hora; dono, 15/09/2026: "como o X1 ficou ilimitado, o vip perdeu valor" — `FUTPREGO.challengeCooldownSec`,
   `challengeCooldownUntil` em x1.js lê a última partida FINISHED no banco; a tela recebe `cooldown`/`over.cooldownUntil`,
   desliga o botão com o relógio e mostra "Vire VIP e jogue o X1 ilimitado!"; item "X1 ilimitado" na tela do VIP);
-  mesma dupla com o mesmo vencedor duas vezes seguidas = a 2ª não vale gol; **dois do MESMO time podem jogar =
+  mesma dupla com o mesmo vencedor duas vezes **seguidas** = a 2ª não vale gol — seguidas = a partida ANTERIOR do
+  vencedor (das que contam; amistoso não quebra) foi contra o mesmo adversário; jogou com outra pessoa no meio, vale
+  (bug de 15/09/2026: olhava só o último confronto dos dois, mesmo com dezenas de partidas no meio; o
+  `test-futprego.js` passo 12 cobre); **dois do MESMO time podem jogar =
   AMISTOSO** (dono, 15/09/2026: "não vale gol, apenas dinheiro"): o vencedor leva o pote e mais nada — nenhum gol
   ganho ou tirado, fora das travas por hora, da regra da mesma dupla e do Ranking X1/campanha/prêmios/medalhas
   (`X1_SAME_TEAM` = `aTeamId` igual a `bTeamId`, os times gravados na partida; `X1_COUNTED` o exclui, `X1_PLAYED` não —

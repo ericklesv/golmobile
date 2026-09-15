@@ -377,6 +377,36 @@ check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinhe
   for (const p of [gC2, gG]) p.close();
 }
 
+// 12) "duas vezes SEGUIDAS" = sem outra partida do vencedor no meio (bug de 15/09/2026: a regra olhava só o último
+// confronto dos dois, mesmo com dezenas de partidas contra outras pessoas no meio). Amistoso no meio não quebra.
+{
+  const H = await mkUser('sport', 5000), I = await mkUser('fortaleza', 5000), J = await mkUser('bahia', 5000), H2 = await mkUser('sport', 5000);
+  const gH = phone(H, 'game', '10.0.1.1'), gI = phone(I, 'game', '10.0.1.2'), gJ = phone(J, 'game', '10.0.1.3'), gH2 = phone(H2, 'game', '10.0.1.4');
+  await Promise.all([gH.open, gI.open, gJ.open, gH2.open]);
+  // H desafia (lado 0) e `other` aceita; `hWins` = H marca, o outro não
+  const round = async (other, hWins = true) => {
+    gH.clear(); other.clear();
+    gH.send({ t: 'challenge' });
+    const w = await gH.wait('waiting');
+    other.send({ t: 'accept', id: w?.id });
+    const r = await play(gH, other, (side) => ((side === 0) === hWins ? 'gol' : 'nada'));
+    return r?.oa; // o 'over' de H
+  };
+  const o1 = await round(gI);
+  check(o1?.winner === o1?.you && o1.goal === true, 'H ganha de I: o gol vale');
+  const o2 = await round(gI);
+  check(o2?.goal === false && o2.why === 'repetido', 'H ganha de I de novo, logo em seguida: revanche repetida, sem gol');
+  const o3 = await round(gJ, false);
+  check(o3 && o3.winner !== o3.you, 'no meio, H joga (e perde) com J');
+  const o4 = await round(gI);
+  check(o4?.winner === o4?.you && o4.goal === true && o4.why === null, 'H volta a ganhar de I depois de jogar com J: não é revanche repetida, o gol vale');
+  const o5 = await round(gH2);
+  check(o5?.why === 'mesmo-time', 'H joga um amistoso com H2 (mesmo time)');
+  const o6 = await round(gI);
+  check(o6?.goal === false && o6.why === 'repetido', 'H ganha de I com só um amistoso no meio: continua revanche repetida (amistoso não quebra a sequência)');
+  for (const p of [gH, gI, gJ, gH2]) p.close();
+}
+
 check(kickoff.tried === kickoff.blocked, `saída do meio: ${kickoff.tried} tentativas de gol de primeira (peteleco que entraria sem a garantia), nenhuma valeu; tábuas sorteadas: ${[...kickoff.boards].join(', ')}`);
 
 // ranking do FutPrego (3 · 1 · −2) bate com o que está no banco para A

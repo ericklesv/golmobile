@@ -593,7 +593,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
       </div>
       <div className="panel-navy mt-3 px-3 py-2.5">
         <p className="text-[14px] font-extrabold leading-snug text-white">{t.main}</p>
-        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Cada jogador ganha no máximo {rules.maxGoalsPerHour} gols por hora no X1, e o time perde no máximo {rules.maxGoalsPerHour} por hora por causa dele. Ganhar da mesma pessoa duas vezes seguidas, a segunda não vale gol. Contra alguém do seu time é amistoso: vale só o dinheiro, sem gol e sem ponto no Ranking X1.</p>
+        <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/80">{t.stakes} Cada jogador ganha no máximo {rules.maxGoalsPerHour} gols por hora no X1, e o time perde no máximo {rules.maxGoalsPerHour} por hora por causa dele. Ganhar da mesma pessoa duas vezes seguidas, sem jogar com mais ninguém no meio, a segunda não vale gol. Contra alguém do seu time é amistoso: vale só o dinheiro, sem gol e sem ponto no Ranking X1.</p>
       </div>
       {season?.season && season.season.played > 0 && (
         <p className="t-out mt-2 text-center text-[12px] font-extrabold">

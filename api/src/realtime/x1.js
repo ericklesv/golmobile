@@ -27,7 +27,7 @@ import { FUTPREGO, BOTAO, X1, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
 import { teamView } from '../services/view.js';
-import { X1_PLAYED, X1_SAME_TEAM } from '../services/x1.js';
+import { X1_PLAYED, X1_COUNTED } from '../services/x1.js';
 import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
 
@@ -565,8 +565,8 @@ function personal(info, m, side, result) {
  * **W.O. e desistência são SEMPRE derrota de quem saiu** (decisão do dono, 15/09/2026: jogadores fechavam o app
  * ou desistiam ao ver que iam perder e, antes de cada um jogar 2 vezes, a aposta voltava e nada contava — o
  * "W.O. cedo" acabou; as linhas antigas `wo-cedo` ficam no histórico e fora do ranking). Vitória: o vencedor leva o pote e,
- * se valer (no máximo maxGoalsPerHour gols na hora cheia no X1; a mesma dupla com o mesmo vencedor duas
- * vezes seguidas não vale — regras do dono), 1 gol para o time dele. O time do perdedor perde 1 gol na
+ * se valer (no máximo maxGoalsPerHour gols na hora cheia no X1; ganhar do mesmo adversário duas vezes SEGUIDAS
+ * — sem outra partida do vencedor no meio — não vale; regras do dono), 1 gol para o time dele. O time do perdedor perde 1 gol na
  * partida da rodada (nunca abaixo de 0) quando o gol valeu e o perdedor ainda não fez o time perder
  * maxGoalsPerHour gols nesta hora. Todo resultado que conta vai para os Lances ao vivo; o Ranking X1
  * (services/x1.js: 3 por vitória, 1 por empate, −2 por derrota) conta toda partida que terminou, menos W.O. cedo
@@ -605,11 +605,14 @@ async function settle(m, result) {
       await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (já fez os ${F.maxGoalsPerHour} gols desta hora no X1).`);
       return { pot, goal: false, why: 'limite' };
     }
+    // "duas vezes seguidas" = a partida ANTERIOR do vencedor (das que contam: amistoso, W.O. cedo e cancelada não)
+    // foi contra este mesmo adversário e ele ganhou também. Jogou com outra pessoa no meio: a sequência quebrou e o
+    // gol vale (bug de 15/09/2026: olhava só o último confronto dos dois, mesmo com dezenas de partidas no meio).
     const prev = await tx.x1Match.findFirst({
-      where: { id: { not: m.dbId }, status: 'FINISHED', reason: { not: 'wo-cedo' }, NOT: X1_SAME_TEAM, OR: [{ aId: a.user.id, bId: b.user.id }, { aId: b.user.id, bId: a.user.id }] }, // amistoso não conta como "a anterior"
-      orderBy: { id: 'desc' }, select: { winnerId: true },
+      where: { AND: [X1_COUNTED, { id: { not: m.dbId } }, { OR: [{ aId: w.user.id }, { bId: w.user.id }] }] },
+      orderBy: { id: 'desc' }, select: { aId: true, bId: true, winnerId: true },
     });
-    if (prev && prev.winnerId === w.user.id) {
+    if (prev && (prev.aId === l.user.id || prev.bId === l.user.id) && prev.winnerId === w.user.id) {
       await feed(w.user, `${w.user.nick} venceu ${l.user.nick} no ${label}${how} e levou R$ ${pot} (revanche repetida: sem gol).`);
       return { pot, goal: false, why: 'repetido' };
     }

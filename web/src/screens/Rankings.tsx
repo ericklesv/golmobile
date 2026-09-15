@@ -9,7 +9,8 @@ type Scope = 'hora' | 'rodada' | 'temporada' | 'geral' | 'penal' | 'falta' | 'tr
 type X1Scope = 'x1-rodada' | 'x1-temporada' | 'x1-geral';
 const ITEMS: { id: Scope; label: string }[] = [
   { id: 'hora', label: 'Hora' }, { id: 'rodada', label: 'Rodada' }, { id: 'temporada', label: 'Temporada' }, { id: 'geral', label: 'Geral' },
-  { id: 'penal', label: 'Pênalti' }, { id: 'falta', label: 'Falta' }, { id: 'trilha', label: 'Trilha' }, { id: 'x1', label: 'Ranking X1' },
+  { id: 'x1', label: 'Ranking X1' }, // depois de Geral e antes de Pênalti (pedido do dono, 15/09/2026)
+  { id: 'penal', label: 'Pênalti' }, { id: 'falta', label: 'Falta' }, { id: 'trilha', label: 'Trilha' },
 ];
 const X1_ITEMS: { id: X1Scope; label: string }[] = [{ id: 'x1-rodada', label: 'Rodada' }, { id: 'x1-temporada', label: 'Temporada' }, { id: 'x1-geral', label: 'Geral' }];
 const prizeLine = (rows: { from: number; to: number; money: number; vip: number }[]) =>

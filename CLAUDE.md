@@ -241,6 +241,19 @@ depois que o novo estiver estável. Não instalar nada dele.
   desce), some em `showMs` (2,8 s); som "pop" ao receber. **Silenciar** (X vermelho no balão do adversário ou na
   bandeja): só na tela de quem silenciou, vale a partida (zera na próxima; `resumed` mantém). No treino, o bot
   responde com uma sorteada. Mexeu? `node scripts/test-botao.js` tem o caso (relay, ritmo, chave inválida, VIP).
+  **Trava de atualização — deploy sem partida travada** (pedido do dono, 15/09/2026: o `pm2 restart` derrubava as
+  partidas no meio, a tela ficava "travada"): o `brgol-deploy.sh` (cópia em `tools/vps/brgol-deploy.sh`), quando a API
+  muda, faz 1) `POST /api/admin/x1/drain {seconds}` (`startX1Drain` em `realtime/x1.js`: ninguém desafia/aceita/
+  treina — erro `atualizacao` —, os desafios abertos são cancelados com o motivo, todas as telas recebem
+  `{t:'drain', until}` e o Lobby mostra "Atualizando o JogaGol…" com o botão travado; `hello.drain` e
+  `GET /api/x1/status.drain` também), 2) instala/migra e **espera `status.matches` chegar a 0** (até `X1_WAIT_SEC`
+  = 240 s; Botão ~1 min, FutPrego até ~3 min), 3) `POST /api/admin/x1/cancel` (`cancelX1Matches` → `cancelMatch`:
+  linha `CANCELED` motivo `atualizacao` — fora do ranking/retrospecto/lances —, aposta devolvida aos dois, `over`
+  com `canceled: true` e o texto "Partida cancelada: o JogaGol está sendo atualizado…"), 4) `pm2 restart`.
+  `POST /api/admin/x1/resume` destrava sem reiniciar (deploy abortado). Quem reconecta "dentro" de uma partida ou
+  espera que o servidor não tem mais recebe `no-match` no `hello` e a tela volta ao começo com o aviso (antes ficava
+  presa em `match`/`waiting`). Mexeu? `node scripts/test-deploy-x1.js` (pasta api/, banco LOCAL, `ADMIN_KEY` no
+  .env local).
   **Ranking X1** (aba "Ranking X1" em Rankings com sub-abas Rodada / Temporada / Geral — nome e regras do dono,
   15/09/2026; conta os DOIS jogos do X1; `/rankings?aba=x1` ou `?aba=x1-temporada` abre direto). Tudo em
   **`services/x1.js`**: `GET /api/rankings/x1-rodada|x1-temporada|x1-geral` (`futprego` = alias de geral, `x1` = da
@@ -602,8 +615,14 @@ servidos pelo próprio Express em `/api/uploads/`.
 - **O jogo roda SOMENTE na VPS do Managol** (`root@187.127.17.121`, projeto em
   `/var/www/brgol/app`). Não existe ambiente local nem outra hospedagem. Todo deploy é
   `bash /usr/local/bin/brgol-deploy.sh` na VPS, rodado manualmente via SSH (faz `git reset --hard
-  origin/main`, `npm ci`, `prisma migrate deploy`, build do web e `pm2 restart brgol-api`).
-  Não há CI: push no GitHub não dispara nada.
+  origin/main`, `npm ci`, `prisma migrate deploy`, **trava a busca do X1 e espera as partidas em andamento
+  acabarem** (até 4 min; o que sobrar é cancelado com a aposta devolvida — ver "Trava de atualização" no X1),
+  `pm2 restart brgol-api` e build do web). O script está em `tools/vps/brgol-deploy.sh` — mudou, copie para a
+  VPS. Não há CI: push no GitHub não dispara nada.
+- **Banco local para os testes** (15/09/2026): Postgres 17 do PC, banco `brgol`, `api/.env` local (gitignored) com
+  `DATABASE_URL`, `JWT_SECRET=dev-secret`, `PORT=4320`, `ADMIN_KEY=dev-admin`, `X1_JOGO=…`, `FUTPREGO_MESMO_IP=1`.
+  Os scripts `test-*.js` só rodam com `localhost` no `DATABASE_URL`; a API local sobe com
+  `set -a && . ./.env && set +a && node src/index.js` (pasta api/).
 - Antes de qualquer comando na VPS: mostrar o comando e pedir autorização.
 - Verificação visual = build (`cd web && npm run build`) + screenshot de produção com Edge
   headless/puppeteer-core (ver `tools/`); se não der para ver, dizer que não viu.

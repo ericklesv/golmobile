@@ -76,7 +76,41 @@ async function headToHead(aId, bId) {
 }
 
 export function x1Status() {
-  return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0), today: x1Today() };
+  return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0), matches: matches.size, today: x1Today(), drain: x1Drain()?.until ?? null };
+}
+
+// ─── Trava de atualização — deploy sem partida travada (pedido do dono, 15/09/2026) ─────────────────────────
+// O `pm2 restart` do deploy derrubava as partidas em andamento no meio (o estado é em memória): a tela ficava
+// "travada" e a aposta só voltava no reinício (refundStale). Agora o brgol-deploy.sh faz em 3 passos, pelas rotas
+// de admin (x-admin-key): 1) `POST /api/admin/x1/drain` — ninguém mais desafia, aceita nem treina (a tela mostra
+// "atualizando") e os desafios abertos são cancelados com o motivo; as partidas em andamento SEGUEM; 2) espera
+// `GET /api/x1/status`.matches chegar a 0 (até uns 4 min); 3) `POST /api/admin/x1/cancel` — o que sobrou é
+// cancelado com a aposta devolvida e o motivo na tela dos dois — e só então reinicia. Quem reconecta depois do
+// reinício ainda "dentro" de uma partida recebe `no-match` e volta ao começo com o aviso.
+let drain = null; // { until } enquanto a busca está travada (some sozinha no `until`, se o deploy não reiniciar)
+const DRAIN_TEXT = 'O JogaGol está sendo atualizado. A busca do X1 volta em instantes.';
+export const x1Drain = () => (drain && drain.until > Date.now() ? drain : (drain = null));
+
+/** Deploy, passo 1: trava a busca por `seconds` e cancela os desafios abertos (as partidas em andamento seguem). */
+export function startX1Drain(seconds = 420) {
+  drain = { until: Date.now() + Math.max(10, seconds) * 1000 };
+  for (const ch of [...challenges.values()]) { send(ch.from.ws, { t: 'expired', message: DRAIN_TEXT }); cancelChallenge(ch, 'atualizacao'); }
+  for (const c of conns) send(c.ws, { t: 'drain', until: drain.until });
+  console.log(`[x1] busca travada para atualização (${matches.size} partida(s) em andamento)`);
+  return { until: drain.until, matches: matches.size };
+}
+/** Deploy, passo 3: cancela o que ainda estiver em andamento — aposta devolvida, nada conta, motivo na tela. */
+export async function cancelX1Matches(reason = 'atualizacao') {
+  const list = [...matches.values()];
+  for (const m of list) await cancelMatch(m, reason).catch((e) => console.error('[x1] cancelar partida', e));
+  if (list.length) console.log(`[x1] ${list.length} partida(s) cancelada(s) para atualização: aposta devolvida`);
+  return { canceled: list.length };
+}
+/** Destrava sem reiniciar (deploy abortado). */
+export function stopX1Drain() {
+  drain = null;
+  for (const c of conns) send(c.ws, { t: 'drain', until: null });
+  return { ok: true };
 }
 
 // (Campanha do perfil e Ranking X1 — pontos 3·1·−2, prêmios por rodada/temporada: services/x1.js.)
@@ -140,12 +174,13 @@ export function attachX1(server) {
       for (const m of matches.values()) for (const c of m.conns) if (!c.bot && c.user.id === user.id && c !== conn && c.dropped) takeOver(c, conn);
     }
     conns.add(conn);
-    send(ws, { t: 'hello', me: user.id, rules: rulesView(), today: x1Today() });
+    send(ws, { t: 'hello', me: user.id, rules: rulesView(), today: x1Today(), drain: x1Drain()?.until ?? null });
     if (mode === 'lobby') offerOpen(conn).catch(() => {});
     else if (conn.match) sendMatch(conn, true);
     else {
       const lo = lastOver.get(user.id);
       if (lo && Date.now() - lo.at < 10 * 60_000) { send(ws, { ...lo.msg, late: true }); lastOver.delete(user.id); }
+      else send(ws, { t: 'no-match' }); // a tela que voltou "dentro" de uma partida/espera que não existe mais (a API reiniciou) volta ao começo
       sendOpenList(conn).catch(() => {});
     }
     // quem não é VIP: até quando espera para desafiar de novo (a tela mostra o relógio)
@@ -207,8 +242,11 @@ async function canPlay(conn) {
 
 const challengeView = (ch) => ({ id: ch.id, game: ch.game, gameName: X1.names[ch.game], from: playerView(ch.from), at: ch.at });
 
+const drainErr = (conn) => send(conn.ws, { t: 'error', code: 'atualizacao', until: drain.until, message: DRAIN_TEXT });
+
 async function createChallenge(conn) {
   if (conn.match || conn.challenge) return;
+  if (x1Drain()) return drainErr(conn);
   if (busyUser(conn.user.id)) return err(conn, 'busy', 'Você já está numa partida ou desafiando em outra tela.');
   const problem = await canPlay(conn);
   if (problem) return err(conn, 'no-money', problem);
@@ -282,6 +320,7 @@ async function refreshOpenLists() {
 }
 
 async function acceptChallenge(conn, id) {
+  if (x1Drain()) return drainErr(conn);
   const ch = challenges.get(id);
   if (!ch) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
   if (conn.match || ch.from === conn) return;
@@ -325,6 +364,7 @@ async function randomTeamExcept(teamId) {
 /** Ninguém aceitou e o jogador topou treinar: bot de time aleatório no jogo do dia (não vale gol nem dinheiro). */
 async function startBot(conn) {
   if (conn.match) return;
+  if (x1Drain()) return drainErr(conn);
   const game = conn.challenge?.game ?? x1Today().game;
   if (conn.challenge) cancelChallenge(conn.challenge, 'bot');
   const team = await randomTeamExcept(conn.user.teamId);
@@ -558,6 +598,35 @@ async function onProvocar(conn, msg) {
       for (const c of m.conns) send(c.ws, { t: 'provocar', side: 1 - conn.side, key: r.key, at: Date.now() });
     }, 1200 + randomInt(900));
   }
+}
+
+/**
+ * Cancela uma partida em andamento (atualização do jogo): a linha vira CANCELED (fora do ranking, do retrospecto e
+ * dos lances), os dois recebem a aposta de volta e a tela mostra o motivo. Treino: só encerra.
+ */
+async function cancelMatch(m, reason) {
+  if (m.done) return;
+  m.done = true;
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer);
+  for (const c of m.conns) clearTimeout(c.dropTimer);
+  matches.delete(m.id);
+  if (!m.bot && m.dbId) {
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.x1Match.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'CANCELED', reason, finishedAt: new Date() } });
+      if (count) await tx.user.updateMany({ where: { id: { in: [m.conns[0].user.id, m.conns[1].user.id] } }, data: { money: { increment: F.bet } } });
+    });
+  }
+  for (const c of m.conns) {
+    if (c.bot) continue;
+    const msg = {
+      t: 'over', game: m.game, winner: null, reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null, pen: null,
+      money: m.bot ? 0 : F.bet, refund: !m.bot, canceled: true, why: reason,
+      text: m.bot ? 'Treino interrompido: o JogaGol está sendo atualizado.' : `Partida cancelada: o JogaGol está sendo atualizado. Os ${F.bet} da aposta voltaram e nada contou.`,
+    };
+    if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
+    c.match = null; c.side = -1;
+  }
+  refreshOpenLists().catch(() => {});
 }
 
 async function finish(m, result) {

@@ -59,6 +59,8 @@ interface Over {
   cooldownUntil?: number | null;
   /** Retrospecto já com esta partida e a frase de provocação (só partida que entrou no retrospecto). */
   h2h?: H2H; rivalry?: { kind: string; text: string } | null;
+  /** Cancelada pela atualização do jogo (deploy): aposta devolvida, nada contou; `text` explica. */
+  canceled?: boolean;
 }
 interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number; sameTeam?: boolean }
 interface Shown { ball: { x: number; y: number }; pieces: BotaoPiece[] }
@@ -117,6 +119,7 @@ export function X1Screen() {
   const [bubbles, setBubbles] = useState<[Bubble | null, Bubble | null]>([null, null]); // o balão de cada lado
   const [muted, setMuted] = useState(false); // silenciei o adversário nesta partida (só na minha tela)
   const [provocarUntil, setProvocarUntil] = useState(0); // próxima permitida (ritmo de 2 s ou castigo)
+  const [drainUntil, setDrainUntil] = useState<number | null>(null); // atualização do jogo: a busca do X1 está travada até aqui
   const [, tick] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -133,11 +136,13 @@ export function X1Screen() {
   const shownRef = useRef<Shown | null>(null);
   const acceptId = useRef<number | null>(Number(params.get('aceitar')) || null);
   const provocarRef = useRef<Provocar | null>(null); // onMessage é o do 1º render: catálogo e "silenciado" por ref
+  const phaseRef = useRef(phase);
   const mutedRef = useRef(false);
   const bubbleSeq = useRef(0);
   matchRef.current = match;
   shownRef.current = shown;
   mutedRef.current = muted;
+  phaseRef.current = phase;
 
   const send = (m: object) => { const ws = wsRef.current; if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m)); };
   const placeBall = (x: number, y: number) => {
@@ -191,6 +196,7 @@ export function X1Screen() {
       case 'hello':
         setRules(m.rules ?? DEFAULT_RULES);
         provocarRef.current = m.rules?.provocar ?? null;
+        setDrainUntil(m.drain ?? null);
         if (m.today) setToday(m.today);
         setPhase((p) => (p === 'connecting' || p === 'offline' ? 'lobby' : p));
         if (acceptId.current) { send({ t: 'accept', id: acceptId.current }); acceptId.current = null; setParams({}, { replace: true }); }
@@ -201,8 +207,15 @@ export function X1Screen() {
       case 'canceled': setWaiting(null); setPhase('lobby'); break;
       case 'expired': toast(m.message, 'error'); setWaiting(null); setPhase('lobby'); break;
       case 'taken': setBusy(false); toast(m.message, 'error'); setWaiting(null); setPhase('lobby'); break;
-      case 'error': setBusy(false); if (m.code === 'cooldown') setCooldownUntil(m.until ?? null); toast(m.message, 'error'); break;
+      case 'error': setBusy(false); if (m.code === 'cooldown') setCooldownUntil(m.until ?? null); if (m.code === 'atualizacao') setDrainUntil(m.until ?? null); toast(m.message, 'error'); break;
       case 'cooldown': setCooldownUntil(m.until ?? null); break;
+      case 'drain': setDrainUntil(m.until ?? null); break; // atualização do jogo: trava/destrava a busca
+      case 'no-match': // voltei "dentro" de uma partida ou espera que o servidor não tem mais (a API reiniciou)
+        if (phaseRef.current === 'match' || phaseRef.current === 'waiting') {
+          toast(phaseRef.current === 'match' ? 'A partida foi encerrada: o JogaGol foi atualizado. A aposta voltou e nada contou.' : 'A busca foi cancelada porque a conexão caiu. Desafie de novo.', 'error');
+          setOver(null); setMatch(null); setShown(null); setWaiting(null); setTray(false); setGoalFlash(null); setBigText(null); setPhase('lobby'); refresh();
+        }
+        break;
       case 'kicked': setPhase('kicked'); break;
       case 'match': {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setBigText(null); setOppDropped(false); setConfirmLeave(false);
@@ -445,7 +458,7 @@ export function X1Screen() {
   else if (phase === 'kicked') body = <Msg title="Aberto em outra tela" text="O X1 foi aberto em outra aba ou aparelho. Continue por lá." onBack={() => nav('/')} />;
   else if (phase === 'lobby') body = (
     <Lobby rules={rules} today={today} open={open} busy={busy} me={me} lastResult={lastResult} season={season} now={now()}
-      cooldownLeft={cooldownUntil ? Math.max(0, cooldownUntil - now()) : 0}
+      cooldownLeft={cooldownUntil ? Math.max(0, cooldownUntil - now()) : 0} drain={!!drainUntil && drainUntil > now()}
       onChallenge={challenge} onAccept={accept} board={meta?.futprego?.board} field={meta?.x1?.field} kickoff={meta?.x1?.kickoff} />
   );
   else if (phase === 'waiting' && waiting) body = (
@@ -605,9 +618,9 @@ function rulesText(game: X1Game, r: Rules) {
 }
 
 /** Começo: o X1 de hoje (e o de amanhã), as regras, a campanha na temporada, os desafios abertos e desafiar. */
-function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldownLeft, onChallenge, onAccept, board, field, kickoff }: {
+function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldownLeft, drain, onChallenge, onAccept, board, field, kickoff }: {
   rules: Rules; today: X1Today | null; open: OpenChallenge[]; busy: boolean; me: { money: number; team: Team }; lastResult: Over | null;
-  season: PublicPlayer['x1'] | null; now: number; cooldownLeft: number; onChallenge: () => void; onAccept: (id: number) => void;
+  season: PublicPlayer['x1'] | null; now: number; cooldownLeft: number; drain: boolean; onChallenge: () => void; onAccept: (id: number) => void;
   board: PregoBoardData | undefined; field: BotaoFieldData | undefined; kickoff: { pieces: BotaoPiece[]; ball: { x: number; y: number } } | undefined;
 }) {
   const game: X1Game = today?.game ?? 'FUTPREGO';
@@ -657,15 +670,21 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
                 <div className="t-display truncate text-[15px] text-navy-ink">{c.from.nick}</div>
                 <div className="flex items-center gap-1 text-[11px] font-extrabold text-muted"><Shield team={c.from.team} size={14} /><span className="truncate">{c.sameTeam ? `Amistoso do ${c.from.team.name}: vale só dinheiro` : `${c.from.team.name} desafia no ${c.gameName ?? GAME_NAME[c.game ?? game]}`}</span></div>
               </div>
-              <button onClick={() => onAccept(c.id)} disabled={busy} className="btn btn-green btn-sm min-w-[76px]">Aceitar</button>
+              <button onClick={() => onAccept(c.id)} disabled={busy || drain} className="btn btn-green btn-sm min-w-[76px]">Aceitar</button>
             </div>
           ))}
         </div>
       )}
-      <button onClick={onChallenge} disabled={busy || me.money < rules.bet || cooldownLeft > 0} className="btn btn-green btn-lg mt-3 w-full tabular-nums">
-        {busy ? 'Chamando…' : cooldownLeft > 0 ? `Desafiar de novo em ${mmss(cooldownLeft)}` : `Desafiar alguém (${fmt(rules.bet)})`}
+      {drain && (
+        <div className="panel-navy mt-3 flex items-center gap-3 text-left">
+          <img src="/ui/ico-info.png" className="h-8 w-8 shrink-0" alt="" />
+          <p className="text-[13px] font-extrabold leading-snug">O JogaGol está sendo atualizado. A busca do X1 volta em instantes — as partidas em andamento terminam normalmente.</p>
+        </div>
+      )}
+      <button onClick={onChallenge} disabled={busy || drain || me.money < rules.bet || cooldownLeft > 0} className="btn btn-green btn-lg mt-3 w-full tabular-nums">
+        {drain ? 'Atualizando o JogaGol…' : busy ? 'Chamando…' : cooldownLeft > 0 ? `Desafiar de novo em ${mmss(cooldownLeft)}` : `Desafiar alguém (${fmt(rules.bet)})`}
       </button>
-      {cooldownLeft > 0 && <VipNudge minutes={Math.round((rules.challengeCooldownSec ?? 120) / 60)} />}
+      {cooldownLeft > 0 && !drain && <VipNudge minutes={Math.round((rules.challengeCooldownSec ?? 120) / 60)} />}
       {me.money < rules.bet && <p className="t-out mt-2 text-center text-[12px] font-extrabold">Você precisa de {fmt(rules.bet)} para jogar.</p>}
     </>
   );
@@ -899,7 +918,8 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   const pm = over.pen ? over.pen[over.you].filter(Boolean).length : 0, po = over.pen ? over.pen[1 - over.you].filter(Boolean).length : 0;
   const penScore = won ? `${pm} x ${po}` : `${po} x ${pm}`;
   let title = 'PERDEU', text = '', goal = false, money = 0;
-  if (over.training) { title = won ? 'VENCEU O TREINO' : 'FIM DO TREINO'; text = 'Treino contra bot não vale gol nem dinheiro. Desafie alguém de verdade!'; goal = won; }
+  if (over.canceled) { title = 'PARTIDA CANCELADA'; text = over.text ?? 'O JogaGol está sendo atualizado. A aposta voltou e nada contou.'; }
+  else if (over.training) { title = won ? 'VENCEU O TREINO' : 'FIM DO TREINO'; text = 'Treino contra bot não vale gol nem dinheiro. Desafie alguém de verdade!'; goal = won; }
   else if (over.refund) {
     title = 'EMPATE';
     text = botao ? `Empate até nos pênaltis: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;
@@ -918,7 +938,7 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
       : over.goal && over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: já foram ${limit} nesta hora.` : ' Seu time não perdeu gol.';
   }
   // retrospecto contra o adversário já com esta partida + a frase de provocação (lib/rivalidade.js na API)
-  const rival = !over.training && over.h2h ? over.h2h : null;
+  const rival = !over.training && !over.canceled && over.h2h ? over.h2h : null;
   return (
     <GoalOverlay open goal={goal} title={title} text={text} money={money} team={me.team} onClose={onClose} autoClose={rival ? 10000 : 6000}>
       {rival && <RivalryResult h2h={rival} opp={opp} line={over.rivalry?.text ?? null} />}

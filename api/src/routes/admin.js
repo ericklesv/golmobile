@@ -4,6 +4,7 @@ import { handle, notFound } from '../lib/errors.js';
 import { requireAdminKey } from '../lib/auth.js';
 import { settleDueRounds, ensureSeason, closePastHours } from '../services/league.js';
 import { LEVELS } from '../lib/rules.js';
+import { startX1Drain, cancelX1Matches, stopX1Drain, x1Status } from '../realtime/x1.js';
 
 export const admin = Router();
 admin.use(requireAdminKey);
@@ -17,6 +18,14 @@ admin.post('/advance-round', handle(async () => {
 }));
 
 admin.post('/close-hour', handle(() => closePastHours()));
+
+// Deploy sem partida travada (dono, 15/09/2026; usado pelo brgol-deploy.sh — ver realtime/x1.js "Trava de
+// atualização"): 1) drain = trava a busca do X1 e cancela os desafios abertos; 2) o script espera
+// `GET /api/x1/status`.matches chegar a 0; 3) cancel = o que sobrou é cancelado com a aposta devolvida; então reinicia.
+admin.post('/x1/drain', handle((req) => startX1Drain(Number(req.body?.seconds) || 420)));
+admin.post('/x1/cancel', handle(() => cancelX1Matches('atualizacao')));
+admin.post('/x1/resume', handle(() => stopX1Drain())); // deploy abortado: destrava sem reiniciar
+admin.get('/x1/status', handle(() => x1Status()));
 
 admin.post('/vip', handle(async (req) => {
   const user = await prisma.user.findUnique({ where: { nickLower: String(req.body?.nick || '').toLowerCase() } });

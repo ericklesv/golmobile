@@ -262,6 +262,15 @@ depois que o novo estiver estável. Não instalar nada dele.
   verdade (`FutPregoMatch`; contra bot não grava), o mais recente primeiro — data/hora, os dois jogadores com time,
   vencedor e motivo, jogadas, aposta, se o gol contou (e de qual time saiu 1 gol) e selo "mesma internet"
   (`aIp === bIp`). Tocar no nick abre o detalhe do jogador.
+  Aba **Multiconta** (pedido do dono, 15/09/2026; `GET /api/painel/multicontas?page=&q=`): IPs com 2+ contas vivas
+  (o IP do cadastro E o último visto contam — SQL cru com UNION em `adminPanel.js`), os com mais contas primeiro;
+  cada grupo traz geolocalização com avisos **celular/IP compartilhado** (CGNAT: um IP para muita gente — NÃO
+  prova nada sozinho), VPN/proxy, datacenter, selo "convite entre elas" (uma conta entrou pelo link da outra) e
+  as contas com e-mail, criada em, visto, "IP do cadastro/atual", outro IP e VIP no banco. Busca por IP, nick ou
+  e-mail. O detalhe do jogador mostra "Outras contas nesta internet" (`sameIp`) e o **mapa** (iframe do
+  OpenStreetMap, `GeoMap` em `Admin.tsx`) com o centro da cidade que a geolocalização devolve — `geoForIp`
+  (`lib/ip.js`) agora traz `lat/lon/mobile/proxy/hosting` e não grava "sem dados" por 24 h quando o ip-api
+  responde 429 (limite de 45/min).
   Não confundir com `/api/admin` (x-admin-key, uso via curl) — intocado.
 - **Anti-robô do cadastro** (`lib/security.js`): honeypot `website` + tempo mínimo de 3 s no formulário. O front
   manda **`elapsedMs`** (abriu → enviou, medido no MESMO relógio do aparelho); o servidor NÃO compara com o relógio
@@ -380,7 +389,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/frangaco/state` · `POST /api/frangaco/run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}` (Frangaço — contrato do cliente Unity em /tv/?mode=penalty) · `GET /api/daily/frangaco` (estado do slider)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links; não traz mensagens de quem eu bloqueei)
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
-`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/futprego?page=` (painel de admin)
+`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/futprego?page=` · `GET /api/painel/multicontas?page=&q=` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

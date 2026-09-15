@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
-import type { AdminFutPregoRow, AdminLogRow, AdminPatch, AdminUserDetail, AdminUserRow, AdminReportRow } from '../lib/types';
+import type { AdminFutPregoRow, AdminGeo, AdminLogRow, AdminMultiRow, AdminPatch, AdminUserDetail, AdminUserRow, AdminReportRow } from '../lib/types';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { Panel, Spinner, Tabs, Empty } from '../components/ui';
@@ -28,6 +28,35 @@ function Badges({ u }: { u: AdminUserRow }) {
       {u.banned && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white">Banido</span>}
       {u.online && <span className="trap trap-green text-[9px] uppercase">Online</span>}
     </span>
+  );
+}
+
+/** Avisos do tipo de conexão: operadora de celular (CGNAT — um IP para muita gente, NÃO prova multiconta), VPN, datacenter. */
+function GeoFlags({ geo }: { geo: AdminGeo | null }) {
+  if (!geo) return null;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {geo.mobile && <span className="trap trap-blue text-[9px] uppercase" title="Operadora de celular: o mesmo IP atende muita gente diferente">celular / IP compartilhado</span>}
+      {geo.proxy && <span className="trap trap-orange text-[9px] uppercase">VPN / proxy</span>}
+      {geo.hosting && <span className="trap trap-orange text-[9px] uppercase">datacenter</span>}
+    </span>
+  );
+}
+
+/** Localização aproximada (centro da cidade que a geolocalização do IP devolve) num mapa do OpenStreetMap. */
+function GeoMap({ geo }: { geo: AdminGeo | null }) {
+  if (!geo || geo.lat === null || geo.lon === null) return null;
+  const { lat, lon } = geo;
+  const dx = 0.12, dy = 0.07; // ~13 km de largura: escala de cidade
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${lon - dx},${lat - dy},${lon + dx},${lat + dy}&layer=mapnik&marker=${lat},${lon}`;
+  return (
+    <div className="mt-2">
+      <iframe src={src} title="Mapa da conexão" loading="lazy" className="no-drag h-44 w-full rounded-xl border-0 bg-sky/20" />
+      <div className="mt-1 flex items-center justify-between text-[10px] font-bold text-muted">
+        <span>Aproximado (cidade do provedor, não o endereço).</span>
+        <a href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=12/${lat}/${lon}`} target="_blank" rel="noreferrer" className="no-drag text-sky-deep underline">Mapa maior</a>
+      </div>
+    </div>
   );
 }
 
@@ -96,7 +125,7 @@ function UserList({ onPick, order = 'recentes' }: { onPick: (id: number) => void
 }
 
 // ─── Detalhe + edição ───────────────────────────────────────────────────────
-function UserDetail({ id, onBack }: { id: number; onBack: () => void }) {
+function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; onPick: (id: number) => void }) {
   const meta = useAuth((s) => s.meta);
   const [u, setU] = useState<AdminUserDetail | null>(null);
   const [busy, setBusy] = useState(false);
@@ -204,13 +233,33 @@ function UserDetail({ id, onBack }: { id: number; onBack: () => void }) {
 
       <Panel title="CONEXÃO" ribbon="blue">
         {u.conn.ip ? (
-          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] font-bold text-navy-ink">
-            <span className="label">IP</span><span className="font-display">{u.conn.ip}</span>
-            <span className="label">Quando</span><span>{dt(u.conn.at)}</span>
-            <span className="label">Local</span><span>{geo ? [geo.city, geo.region, geo.country].filter(Boolean).join(', ') || 'sem dados' : 'sem dados'}</span>
-            <span className="label">Provedor</span><span>{geo?.isp ?? 'sem dados'}</span>
-          </div>
+          <>
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] font-bold text-navy-ink">
+              <span className="label">IP</span><span className="font-display">{u.conn.ip}{u.createdIp && u.createdIp !== u.conn.ip && <span className="ml-2 font-sans text-[10px] text-muted">cadastro: {u.createdIp}</span>}</span>
+              <span className="label">Quando</span><span>{dt(u.conn.at)}</span>
+              <span className="label">Local</span><span>{geo ? [geo.city, geo.region, geo.country].filter(Boolean).join(', ') || 'sem dados' : 'sem dados'}</span>
+              <span className="label">Provedor</span><span>{geo?.isp ?? 'sem dados'} <GeoFlags geo={geo} /></span>
+            </div>
+            <GeoMap geo={geo} />
+          </>
         ) : <Empty text="Nenhuma conexão registrada ainda (o IP entra no próximo login ou heartbeat)." />}
+        {u.sameIp.length > 0 && (
+          <div className="mt-3 border-t border-navy-ink/10 pt-2">
+            <div className="mb-1 text-[11px] font-extrabold uppercase text-red-600">Outras contas nesta internet ({u.sameIp.length})</div>
+            <ul className="flex flex-col gap-1">
+              {u.sameIp.map((o) => (
+                <li key={o.id}>
+                  <button onClick={() => onPick(o.id)} className="no-drag flex w-full items-center gap-2 rounded-xl px-1 py-1 text-left hover:bg-sky/20">
+                    <Avatar url={o.avatarUrl} size={26} />
+                    {o.team ? <Shield team={o.team} size={18} /> : null}
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-extrabold text-navy-ink">{o.nick} <span className="text-[10px] font-bold text-muted">· {num(o.goalsTotal)} gols · visto {timeAgo(o.lastSeenAt)}</span></span>
+                    <span className="font-display text-[10px] text-muted">{o.ip}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Panel>
 
       <Panel title="AÇÕES RÁPIDAS" ribbon="green">
@@ -309,6 +358,83 @@ function LogList() {
         <div className="flex items-center justify-between">
           <button className="btn btn-gray btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
           <span className="t-display t-out text-sm">pág. {data.page}/{data.pages}</span>
+          <button className="btn btn-gray btn-sm" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}>Próxima</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Multiconta: IPs com mais de uma conta ──────────────────────────────────
+function MultiList({ onPick }: { onPick: (id: number) => void }) {
+  const [q, setQ] = useState('');
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<{ page: number; pages: number; total: number; ips: number; accounts: number; rows: AdminMultiRow[] } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try { const r = await api.adminMulti(q.trim(), page); if (alive) setData(r); }
+      catch (e) { if (alive) toast((e as Error).message, 'error'); }
+      finally { if (alive) setLoading(false); }
+    }, q ? 300 : 0);
+    return () => { alive = false; clearTimeout(t); };
+  }, [q, page]);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <img src="/ui/pi-search.png" className="h-5 w-5" alt="" />
+        <input className="field flex-1" placeholder="Buscar por IP, nick ou e-mail" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+      </div>
+      {data && <p className="t-out text-center text-[11px] font-extrabold text-white">{num(data.ips)} IPs com 2+ contas · IP de celular é compartilhado (CGNAT): confira horário e time antes de julgar.</p>}
+      {loading && !data ? <div className="flex justify-center py-8"><Spinner /></div> : !data || data.rows.length === 0 ? <div className="panel p-2"><Empty text="Nenhum IP com mais de uma conta." /></div> : (
+        <ul className="flex flex-col gap-3">
+          {data.rows.map((g) => (
+            <li key={g.ip} className="panel p-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-display text-[15px] text-navy-ink">{g.ip}</span>
+                <span className="trap trap-orange text-[10px] uppercase">{g.count} contas</span>
+                {g.inviteInside && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white" title="Uma conta do grupo entrou pelo convite de outra do grupo">convite entre elas</span>}
+                <span className="ml-auto text-[10px] font-bold text-muted">visto {timeAgo(g.lastSeenAt)}</span>
+              </div>
+              <div className="mt-0.5 text-[11px] font-bold text-muted">
+                {g.geo ? ([g.geo.city, g.geo.region, g.geo.country].filter(Boolean).join(', ') || 'local sem dados') + (g.geo.isp ? ` · ${g.geo.isp}` : '') : 'geolocalização sem dados'} <GeoFlags geo={g.geo} />
+              </div>
+              <ul className="mt-1.5 flex flex-col gap-1">
+                {g.users.map((u) => (
+                  <li key={u.id}>
+                    <button onClick={() => onPick(u.id)} className="no-drag flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left odd:bg-sky/10 hover:bg-sky/20">
+                      <Avatar url={u.avatarUrl} size={34} />
+                      {u.team ? <Shield team={u.team} size={22} /> : null}
+                      <span className="min-w-0 flex-1">
+                        <span className={`block truncate text-[14px] font-extrabold leading-tight ${nickProps(u).className}`} style={nickProps(u).style}>{u.nick} <span className="font-sans text-[10px] font-bold text-muted">· {u.team?.name ?? 'sem time'} · lvl {u.level.lvl}</span></span>
+                        <span className="block truncate text-[10px] font-bold text-muted">{u.email}</span>
+                        <span className="block text-[10px] font-extrabold leading-snug text-navy-ink">
+                          criada {shortDt(u.createdAt)} · visto {timeAgo(u.lastSeenAt)} · IP {u.via.map((v) => (v === 'cadastro' ? 'do cadastro' : 'atual')).join(' e ')}
+                          {u.otherIp && <span className="text-muted"> · outro IP {u.otherIp}</span>}
+                          {u.invitedBy && <span className="text-grass-deep"> · convite de {u.invitedBy}</span>}
+                        </span>
+                        <span className="mt-0.5 block"><Badges u={u} /></span>
+                      </span>
+                      <span className="text-right">
+                        <span className="block font-display text-base leading-tight text-grass-deep">{num(u.goalsTotal)} gols</span>
+                        <span className="block text-[10px] font-bold text-muted">{fmt(u.money)}{u.vipDays > 0 ? ` · ${u.vipDays} VIP` : ''}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+      {data && data.pages > 1 && (
+        <div className="flex items-center justify-between">
+          <button className="btn btn-gray btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
+          <span className="t-display t-out text-sm">pág. {data.page}/{data.pages} · {num(data.total)} IPs</span>
           <button className="btn btn-gray btn-sm" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}>Próxima</button>
         </div>
       )}
@@ -446,7 +572,7 @@ function ReportList({ onPick }: { onPick: (id: number) => void }) {
 export function AdminScreen() {
   const me = useAuth((s) => s.me)!;
   const nav = useNavigate();
-  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'denuncias' | 'futprego' | 'log'>('jogadores');
+  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'multi' | 'denuncias' | 'futprego' | 'log'>('jogadores');
   const [picked, setPicked] = useState<number | null>(null);
 
   if (!me.isAdmin) return <Navigate to="/" replace />;
@@ -460,10 +586,10 @@ export function AdminScreen() {
         <span className="trap trap-blue text-[11px] uppercase">{me.nick}</span>
       </div>
       <div className="relative px-3 pb-2">
-        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'FutPrego' }, { id: 'log', label: 'Log' }]} />
+        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'multi', label: 'Multiconta' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'FutPrego' }, { id: 'log', label: 'Log' }]} />
       </div>
       <div className="relative flex-1 px-3 pb-4">
-        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail id={picked} onBack={() => setPicked(null)} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
+        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail key={picked} id={picked} onBack={() => setPicked(null)} onPick={setPicked} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : tab === 'multi' ? <MultiList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
       </div>
     </div>
   );

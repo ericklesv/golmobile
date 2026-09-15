@@ -1,4 +1,4 @@
-import type { AdminFutPregoPage, AdminLogPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -151,6 +151,7 @@ export const api = {
   adminExp: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow }>('POST', `/api/painel/users/${id}/exp`, { qtd }),
   adminLog: (page = 1) => req<AdminLogPage>('GET', `/api/painel/log?page=${page}`),
   adminFutprego: (page = 1) => req<AdminFutPregoPage>('GET', `/api/painel/futprego?page=${page}`),
+  adminMulti: (q = '', page = 1) => req<AdminMultiPage>('GET', `/api/painel/multicontas?q=${encodeURIComponent(q)}&page=${page}`),
   // conta (Play Store): exclusão, bloqueios e denúncias — routes/account.js
   deleteAccount: (password: string) => req<{ ok: boolean }>('DELETE', '/api/account', { password }),
   blocks: () => req<BlockedUser[]>('GET', '/api/account/blocks'),

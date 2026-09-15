@@ -79,7 +79,17 @@ adminPanel.get('/users', handle(async (req) => {
 adminPanel.get('/users/:id', handle(async (req) => {
   const u = await fullUser(Number(req.params.id));
   const geo = await geoForIp(u.lastIp);
-  return detailView(u, geo);
+  // outras contas vivas na mesma internet (IP do cadastro ou último visto em comum) — aba Multiconta em resumo
+  const myIps = [u.createdIp, u.lastIp].filter(Boolean);
+  const others = myIps.length ? await prisma.user.findMany({
+    where: { id: { not: u.id }, deletedAt: null, OR: [{ createdIp: { in: myIps } }, { lastIp: { in: myIps } }] },
+    include: { team: true }, orderBy: { lastSeenAt: 'desc' }, take: 30,
+  }) : [];
+  return {
+    ...detailView(u, geo),
+    createdIp: u.createdIp ?? null,
+    sameIp: others.map((o) => ({ id: o.id, nick: o.nick, avatarUrl: o.avatarUrl ?? null, team: teamView(o.team), goalsTotal: o.goalsTotal, lastSeenAt: o.lastSeenAt, ip: [o.createdIp, o.lastIp].find((ip) => ip && myIps.includes(ip)) })),
+  };
 }));
 
 // ─── Editar perfil ──────────────────────────────────────────────────────────
@@ -200,6 +210,62 @@ adminPanel.get('/log', handle(async (req) => {
       id: r.id, admin: r.admin.nick, target: r.target?.nick ?? null, targetAvatar: r.target?.avatarUrl ?? null,
       action: r.action, payload: r.payload ?? null, at: r.createdAt,
     })),
+  };
+}));
+
+// ─── Multiconta: IPs com mais de uma conta (pedido do dono, 15/09/2026) ─────
+// GET /api/painel/multicontas?page=&q= — agrupa as contas vivas por IP (o do cadastro E o último visto:
+// uma conta que nasceu numa internet e entrou por outra aparece nas duas) e lista só os IPs com 2+ contas,
+// os com mais contas primeiro (empate: atividade mais recente). Cada grupo traz a geolocalização (com os
+// avisos mobile/proxy/hosting — operadora de celular = CGNAT, um IP para muita gente diferente, então NÃO é
+// prova sozinho), as contas com "via" (cadastro/último), o outro IP de cada uma e se há convite entre elas.
+// q = começo do IP ou parte do nick/e-mail de alguma conta do grupo.
+const IPS_PAGE = 20;
+adminPanel.get('/multicontas', handle(async (req) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  const groups = await prisma.$queryRaw`
+    WITH pares AS (
+      SELECT "createdIp" AS ip, id AS uid FROM "User" WHERE "createdIp" IS NOT NULL AND "deletedAt" IS NULL
+      UNION
+      SELECT "lastIp" AS ip, id AS uid FROM "User" WHERE "lastIp" IS NOT NULL AND "deletedAt" IS NULL
+    )
+    SELECT p.ip, COUNT(DISTINCT p.uid)::int AS n, MAX(u."lastSeenAt") AS recente
+    FROM pares p JOIN "User" u ON u.id = p.uid
+    GROUP BY p.ip HAVING COUNT(DISTINCT p.uid) > 1
+    ORDER BY n DESC, recente DESC`;
+  let list = groups;
+  if (q) {
+    const hits = await prisma.user.findMany({ where: { deletedAt: null, OR: [{ nickLower: { contains: q } }, { email: { contains: q } }] }, select: { createdIp: true, lastIp: true } });
+    const ips = new Set(hits.flatMap((u) => [u.createdIp, u.lastIp].filter(Boolean)));
+    list = groups.filter((g) => g.ip.startsWith(q) || ips.has(g.ip));
+  }
+  const total = list.length;
+  const slice = list.slice((page - 1) * IPS_PAGE, page * IPS_PAGE);
+  const ips = slice.map((g) => g.ip);
+  const users = ips.length ? await prisma.user.findMany({
+    where: { deletedAt: null, OR: [{ createdIp: { in: ips } }, { lastIp: { in: ips } }] },
+    include: { team: true, referredBy: { select: { nick: true } } }, orderBy: { createdAt: 'asc' },
+  }) : [];
+  const geos = await Promise.all(ips.map((ip) => geoForIp(ip)));
+  const now = Date.now();
+  return {
+    page, pages: Math.max(1, Math.ceil(total / IPS_PAGE)), total, ips: groups.length, accounts: new Set(users.map((u) => u.id)).size,
+    rows: slice.map((g, i) => {
+      const members = users.filter((u) => u.createdIp === g.ip || u.lastIp === g.ip);
+      const ids = new Set(members.map((u) => u.id));
+      return {
+        ip: g.ip, count: g.n, lastSeenAt: g.recente, geo: geos[i],
+        // alguém do grupo entrou pelo convite de outro do grupo (convidou a própria conta falsa)
+        inviteInside: members.some((u) => u.referredById && ids.has(u.referredById)),
+        users: members.map((u) => ({
+          ...rowView(u, now),
+          via: [u.createdIp === g.ip ? 'cadastro' : null, u.lastIp === g.ip ? 'ultimo' : null].filter(Boolean),
+          otherIp: u.createdIp === g.ip ? (u.lastIp !== g.ip ? u.lastIp : null) : u.createdIp, // o outro IP dessa conta (se diferente)
+          lastIpAt: u.lastIpAt,
+        })),
+      };
+    }),
   };
 }));
 

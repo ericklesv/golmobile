@@ -84,7 +84,8 @@ com o passo 1 e a Cloudflare já segura o grosso (o IP de origem fica "secreto" 
   rajada o banco responde uma vez a cada 5 s. Cabeçalho `x-cache: hit|miss`. Nada com dado do usuário
   logado passa pelo cache.
 - Busca de jogadores 60/min por IP; envio de foto 10 por 15 min; chat já tinha 3 s entre mensagens.
-- `helmet` na API (nosniff, x-frame-options, referrer-policy…; CSP fica para o nginx).
+- `helmet` na API (nosniff, x-frame-options, referrer-policy…; CSP fica para o nginx). **Se um dia ligar CSP no
+  nginx:** o painel de admin embute o mapa do OpenStreetMap num iframe (`frame-src https://www.openstreetmap.org`).
 - Já existia: recargas validadas no servidor, captcha a cada 10 chutes, teto global de 300 req/min/IP.
 
 ## 4. VPS — FEITO em 15/09/2026 (independe da Cloudflare)

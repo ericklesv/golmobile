@@ -286,19 +286,33 @@ export interface GanhaPerdeSpin {
 }
 
 // ─── Painel de admin (/api/painel — só usuários com isAdmin) ───────────────
-export interface AdminGeo { country: string | null; region: string | null; city: string | null; isp: string | null }
+export interface AdminGeo {
+  country: string | null; region: string | null; city: string | null; isp: string | null;
+  /** Centro aproximado da cidade (mapa do painel). */
+  lat: number | null; lon: number | null;
+  /** Operadora de celular (CGNAT: um IP para muita gente) · VPN/proxy · datacenter. */
+  mobile: boolean; proxy: boolean; hosting: boolean;
+}
 export interface AdminUserRow {
   id: number; nick: string; email: string; avatarUrl: string | null; nickColor: string | null; nickFade?: NickFade;
   team: Team | null; level: { lvl: number; name: string }; levelPoints: number;
   goalsTotal: number; money: number; vip: boolean; vipDays: number;
   banned: boolean; bannedUntil: string | null; isAdmin: boolean; lastSeenAt: string; online: boolean;
   createdAt: string; invitedBy?: string | null;
+  /** IP do cadastro (não muda). */
+  createdIp?: string | null;
 }
 export interface AdminUserDetail extends AdminUserRow {
   gender: string; bio: string | null; dexterity: number; levelBonus: number; vipUntil: string | null;
   /** Última conexão do jogador: IP + geolocalização (geo null = sem dados). */
   conn: { ip: string | null; at: string | null; geo: AdminGeo | null };
+  /** Outras contas vivas na mesma internet (IP do cadastro ou último visto em comum). */
+  sameIp: { id: number; nick: string; avatarUrl: string | null; team: Team | null; goalsTotal: number; lastSeenAt: string; ip: string | null }[];
 }
+/** Aba Multiconta do painel (GET /api/painel/multicontas): IPs com 2+ contas vivas, os com mais contas primeiro. */
+export interface AdminMultiUser extends AdminUserRow { via: ('cadastro' | 'ultimo')[]; otherIp: string | null; lastIpAt: string | null }
+export interface AdminMultiRow { ip: string; count: number; lastSeenAt: string; geo: AdminGeo | null; inviteInside: boolean; users: AdminMultiUser[] }
+export interface AdminMultiPage { page: number; pages: number; total: number; ips: number; accounts: number; rows: AdminMultiRow[] }
 export interface AdminUsersPage { page: number; pages: number; total: number; users: AdminUserRow[] }
 /** Campos editáveis; banHours > 0 bane a partir de agora, 0 desbane. */
 export interface AdminPatch {

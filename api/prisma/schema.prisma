@@ -666,6 +666,7 @@ model Message {
   fromId    Int?
   from      User?     @relation("MsgFrom", fields: [fromId], references: [id])
   kind      String // ADMIN | AVISO | COMPRA | PRESENTE | PREMIO
+  icon      String? // ícone da mensagem na lista (ex.: /ui/ico-crown_silver.png); null = ícone do tipo. No texto, [vip] [coin] etc. viram ícones (MsgText.tsx)
   title     String
   text      String
   readAt    DateTime?

@@ -7,6 +7,7 @@ import type { InboxMessage, InboxPage } from '../lib/types';
 import { Panel, Spinner, Empty } from '../components/ui';
 import { toast } from '../components/Toast';
 import { timeAgo } from '../lib/format';
+import { MsgText } from '../components/MsgText';
 
 /**
  * Caixa de mensagens (pedido do dono, 15/09/2026): avisos dos admins e do jogo — compra aprovada, VIP/saldo
@@ -64,14 +65,14 @@ export function InboxScreen() {
                     <li key={m.id}>
                       <button onClick={() => openMsg(m)} className={`no-drag w-full rounded-xl px-2 py-2 text-left ${m.read ? 'bg-sky/10' : 'bg-gold/25 ring-1 ring-gold/70'}`}>
                         <div className="flex items-center gap-2">
-                          <img src={k.icon} alt="" className="h-7 w-7 shrink-0 object-contain" />
+                          <img src={m.icon ?? k.icon} alt="" className="h-7 w-7 shrink-0 object-contain" />
                           <span className="min-w-0 flex-1">
                             <span className={`block truncate text-[14px] leading-tight ${m.read ? 'font-bold text-navy-ink' : 'font-extrabold text-navy-ink'}`}>{m.title}</span>
                             <span className="block text-[10px] font-bold text-muted">{k.label}{m.from ? ` · ${m.from}` : ''} · {timeAgo(m.at)}</span>
                           </span>
                           {!m.read && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-orange-deep" aria-label="não lida" />}
                         </div>
-                        {open === m.id && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 whitespace-pre-wrap text-[13px] font-bold leading-snug text-navy-ink">{m.text}</motion.p>}
+                        {open === m.id && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 text-[13px] font-bold leading-snug text-navy-ink"><MsgText text={m.text} /></motion.p>}
                       </button>
                     </li>
                   );

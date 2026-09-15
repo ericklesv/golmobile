@@ -66,7 +66,7 @@ export function Layout() {
           <span className="relative shrink-0">
             <button onClick={() => nav('/perfil')} className="block" aria-label="Meu perfil"><Avatar url={me.avatarUrl} size={44} /></button>
             <button onClick={() => nav('/mensagens')} className="absolute -bottom-1.5 -right-2 flex items-center" aria-label={unread > 0 ? `${unread} mensagens não lidas` : 'Mensagens'}>
-              <img src="/ui/ico-mail.png" alt="" className="h-6 w-6 object-contain drop-shadow" />
+              <img src={unread > 0 ? '/ui/ico-mail_orange.png' : '/ui/ico-mail.png'} alt="" className="h-6 w-6 object-contain drop-shadow" />
               {unread > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full border-2 border-white bg-orange-deep px-0.5 font-display text-[9px] leading-none text-white">{unread > 99 ? '99+' : unread}</span>}
             </button>
           </span>

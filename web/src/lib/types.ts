@@ -497,7 +497,7 @@ export interface RefState {
 }
 
 // ─── Caixa de mensagens (services/inbox.js) ──────────────────────────────────
-export interface InboxMessage { id: number; kind: 'ADMIN' | 'AVISO' | 'COMPRA' | 'PRESENTE' | 'PREMIO'; title: string; text: string; read: boolean; at: number; from: string | null }
+export interface InboxMessage { id: number; kind: 'ADMIN' | 'AVISO' | 'COMPRA' | 'PRESENTE' | 'PREMIO'; icon: string | null; title: string; text: string; read: boolean; at: number; from: string | null }
 export interface InboxPage { page: number; pages: number; total: number; unread: number; messages: InboxMessage[] }
 export interface RefInviter { nick: string; avatarUrl: string | null; team: Team; perFriend: number }
 

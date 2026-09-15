@@ -41,7 +41,7 @@ for (const [userId, u] of byUser) {
 if (APPLY) {
   let done = 0;
   for (const [userId, u] of byUser) {
-    const lista = u.purchases.map((p) => `• ${p.days} VIP (compra #${p.id}): ${brl(p.money)}`).join('\n');
+    const lista = u.purchases.map((p) => `• [vip] ${p.days} VIP (compra #${p.id}): [coin] ${brl(p.money)}`).join('\n');
     const title = `Presente: ${brl(u.total)} pelo seu apoio`;
     const text = [
       `Olá, ${u.nick}!`,
@@ -49,13 +49,13 @@ if (APPLY) {
       `Você comprou VIP no JogaGol antes de os pacotes passarem a vir com saldo do jogo — e quem apoiou o jogo primeiro não pode ficar para trás. Por isso colocamos na sua conta, agora, o mesmo bônus que o seu pacote dá hoje:`,
       lista,
       '',
-      `Total creditado: ${brl(u.total)}. Já está no seu saldo.`,
+      `Total creditado: [coin] ${brl(u.total)}. Já está no seu saldo.`,
       '',
       'Novidades desta atualização:',
       '• Os pacotes de VIP agora vêm com saldo do jogo.',
-      '• Na Loja, cada VIP guardado pode virar R$ 50.000 (Saco de dinheiro).',
-      '• O Ranking X1 (FutPrego e Futebol de Botão) tem prêmios por rodada e por temporada.',
-      '• Quem entra pelo seu link de convite também ganha VIP — e você continua ganhando.',
+      '• Na Loja, cada [vip] VIP guardado pode virar [coin] R$ 50.000 (Saco de dinheiro).',
+      '• O Ranking X1 (FutPrego e Futebol de Botão) tem prêmios por rodada e por temporada [caveira].',
+      '• Quem entra pelo seu link de convite também ganha [vip] VIP — e você continua ganhando.',
       '• Esta caixa de mensagens: avisos, presentes e novidades chegam aqui.',
       '',
       'Obrigado por jogar e por acreditar no JogaGol desde o começo. Bons gols!',
@@ -67,7 +67,7 @@ if (APPLY) {
       if (upd.count !== u.purchases.length) throw new Error(`compra já compensada para ${u.nick} — pulando`);
       for (const p of u.purchases) await tx.vipPurchase.update({ where: { id: p.id }, data: { money: p.money } });
       await tx.user.update({ where: { id: userId }, data: { money: { increment: u.total } } });
-      await sendMessage(userId, { kind: 'PRESENTE', title, text }, tx);
+      await sendMessage(userId, { kind: 'PRESENTE', icon: 'presente', title, text }, tx);
     }).then(() => { done++; console.log(`  ok  ${u.nick}: +${brl(u.total)} e mensagem enviada`); })
       .catch((e) => console.error(`  FALHA ${u.nick}: ${e.message}`));
   }

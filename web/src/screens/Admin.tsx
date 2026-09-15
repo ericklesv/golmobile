@@ -9,6 +9,7 @@ import { Panel, Spinner, Tabs, Empty } from '../components/ui';
 import { toast } from '../components/Toast';
 import { nickProps } from '../lib/nick';
 import { money as fmt, num, timeAgo } from '../lib/format';
+import { MsgText, MSG_ICONS } from '../components/MsgText';
 
 /**
  * Painel de admin (/admin) — só aparece para quem tem isAdmin (o servidor nega
@@ -134,7 +135,8 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   const [vipQtd, setVipQtd] = useState('5');
   const [msgTitle, setMsgTitle] = useState('');
   const [msgText, setMsgText] = useState('');
-  const [inbox, setInbox] = useState<{ unread: number; messages: { id: number; kind: string; title: string; text: string; read: boolean; at: string; from: string | null }[] } | null>(null);
+  const [msgIcon, setMsgIcon] = useState('');
+  const [inbox, setInbox] = useState<{ unread: number; messages: { id: number; kind: string; icon: string | null; title: string; text: string; read: boolean; at: string; from: string | null }[] } | null>(null);
   const [openMsg, setOpenMsg] = useState<number | null>(null);
   const loadInbox = () => api.adminInbox(id).then(setInbox).catch(() => setInbox({ unread: 0, messages: [] }));
   useEffect(() => { loadInbox(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
@@ -300,8 +302,9 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
       <Panel title="MENSAGEM" ribbon="blue">
         <div className="flex flex-col gap-2">
           <input className="field" placeholder="Título" maxLength={80} value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)} />
-          <textarea className="field min-h-[80px]" placeholder="Texto (chega na caixa de mensagens do jogador)" maxLength={2000} value={msgText} onChange={(e) => setMsgText(e.target.value)} />
-          <button className="btn btn-blue btn-sm" disabled={busy || !msgTitle.trim() || !msgText.trim()} onClick={() => run(async () => { await api.adminMessage({ userId: id, title: msgTitle.trim(), text: msgText.trim() }); toast(`Mensagem enviada para ${u!.nick}.`, 'success'); setMsgTitle(''); setMsgText(''); await loadInbox(); })}>Enviar para {u.nick}</button>
+          <textarea className="field min-h-[80px]" placeholder="Texto (chega na caixa de mensagens do jogador). Ícones no texto: [vip] [coin] [gol] [trofeu] [caveira] [presente]" maxLength={2000} value={msgText} onChange={(e) => setMsgText(e.target.value)} />
+          <IconPicker value={msgIcon} onChange={setMsgIcon} />
+          <button className="btn btn-blue btn-sm" disabled={busy || !msgTitle.trim() || !msgText.trim()} onClick={() => run(async () => { await api.adminMessage({ userId: id, title: msgTitle.trim(), text: msgText.trim(), icon: msgIcon || null }); toast(`Mensagem enviada para ${u!.nick}.`, 'success'); setMsgTitle(''); setMsgText(''); await loadInbox(); })}>Enviar para {u.nick}</button>
         </div>
         {/* a caixa do jogador, como ele vê (pedido do dono, 15/09/2026: conferir que os avisos chegaram) */}
         <div className="mt-3 border-t border-navy-ink/10 pt-2">
@@ -315,11 +318,12 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
                 <li key={m.id}>
                   <button onClick={() => setOpenMsg(openMsg === m.id ? null : m.id)} className={`no-drag w-full rounded-xl px-2 py-1.5 text-left ${m.read ? 'bg-sky/10' : 'bg-gold/25'}`}>
                     <div className="flex items-center gap-2">
+                      {m.icon && <img src={m.icon} alt="" className="h-5 w-5 shrink-0 object-contain" />}
                       <span className={`trap text-[9px] uppercase ${m.kind === 'ADMIN' || m.kind === 'AVISO' ? 'trap-blue' : m.kind === 'COMPRA' ? 'trap-orange' : 'trap-green'}`}>{m.kind}</span>
                       <span className="min-w-0 flex-1 truncate text-[12px] font-extrabold text-navy-ink">{m.title}</span>
                       <span className="shrink-0 text-[10px] font-bold text-muted">{m.read ? 'lida' : 'NÃO LIDA'} · {shortDt(m.at)}</span>
                     </div>
-                    {openMsg === m.id && <p className="mt-1 whitespace-pre-wrap text-[11px] font-bold leading-snug text-navy-ink">{m.text}{m.from ? ` — ${m.from}` : ''}</p>}
+                    {openMsg === m.id && <p className="mt-1 text-[11px] font-bold leading-snug text-navy-ink"><MsgText text={m.text} iconSize={14} />{m.from ? ` — ${m.from}` : ''}</p>}
                   </button>
                 </li>
               ))}
@@ -381,16 +385,30 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   );
 }
 
+/** Ícone da mensagem na lista da caixa (os mesmos que valem como [token] no texto). */
+function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="label mr-1">Ícone:</span>
+      <button type="button" onClick={() => onChange('')} className={`no-drag rounded-lg px-2 py-1 text-[10px] font-extrabold ${value === '' ? 'bg-gold/40 ring-2 ring-gold' : 'bg-sky/10'}`}>nenhum</button>
+      {Object.entries(MSG_ICONS).filter(([k]) => !['saldo'].includes(k)).map(([k, src]) => (
+        <button key={k} type="button" onClick={() => onChange(k)} title={`[${k}]`} className={`no-drag rounded-lg p-1 ${value === k ? 'bg-gold/40 ring-2 ring-gold' : 'bg-sky/10'}`}><img src={src} alt={k} className="h-6 w-6 object-contain" /></button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Aviso para todos (caixa de mensagens de cada jogador) ──────────────────
 function BroadcastPanel() {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
+  const [icon, setIcon] = useState('aviso');
   const [busy, setBusy] = useState(false);
   async function send() {
     if (busy || !title.trim() || !text.trim()) return;
     if (!window.confirm('Enviar este aviso para TODOS os jogadores? Cada um recebe uma mensagem na caixa.')) return;
     setBusy(true);
-    try { const r = await api.adminMessage({ all: true, title: title.trim(), text: text.trim() }); toast(`Aviso enviado para ${r.sent} jogadores.`, 'success'); setTitle(''); setText(''); }
+    try { const r = await api.adminMessage({ all: true, title: title.trim(), text: text.trim(), icon: icon || null }); toast(`Aviso enviado para ${r.sent} jogadores.`, 'success'); setTitle(''); setText(''); }
     catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   }
   return (
@@ -398,7 +416,9 @@ function BroadcastPanel() {
       <p className="mb-2 text-[11px] font-bold leading-snug text-muted">Atualizações, compensações, novidades: uma mensagem na caixa de cada jogador (o envelope no topo mostra o selo). Para falar com um jogador só, abra o perfil dele na aba Jogadores.</p>
       <div className="flex flex-col gap-2">
         <input className="field" placeholder="Título (até 80 caracteres)" maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea className="field min-h-[120px]" placeholder="Texto (até 2000 caracteres)" maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea className="field min-h-[120px]" placeholder="Texto (até 2000 caracteres). Ícones no texto: [vip] [coin] [gol] [trofeu] [caveira] [presente] [energia] [alvo]" maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} />
+        <IconPicker value={icon} onChange={setIcon} />
+        {text.trim() && <div className="rounded-xl bg-sky/10 p-2 text-[12px] font-bold text-navy-ink"><span className="label block">Prévia</span><MsgText text={text} /></div>}
         <button className="btn btn-orange btn-md" disabled={busy || !title.trim() || !text.trim()} onClick={send}>{busy ? 'Enviando…' : 'Enviar para todos'}</button>
       </div>
     </Panel>

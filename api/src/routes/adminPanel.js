@@ -326,21 +326,21 @@ adminPanel.get(['/x1', '/futprego'], handle(async (req) => {
 adminPanel.get('/users/:id/mensagens', handle(async (req) => {
   const u = await fullUser(Number(req.params.id));
   const rows = await prisma.message.findMany({ where: { userId: u.id }, orderBy: { id: 'desc' }, take: 30, include: { from: { select: { nick: true } } } });
-  return { unread: rows.filter((m) => !m.readAt).length, messages: rows.map((m) => ({ id: m.id, kind: m.kind, title: m.title, text: m.text, read: !!m.readAt, at: m.createdAt, from: m.from?.nick ?? null })) };
+  return { unread: rows.filter((m) => !m.readAt).length, messages: rows.map((m) => ({ id: m.id, kind: m.kind, icon: m.icon ?? null, title: m.title, text: m.text, read: !!m.readAt, at: m.createdAt, from: m.from?.nick ?? null })) };
 }));
 
 // ─── Mensagens (pedido do dono, 15/09/2026): recado para um jogador ou aviso para todos ──────
 // POST /api/painel/mensagens {userId?, all?, title, text}: com `all` cria uma linha por jogador vivo.
 adminPanel.post('/mensagens', handle(async (req) => {
-  const body = z.object({ userId: z.number().int().positive().optional(), all: z.boolean().optional(), title: z.string().trim().min(1).max(80), text: z.string().trim().min(1).max(2000) }).parse(req.body);
+  const body = z.object({ userId: z.number().int().positive().optional(), all: z.boolean().optional(), title: z.string().trim().min(1).max(80), text: z.string().trim().min(1).max(2000), icon: z.string().max(80).nullable().optional() }).parse(req.body);
   if (body.all) {
-    const n = await broadcast({ title: body.title, text: body.text, fromId: req.user.id });
+    const n = await broadcast({ title: body.title, text: body.text, fromId: req.user.id, icon: body.icon ?? null });
     await audit(req.user.id, null, 'aviso', { title: body.title, para: n });
     return { ok: true, sent: n };
   }
   if (!body.userId) throw badRequest('Escolha o jogador ou marque "todos".');
   const u = await fullUser(body.userId);
-  await sendMessage(u.id, { kind: 'ADMIN', title: body.title, text: body.text, fromId: req.user.id });
+  await sendMessage(u.id, { kind: 'ADMIN', title: body.title, text: body.text, fromId: req.user.id, icon: body.icon ?? null });
   await audit(req.user.id, u.id, 'mensagem', { title: body.title });
   return { ok: true, sent: 1 };
 }));

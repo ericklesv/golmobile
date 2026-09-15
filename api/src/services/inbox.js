@@ -11,22 +11,31 @@ export const MESSAGE_KINDS = ['ADMIN', 'AVISO', 'COMPRA', 'PRESENTE', 'PREMIO'];
 const PAGE = 30;
 
 /** Uma mensagem para um jogador. `kind`: ADMIN (recado do admin) · AVISO (atualização geral) · COMPRA · PRESENTE · PREMIO. */
-export async function sendMessage(userId, { kind = 'ADMIN', title, text, fromId = null }, db = prisma) {
+/** Ícones que uma mensagem pode ter na lista (os mesmos tokens de [vip], [coin]… do texto — MsgText.tsx no front). */
+export const MESSAGE_ICONS = {
+  vip: '/ui/ico-crown_silver.png', coin: '/ui/ico-coin01_s.png', dinheiro: '/ui/ico-goldpouch.png', gol: '/ui/ico-ball.png',
+  trofeu: '/ui/ico-trophy_gold.png', medalha: '/ui/ico-medal_gold.png', estrela: '/ui/ico-star_gold.png', presente: '/ui/ico-gift_purple.png',
+  caveira: '/ui/ico-skull_gold.png', energia: '/ui/ico-energy.png', alvo: '/ui/ico-target.png', aviso: '/ui/pi-bell.png',
+};
+const iconOf = (icon) => (icon ? (MESSAGE_ICONS[icon] ?? (String(icon).startsWith('/ui/') ? icon : null)) : null);
+
+export async function sendMessage(userId, { kind = 'ADMIN', title, text, fromId = null, icon = null }, db = prisma) {
   if (!MESSAGE_KINDS.includes(kind)) throw badRequest('Tipo de mensagem inválido.');
   const t = String(title ?? '').trim().slice(0, 80), body = String(text ?? '').trim().slice(0, 2000);
   if (!t || !body) throw badRequest('Título e texto são obrigatórios.');
-  return db.message.create({ data: { userId, kind, title: t, text: body, fromId } });
+  return db.message.create({ data: { userId, kind, title: t, text: body, fromId, icon: iconOf(icon) } });
 }
 
 /** Aviso para TODOS os jogadores vivos (uma linha por jogador, em lotes). Devolve quantos receberam. */
-export async function broadcast({ title, text, fromId = null, kind = 'AVISO' }) {
+export async function broadcast({ title, text, fromId = null, kind = 'AVISO', icon = null }) {
   const t = String(title ?? '').trim().slice(0, 80), body = String(text ?? '').trim().slice(0, 2000);
   if (!t || !body) throw badRequest('Título e texto são obrigatórios.');
+  const ic = iconOf(icon);
   let total = 0, cursor = 0;
   for (;;) {
     const users = await prisma.user.findMany({ where: { deletedAt: null, id: { gt: cursor } }, select: { id: true }, orderBy: { id: 'asc' }, take: 500 });
     if (!users.length) break;
-    await prisma.message.createMany({ data: users.map((u) => ({ userId: u.id, kind, title: t, text: body, fromId })) });
+    await prisma.message.createMany({ data: users.map((u) => ({ userId: u.id, kind, title: t, text: body, fromId, icon: ic })) });
     total += users.length;
     cursor = users[users.length - 1].id;
   }
@@ -35,7 +44,7 @@ export async function broadcast({ title, text, fromId = null, kind = 'AVISO' }) 
 
 export const unreadCount = (userId, db = prisma) => db.message.count({ where: { userId, readAt: null } });
 
-const view = (m) => ({ id: m.id, kind: m.kind, title: m.title, text: m.text, read: !!m.readAt, at: m.createdAt.getTime(), from: m.from?.nick ?? null });
+const view = (m) => ({ id: m.id, kind: m.kind, icon: m.icon ?? null, title: m.title, text: m.text, read: !!m.readAt, at: m.createdAt.getTime(), from: m.from?.nick ?? null });
 
 export async function inboxList(userId, page = 1) {
   const p = Math.max(1, Math.floor(Number(page) || 1));
@@ -60,11 +69,11 @@ export async function markAllRead(userId) {
 
 /** Atalhos com o texto padrão (PT-BR). Falha aqui nunca derruba a ação principal: quem chama envolve em catch. */
 export const notify = {
-  purchase: (userId, { days, money, purchaseId }, db) => sendMessage(userId, { kind: 'COMPRA', title: 'Compra aprovada!', text: `Seu PIX foi confirmado: +${days} VIP guardados${money > 0 ? ` e +R$ ${money.toLocaleString('pt-BR')} de saldo` : ''} na sua conta. Obrigado por apoiar o JogaGol! (compra #${purchaseId})` }, db),
-  adminVip: (userId, qtd, fromId, db) => sendMessage(userId, { kind: qtd > 0 ? 'PRESENTE' : 'ADMIN', title: qtd > 0 ? `Você recebeu ${qtd} VIP` : `${-qtd} VIP retirados`, text: qtd > 0 ? `A administração colocou ${qtd} VIP no seu banco de dias. Ative quando quiser na Loja.` : `A administração retirou ${-qtd} VIP do seu banco de dias.`, fromId }, db),
-  adminMoney: (userId, qtd, fromId, db) => sendMessage(userId, { kind: qtd > 0 ? 'PRESENTE' : 'ADMIN', title: qtd > 0 ? `Você recebeu R$ ${qtd.toLocaleString('pt-BR')}` : `R$ ${(-qtd).toLocaleString('pt-BR')} retirados`, text: qtd > 0 ? `A administração adicionou R$ ${qtd.toLocaleString('pt-BR')} ao seu saldo.` : `A administração retirou R$ ${(-qtd).toLocaleString('pt-BR')} do seu saldo.`, fromId }, db),
-  referralInviter: (userId, { friend, goals, vip }, db) => sendMessage(userId, { kind: 'PRESENTE', title: `+${vip} VIP pelo convite`, text: `${friend} chegou a ${goals} gols na carreira e você ganhou ${vip} VIP no banco de dias. Convide mais amigos no Perfil!` }, db),
-  referralInvitee: (userId, { inviter, goals, vip }, db) => sendMessage(userId, { kind: 'PRESENTE', title: `+${vip} VIP: ${goals} gols!`, text: `Você entrou pelo convite de ${inviter} e chegou a ${goals} gols na carreira: ${vip} VIP no seu banco de dias. Continue marcando — tem mais nos próximos marcos.` }, db),
-  gift: (userId, { from, days }, db) => sendMessage(userId, { kind: 'PRESENTE', title: `${from} mandou ${days} VIP`, text: `${from}, seu colega de time, doou ${days} VIP para você. Já está no seu banco de dias.` }, db),
-  x1Prize: (userId, { label, pos, money, vip }, db) => sendMessage(userId, { kind: 'PREMIO', title: `${pos}º do Ranking X1 da ${label}`, text: `Você ficou em ${pos}º no Ranking X1 da ${label} e ganhou ${[money > 0 ? `R$ ${money.toLocaleString('pt-BR')}` : null, vip > 0 ? `${vip} VIP` : null].filter(Boolean).join(' + ')}. Parabéns!` }, db),
+  purchase: (userId, { days, money, purchaseId }, db) => sendMessage(userId, { kind: 'COMPRA', icon: 'vip', title: 'Compra aprovada!', text: `Seu PIX foi confirmado: [vip] +${days} VIP guardados${money > 0 ? ` e [coin] +R$ ${money.toLocaleString('pt-BR')} de saldo` : ''} na sua conta. Obrigado por apoiar o JogaGol! (compra #${purchaseId})` }, db),
+  adminVip: (userId, qtd, fromId, db) => sendMessage(userId, { kind: qtd > 0 ? 'PRESENTE' : 'ADMIN', icon: 'vip', title: qtd > 0 ? `Você recebeu ${qtd} VIP` : `${-qtd} VIP retirados`, text: qtd > 0 ? `A administração colocou [vip] ${qtd} VIP no seu banco de dias. Ative quando quiser na Loja.` : `A administração retirou [vip] ${-qtd} VIP do seu banco de dias.`, fromId }, db),
+  adminMoney: (userId, qtd, fromId, db) => sendMessage(userId, { kind: qtd > 0 ? 'PRESENTE' : 'ADMIN', icon: 'coin', title: qtd > 0 ? `Você recebeu R$ ${qtd.toLocaleString('pt-BR')}` : `R$ ${(-qtd).toLocaleString('pt-BR')} retirados`, text: qtd > 0 ? `A administração adicionou [coin] R$ ${qtd.toLocaleString('pt-BR')} ao seu saldo.` : `A administração retirou [coin] R$ ${(-qtd).toLocaleString('pt-BR')} do seu saldo.`, fromId }, db),
+  referralInviter: (userId, { friend, goals, vip }, db) => sendMessage(userId, { kind: 'PRESENTE', icon: 'presente', title: `+${vip} VIP pelo convite`, text: `${friend} chegou a [gol] ${goals} gols na carreira e você ganhou [vip] ${vip} VIP no banco de dias. Convide mais amigos no Perfil!` }, db),
+  referralInvitee: (userId, { inviter, goals, vip }, db) => sendMessage(userId, { kind: 'PRESENTE', icon: 'presente', title: `+${vip} VIP: ${goals} gols!`, text: `Você entrou pelo convite de ${inviter} e chegou a [gol] ${goals} gols na carreira: [vip] ${vip} VIP no seu banco de dias. Continue marcando — tem mais nos próximos marcos.` }, db),
+  gift: (userId, { from, days }, db) => sendMessage(userId, { kind: 'PRESENTE', icon: 'vip', title: `${from} mandou ${days} VIP`, text: `${from}, seu colega de time, doou [vip] ${days} VIP para você. Já está no seu banco de dias.` }, db),
+  x1Prize: (userId, { label, pos, money, vip }, db) => sendMessage(userId, { kind: 'PREMIO', icon: 'caveira', title: `${pos}º do Ranking X1 da ${label}`, text: `[caveira] Você ficou em ${pos}º no Ranking X1 da ${label} e ganhou ${[money > 0 ? `[coin] R$ ${money.toLocaleString('pt-BR')}` : null, vip > 0 ? `[vip] ${vip} VIP` : null].filter(Boolean).join(' + ')}. Parabéns!` }, db),
 };

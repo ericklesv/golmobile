@@ -43,7 +43,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Ordem da tabela = `standingOrder`** (pontos, saldo, gols pró, nome), a MESMA na tela, na
   página do time e no título/acesso/rebaixamento. **Prêmio de time** (campeão/vice, VIP de
   `PRIZES.team`): vai para quem marcou pelo menos 1 gol pelo time na temporada (decisão do
-  dono; só estar no time não conta — trocar de time é livre, salvo contrato de contratação). Gols da hora/rodada/temporada do jogador
+  dono; só estar no time não conta — trocar de time custa R$ 50 mil ou 1 VIP na Loja, e contrato de contratação segura). Gols da hora/rodada/temporada do jogador
   ficam gravados até o próximo gol dele: na tela, sempre via `periodGoals` (`view.js`).
   **Mexeu na liga? Rode `node scripts/sim-liga.js`** (pasta api/, só banco LOCAL, schema
   `liga_sim` criado e apagado por ele): temporada inteira de 30 rodadas + virada, com gols no
@@ -124,7 +124,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   com validade/nível/equipada/consumida e `ShopLog`): Energia do chute nv 1–5 (−10 %/nível na
   recarga de pênalti/falta/trilha, 28 h), Boost Auto (−60 s no chute direto, 28 h), Caneleira
   (última linha da trilha; gasta quando a trilha termina na última linha), Chuteiras (+2 % a +10 %
-  em pênalti/falta, 30 dias, só uma equipada), troca de nick, cor do nick (`User.nickColor`, nível 8+).
+  em pênalti/falta, 30 dias, só uma equipada), troca de nick, cor do nick (`User.nickColor`, nível 8+),
+  **Troca de time** (dono, 15/09/2026: R$ 50 mil ou 1 VIP do banco; `TEAM_CHANGE` + `changeTeam` em `services/shop.js`,
+  `POST /api/shop/team {teamSlug, currency}`; antes era de graça e sem tela — o endereço antigo `/api/me/change-team`
+  agora cobra igual, nunca voltar a trocar de graça por ele; o painel de admin continua trocando sem cobrar). Contrato
+  de contratação segura (409 sem cobrar); sai da diretoria (propostas abertas voltam); zera o contador da rodada; trava a
+  linha do jogador (FOR UPDATE, como o aceite). Tela: linha no painel PERFIL da Loja com o escudo do time escolhido.
+  **Mexeu? Rode `node scripts/test-troca-time.js`** (pasta api/, só banco LOCAL; tem de dar "TUDO OK").
   Os efeitos entram por `cooldownFor` (rules.js → `applyItemCooldown`), `bootBonus` nas chances e
   `shinGuard` no layout da trilha — **o usuário precisa vir com `items`**: carregue com
   `meInclude()` (items.js) em tudo que vira `meView`. Preços/regras: só em `items.js`.
@@ -505,9 +511,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   também vale aqui. **Pendente: hospedar o build do ManagolTV em `/tv/` na VPS (nginx).**
 
 ## Endpoints
-`POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `nickFade`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team|nerf/:nick|nick-fade{from,to}` · `PUT /api/me/bio`
+`POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `nickFade`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team{teamSlug,currency} (PAGA, = /api/shop/team)|nerf/:nick|nick-fade{from,to}` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
-`GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}` (loja; catálogo também em `/api/meta.items`)
+`GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}|team{teamSlug,currency}` (loja; catálogo também em `/api/meta.items`)
 `GET /api/pass` · `POST /api/pass/claim` (Presença da Semana — login diário) · `GET /api/ref/me` · `GET /api/ref/:code` (convites; o cadastro aceita `ref`)
 `GET /api/club|club/candidates` · `POST /api/club/claim|resign|directors{nick}|directors/remove{nick}|pass{nick}|offers{nick,vip,message}|offers/:id/accept|offers/:id/refuse|offers/:id/cancel|gift{nick,days}` (diretoria e contratações; a diretoria pública vem em `GET /api/teams/:slug` → `board`)
 `GET /api/vip|vip/purchases/:id` · `POST /api/vip/buy{pack}|vip/purchases/:id/test-pay` (só `EFI_FAKE`) · `POST /api/pay/efi/:secret[/pix]` (aviso da Efí, sem login)

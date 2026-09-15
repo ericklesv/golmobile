@@ -92,7 +92,7 @@ export function parseNickFade(value) {
 
 /**
  * Catálogo. `kind`: 'boost' (validade 28 h), 'boot' (chuteira, 30 dias, só uma
- * equipada), 'service' (troca de nick / cor — sem UserItem, efeito imediato).
+ * equipada), 'service' (troca de nick / de time / cor — sem UserItem, efeito imediato).
  * `icon` é um PNG do kit em web/public/ui/ (nada de emoji).
  */
 export const ITEMS = [
@@ -120,6 +120,12 @@ export const ITEMS = [
   {
     key: 'NICK_CHANGE', kind: 'service', category: 'perfil', name: 'Troca de nick', icon: 'pi-edit',
     desc: 'Escolha um nick novo (3 a 14 caracteres: letras, números, _ . -). Precisa estar livre.', price: 20000,
+  },
+  {
+    // dono, 15/09/2026: trocar de time passa a custar R$ 50 mil ou 1 VIP (antes era de graça e sem tela) — services/shop.js changeTeam
+    key: 'TEAM_CHANGE', kind: 'service', category: 'perfil', name: 'Troca de time', icon: 'flag-green',
+    desc: 'Vá jogar por outro clube. Os gols que você já marcou ficam com o time de agora, e quem é da diretoria sai do cargo.',
+    price: 50000, priceVip: 1,
   },
   {
     key: 'NICK_COLOR', kind: 'service', category: 'perfil', name: 'Cor do nick', icon: 'ico-emoji',

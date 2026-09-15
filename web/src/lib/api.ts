@@ -53,7 +53,6 @@ export const api = {
   buyDexterity: (qty = 1) => req<Me>('POST', '/api/me/buy-dexterity', { qty }),
   nerf: (nick: string) => req<{ ok: boolean; me: Me }>('POST', `/api/me/nerf/${encodeURIComponent(nick)}`),
   activateVip: (days: number) => req<Me>('POST', '/api/me/activate-vip', { days }),
-  changeTeam: (teamSlug: string) => req<Me>('POST', '/api/me/change-team', { teamSlug }),
   // play
   autoKick: () => req<KickResult>('POST', '/api/play/auto'),
   penalty: (direction: 'left' | 'center' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/penalty', { direction, ...(captcha ?? {}) }),
@@ -152,6 +151,7 @@ export const api = {
   shopEquip: (key: string) => req<Me>('POST', '/api/shop/equip', { key }),
   shopNick: (nick: string) => req<Me>('POST', '/api/shop/nick', { nick }),
   shopNickColor: (color: string | null) => req<Me>('POST', '/api/shop/nick-color', { color }),
+  shopTeam: (teamSlug: string, currency: 'money' | 'vip') => req<Me>('POST', '/api/shop/team', { teamSlug, currency }), // Troca de time (paga)
   // painel de admin (só usuários com isAdmin; o servidor nega os demais)
   adminUsers: (q = '', page = 1, order: 'recentes' | 'criadas' = 'recentes') => req<AdminUsersPage>('GET', `/api/painel/users?q=${encodeURIComponent(q)}&page=${page}&order=${order}`),
   adminUser: (id: number) => req<AdminUserDetail>('GET', `/api/painel/users/${id}`),

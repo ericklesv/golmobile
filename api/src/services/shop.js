@@ -1,6 +1,6 @@
 /**
  * Loja — compra de itens (Energia, Boost Auto, Caneleira, chuteiras), troca e cor
- * do nick. Catálogo/efeitos em lib/items.js; o que o jogador tem em UserItem;
+ * do nick, troca de time. Catálogo/efeitos em lib/items.js; o que o jogador tem em UserItem;
  * toda compra vai para ShopLog. Tudo em transação; o débito é atômico (updateMany
  * com `money >= preço`), como o resto do jogo.
  */
@@ -12,6 +12,7 @@ import {
   activeItemsWhere, itemsView, catalogView, energyLevel, meInclude,
 } from '../lib/items.js';
 import { meView } from './view.js';
+import { leaveClub } from './club.js';
 
 const fmt = (n) => `R$ ${n.toLocaleString('pt-BR')}`;
 
@@ -132,6 +133,34 @@ export async function changeNick(userId, nick) {
     await tx.user.update({ where: { id: userId }, data: { nick: clean, nickLower } });
     await log(tx, userId, 'NICK_CHANGE', def.price, 'money');
     await tx.activity.create({ data: { userId, teamId: me.teamId, kind: 'AUTO', goal: false, text: `${me.nick} agora se chama ${clean}.` } });
+    return meView(await freshMe(tx, userId));
+  });
+}
+
+/**
+ * Troca de time (paga: R$ 50 mil ou 1 VIP do banco — dono, 15/09/2026; antes era de graça). Contrato de contratação
+ * segura (409 `contract`); quem é da diretoria sai do cargo e as propostas que fez voltam (leaveClub); o contador da
+ * rodada zera — os gols já feitos ficam com o time antigo (Goal.teamId). A linha do jogador fica travada (FOR UPDATE)
+ * como no aceite de proposta: um aceite e uma troca ao mesmo tempo não passam os dois.
+ */
+export async function changeTeam(userId, teamSlug, currency = 'money') {
+  const def = ITEM_BY_KEY.TEAM_CHANGE;
+  if (!['money', 'vip'].includes(currency)) throw badRequest('Moeda inválida.');
+  const team = await prisma.team.findUnique({ where: { slug: String(teamSlug || '') } });
+  if (!team) throw badRequest('Time inválido.');
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+    const me = await tx.user.findUnique({ where: { id: userId }, include: { team: true } });
+    if (team.id === me.teamId) throw badRequest('Você já é desse time.');
+    if (me.contractUntil && me.contractUntil.getTime() > Date.now()) {
+      throw new GameError(409, 'contract', `Você tem contrato com o ${me.team.name} até ${me.contractUntil.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Depois disso pode trocar de time.`);
+    }
+    const price = currency === 'vip' ? def.priceVip : def.price;
+    await charge(tx, userId, price, currency);
+    await leaveClub(tx, userId);
+    await tx.user.update({ where: { id: userId }, data: { teamId: team.id, goalsRound: 0, roundId: null } });
+    await log(tx, userId, 'TEAM_CHANGE', price, currency);
+    await tx.activity.create({ data: { userId, teamId: team.id, kind: 'AUTO', goal: false, text: `${me.nick} agora joga pelo ${team.name}.` } });
     return meView(await freshMe(tx, userId));
   });
 }

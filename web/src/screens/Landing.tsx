@@ -22,7 +22,7 @@ const about = [
 const faq = [
   { q: 'O JogaGol é grátis?', a: 'Sim. Criar conta, escolher o clube, chutar e disputar a artilharia é grátis. O VIP é opcional e dá recargas mais rápidas e vantagens na diretoria do time.' },
   { q: 'Precisa baixar alguma coisa?', a: 'Não. Abre direto no navegador do celular ou do PC e pode ser instalado como aplicativo. A versão para Android na Google Play está a caminho.' },
-  { q: 'Posso trocar de time?', a: 'Pode, a qualquer momento — salvo quando você aceita um contrato de contratação de outro clube, que prende por alguns dias.' },
+  { q: 'Posso trocar de time?', a: 'Pode, comprando a Troca de time na Loja do jogo — salvo quando você aceita um contrato de contratação de outro clube, que prende por alguns dias.' },
 ];
 
 export function LandingScreen() {

@@ -9,7 +9,8 @@ import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf, isVip } from '../lib/rul
 import { meInclude, parseNickFade } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
 import { clientIp } from '../lib/ip.js';
-import { leaveClub, pendingOffers } from '../services/club.js';
+import { pendingOffers } from '../services/club.js';
+import { changeTeam } from '../services/shop.js';
 import { unreadCount } from '../services/inbox.js';
 
 export const me = Router();
@@ -120,19 +121,6 @@ me.post('/activate-vip', handle(async (req) => {
   return meView(u);
 }));
 
-me.post('/change-team', handle(async (req) => {
-  const team = await prisma.team.findUnique({ where: { slug: String(req.body?.teamSlug || '') } });
-  if (!team) throw badRequest('Time inválido.');
-  if (team.id === req.user.teamId) throw badRequest('Você já é desse time.');
-  if (req.user.contractUntil && req.user.contractUntil.getTime() > Date.now()) {
-    const cur = await prisma.team.findUnique({ where: { id: req.user.teamId } });
-    throw new GameError(409, 'contract', `Você tem contrato com o ${cur.name} até ${req.user.contractUntil.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}. Depois disso pode trocar de time.`);
-  }
-  // Movimentação: zera contadores de rodada (gols já feitos ficam com o time antigo); sai da diretoria
-  const u = await prisma.$transaction(async (tx) => {
-    await leaveClub(tx, req.user.id);
-    return tx.user.update({ where: { id: req.user.id }, data: { teamId: team.id, goalsRound: 0, roundId: null }, include: meInclude() });
-  });
-  await prisma.activity.create({ data: { userId: u.id, teamId: team.id, kind: 'AUTO', goal: false, text: `${u.nick} agora joga pelo ${team.name}.` } });
-  return meView(u);
-}));
+// Trocar de time é PAGO desde 15/09/2026 (item "Troca de time" da Loja: R$ 50 mil ou 1 VIP) — este endereço antigo
+// cobra igual (services/shop.js changeTeam); nunca voltar a trocar de graça por aqui.
+me.post('/change-team', handle((req) => changeTeam(req.user.id, req.body?.teamSlug, req.body?.currency || 'money')));

@@ -7,6 +7,7 @@ import { Panel } from '../components/ui';
 import { toast } from '../components/Toast';
 import { money as fmt, timeLeft as remaining, untilLabel } from '../lib/format';
 import { VipBar, useVipLeft } from '../components/VipBar';
+import { Shield } from '../components/Shield';
 import type { Me, ShopItemDef, ShopView, UserItemView } from '../lib/types';
 
 const NICK_RULE = /^[a-zA-Z0-9_.\-]{3,14}$/;
@@ -20,12 +21,14 @@ interface RowProps {
   icon: string; title: string; desc: string; sub?: React.ReactNode; badge?: React.ReactNode; active?: boolean;
   price?: string; cta?: string; busyKey?: string; disabled?: boolean; onClick?: () => void;
   children?: React.ReactNode; extra?: React.ReactNode; busy: string | null;
+  /** no lugar do ícone do kit (ex.: o escudo do time escolhido na Troca de time) */
+  iconNode?: React.ReactNode;
 }
 /** Linha de item: ícone do kit, título, descrição, preço (trap) e botão (sprite). */
-function Row({ icon, title, desc, sub, badge, active, price, cta, busyKey, disabled, onClick, children, extra, busy }: RowProps) {
+function Row({ icon, title, desc, sub, badge, active, price, cta, busyKey, disabled, onClick, children, extra, busy, iconNode }: RowProps) {
   return (
     <div className={`flex items-center gap-3 rounded-xl p-2 ${active ? 'bg-grass/15' : 'bg-sky/10'}`}>
-      <img src={`/ui/${icon}.png`} className="h-10 w-10 shrink-0 object-contain" alt="" />
+      {iconNode ?? <img src={`/ui/${icon}.png`} className="h-10 w-10 shrink-0 object-contain" alt="" />}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5"><span className="t-display text-[14px] text-navy-ink">{title}</span>{badge}</div>
         <div className="text-[11px] font-bold leading-snug text-muted">{desc}</div>
@@ -49,6 +52,7 @@ export function ShopScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopView | null>(null);
   const [nick, setNick] = useState('');
+  const [teamSlug, setTeamSlug] = useState(''); // Troca de time: o clube escolhido
   const [, tick] = useState(0);
   const vipLeft = useVipLeft();
   const dexPrice = meta?.money.DEXTERITY_PRICE ?? 1000;
@@ -134,6 +138,42 @@ export function ShopScreen() {
     );
   };
 
+  // Troca de time (R$ ou VIP): o escudo no lugar do ícone mostra para onde vai; confirma antes de cobrar
+  const teamRow = (def: ShopItemDef) => {
+    const others = (meta?.teams ?? []).filter((t) => t.slug !== me.team.slug);
+    const picked = others.find((t) => t.slug === teamSlug) ?? null;
+    const contract = me.contractUntil && me.contractUntil > now() ? me.contractUntil : null;
+    const price = def.price ?? 0, priceVip = def.priceVip ?? 1;
+    const change = (currency: 'money' | 'vip') => run(`team:${currency}`, async () => {
+      if (!picked) return;
+      const cost = currency === 'vip' ? `${priceVip} VIP` : fmt(price);
+      if (!window.confirm(`Jogar pelo ${picked.name} por ${cost}?\nOs gols que você já marcou ficam com o ${me.team.name}.`)) return;
+      const r = await api.shopTeam(picked.slug, currency);
+      toast(`Agora você joga pelo ${picked.name}!`, 'success');
+      setTeamSlug('');
+      return r;
+    });
+    return (
+      <Row key={def.key} icon={def.icon} iconNode={<Shield team={picked ?? me.team} size={40} className="shrink-0" />} title={def.name} desc={def.desc} busy={busy}
+        badge={contract ? <span className="trap trap-blue text-[11px]">CONTRATO</span> : null}
+        price={fmt(price)} cta="Trocar" busyKey="team:money" disabled={!picked || !!contract || me.money < price} onClick={() => change('money')}
+        extra={<button onClick={() => change('vip')} disabled={busy !== null || !picked || !!contract || me.vipDays < priceVip} className="btn btn-sky btn-sm min-w-[64px]">{busy === 'team:vip' ? '…' : `${priceVip} VIP`}</button>}>
+        {contract ? (
+          <div className="mt-1 text-[11px] font-extrabold text-danger">Contrato com o {me.team.name} até {new Date(contract).toLocaleDateString('pt-BR')}: depois disso você pode trocar.</div>
+        ) : (
+          <select className="field mt-1 text-[14px]" value={teamSlug} onChange={(e) => setTeamSlug(e.target.value)} aria-label="Time novo">
+            <option value="">Escolha o time</option>
+            {(['A', 'B', 'C'] as const).map((s) => (
+              <optgroup key={s} label={`Série ${s}`}>
+                {others.filter((t) => t.serie === s).map((t) => <option key={t.slug} value={t.slug}>{t.name}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        )}
+      </Row>
+    );
+  };
+
   const colorRow = (def: ShopItemDef) => {
     const locked = me.level.lvl < (def.minLevel ?? 0);
     const current = me.nickColor;
@@ -157,6 +197,7 @@ export function ShopScreen() {
   const render = (def: ShopItemDef) => {
     if (def.key === 'ENERGY') return energyRow(def);
     if (def.key === 'NICK_CHANGE') return nickRow(def);
+    if (def.key === 'TEAM_CHANGE') return teamRow(def);
     if (def.key === 'NICK_COLOR') return colorRow(def);
     if (def.kind === 'boot') return bootRow(def);
     return boostRow(def);

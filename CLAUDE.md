@@ -227,7 +227,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   do `game.js` (rankings/liga/home/teams/ativos/feed 5 s, meta 10 s) — nunca em rota com dado do usuário;
   busca 60/min, foto 10/15 min; `helmet` (sem CSP). Tudo em memória = 1 instância PM2. **Mexeu nisso? Rode
   `node scripts/test-seguranca.js`** (pasta api/, só banco LOCAL): tem de dar "TUDO OK". O DDoS de verdade
-  é na borda: Cloudflare + `real_ip` no nginx + ufw só com as faixas dela (docs).
+  é na borda: Cloudflare + `real_ip` no nginx + ufw só com as faixas dela (docs). **Na VPS (15/09):** nginx com
+  `limit_req` (20 r/s na API, 5 r/s em `/api/auth/`, 429), cabeçalhos de segurança, fail2ban (sshd +
+  nginx), SSH só por chave, unattended-upgrades. **Backup:** diário na VPS (`/usr/local/bin/brgol-backup.sh`
+  = `tools/vps/brgol-backup.sh`, 03:40, `/var/backups/brgol`) + cópia mensal no PC do Guilherme
+  (`tools/backup-local.ps1`, tarefa "JogaGol backup mensal"). Restaurar: `docs/SEGURANCA.md` → Backup.
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
   `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).
@@ -384,6 +388,10 @@ servidos pelo próprio Express em `/api/uploads/`.
 ## Regras de trabalho (valem para todo mundo e toda IA no projeto)
 - **Commit + push em `main` a cada alteração concluída** (não acumular trabalho local): o
   outro colaborador precisa sempre ter a versão atual pelo git. Commits em PT-BR.
+- **Ramo `prod`** (desde 15/09/2026): quando o `main` tem trabalho inacabado do outro colaborador, o que já
+  está pronto vai para produção por cherry-pick no ramo `prod` e deploy com
+  `sed 's/^BRANCH=main/BRANCH=prod/' /usr/local/bin/brgol-deploy.sh | bash` na VPS. O deploy padrão
+  publica o `main` inteiro — usar só quando tudo que está lá pode ir ao ar.
 - **O jogo roda SOMENTE na VPS do Managol** (`root@187.127.17.121`, projeto em
   `/var/www/brgol/app`). Não existe ambiente local nem outra hospedagem. Todo deploy é
   `bash /usr/local/bin/brgol-deploy.sh` na VPS, rodado manualmente via SSH (faz `git reset --hard

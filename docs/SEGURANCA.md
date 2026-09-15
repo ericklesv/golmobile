@@ -87,38 +87,43 @@ com o passo 1 e a Cloudflare já segura o grosso (o IP de origem fica "secreto" 
 - `helmet` na API (nosniff, x-frame-options, referrer-policy…; CSP fica para o nginx).
 - Já existia: recargas validadas no servidor, captcha a cada 10 chutes, teto global de 300 req/min/IP.
 
-## 4. VPS (comandos para autorizar — independem da Cloudflare)
-```bash
-# nginx: fila por IP na API (20 req/s com rajada de 40; excedente = 429) e sem versão no cabeçalho
-# em /etc/nginx/nginx.conf, dentro de http { }:
-#   limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
-#   limit_conn_zone $binary_remote_addr zone=conn:10m;
-#   server_tokens off;
-# em /etc/nginx/sites-available/brgol, dentro do location /api/:
-#   limit_req zone=api burst=40 nodelay;  limit_req_status 429;
-#   limit_conn conn 30;
-nginx -t && systemctl reload nginx
+## 4. VPS — FEITO em 15/09/2026 (independe da Cloudflare)
+O que está na VPS (conferido de fora depois de aplicar):
+- **nginx** — `/etc/nginx/conf.d/brgol-limits.conf`: zonas `brgol_api` (20 req/s por IP, rajada 40),
+  `brgol_auth` (5 req/s, rajada 10 — no `location /api/auth/`), `brgol_conn` (30 conexões por IP),
+  excedente = **429**, `server_tokens off`. Teste feito: 20 POSTs seguidos em `/api/auth/login` →
+  10× 401 e depois 10× 429. Cabeçalhos em `/etc/nginx/snippets/brgol-headers.conf` (nosniff,
+  X-Frame-Options SAMEORIGIN, Referrer-Policy, Permissions-Policy) incluídos no server e nos
+  `location` que têm `add_header` próprio (senão o nginx não herda). Backup do site antes da edição em
+  `/root/brgol.nginx.bak-<data>`. Bônus: `manifest.webmanifest` agora sai como `application/manifest+json`.
+- **fail2ban** — `/etc/fail2ban/jail.d/brgol.conf`: `sshd` (5 erros → 1 h), `nginx-limit-req` (30
+  estouros/min → 10 min), `nginx-botsearch` (10 buscas de arquivos suspeitos → 10 min). Ver:
+  `fail2ban-client status nginx-limit-req`.
+- **SSH só por chave** — `/etc/ssh/sshd_config.d/00-brgol-hardening.conf` (`PasswordAuthentication no`,
+  `PermitRootLogin prohibit-password`, `MaxAuthTries 4`). O `00-` é de propósito: no sshd vale o primeiro
+  valor lido e o `50-cloud-init.conf` da imagem ligava a senha. Quem precisar entrar (ericklesv) tem de
+  mandar a chave pública — igual já estava previsto no CLAUDE.md.
+- **unattended-upgrades** ligado (atualizações de segurança do Ubuntu sozinhas).
+- Postgres já escutava só em 127.0.0.1; ufw já era 22/80/443.
+- [ ] Monitor externo grátis (dono): https://uptimerobot.com → monitor HTTP em
+  `https://jogagol.com.br/api/health` a cada 5 min, alerta por e-mail para `contato@jogagol.com.br`.
 
-# fail2ban: SSH + quem toma 429/403 em série no nginx
-apt-get install -y fail2ban
-cat > /etc/fail2ban/jail.d/brgol.conf <<'EOF'
-[sshd]
-enabled = true
-[nginx-limit-req]
-enabled = true
-logpath = /var/log/nginx/error.log
-maxretry = 20
-findtime = 60
-bantime = 600
-EOF
-systemctl restart fail2ban && fail2ban-client status
-
-# Postgres só em localhost (conferir): deve mostrar 127.0.0.1:5432, nunca 0.0.0.0
-ss -ltnp | grep 5432
-```
-- [ ] Monitor externo grátis: https://uptimerobot.com → monitor HTTP em `https://jogagol.com.br/api/health`
-  a cada 5 min, alerta por e-mail para `contato@jogagol.com.br`.
-- [ ] Backup do banco: `pg_dump brgol` diário para fora da VPS (ainda não existe — item à parte).
+## Backup — FEITO em 15/09/2026 (na própria VPS + cópia mensal no PC)
+Decisão do dono: "não é o recomendado, mas é o que tem pra hoje".
+- **Diário na VPS**: `/usr/local/bin/brgol-backup.sh` (fonte em `tools/vps/brgol-backup.sh`), cron
+  `/etc/cron.d/brgol-backup` às 03:40. Gera `/var/backups/brgol/daily/jogagol-<data>.tar` (só root) com
+  `brgol-<data>.dump` (pg_dump formato custom), `uploads-<data>.tgz` (fotos) e `env-<data>` (o `api/.env`).
+  Guarda 14 diários; o do dia 01 vai para `monthly/` e fica 12 meses. Confere o dump com `pg_restore -l`.
+  Log: `/var/log/brgol/backup.log`. Testado com restore real num banco de teste (84 usuários = 84).
+- **Mensal no PC do Guilherme**: `tools/backup-local.ps1` puxa o pacote mais novo por scp para
+  `C:\Users\guicp\Backups\jogagol\<ano-mês>\` (guarda 12 meses; log `backup-local.log` na pasta).
+  Tarefa agendada do Windows **"JogaGol backup mensal"** (dia 1, 12:00; se o PC estiver desligado roda
+  quando ligar). Primeira cópia feita em 15/09.
+- **Restaurar** (na VPS): `T=$(mktemp -d); tar -xf /var/backups/brgol/daily/jogagol-<data>.tar -C $T;
+  chmod 755 $T; chmod 644 $T/*` → banco: `sudo -u postgres psql -c "CREATE DATABASE brgol_novo"` +
+  `sudo -u postgres pg_restore --no-owner -d brgol_novo $T/brgol-<data>.dump` (trocar o nome no
+  `DATABASE_URL` ou restaurar por cima do `brgol` com `--clean`) → fotos: `tar -xzf $T/uploads-<data>.tgz
+  -C /var/www/brgol/` → `.env`: copiar para `api/.env` → `pm2 restart brgol-api`.
 
 ## 5. Multi-conta (parcial)
 Já existe: contas da mesma conexão não negociam nem trocam VIP (diretoria), `lastIp` no painel.

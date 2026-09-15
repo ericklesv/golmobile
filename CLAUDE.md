@@ -244,6 +244,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   desce), some em `showMs` (2,8 s); som "pop" ao receber. **Silenciar** (X vermelho no balão do adversário ou na
   bandeja): só na tela de quem silenciou, vale a partida (zera na próxima; `resumed` mantém). No treino, o bot
   responde com uma sorteada. Mexeu? `node scripts/test-botao.js` tem o caso (relay, ritmo, chave inválida, VIP).
+  **Raio-X (brincadeira do dono, 15/09/2026; SÓ a conta MVGIC)**: na tela do X1 a tecla **R** liga/desliga a
+  trajetória exata da mira (traço branco; dourado + "GOL" quando entra; no Botão também o caminho do botão em azul).
+  Enquanto arrasta, a tela manda `{t:'preview', seq, dx, dy, power[, idx]}` (~12/s) e o servidor (`onPreview` em
+  `realtime/x1.js`, `XRAY_NICKS`) simula com a MESMA física do peteleco (`simulateFlick`/`simulateSnap` são
+  determinísticos — o sorteio só entra no goleiro dos pênaltis) e devolve `{t:'preview', seq, path, piece, goal}`;
+  outra conta é ignorada em silêncio. Nada no banco.
   **Trava de atualização — deploy sem partida travada** (pedido do dono, 15/09/2026: o `pm2 restart` derrubava as
   partidas no meio, a tela ficava "travada"): o `brgol-deploy.sh` (cópia em `tools/vps/brgol-deploy.sh`), quando a API
   muda, faz 1) `POST /api/admin/x1/drain {seconds}` (`startX1Drain` em `realtime/x1.js`: ninguém desafia/aceita/

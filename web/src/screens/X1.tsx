@@ -120,6 +120,12 @@ export function X1Screen() {
   const [muted, setMuted] = useState(false); // silenciei o adversário nesta partida (só na minha tela)
   const [provocarUntil, setProvocarUntil] = useState(0); // próxima permitida (ritmo de 2 s ou castigo)
   const [drainUntil, setDrainUntil] = useState<number | null>(null); // atualização do jogo: a busca do X1 está travada até aqui
+  // Raio-X (brincadeira do dono, 15/09/2026; só a conta MVGIC — o servidor também confere): a tecla R liga/desliga a
+  // trajetória exata da mira, que o servidor simula com a mesma física do peteleco de verdade
+  const [xray, setXray] = useState(false);
+  const [preview, setPreview] = useState<{ path: [number, number][]; piece: [number, number][] | null; goal: string | null } | null>(null);
+  const previewSeq = useRef(0);
+  const previewAt = useRef(0);
   const [, tick] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -154,6 +160,19 @@ export function X1Screen() {
 
   // relógio da vez / da espera
   useEffect(() => { const iv = setInterval(() => tick((n) => n + 1), 250); return () => clearInterval(iv); }, []);
+  // Raio-X: tecla R (só MVGIC)
+  useEffect(() => {
+    if (me.nick !== 'MVGIC') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'r' && e.key !== 'R') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      setXray((v) => { toast(v ? 'Raio-X desligado' : 'Raio-X ligado: a trajetória aparece enquanto você mira'); return !v; });
+      setPreview(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [me.nick]);
   // o jogo do dia vira às 19h, com a rodada (com a tela aberta): os jogos se alternam
   useEffect(() => {
     if (!today) return;
@@ -210,6 +229,7 @@ export function X1Screen() {
       case 'error': setBusy(false); if (m.code === 'cooldown') setCooldownUntil(m.until ?? null); if (m.code === 'atualizacao') setDrainUntil(m.until ?? null); toast(m.message, 'error'); break;
       case 'cooldown': setCooldownUntil(m.until ?? null); break;
       case 'drain': setDrainUntil(m.until ?? null); break; // atualização do jogo: trava/destrava a busca
+      case 'preview': if (m.seq === previewSeq.current) setPreview({ path: m.path ?? [], piece: m.piece ?? null, goal: m.goal ?? null }); break; // Raio-X: só a resposta da mira atual
       case 'no-match': // voltei "dentro" de uma partida ou espera que o servidor não tem mais (a API reiniciou)
         if (phaseRef.current === 'match' || phaseRef.current === 'waiting') {
           toast(phaseRef.current === 'match' ? 'A partida foi encerrada: o JogaGol foi atualizado. A aposta voltou e nada contou.' : 'A busca foi cancelada porque a conexão caiu. Desafie de novo.', 'error');
@@ -428,11 +448,21 @@ export function X1Screen() {
     return { sx: (flip ? dx : -dx) / len, sy: (flip ? dy : -dy) / len, power: Math.min(1, len / (match.game === 'BOTAO' ? MAX_PULL_BOTAO : MAX_PULL)) };
   }
   function onMove(e: React.PointerEvent<SVGSVGElement>) {
-    if (drag.current) setAim(aimFrom(e));
+    if (!drag.current) return;
+    const a = aimFrom(e);
+    setAim(a);
+    // Raio-X: pede ao servidor a trajetória desta mira (no máximo ~12 por segundo; a resposta traz o seq da mira)
+    if (xray && a && myTurn && match && a.power >= 0.06 && performance.now() - previewAt.current > 80) {
+      if (match.game === 'BOTAO' && sel === null) return;
+      previewAt.current = performance.now();
+      const seq = ++previewSeq.current;
+      send(match.game === 'BOTAO' ? { t: 'preview', seq, idx: sel, dx: a.sx, dy: a.sy, power: a.power } : { t: 'preview', seq, dx: a.sx, dy: a.sy, power: a.power });
+    }
   }
   function onUp(e: React.PointerEvent<SVGSVGElement>) {
     const a = aimFrom(e); // o ponto onde o dedo soltou vale (não o último quadro desenhado)
     drag.current = null;
+    setPreview(null); previewSeq.current++;
     if (!a || !myTurn || !match || a.power < 0.06) { setAim(null); return; }
     if (match.game === 'BOTAO') {
       if (sel === null) { setAim(null); return; }
@@ -495,6 +525,7 @@ export function X1Screen() {
       const L = aim ? 26 + aim.power * 110 : 0;
       const overlay = aim && myTurn ? (
         <g pointerEvents="none">
+          {xray && preview && <XrayPath path={preview.path} goal={preview.goal} r={match.board.ball} />}
           <line x1={b.x} y1={b.y} x2={b.x - aim.sx * aim.power * 38} y2={b.y - aim.sy * aim.power * 38} stroke="#5B3A1A" strokeWidth="3" strokeLinecap="round" />
           <line x1={b.x} y1={b.y} x2={b.x + aim.sx * L} y2={b.y + aim.sy * L} stroke="#FFFFFF" strokeWidth="2.6" strokeDasharray="2 6" strokeLinecap="round" />
           <circle cx={b.x + aim.sx * L} cy={b.y + aim.sy * L} r="3.4" fill="#FFFFFF" />
@@ -527,6 +558,7 @@ export function X1Screen() {
       const L = aim ? 30 + aim.power * 120 : 0;
       const overlay = aim && myTurn && selP ? (
         <g pointerEvents="none">
+          {xray && preview && <XrayPath path={preview.path} piece={preview.piece} goal={preview.goal} r={F.ball} />}
           <line x1={selP.x} y1={selP.y} x2={selP.x - aim.sx * aim.power * 42} y2={selP.y - aim.sy * aim.power * 42} stroke="#5B3A1A" strokeWidth="5" strokeLinecap="round" />
           <line x1={selP.x} y1={selP.y} x2={selP.x + aim.sx * L} y2={selP.y + aim.sy * L} stroke="#FFFFFF" strokeWidth="2.6" strokeDasharray="2 6" strokeLinecap="round" />
           <circle cx={selP.x + aim.sx * L} cy={selP.y + aim.sy * L} r="3.4" fill="#FFFFFF" />
@@ -558,7 +590,7 @@ export function X1Screen() {
         </div>
         <PlayerBar p={match.players[you]} me active={meActive} left={left} total={total} label={meLabel} bubble={bubbles[you]} />
         <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 px-1">
-          <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}</span>
+          <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}{xray && <span className="ml-1 rounded bg-gold px-1 text-[9px] text-navy-deep">RAIO-X</span>}</span>
           <div className="flex shrink-0 items-center gap-2">
             <ProvocarButton left={Math.max(0, provocarUntil - now())} gapMs={rules.provocar?.gapMs ?? 2000} punishMs={rules.provocar?.punishMs ?? 10000} onClick={() => setTray(true)} />
             <button onClick={() => setConfirmLeave(true)} className="btn btn-gray btn-sm">Desistir</button>
@@ -773,6 +805,22 @@ function PlayerBar({ p, me = false, active, left, total, label, bubble, muted, o
         </svg>
       )}
     </div>
+  );
+}
+
+/** Raio-X: o caminho que a bola vai fazer com a mira atual (pontos a 1/15 s) e onde para; dourado quando é gol. */
+function XrayPath({ path, piece = null, goal, r }: { path: [number, number][]; piece?: [number, number][] | null; goal: string | null; r: number }) {
+  if (path.length < 2) return null;
+  const end = path[path.length - 1];
+  const color = goal ? '#FFD54A' : '#FFFFFF';
+  return (
+    <g pointerEvents="none" opacity={0.95}>
+      {piece && piece.length > 1 && <polyline points={piece.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke="#7FD0FF" strokeWidth="1.6" strokeDasharray="3 3" strokeLinejoin="round" strokeLinecap="round" opacity={0.8} />}
+      <polyline points={path.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke="#0B2D6B" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round" opacity={0.6} />
+      <polyline points={path.map(([x, y]) => `${x},${y}`).join(' ')} fill="none" stroke={color} strokeWidth="1.8" strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={end[0]} cy={end[1]} r={r} fill="none" stroke={color} strokeWidth="2" strokeDasharray="2 2" />
+      {goal && <text x={end[0]} y={end[1] - r - 4} textAnchor="middle" fontFamily="'Lilita One', Impact, sans-serif" fontSize="9" fill="#FFD54A" stroke="#0B2D6B" strokeWidth="0.6">GOL</text>}
+    </g>
   );
 }
 

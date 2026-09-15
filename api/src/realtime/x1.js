@@ -21,8 +21,8 @@ import { randomInt } from 'node:crypto';
 import { config } from '../config.js';
 import { prisma } from '../prisma.js';
 import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
-import { BOTAO_FIELD } from '../lib/botao.js';
-import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove } from '../lib/botaoMatch.js';
+import { BOTAO_FIELD, simulateSnap } from '../lib/botao.js';
+import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove, movablePieces } from '../lib/botaoMatch.js';
 import { FUTPREGO, BOTAO, X1, PROVOCAR, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
@@ -210,6 +210,7 @@ async function onMessage(conn, m) {
   if (m.t === 'flick') return onFlick(conn, m);
   if (m.t === 'snap') return onSnap(conn, m);
   if (m.t === 'provocar') return onProvocar(conn, m);
+  if (m.t === 'preview') return onPreview(conn, m);
   // desistir = derrota (se o resultado já está decidido e só falta a animação, vale ele — não a desistência)
   if (m.t === 'giveup' && conn.match && !conn.match.done) return finish(conn.match, conn.match.pending ?? { winner: 1 - conn.side, reason: 'desistiu' });
 }
@@ -555,6 +556,38 @@ function onDisconnect(conn) {
     if (m.done || !conn.dropped || m.conns[conn.side] !== conn) return;
     finish(m, m.pending ?? { winner: 1 - conn.side, reason: 'wo' });
   }, F.reconnectSec * 1000);
+}
+
+// ─── Raio-X (brincadeira do dono, 15/09/2026) ───────────────────────────────
+
+// Só para estas contas: a tecla R na tela do X1 mostra a trajetória exata da mira antes de soltar. A física dos dois
+// jogos é determinística (o sorteio só entra no goleiro dos pênaltis), então o servidor simula a MESMA jogada que o
+// peteleco de verdade faria e devolve o caminho da bola. Ninguém mais recebe nada (mensagem ignorada).
+const XRAY_NICKS = new Set(['MVGIC']);
+function onPreview(conn, msg) {
+  if (!XRAY_NICKS.has(conn.user.nick)) return;
+  const m = conn.match;
+  if (!m || m.done) return;
+  const now = Date.now();
+  if (now - (conn.previewAt ?? 0) < 60) return; // no máximo ~16 por segundo (a tela manda enquanto arrasta)
+  conn.previewAt = now;
+  const dx = Number(msg.dx), dy = Number(msg.dy), power = Number(msg.power);
+  if (![dx, dy, power].every(Number.isFinite)) return;
+  let path, goal, piece = null;
+  if (m.game === 'BOTAO') {
+    const idx = Number(msg.idx);
+    if (m.bs.turn !== conn.side || !movablePieces(m.bs, conn.side).includes(idx)) return;
+    const sim = simulateSnap(m.bs, idx, dx, dy, Math.max(0.05, Math.min(1, power)));
+    path = sim.frames.map((f) => f[0]); goal = sim.goal;
+    piece = sim.frames.map((f) => f[idx + 1]); // o caminho do botão que leva o peteleco
+  } else {
+    if (m.turn !== conn.side) return;
+    const r = simulateFlick(m.ball, dx, dy, power, m.board, { closedGoals: m.shots[0] + m.shots[1] === 0 });
+    path = r.frames; goal = r.goal;
+  }
+  // 1 ponto a cada 2 quadros (1/15 s) já desenha a curva; o último fica sempre
+  const thin = (pts) => pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1).map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
+  send(conn.ws, { t: 'preview', seq: msg.seq ?? 0, path: thin(path), piece: piece ? thin(piece) : null, goal: goal ?? null });
 }
 
 // ─── Provocar (pedido do dono, 15/09/2026) ──────────────────────────────────

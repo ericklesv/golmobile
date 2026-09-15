@@ -52,6 +52,14 @@ export const TRAIL_LINES = [
   { name: 'ATAQUE', total: 3, mines: 2 },
 ];
 
+// ─── Troca automática na Série A (dono, 15/09/2026: "a ideia é que nenhum jogo da Série A fique sem gols") ──
+// No fechamento de cada rodada (menos a última da temporada, que já tem o sobe-e-desce): time da A que NÃO marcou
+// nenhum gol na rodada troca de lugar com o time de outra série que mais marcou nela — desde que tenha feito pelo
+// menos `minGoals`. O da A cai sempre para a B (como na troca de 14/09); se quem subiu veio da C, o time da B com
+// menos gols na rodada desce para a C (as séries não mudam de tamanho). Pontos e gols da temporada vão junto.
+// Código: swapEmptySerieA em services/league.js.
+export const SERIE_A_SWAP = { minGoals: 50 };
+
 // ─── Premiações (tabela de 2009) ────────────────────────────────────────────
 export const PRIZES = {
   round: [

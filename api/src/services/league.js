@@ -6,7 +6,8 @@ import { nickFadeOf } from '../lib/items.js';
 import { prisma } from '../prisma.js';
 import { config } from '../config.js';
 import { nextRoundClose, hourKey } from '../lib/time.js';
-import { PRIZES, prizeFor } from '../lib/rules.js';
+import { PRIZES, prizeFor, SERIE_A_SWAP } from '../lib/rules.js';
+import { tg } from '../lib/telegram.js';
 import { settleX1Round, settleX1Season } from './x1.js';
 
 const SERIES = ['A', 'B', 'C'];
@@ -186,6 +187,65 @@ function outcome(h, a) {
   return h > a ? 'home' : 'away';
 }
 
+// ─── Troca automática na Série A (SERIE_A_SWAP em rules.js; dono, 15/09/2026) ─
+/**
+ * Roda no fechamento da rodada, DEPOIS da tabela e ANTES de criar a rodada seguinte (que já sai com as séries novas),
+ * na mesma transação. "Gols na rodada" = gols que os jogadores MARCARAM pelo time nela (`Goal.roundId`; gol tirado no
+ * X1 não apaga o que o time marcou). Time da A com 0 gols (o pior da tabela primeiro) troca com quem mais marcou fora
+ * da A, com pelo menos `minGoals` (empate: o melhor da tabela); faltou candidato, o resto fica. O da A vai para a B; se
+ * quem subiu veio da C, o time da B com menos gols na rodada (empate: o pior da tabela; nunca um que já trocou agora)
+ * desce para a C. A série mora em DOIS lugares — `Team.serie` (sorteio da rodada) e `Standing.serie` (tabela, título,
+ * acesso) — e muda nos dois; pontos e gols vão junto (como na troca de 14/09). Os jogadores dos times que trocaram
+ * recebem uma mensagem na caixa. Devolve as trocas (vão para o Telegram depois do commit).
+ */
+async function swapEmptySerieA(tx, season, round) {
+  const rows = await tx.standing.findMany({ where: { seasonId: season.id }, include: { team: true } });
+  const scored = new Map((await tx.goal.groupBy({ by: ['teamId'], where: { roundId: round.id }, _count: { _all: true } })).map((x) => [x.teamId, x._count._all]));
+  const goals = (s) => scored.get(s.teamId) ?? 0;
+  const worstFirst = (x, y) => standingOrder(y, x);
+  const emptyA = rows.filter((s) => s.serie === 'A' && goals(s) === 0).sort(worstFirst);
+  const risers = rows.filter((s) => s.serie !== 'A' && goals(s) >= SERIE_A_SWAP.minGoals).sort((x, y) => goals(y) - goals(x) || standingOrder(x, y));
+  const moved = new Set();
+  const setSerie = async (s, serie) => {
+    await tx.team.update({ where: { id: s.teamId }, data: { serie } });
+    await tx.standing.update({ where: { id: s.id }, data: { serie } });
+    s.serie = serie;
+    moved.add(s.teamId);
+  };
+  const swaps = [];
+  for (const [i, down] of emptyA.entries()) {
+    const up = risers[i];
+    if (!up) break;
+    const from = up.serie;
+    // quem sobe veio da C: a B ganharia um time — desce o da B com menos gols (escolhido ANTES de o da A chegar lá)
+    const drop = from === 'C'
+      ? rows.filter((s) => s.serie === 'B' && !moved.has(s.teamId)).sort((x, y) => goals(x) - goals(y) || worstFirst(x, y))[0] ?? null
+      : null;
+    await setSerie(up, 'A');
+    await setSerie(down, 'B');
+    if (drop) await setSerie(drop, 'C');
+    const brief = (s) => ({ id: s.teamId, name: s.team.name }); // o resultado vai para o log do scheduler
+    swaps.push({ up: brief(up), down: brief(down), from, goals: goals(up), drop: drop ? brief(drop) : null, dropGoals: drop ? goals(drop) : null });
+  }
+  if (!swaps.length) return swaps;
+
+  // caixa de mensagens dos jogadores dos times que trocaram de série
+  const n = round.number;
+  const plural = (k) => (k === 1 ? '1 gol' : `${k} gols`);
+  const notes = [];
+  for (const w of swaps) {
+    // sem artigo antes do nome ("a Chapecoense", "o Náutico"): o nome do time abre a frase
+    notes.push({ teamId: w.up.id, icon: '/ui/ico-trophy_gold.png', title: 'Seu time subiu para a Série A!', text: `${w.up.name} fez ${plural(w.goals)} na rodada ${n} e subiu da Série ${w.from} para a Série A no lugar de ${w.down.name}, que não marcou nenhum gol. Os pontos e gols da temporada vão junto.` });
+    notes.push({ teamId: w.down.id, icon: '/ui/pi-bell.png', title: 'Seu time caiu para a Série B', text: `${w.down.name} não marcou nenhum gol na rodada ${n} e foi para a Série B. Quem subiu para a Série A foi ${w.up.name}, com ${plural(w.goals)}. Os pontos e gols da temporada vão junto: marque gols para o time voltar!` });
+    if (w.drop) notes.push({ teamId: w.drop.id, icon: '/ui/pi-bell.png', title: 'Seu time foi para a Série C', text: `${w.up.name} subiu da Série C direto para a Série A e ${w.down.name} caiu da A para a B. Para as séries ficarem do mesmo tamanho, desceu para a C o time da Série B com menos gols na rodada ${n}: ${w.drop.name} (${plural(w.dropGoals)}). Os pontos e gols da temporada vão junto.` });
+  }
+  const players = await tx.user.findMany({ where: { teamId: { in: notes.map((x) => x.teamId) }, deletedAt: null }, select: { id: true, teamId: true } });
+  const data = [];
+  for (const note of notes) for (const u of players) if (u.teamId === note.teamId) data.push({ userId: u.id, kind: 'AVISO', title: note.title, text: note.text, icon: note.icon });
+  if (data.length) await tx.message.createMany({ data });
+  return swaps;
+}
+
 // ─── Fechamento de rodada ───────────────────────────────────────────────────
 export async function settleDueRounds(now = new Date()) {
   const due = await prisma.round.findMany({
@@ -196,6 +256,9 @@ export async function settleDueRounds(now = new Date()) {
   for (const round of due) {
     const r = await prisma.$transaction(async (tx) => settleRound(tx, round, now), { timeout: 60_000 });
     results.push(r);
+    for (const w of r.swaps ?? []) {
+      tg.info(`🔁 Série A, rodada ${r.round}: <b>${tg.esc(w.up.name)}</b> (Série ${w.from}, ${w.goals} gols) subiu no lugar de <b>${tg.esc(w.down.name)}</b> (0 gols), que foi para a B${w.drop ? `; <b>${tg.esc(w.drop.name)}</b> (${w.dropGoals} gols na B) desceu para a C` : ''}.`);
+    }
     // Ranking X1 (services/x1.js): transação própria e idempotente, DEPOIS da liga — um erro aqui não segura
     // o fechamento da rodada (que já está gravado), só fica no log e o prêmio sai na próxima volta do scheduler.
     try {
@@ -245,8 +308,10 @@ async function settleRound(tx, round, now) {
   await tx.round.update({ where: { id: round.id }, data: { status: 'FINISHED', topJson: top } });
 
   if (round.number < season.totalRounds) {
+    // time da A sem gol na rodada troca com quem mais marcou fora dela — antes de sortear os jogos da próxima
+    const swaps = await swapEmptySerieA(tx, season, round);
     const next = await createRound(tx, season, round.number + 1, now);
-    return { round: round.number, next: next.number };
+    return { round: round.number, next: next.number, swaps };
   }
   // Fim da temporada
   await finishSeason(tx, season, now);

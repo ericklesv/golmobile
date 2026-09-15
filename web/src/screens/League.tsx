@@ -9,6 +9,7 @@ import { pct } from '../lib/format';
 
 export function LeagueScreen() {
   const me = useAuth((s) => s.me)!;
+  const swapMin = useAuth((s) => s.meta?.serieASwap?.minGoals);
   const [league, setLeague] = useState<League | null>(null);
   const [serie, setSerie] = useState<Serie>(me.team.serie);
   const [view, setView] = useState<'tabela' | 'jogos'>('tabela');
@@ -59,6 +60,13 @@ export function LeagueScreen() {
             {serie !== 'A' && <span><i className="mr-1 inline-block h-2 w-2 rounded-sm bg-grass" />Acesso</span>}
             {serie !== 'C' && <span><i className="mr-1 inline-block h-2 w-2 rounded-sm bg-danger" />Rebaixamento</span>}
           </div>
+          {swapMin && (
+            <p className="mt-1.5 text-[11px] font-bold leading-snug text-muted">
+              {serie === 'A'
+                ? `Se um time da Série A passar a rodada sem marcar gol, quem mais marcou fora da A (com pelo menos ${swapMin} gols) sobe no lugar dele, e ele cai para a Série B.`
+                : `Fez ${swapMin} gols ou mais numa rodada? Seu time pode subir direto para a Série A no lugar de um time da A que não marcou nenhum gol.`}
+            </p>
+          )}
         </div>
       ) : (
         <section className="flex flex-col gap-2">

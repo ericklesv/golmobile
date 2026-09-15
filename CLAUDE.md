@@ -60,6 +60,18 @@ depois que o novo estiver estável. Não instalar nada dele.
   (1x por conta, só contas criadas antes da troca, some depois de 22/09; o convite do WhatsApp espera ele).
   **Atenção no fim da temporada:** com a B quase sem jogador, o 2º que sobe pode ser um time vazio
   (desempate por saldo/nome) — o dono ainda não decidiu se muda a regra de acesso.
+- **Troca AUTOMÁTICA na Série A** (dono, 15/09/2026: "a ideia é que nenhum jogo da Série A fique sem gols";
+  `swapEmptySerieA` em `league.js`, número em `SERIE_A_SWAP` de `rules.js`, via `/api/meta.serieASwap`): no
+  fechamento de cada rodada — menos a ÚLTIMA da temporada, que já tem o sobe-e-desce —, DEPOIS da tabela e ANTES
+  de sortear a próxima (na mesma transação: a rodada nova já sai com as séries novas), time da A que não marcou
+  nenhum gol na rodada (gols que os jogadores MARCARAM, `Goal.roundId` — gol tirado no X1 não conta como "sem
+  gol") troca com quem mais marcou fora da A, **com pelo menos 50 gols na rodada** (empate: o melhor da tabela).
+  Vários da A sem gol: o pior da tabela troca primeiro; faltou candidato, o resto fica. O da A cai SEMPRE para a B
+  (decisão do dono, como em 14/09); se quem subiu veio da C, desce para a C o time da B com menos gols na rodada
+  (empate: o pior da tabela; nunca um que acabou de trocar). Muda `Team.serie` E `Standing.serie`; pontos e gols
+  vão junto. Os jogadores dos times que trocaram recebem mensagem na caixa; o dono, no Telegram. A regra aparece
+  embaixo da tabela na Liga. **Mexeu? Rode `node scripts/test-troca-serie-a.js`** (pasta api/, só banco LOCAL,
+  schema `troca_sim` criado e apagado por ele; tem de dar "TUDO OK") e o `sim-liga.js`.
 - Auto-chute: o cliente dispara `POST /api/play/auto` quando o timer zera com a aba aberta
   (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
   O chute do VIP com o app FECHADO está pronto mas **desligado** (`VIP_OFFLINE_AUTO = false`; ver "VIP pago").

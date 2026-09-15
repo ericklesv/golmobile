@@ -90,6 +90,8 @@ export interface PartyResult { win: boolean; goal: boolean; text: string; segmen
 export interface PartyStatus { bet: number; prize: number; spins: number; max: number; left: number; vip: boolean; freeMax: number; vipMax: number }
 
 export interface Meta {
+  /** Troca automática na Série A (SERIE_A_SWAP em rules.js): mínimo de gols na rodada para subir no lugar de um time da A sem gol. */
+  serieASwap?: { minGoals: number };
   /** Chave pública do Turnstile (captcha invisível no cadastro); null = desligado no servidor. */
   turnstileSiteKey?: string | null;
   /** Paleta do nick em degradê (VIP), NICK_FADE_COLORS em lib/items.js. */

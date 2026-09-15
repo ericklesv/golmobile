@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
-import type { AdminLogRow, AdminPatch, AdminUserDetail, AdminUserRow, AdminReportRow } from '../lib/types';
+import type { AdminFutPregoRow, AdminLogRow, AdminPatch, AdminUserDetail, AdminUserRow, AdminReportRow } from '../lib/types';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { Panel, Spinner, Tabs, Empty } from '../components/ui';
@@ -316,6 +316,73 @@ function LogList() {
   );
 }
 
+// ─── FutPrego: histórico dos confrontos (a partida mais recente primeiro) ───
+const FP_REASON: Record<string, string> = { gol: 'gol', 'gol-contra': 'gol contra', wo: 'W.O.', desistiu: 'desistência', empate: 'empate (0 gols em 10 jogadas)', 'wo-cedo': 'W.O. cedo (aposta devolvida)', reinicio: 'API reiniciou (aposta devolvida)' };
+
+function FutPregoList({ onPick }: { onPick: (id: number) => void }) {
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<{ page: number; pages: number; total: number; rows: AdminFutPregoRow[] } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    api.adminFutprego(page).then((r) => { if (alive) setData(r); }).catch((e) => toast((e as Error).message, 'error'));
+    return () => { alive = false; };
+  }, [page]);
+
+  if (!data) return <div className="flex justify-center py-10"><Spinner /></div>;
+  const who = (p: AdminFutPregoRow['a'], won: boolean) => (
+    <button onClick={() => onPick(p.id)} className={`no-drag inline-flex min-w-0 items-center gap-1 ${won ? '' : 'opacity-80'}`}>
+      {p.team ? <Shield team={p.team} size={18} /> : null}
+      <span className={`truncate text-[13px] font-extrabold ${p.deleted ? 'line-through text-muted' : nickProps(p).className}`} style={nickProps(p).style}>{p.nick}</span>
+      <span className="truncate text-[10px] font-bold text-muted">({p.team?.name ?? '—'})</span>
+    </button>
+  );
+  const result = (m: AdminFutPregoRow) => {
+    if (m.status === 'PLAYING') return <span className="trap trap-green text-[9px] uppercase">ao vivo</span>;
+    if (m.status === 'CANCELED') return <span className="text-[11px] font-bold text-muted">cancelada · {FP_REASON[m.reason ?? ''] ?? m.reason}</span>;
+    const w = m.winnerId === m.a.id ? m.a : m.winnerId === m.b.id ? m.b : null;
+    return (
+      <span className="text-[11px] font-bold text-navy-ink">
+        {w ? <>venceu <b className="text-grass-deep">{w.nick}</b> por {FP_REASON[m.reason ?? ''] ?? m.reason}</> : FP_REASON[m.reason ?? ''] ?? m.reason}
+        {m.turns > 0 ? ` · ${m.turns} jogada${m.turns === 1 ? '' : 's'}` : ''}
+        {w && (m.goalAwarded ? <span className="text-grass-deep"> · gol contou{m.lostTeam ? ` (${m.lostTeam.name} perdeu 1 gol)` : ''}</span> : <span className="text-muted"> · sem gol (limite do dia ou revanche repetida)</span>)}
+      </span>
+    );
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="panel p-2">
+        {data.rows.length === 0 ? <Empty text="Nenhuma partida de FutPrego ainda." /> : (
+          <ul className="flex flex-col gap-1">
+            {data.rows.map((m) => (
+              <li key={m.id} className="rounded-xl px-2 py-1.5 odd:bg-sky/10">
+                <div className="flex items-center gap-2 text-[10px] font-bold text-muted">
+                  <span>#{m.id} · {shortDt(m.at)}{m.finishedAt && m.status === 'FINISHED' ? ` → ${new Date(m.finishedAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}</span>
+                  <span className="ml-auto">aposta {fmt(m.bet)}</span>
+                  {m.sameIp && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white">mesma internet</span>}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  {who(m.a, m.winnerId === m.a.id)}
+                  <span className="font-display text-[12px] text-orange-deep">x</span>
+                  {who(m.b, m.winnerId === m.b.id)}
+                </div>
+                <div>{result(m)}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {data.pages > 1 && (
+        <div className="flex items-center justify-between">
+          <button className="btn btn-gray btn-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
+          <span className="t-display t-out text-sm">pág. {data.page}/{data.pages} · {num(data.total)} partidas</span>
+          <button className="btn btn-gray btn-sm" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}>Próxima</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Denúncias (política de conteúdo gerado por usuário da Play Store) ──────
 const REASON_LABEL: Record<string, string> = { ofensa: 'Ofensa/ameaça', spam: 'Spam', golpe: 'Golpe/link', nick: 'Nick/texto impróprio', foto: 'Foto imprópria', outro: 'Outro' };
 
@@ -379,7 +446,7 @@ function ReportList({ onPick }: { onPick: (id: number) => void }) {
 export function AdminScreen() {
   const me = useAuth((s) => s.me)!;
   const nav = useNavigate();
-  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'denuncias' | 'log'>('jogadores');
+  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'denuncias' | 'futprego' | 'log'>('jogadores');
   const [picked, setPicked] = useState<number | null>(null);
 
   if (!me.isAdmin) return <Navigate to="/" replace />;
@@ -393,10 +460,10 @@ export function AdminScreen() {
         <span className="trap trap-blue text-[11px] uppercase">{me.nick}</span>
       </div>
       <div className="relative px-3 pb-2">
-        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'log', label: 'Log' }]} />
+        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'FutPrego' }, { id: 'log', label: 'Log' }]} />
       </div>
       <div className="relative flex-1 px-3 pb-4">
-        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail id={picked} onBack={() => setPicked(null)} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
+        {tab === 'log' ? <LogList /> : picked !== null ? <UserDetail id={picked} onBack={() => setPicked(null)} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
       </div>
     </div>
   );

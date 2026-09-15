@@ -307,6 +307,15 @@ export interface AdminPatch {
 }
 export interface AdminLogRow { id: number; admin: string; target: string | null; targetAvatar: string | null; action: string; payload: any; at: string }
 export interface AdminLogPage { page: number; pages: number; total: number; rows: AdminLogRow[] }
+/** Histórico do FutPrego no painel (GET /api/painel/futprego): partidas de verdade, a mais recente primeiro. */
+export interface AdminFutPregoPlayer { id: number; nick: string; avatarUrl: string | null; nickColor: string | null; deleted: boolean; team: Team | null }
+export interface AdminFutPregoRow {
+  id: number; at: string; finishedAt: string | null; status: 'PLAYING' | 'FINISHED' | 'CANCELED';
+  reason: 'gol' | 'gol-contra' | 'wo' | 'desistiu' | 'empate' | 'wo-cedo' | 'reinicio' | null;
+  turns: number; bet: number; a: AdminFutPregoPlayer; b: AdminFutPregoPlayer;
+  winnerId: number | null; goalAwarded: boolean; lostTeam: Team | null; sameIp: boolean;
+}
+export interface AdminFutPregoPage { page: number; pages: number; total: number; rows: AdminFutPregoRow[] }
 
 // ─── Hat Trick (chute de longe) ─────────────────────────────────────────────
 /** Posições em metros: gol em y = 0 (x = 0 no meio), campo crescendo para baixo. */

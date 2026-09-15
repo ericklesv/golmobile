@@ -1,4 +1,4 @@
-import type { AdminLogPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { AdminFutPregoPage, AdminLogPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 const TOKEN_KEY = 'brgol.token';
@@ -35,7 +35,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 
 export const api = {
   // auth
-  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string; ref?: string; website?: string; startedAt?: number; turnstileToken?: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/register', b),
+  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string; ref?: string; website?: string; elapsedMs?: number; turnstileToken?: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/register', b),
   login: (b: { login: string; password: string }) => req<{ token: string; me: Me }>('POST', '/api/auth/login', b),
   // me
   me: () => req<Me>('GET', '/api/me'),
@@ -150,6 +150,7 @@ export const api = {
   adminGols: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow; text: string | null }>('POST', `/api/painel/users/${id}/gols`, { qtd }),
   adminExp: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow }>('POST', `/api/painel/users/${id}/exp`, { qtd }),
   adminLog: (page = 1) => req<AdminLogPage>('GET', `/api/painel/log?page=${page}`),
+  adminFutprego: (page = 1) => req<AdminFutPregoPage>('GET', `/api/painel/futprego?page=${page}`),
   // conta (Play Store): exclusão, bloqueios e denúncias — routes/account.js
   deleteAccount: (password: string) => req<{ ok: boolean }>('DELETE', '/api/account', { password }),
   blocks: () => req<BlockedUser[]>('GET', '/api/account/blocks'),

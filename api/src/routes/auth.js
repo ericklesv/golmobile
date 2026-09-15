@@ -16,8 +16,10 @@ export const auth = Router();
 
 const limiter = rateLimit({ windowMs: 15 * 60_000, limit: 40, standardHeaders: true, legacyHeaders: false,
   message: { error: 'rate-limit', message: 'Muitas tentativas. Aguarde alguns minutos.' } });
-// cadastro: bem mais apertado que o login (5 por hora por IP; além disso, teto de contas/IP em 24 h no handler)
-const registerLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: true, legacyHeaders: false,
+// cadastro: bem mais apertado que o login (5 por hora por IP; além disso, teto de contas/IP em 24 h no handler).
+// Só as tentativas que DERAM CERTO contam (skipFailedRequests): nick em uso, senha curta ou "calma, craque"
+// não gastam a cota — em 15/09/2026 um jogador ficou 1 h trancado depois de 5 recusas seguidas.
+const registerLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: true, legacyHeaders: false, skipFailedRequests: true,
   message: { error: 'rate-limit', message: 'Muitos cadastros desta conexão. Tente mais tarde.' } });
 
 const registerSchema = z.object({
@@ -27,8 +29,10 @@ const registerSchema = z.object({
   teamSlug: z.string().min(1, 'Escolha um time.'),
   gender: z.enum(['M', 'F']).default('M'),
   ref: z.string().trim().max(16).optional(), // código do link de convite (services/referral.js)
-  // anti-robô (lib/security.js): honeypot, hora em que o formulário abriu e token do Turnstile (se ligado)
+  // anti-robô (lib/security.js): honeypot, tempo que o formulário ficou aberto (elapsedMs; fronts antigos
+  // mandam startedAt) e token do Turnstile (se ligado)
   website: z.string().max(200).optional(),
+  elapsedMs: z.number().optional(),
   startedAt: z.number().optional(),
   turnstileToken: z.string().max(4000).optional(),
 });

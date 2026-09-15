@@ -21,7 +21,8 @@ export function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [gender, setGender] = useState<'M' | 'F'>('M');
   const [busy, setBusy] = useState(false);
-  // anti-robô (api/src/lib/security.js): honeypot que humano não vê, hora em que abriu o formulário e token do Turnstile
+  // anti-robô (api/src/lib/security.js): honeypot que humano não vê, tempo que o formulário ficou aberto (medido
+  // aqui, no relógio do aparelho — o servidor não compara com o relógio dele) e token do Turnstile
   const [website, setWebsite] = useState('');
   const [startedAt] = useState(() => Date.now());
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export function RegisterScreen() {
     if (busy) return;
     if (!teamSlug) { toast('Escolha seu time.', 'error'); setStep(1); return; }
     setBusy(true);
-    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender, ref: savedInvite() ?? undefined, website, startedAt, turnstileToken: turnstileToken ?? undefined }); clearInvite(); nav('/', { replace: true }); }
+    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender, ref: savedInvite() ?? undefined, website, elapsedMs: Math.max(0, Date.now() - startedAt), turnstileToken: turnstileToken ?? undefined }); clearInvite(); nav('/', { replace: true }); }
     catch (err: any) { toast(err?.message ?? 'Falha no cadastro.', 'error'); }
     finally { setBusy(false); }
   }

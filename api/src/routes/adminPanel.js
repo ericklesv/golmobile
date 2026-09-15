@@ -203,6 +203,35 @@ adminPanel.get('/log', handle(async (req) => {
   };
 }));
 
+// ─── FutPrego: histórico dos confrontos (pedido do dono, 15/09/2026) ────────
+// GET /api/painel/futprego?page= — toda partida de verdade (contra bot não grava), a mais recente
+// primeiro, com data/hora, os dois jogadores e times, vencedor, motivo, jogadas, aposta, se o gol contou
+// e de qual time saiu 1 gol. `sameIp` = os dois na mesma internet (conta falsa jogando contra si mesma).
+adminPanel.get('/futprego', handle(async (req) => {
+  const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+  const [total, rows] = await Promise.all([
+    prisma.futPregoMatch.count(),
+    prisma.futPregoMatch.findMany({ orderBy: { id: 'desc' }, skip: (page - 1) * PAGE, take: PAGE }),
+  ]);
+  // FutPregoMatch guarda só ids (sem relação no schema): busca jogadores e times de uma vez
+  const userIds = [...new Set(rows.flatMap((m) => [m.aId, m.bId, m.winnerId].filter(Boolean)))];
+  const teamIds = [...new Set(rows.flatMap((m) => [m.aTeamId, m.bTeamId, m.lostTeamId].filter(Boolean)))];
+  const [users, teams] = await Promise.all([
+    userIds.length ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, nick: true, avatarUrl: true, nickColor: true, deletedAt: true } }) : [],
+    teamIds.length ? prisma.team.findMany({ where: { id: { in: teamIds } } }) : [],
+  ]);
+  const U = new Map(users.map((u) => [u.id, u])), T = new Map(teams.map((t) => [t.id, t]));
+  const player = (id, teamId) => { const u = U.get(id); return { id, nick: u?.nick ?? `#${id}`, avatarUrl: u?.avatarUrl ?? null, nickColor: u?.nickColor ?? null, deleted: !!u?.deletedAt, team: teamView(T.get(teamId)) }; };
+  return {
+    page, pages: Math.max(1, Math.ceil(total / PAGE)), total,
+    rows: rows.map((m) => ({
+      id: m.id, at: m.createdAt, finishedAt: m.finishedAt, status: m.status, reason: m.reason, turns: m.turns, bet: m.bet,
+      a: player(m.aId, m.aTeamId), b: player(m.bId, m.bTeamId),
+      winnerId: m.winnerId, goalAwarded: m.goalAwarded, lostTeam: teamView(T.get(m.lostTeamId)), sameIp: !!m.aIp && m.aIp === m.bIp,
+    })),
+  };
+}));
+
 // ─── Denúncias (política de conteúdo gerado por usuário da Play Store) ──────
 // GET /api/painel/denuncias?status=OPEN|RESOLVED&page= · POST /api/painel/denuncias/:id/resolver
 // {acao: 'ignorar'|'apagar'|'banir', horas?} — apagar = remove a mensagem denunciada; banir = suspende

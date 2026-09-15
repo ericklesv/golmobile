@@ -258,7 +258,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   Toda ação fica na tabela `AdminAction` (`GET /api/painel/log`). Entrada discreta no perfil.
   Aba **Contas criadas** (pedido do dono, 14/09/2026): a mesma lista em ordem de criação, mais nova primeiro
   (`GET /api/painel/users?order=criadas`), com e-mail, gols, "criada dd/mm às hh:mm" e "convite de X" (convites).
+  Aba **FutPrego** (pedido do dono, 15/09/2026; `GET /api/painel/futprego?page=`): histórico dos confrontos de
+  verdade (`FutPregoMatch`; contra bot não grava), o mais recente primeiro — data/hora, os dois jogadores com time,
+  vencedor e motivo, jogadas, aposta, se o gol contou (e de qual time saiu 1 gol) e selo "mesma internet"
+  (`aIp === bIp`). Tocar no nick abre o detalhe do jogador.
   Não confundir com `/api/admin` (x-admin-key, uso via curl) — intocado.
+- **Anti-robô do cadastro** (`lib/security.js`): honeypot `website` + tempo mínimo de 3 s no formulário. O front
+  manda **`elapsedMs`** (abriu → enviou, medido no MESMO relógio do aparelho); o servidor NÃO compara com o relógio
+  dele — comparar `startedAt` do cliente com `Date.now()` do servidor barrava quem tinha o PC adiantado ("rápido
+  demais" depois de 1 min no formulário; caso real de 15/09/2026). `startedAt` ainda é aceito de fronts em cache,
+  mas só barra diferença positiva. O `registerLimiter` (5/h por IP) conta só cadastros que DERAM CERTO
+  (`skipFailedRequests`): recusa não gasta a cota. Teste: `node scripts/test-seguranca.js` (pasta api/, banco LOCAL).
 - **Termo do dia** (`lib/termo/`): 5 letras, 6 tentativas; a palavra **nunca** vai para o
   cliente antes do fim (nem no JSON). Acertar = 1 gol normal (`applyResult` com kind `TERMO`:
   placar, artilharia, lances) + pontos de nível pela tentativa (`TERMO.levelPoints`, 30→5);
@@ -370,7 +380,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/frangaco/state` · `POST /api/frangaco/run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}` (Frangaço — contrato do cliente Unity em /tv/?mode=penalty) · `GET /api/daily/frangaco` (estado do slider)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links; não traz mensagens de quem eu bloqueei)
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
-`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` (painel de admin)
+`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/futprego?page=` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

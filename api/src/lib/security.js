@@ -36,13 +36,24 @@ export function isDisposableEmail(email) {
 }
 
 // ─── Cadastro: honeypot + tempo mínimo ──────────────────────────────────────
-/** `website` é um campo escondido do formulário (humano não vê, robô preenche); `startedAt` = quando o
- *  formulário abriu (relógio do cliente, só serve para pegar script que envia na hora). */
+/** `website` é um campo escondido do formulário (humano não vê, robô preenche); `elapsedMs` = quanto tempo
+ *  o formulário ficou aberto, medido NO APARELHO (abriu e enviou pelo mesmo relógio — só serve para pegar
+ *  script que envia na hora). Fronts antigos ainda mandam `startedAt` (hora em que abriu, no relógio do
+ *  aparelho); comparar isso com o relógio do servidor barrava gente com o PC adiantado ("rápido demais"
+ *  depois de 1 min no formulário — caso real de 15/09/2026), então esse caminho só vale enquanto o front
+ *  em cache não atualiza e NUNCA barra diferença negativa (relógio na frente = não é robô). */
 export function checkRegisterForm(body) {
   if (typeof body?.website === 'string' && body.website.trim() !== '') throw badRequest('Cadastro inválido.');
+  const slow = () => new GameError(429, 'slow-down', 'Calma, craque! Confira os dados e tente de novo.');
+  const elapsed = Number(body?.elapsedMs);
+  if (Number.isFinite(elapsed)) {
+    if (elapsed >= 0 && elapsed < SECURITY.registerMinFormMs) throw slow();
+    return;
+  }
   const started = Number(body?.startedAt);
-  if (Number.isFinite(started) && started > 0 && Date.now() - started < SECURITY.registerMinFormMs) {
-    throw new GameError(429, 'slow-down', 'Calma, craque! Confira os dados e tente de novo.');
+  if (Number.isFinite(started) && started > 0) {
+    const diff = Date.now() - started;
+    if (diff >= 0 && diff < SECURITY.registerMinFormMs) throw slow();
   }
 }
 

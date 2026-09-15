@@ -26,15 +26,24 @@ async function call(method, path, body, { token, ip } = {}) {
 }
 const team = await prisma.team.findFirst();
 const tag = Date.now().toString(36).slice(-4);
-const reg = (n, extra = {}, ip = '203.0.113.10') => call('POST', '/api/auth/register', { nick: n, email: `${n}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug, startedAt: Date.now() - 10_000, ...extra }, { ip });
+const reg = (n, extra = {}, ip = '203.0.113.10') => call('POST', '/api/auth/register', { nick: n, email: `${n}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug, elapsedMs: 10_000, ...extra }, { ip });
 
 console.log('cadastro');
 let r = await reg(`sec${tag}a`, { website: 'http://spam' });
 ok(r.status === 400, 'honeypot preenchido = 400');
-r = await reg(`sec${tag}b`, { startedAt: Date.now() });
-ok(r.status === 429, 'formulário enviado em < 3 s = 429');
+r = await reg(`sec${tag}b`, { elapsedMs: 800 });
+ok(r.status === 429 && r.data.error === 'slow-down', 'formulário enviado em < 3 s = 429');
+r = await reg(`sec${tag}b`, { elapsedMs: undefined, startedAt: Date.now() - 500 });
+ok(r.status === 429 && r.data.error === 'slow-down', 'front antigo (startedAt) enviado em < 3 s = 429');
 r = await reg(`sec${tag}c`, { email: `sec${tag}c@mailinator.com` });
 ok(r.status === 400 && /temporários/.test(r.data.message), 'e-mail descartável = 400');
+// relógio do aparelho adiantado (caso real de 15/09/2026): 70 s no formulário, PC 2 min na frente do servidor
+r = await reg(`sec${tag}b`, { website: 'http://spam', elapsedMs: undefined, startedAt: Date.now() + 120_000 - 70_000 });
+ok(r.status === 400, 'front antigo com relógio adiantado NÃO cai em "rápido demais" (chega ao honeypot = 400)');
+// as recusas acima (6 do mesmo IP, mais que o limite de 5/h) não gastam a cota: o cadastro certo passa
+r = await reg(`sec${tag}b`, { website: 'http://spam' });
+r = await reg(`sec${tag}b`);
+ok(r.status === 200 || r.status === 201, 'depois de 7 recusas do mesmo IP, o cadastro certo ainda passa (recusa não conta no limite/h)');
 const ipA = `198.51.100.${Math.floor(Math.random() * 200) + 1}`;
 const made = [];
 for (let i = 0; i < SECURITY.registerPerIpPerDay; i++) { r = await reg(`sec${tag}${i}x`, {}, ipA); made.push(r); }

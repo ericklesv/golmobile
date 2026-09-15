@@ -136,8 +136,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   webhook todo txid "JG"+32 hex (`isJogaGolTxid`) — **não mudar o formato do `newTxid()`** sem mexer lá.
   Sem credenciais, a tela mostra "A compra por PIX abre em breve". **Os pacotes dão saldo junto** (pedido do dono,
   15/09/2026; `VIP_PACKS[].money`, guardado em `VipPurchase.money` na compra — migração 0031 — e creditado na mesma
-  transação do VIP): R$ 100 mil · 400 mil · 900 mil · 2 mi · 4,5 mi · 10 mi (~10 % a 20 % do pacote em VIP, na
-  escala da Loja onde 1 VIP = R$ 100 mil; proposta — mudar só em `rules.js`). A tela mostra "+ R$ X de saldo" no pacote e no PIX confirmado.
+  transação do VIP): R$ 50 mil · 200 mil · 450 mil · 1 mi · 2,25 mi · 5 mi (~10 % a 20 % do pacote em VIP, na
+  escala da Loja onde 1 VIP = R$ 50 mil; aprovado pelo dono em 15/09/2026 — mudar só em `rules.js`). A tela mostra "+ R$ X de saldo" no pacote e no PIX confirmado.
   Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
   **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do
   scheduler): quem tem `vipUntil` no futuro e não está suspenso chuta sozinho quando a recarga do
@@ -255,10 +255,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   · PREMIO. **Avisos automáticos** (`notify.*`, sempre em `catch` — nunca derrubam a ação): PIX aprovado (dias +
   saldo), VIP/saldo dado ou retirado pelo admin, marco de convite (os dois lados), doação de VIP de colega, prêmio
   do Ranking X1. Admin: `POST /api/painel/mensagens {userId | all, title, text}` — painel "MENSAGEM" no detalhe do
-  jogador e aba **Avisos** (uma linha por jogador vivo, em lotes de 500); ações `mensagem`/`aviso` no log.
+  jogador e aba **Avisos** (uma linha por jogador vivo, em lotes de 500); ações `mensagem`/`aviso` no log. O detalhe
+  do jogador mostra a caixa dele (`GET /api/painel/users/:id/mensagens`, últimas 30, lida/não lida).
 - **VIP vira saldo** (pedido do dono/erickles, 15/09/2026): Loja → "Saco de dinheiro": `POST /api/me/vip-to-money
-  {qtd}` troca VIP guardado por `MONEY.VIP_TO_MONEY` (R$ 100 mil) cada, sem limite (ShopLog `VIP_MONEY`). Por isso o
-  bônus de saldo dos pacotes subiu para a mesma escala (R$ 100 mil · 400 mil · 900 mil · 2 mi · 4,5 mi · 10 mi).
+  {qtd}` troca VIP guardado por `MONEY.VIP_TO_MONEY` (R$ 50 mil) cada, sem limite (ShopLog `VIP_MONEY`). Por isso o
+  bônus de saldo dos pacotes está na mesma escala (R$ 50 mil · 200 mil · 450 mil · 1 mi · 2,25 mi · 5 mi).
 - **Distintivos ao lado do nome** (pedido do dono, 13/09/2026; `services/badges.js`, `components/Badges.tsx`): **P**
   (Presidente) / **D** (Diretor) do cargo no time e o **top 3 de AGORA** — hora = estrela, rodada = medalha, temporada
   = troféu; 1º ouro, 2º prata, 3º bronze (`/ui/ico-{star,medal,trophy}_{gold,silver,bronze}.png`; estrela/troféu prata

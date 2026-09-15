@@ -322,6 +322,13 @@ adminPanel.get(['/x1', '/futprego'], handle(async (req) => {
   };
 }));
 
+// ─── Caixa de mensagens do jogador, vista pelo admin (últimas 30; confere se os avisos chegaram) ──
+adminPanel.get('/users/:id/mensagens', handle(async (req) => {
+  const u = await fullUser(Number(req.params.id));
+  const rows = await prisma.message.findMany({ where: { userId: u.id }, orderBy: { id: 'desc' }, take: 30, include: { from: { select: { nick: true } } } });
+  return { unread: rows.filter((m) => !m.readAt).length, messages: rows.map((m) => ({ id: m.id, kind: m.kind, title: m.title, text: m.text, read: !!m.readAt, at: m.createdAt, from: m.from?.nick ?? null })) };
+}));
+
 // ─── Mensagens (pedido do dono, 15/09/2026): recado para um jogador ou aviso para todos ──────
 // POST /api/painel/mensagens {userId?, all?, title, text}: com `all` cria uma linha por jogador vivo.
 adminPanel.post('/mensagens', handle(async (req) => {

@@ -134,6 +134,10 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   const [vipQtd, setVipQtd] = useState('5');
   const [msgTitle, setMsgTitle] = useState('');
   const [msgText, setMsgText] = useState('');
+  const [inbox, setInbox] = useState<{ unread: number; messages: { id: number; kind: string; title: string; text: string; read: boolean; at: string; from: string | null }[] } | null>(null);
+  const [openMsg, setOpenMsg] = useState<number | null>(null);
+  const loadInbox = () => api.adminInbox(id).then(setInbox).catch(() => setInbox({ unread: 0, messages: [] }));
+  useEffect(() => { loadInbox(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
   const [saldoQtd, setSaldoQtd] = useState('1000');
   const [exp, setExp] = useState('100');
   const [banHours, setBanHours] = useState('24');
@@ -297,7 +301,30 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
         <div className="flex flex-col gap-2">
           <input className="field" placeholder="Título" maxLength={80} value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)} />
           <textarea className="field min-h-[80px]" placeholder="Texto (chega na caixa de mensagens do jogador)" maxLength={2000} value={msgText} onChange={(e) => setMsgText(e.target.value)} />
-          <button className="btn btn-blue btn-sm" disabled={busy || !msgTitle.trim() || !msgText.trim()} onClick={() => run(async () => { await api.adminMessage({ userId: id, title: msgTitle.trim(), text: msgText.trim() }); toast(`Mensagem enviada para ${u!.nick}.`, 'success'); setMsgTitle(''); setMsgText(''); })}>Enviar para {u.nick}</button>
+          <button className="btn btn-blue btn-sm" disabled={busy || !msgTitle.trim() || !msgText.trim()} onClick={() => run(async () => { await api.adminMessage({ userId: id, title: msgTitle.trim(), text: msgText.trim() }); toast(`Mensagem enviada para ${u!.nick}.`, 'success'); setMsgTitle(''); setMsgText(''); await loadInbox(); })}>Enviar para {u.nick}</button>
+        </div>
+        {/* a caixa do jogador, como ele vê (pedido do dono, 15/09/2026: conferir que os avisos chegaram) */}
+        <div className="mt-3 border-t border-navy-ink/10 pt-2">
+          <div className="mb-1 flex items-center justify-between text-[11px] font-extrabold uppercase text-muted">
+            <span>Caixa de {u.nick}</span>
+            {inbox && <span>{inbox.messages.length} {inbox.messages.length === 1 ? 'mensagem' : 'mensagens'} · {inbox.unread} não {inbox.unread === 1 ? 'lida' : 'lidas'}</span>}
+          </div>
+          {!inbox ? <div className="flex justify-center py-3"><Spinner /></div> : inbox.messages.length === 0 ? <p className="py-2 text-center text-[11px] font-bold text-muted">Nenhuma mensagem ainda.</p> : (
+            <ul className="flex max-h-[300px] flex-col gap-1 overflow-y-auto">
+              {inbox.messages.map((m) => (
+                <li key={m.id}>
+                  <button onClick={() => setOpenMsg(openMsg === m.id ? null : m.id)} className={`no-drag w-full rounded-xl px-2 py-1.5 text-left ${m.read ? 'bg-sky/10' : 'bg-gold/25'}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`trap text-[9px] uppercase ${m.kind === 'ADMIN' || m.kind === 'AVISO' ? 'trap-blue' : m.kind === 'COMPRA' ? 'trap-orange' : 'trap-green'}`}>{m.kind}</span>
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-extrabold text-navy-ink">{m.title}</span>
+                      <span className="shrink-0 text-[10px] font-bold text-muted">{m.read ? 'lida' : 'NÃO LIDA'} · {shortDt(m.at)}</span>
+                    </div>
+                    {openMsg === m.id && <p className="mt-1 whitespace-pre-wrap text-[11px] font-bold leading-snug text-navy-ink">{m.text}{m.from ? ` — ${m.from}` : ''}</p>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Panel>
 

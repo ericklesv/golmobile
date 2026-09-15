@@ -46,6 +46,7 @@ export const api = {
   inboxRead: (id: number) => req<{ ok: boolean; unread: number }>('POST', `/api/inbox/${id}/read`),
   inboxReadAll: () => req<{ ok: boolean; unread: number }>('POST', '/api/inbox/read-all'),
   adminMessage: (body: { userId?: number; all?: boolean; title: string; text: string }) => req<{ ok: boolean; sent: number }>('POST', '/api/painel/mensagens', body),
+  adminInbox: (id: number) => req<{ unread: number; messages: { id: number; kind: string; title: string; text: string; read: boolean; at: string; from: string | null }[] }>('GET', `/api/painel/users/${id}/mensagens`),
   opponent: () => req<{ opponent: import('./types').Team | null }>('GET', '/api/me/opponent'),
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
   setNickFade: (from: string | null, to: string | null) => req<Me>('POST', '/api/me/nick-fade', { from, to }),

@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
-import type { ClubBoard, ClubCandidate, ClubRole, ClubSeat, ClubState } from '../lib/types';
+import type { ClubBoard, ClubCandidate, ClubRole, ClubSeat, ClubState, Team } from '../lib/types';
 import { Avatar } from './Avatar';
 import { Shield } from './Shield';
+import { Jersey } from './Jersey';
 import { Panel, Spinner } from './ui';
 import { toast } from './Toast';
 import { timeAgo } from '../lib/format';
@@ -173,11 +174,19 @@ function Seat({ seat, role, big = false, action }: { seat: ClubSeat | null; role
  * Tribuna da diretoria (página do time). Em `mine` (o time do jogador) mostra as ações: assumir a
  * presidência, nomear/remover diretor (presidente) e sair do cargo.
  */
-export function BoardPanel({ board, teamName, club, onClub }: { board: ClubBoard; teamName: string; club: ClubState | null; onClub: (s: ClubState) => void }) {
+export function BoardPanel({ board, team, teamName, club, onClub }: { board: ClubBoard; team: Team; teamName: string; club: ClubState | null; onClub: (s: ClubState) => void }) {
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [kitOpen, setKitOpen] = useState(false);
   const refresh = useAuth((s) => s.refresh);
+  const designs = useAuth((s) => s.meta)?.kitDesigns ?? [];
+  const now = useAuth((s) => s.now);
   const president = club?.role === 'PRESIDENTE';
+  // uniforme: o do estado do clube (fresco depois de trocar) ou o da página do time
+  const kitTeam: Team = club?.team ?? team;
+  const design = club?.kit.design ?? kitTeam.kitDesign ?? 'classico';
+  const designName = designs.find((d) => d.id === design)?.name ?? 'Clássico';
+  const kitWait = club ? Math.max(0, club.kit.canChangeAt - now()) : 0;
   async function run(fn: () => Promise<ClubState>, ok?: string) {
     if (busy) return;
     setBusy(true);
@@ -212,8 +221,43 @@ export function BoardPanel({ board, teamName, club, onClub }: { board: ClubBoard
         </div>
       )}
       <p className="mt-2 text-center text-[11px] font-bold leading-snug text-muted">Presidente e diretores precisam ser VIP. Perde o cargo quem fica {club?.rules.roleLossDays ?? 3} dias sem VIP ou sem entrar no jogo.</p>
+
+      {/* uniforme do time (pedido do dono, 15/09/2026): o presidente escolhe o desenho; as cores são as do time */}
+      <div className="mt-3 flex items-center gap-2 rounded-xl bg-sky/10 px-2 py-1.5">
+        <Jersey primary={kitTeam.colorPrimary} secondary={kitTeam.colorSecondary} tertiary={kitTeam.colorTertiary} design={design} size={44} />
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block text-[11px] font-extrabold uppercase text-muted">Uniforme</span>
+          <span className="block text-[14px] font-extrabold text-navy-ink">{designName}</span>
+          {president && kitWait > 0 && <span className="block text-[10px] font-bold text-muted">dá para trocar de novo em {Math.ceil(kitWait / 3600_000)} h</span>}
+        </span>
+        {president && <button onClick={() => setKitOpen(true)} disabled={busy || kitWait > 0} className="btn btn-orange btn-sm !min-h-[32px] !text-[12px]">Mudar</button>}
+      </div>
       <AnimatePresence>{picking && <CandidatesModal onClose={() => setPicking(false)} onPick={(nick) => { setPicking(false); run(() => api.clubAppoint(nick), `${nick} agora é da diretoria.`); }} />}</AnimatePresence>
+      <AnimatePresence>{kitOpen && <KitModal team={kitTeam} current={design} onClose={() => setKitOpen(false)} onPick={(d) => { setKitOpen(false); run(() => api.clubKit(d), 'Uniforme trocado! Vale em tudo: Camisas, pênalti, falta e X1.'); }} />}</AnimatePresence>
     </Panel>
+  );
+}
+
+/** Escolha do desenho do uniforme (só o presidente): as camisas nas cores do time, uma por desenho. */
+function KitModal({ team, current, onClose, onPick }: { team: Team; current: string; onClose: () => void; onPick: (design: string) => void }) {
+  const designs = useAuth((s) => s.meta)?.kitDesigns ?? [];
+  const hours = useAuth((s) => s.meta)?.club?.kitChangeHours ?? 24;
+  return (
+    <Sheet labelId="kit-title" onClose={onClose}>
+      <div id="kit-title" className="t-display text-[22px]">Uniforme do {team.name}</div>
+      <p className="text-[12px] font-bold text-muted">As cores são as do time e não mudam — só o desenho. Vale no Camisas, no pênalti, na falta e no X1, inclusive para quem enfrenta o {team.name}. Uma troca a cada {hours} h.</p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {designs.map((d) => (
+          <button key={d.id} onClick={() => d.id !== current && window.confirm(`Trocar o uniforme para ${d.name}?`) && onPick(d.id)} disabled={d.id === current}
+            className={`no-drag flex flex-col items-center rounded-xl p-2 ${d.id === current ? 'bg-gold/30 ring-2 ring-gold' : 'bg-sky/10 hover:bg-sky/20'}`}>
+            <Jersey primary={team.colorPrimary} secondary={team.colorSecondary} tertiary={team.colorTertiary} design={d.id} size={64} />
+            <span className="t-display mt-1 text-[13px] text-navy-ink">{d.name}</span>
+            <span className="text-center text-[10px] font-bold leading-tight text-muted">{d.id === current ? 'atual' : d.desc}</span>
+          </button>
+        ))}
+      </div>
+      <button onClick={onClose} className="btn btn-blue btn-sm mt-3 w-full">Voltar</button>
+    </Sheet>
   );
 }
 

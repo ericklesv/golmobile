@@ -58,7 +58,7 @@ export function TeamScreen() {
         </Link>
       )}
 
-      <BoardPanel board={page.board} teamName={t.name} club={mineTeam ? club : null} onClub={setClub} />
+      <BoardPanel board={page.board} team={t} teamName={t.name} club={mineTeam ? club : null} onClub={setClub} />
 
       {m && (
         <Panel title={`JOGO DA RODADA ${m.round?.number ?? ''}`} ribbon="orange">

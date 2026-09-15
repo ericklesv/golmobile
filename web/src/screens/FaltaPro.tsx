@@ -192,7 +192,7 @@ export function FaltaProScreen() {
     let alive = true;
     api.opponent().then(({ opponent }) => {
       if (alive && opponent) {
-        const base = { primary: opponent.colorPrimary, secondary: opponent.colorSecondary, badge: opponent.slug };
+        const base = { primary: opponent.colorPrimary, secondary: opponent.colorSecondary, tertiary: opponent.colorTertiary ?? null, design: opponent.kitDesign ?? null, badge: opponent.slug };
         setOpp({ gk: { ...base, gloves: '#e8e8e8' }, wall: base });
       }
     }).catch(() => {});

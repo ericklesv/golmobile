@@ -16,9 +16,9 @@ import { VIP_PACKS, VIP_PIX, VIP_OFFLINE_AUTO, isVip } from '../lib/rules.js';
 import { efiReady, efiFake, newTxid, createCharge, getCharge, fakePay } from '../lib/efi.js';
 
 const round2 = (v) => Math.round(v * 100) / 100;
-const packView = (p) => ({ key: p.key, days: p.days, price: p.price, perDay: round2(p.price / p.days), tag: p.tag ?? null });
+const packView = (p) => ({ key: p.key, days: p.days, price: p.price, perDay: round2(p.price / p.days), money: p.money ?? 0, tag: p.tag ?? null });
 const purchaseView = (p) => p && ({
-  id: p.id, packKey: p.packKey, days: p.days, amount: p.amountCents / 100, status: p.status,
+  id: p.id, packKey: p.packKey, days: p.days, money: p.money ?? 0, amount: p.amountCents / 100, status: p.status,
   pixCode: p.pixCode, qrImage: p.qrImage, expiresAt: p.expiresAt.getTime(), paidAt: p.paidAt ? p.paidAt.getTime() : null,
 });
 
@@ -49,7 +49,7 @@ export async function vipBuy(userId, packKey) {
   if (open.length >= VIP_PIX.maxOpen) throw new GameError(429, 'pix-many', 'Você já tem PIX em aberto. Pague um deles ou espere vencer (30 min).');
   const txid = newTxid();
   const row = await prisma.vipPurchase.create({
-    data: { userId, packKey, days: pack.days, amountCents: Math.round(pack.price * 100), txid, expiresAt: new Date(now.getTime() + VIP_PIX.expiresSec * 1000) },
+    data: { userId, packKey, days: pack.days, money: pack.money ?? 0, amountCents: Math.round(pack.price * 100), txid, expiresAt: new Date(now.getTime() + VIP_PIX.expiresSec * 1000) },
   });
   try {
     const ch = await createCharge({
@@ -71,9 +71,10 @@ async function credit(purchase, e2eId) {
   return prisma.$transaction(async (tx) => {
     const r = await tx.vipPurchase.updateMany({ where: { id: purchase.id, status: 'PENDING' }, data: { status: 'PAID', e2eId, paidAt: new Date() } });
     if (r.count === 1) {
-      const u = await tx.user.update({ where: { id: purchase.userId }, data: { vipDays: { increment: purchase.days } }, select: { nick: true } });
-      console.log(`[vip] compra ${purchase.id} paga: +${purchase.days} VIP para o jogador ${purchase.userId}`);
-      tg.info(`💰 <b>VIP pago</b>: <b>${tg.esc(u.nick)}</b> comprou ${purchase.days} dias por ${tg.money(purchase.amountCents / 100)} (compra #${purchase.id})`);
+      const bonus = purchase.money ?? 0;
+      const u = await tx.user.update({ where: { id: purchase.userId }, data: { vipDays: { increment: purchase.days }, money: { increment: bonus } }, select: { nick: true } });
+      console.log(`[vip] compra ${purchase.id} paga: +${purchase.days} VIP e +R$ ${bonus} para o jogador ${purchase.userId}`);
+      tg.info(`💰 <b>VIP pago</b>: <b>${tg.esc(u.nick)}</b> comprou ${purchase.days} dias por ${tg.money(purchase.amountCents / 100)} (+R$ ${bonus} de saldo; compra #${purchase.id})`);
     }
     return tx.vipPurchase.findUnique({ where: { id: purchase.id } });
   });

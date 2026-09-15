@@ -1,3 +1,4 @@
+import { discBands } from '../lib/kit';
 import { forwardRef, type ReactNode } from 'react';
 
 /**
@@ -13,10 +14,25 @@ export interface PregoBoardData {
   W: number; H: number; mouth: number; goalX: [number, number]; ball: number; nail: number; post: number;
   nails: { x: number; y: number; side: 0 | 1 }[]; posts: { x: number; y: number }[];
 }
-/** Cores do time nas peças. `tertiary` (tricolores, ex.: Santa Cruz) = peça listrada na horizontal
- *  primária · terciária · secundária — a 3ª cor, no meio, separa as outras duas (pedido da torcida do Santa
- *  Cruz, 15/09/2026: "listradinho horizontal, sem o preto tocar no vermelho"). Vale no prego e no botão. */
-export interface TeamPaint { primary: string; secondary: string; tertiary?: string | null }
+/** Cores do time nas peças + o desenho do uniforme escolhido pelo presidente (lib/kit.ts: `discBands`):
+ *  listras = faixas verticais, faixas = horizontais, metades, diagonal; clássico/liso = peça lisa — salvo time
+ *  tricolor (`tertiary`, ex.: Santa Cruz), que fica listrado na horizontal primária · terciária · secundária
+ *  (pedido da torcida, 15/09/2026: "sem o preto tocar no vermelho"). Vale no prego e no botão. */
+export interface TeamPaint { primary: string; secondary: string; tertiary?: string | null; design?: string | null }
+
+/** Faixas de uma peça redonda (cx, cy, r) na direção do desenho, já recortadas no círculo `clip`. */
+export function DiscBands({ cx, cy, r, bands, dir, clip }: { cx: number; cy: number; r: number; bands: string[]; dir: 'h' | 'v' | 'd'; clip: string }) {
+  const n = bands.length, h = (2 * r) / n;
+  const rot = dir === 'd' ? `rotate(-45 ${cx} ${cy})` : dir === 'v' ? `rotate(90 ${cx} ${cy})` : undefined;
+  return (
+    <>
+      <clipPath id={clip}><circle cx={cx} cy={cy} r={r} /></clipPath>
+      <g clipPath={`url(#${clip})`} transform={rot}>
+        {bands.map((col, k) => <rect key={k} x={cx - r * 1.5} y={cy - r + k * h} width={3 * r} height={h + 0.3} fill={col} />)}
+      </g>
+    </>
+  );
+}
 
 const FRAME = 16, NET = 20;
 
@@ -85,18 +101,14 @@ export const PregoBoard = forwardRef<SVGSVGElement, {
         {B.nails.map((n, i) => {
           const c = paint[n.side];
           const r = B.nail + 1;
-          if (c.tertiary) {
-            const bands = [c.primary, c.tertiary, c.secondary]; // 3 faixas: no prego pequeno, mais que isso some
-            const h = (2 * r) / bands.length;
+          const db = discBands(c);
+          if (db) {
             const clip = `fp-nail-${B.id ?? 'b'}-${n.side}-${i}`;
             return (
               <g key={i}>
                 <circle cx={n.x + 1.5} cy={n.y + 2} r={B.nail + 1.2} fill="#000" opacity="0.32" />
-                <clipPath id={clip}><circle cx={n.x} cy={n.y} r={r} /></clipPath>
-                <g clipPath={`url(#${clip})`}>
-                  {bands.map((col, k) => <rect key={k} x={n.x - r} y={n.y - r + k * h} width={2 * r} height={h + 0.3} fill={col} />)}
-                </g>
-                <circle cx={n.x} cy={n.y} r={r} fill="none" stroke={c.tertiary} strokeWidth="1.6" />
+                <DiscBands cx={n.x} cy={n.y} r={r} bands={db.bands} dir={db.dir} clip={clip} />
+                <circle cx={n.x} cy={n.y} r={r} fill="none" stroke={c.tertiary ?? c.secondary} strokeWidth="1.6" />
                 <circle cx={n.x} cy={n.y} r={r} fill="url(#fp-metal)" />
               </g>
             );

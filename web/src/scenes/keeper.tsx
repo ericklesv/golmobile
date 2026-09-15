@@ -17,23 +17,40 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { SkeletonUtils } from 'three-stdlib';
+import { designOf, kitPixel } from '../lib/kit';
 
 // ---------- Uniforme de verdade: máscara do kit + AO + cores num canvas ----------
 // kit-mask.png (do pack, com regiões extras pintadas no build — tools/3d/build3d.mjs):
 // azul = cor primária, vermelho = secundária, verde = chuteira, magenta = luva,
 // cinza = cabelo, preto = pele. kit-ao.png dá o sombreamento (dobras, rosto).
-export interface KitColors { primary: string; secondary: string; skin?: string; hair?: string; boots?: string; gloves?: string; badge?: string /* slug do time → /escudos/<slug>.svg|png no peito */ }
+export interface KitColors {
+  primary: string; secondary: string; skin?: string; hair?: string; boots?: string; gloves?: string;
+  badge?: string; /* slug do time → /escudos/<slug>.svg|png no peito */
+  /** 3ª cor do time e o desenho do uniforme escolhido pelo presidente (lib/kit.ts): pintam a CAMISA por cima da máscara. */
+  tertiary?: string | null; design?: string | null;
+}
 
 const kitCache = new Map<string, THREE.CanvasTexture>();
 let kitImages: Promise<[HTMLImageElement, HTMLImageElement]> | null = null;
 const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 const hexRgb = (hex: string): [number, number, number] => { const n = parseInt(hex.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-export const kitKeyOf = (kit?: KitColors | null) => kit ? `${kit.primary}|${kit.secondary}|${kit.skin ?? ''}|${kit.hair ?? ''}|${kit.boots ?? ''}|${kit.gloves ?? ''}|${kit.badge ?? ''}` : '';
+export const kitKeyOf = (kit?: KitColors | null) => kit ? `${kit.primary}|${kit.secondary}|${kit.skin ?? ''}|${kit.hair ?? ''}|${kit.boots ?? ''}|${kit.gloves ?? ''}|${kit.badge ?? ''}|${kit.tertiary ?? ''}|${kit.design ?? ''}` : '';
+
+// Ilhas da CAMISA na máscara (512×512): frente, costas e as mangas (calção e meião ficam como estão).
+// Dentro delas o desenho (lib/kit.ts) decide a cor de cada pixel — no clássico a máscara já traz a faixa.
+const SHIRT_ISLANDS: { x0: number; x1: number; y0: number; y1: number }[] = [
+  { x0: 46, x1: 218, y0: 0, y1: 226 }, // frente
+  { x0: 294, x1: 466, y0: 0, y1: 226 }, // costas
+  { x0: 0, x1: 46, y0: 30, y1: 92 }, { x0: 200, x1: 300, y0: 30, y1: 92 }, { x0: 448, x1: 512, y0: 30, y1: 92 }, // mangas
+];
 
 async function loadBadge(slug: string): Promise<HTMLImageElement | null> {
   try { return await loadImg(`/escudos/${slug}.svg`); } catch { /* tenta png */ }
   try { return await loadImg(`/escudos/${slug}.png`); } catch { return null; }
 }
+
+const islandAt = (x: number, y: number) => SHIRT_ISLANDS.find((s) => x >= s.x0 && x < s.x1 && y >= s.y0 && y < s.y1) ?? null;
+const inShirt = (x: number, y: number) => islandAt(x, y) !== null;
 
 async function kitTexture(kit: KitColors): Promise<THREE.CanvasTexture> {
   const key = kitKeyOf(kit);
@@ -49,6 +66,11 @@ async function kitTexture(kit: KitColors): Promise<THREE.CanvasTexture> {
   g.drawImage(ao, 0, 0, S, S);
   const ad = g.getImageData(0, 0, S, S).data;
   const prim = hexRgb(kit.primary), sec = hexRgb(kit.secondary);
+  const design = designOf(kit.design);
+  const paintShirt = design !== 'classico' || !!kit.tertiary; // clássico sem 3ª cor = máscara como está (já tem a faixa)
+  const kp = { primary: kit.primary, secondary: kit.secondary, tertiary: kit.tertiary ?? null, design };
+  const rgbCache = new Map<string, [number, number, number]>();
+  const rgbOf = (hex: string) => { let v = rgbCache.get(hex); if (!v) { v = hexRgb(hex); rgbCache.set(hex, v); } return v; };
   const skin = hexRgb(kit.skin ?? '#d9a06b'), hair = hexRgb(kit.hair ?? '#3a2a1d');
   const boots = hexRgb(kit.boots ?? '#26221f'), gloves = hexRgb(kit.gloves ?? kit.skin ?? '#d9a06b');
   const out = g.createImageData(S, S);
@@ -57,7 +79,11 @@ async function kitTexture(kit: KitColors): Promise<THREE.CanvasTexture> {
     let col: [number, number, number];
     if (r > 180 && b > 180 && gr < 100) col = gloves;
     else if (gr > 150 && r < 100 && b < 100) col = boots;
-    else {
+    else if (paintShirt && (b > 150 || r > 150) && gr < 100 && inShirt((i / 4) % S, Math.floor(i / 4 / S))) {
+      // camisa (azul = primária, vermelho = secundária na máscara): o desenho manda
+      const isl = islandAt((i / 4) % S, Math.floor(i / 4 / S))!;
+      col = rgbOf(kitPixel(kp, ((i / 4) % S - isl.x0) / (isl.x1 - isl.x0), (Math.floor(i / 4 / S) - isl.y0) / (isl.y1 - isl.y0)));
+    } else {
       const wP = Math.max(0, b - Math.max(r, gr)) / 255;
       const wS = Math.max(0, r - Math.max(gr, b)) / 255;
       const rest = Math.max(0, 1 - wP - wS);

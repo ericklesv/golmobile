@@ -18,3 +18,4 @@ club.post('/offers/:id/accept', handle((req) => C.acceptOffer(req.user.id, req.p
 club.post('/offers/:id/refuse', handle((req) => C.refuseOffer(req.user.id, req.params.id)));
 club.post('/offers/:id/cancel', handle((req) => C.cancelOffer(req.user.id, req.params.id)));
 club.post('/gift', handle((req) => C.giftVip(req.user.id, req.body?.nick, req.body?.days)));
+club.post('/kit', handle((req) => C.setKitDesign(req.user.id, String(req.body?.design || '')))); // presidente escolhe o desenho do uniforme

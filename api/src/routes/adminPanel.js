@@ -184,6 +184,26 @@ adminPanel.post('/users/:id/gols', handle(async (req) => {
 }));
 
 // ─── Exp (pontos de nível): soma levelBonus — nível = goalsTotal + levelBonus ─
+// ─── Dar / retirar VIP (banco de dias) e saldo (pedido do dono, 15/09/2026) ────────────────────
+// qtd positiva dá, negativa retira; nunca fica abaixo de 0. Tudo no log (AdminAction).
+const adjustSchema = z.object({ qtd: z.number().int().min(-1_000_000).max(1_000_000).refine((n) => n !== 0, 'Quantidade zero.') });
+adminPanel.post('/users/:id/vip', handle(async (req) => {
+  const u = await fullUser(Number(req.params.id));
+  const { qtd } = adjustSchema.parse(req.body);
+  const delta = Math.max(qtd, -u.vipDays);
+  const after = await prisma.user.update({ where: { id: u.id }, data: { vipDays: { increment: delta } }, include: { team: true } });
+  await audit(req.user.id, u.id, delta >= 0 ? 'vip' : 'vip-retirar', { qtd: delta });
+  return { ok: true, qtd: delta, user: rowView(after) };
+}));
+adminPanel.post('/users/:id/saldo', handle(async (req) => {
+  const u = await fullUser(Number(req.params.id));
+  const { qtd } = adjustSchema.parse(req.body);
+  const delta = Math.max(qtd, -u.money);
+  const after = await prisma.user.update({ where: { id: u.id }, data: { money: { increment: delta } }, include: { team: true } });
+  await audit(req.user.id, u.id, delta >= 0 ? 'saldo' : 'saldo-retirar', { qtd: delta });
+  return { ok: true, qtd: delta, user: rowView(after) };
+}));
+
 adminPanel.post('/users/:id/exp', handle(async (req) => {
   const id = Number(req.params.id);
   const qtd = Math.floor(Number(req.body?.qtd));

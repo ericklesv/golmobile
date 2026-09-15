@@ -7,6 +7,8 @@ export interface Team {
   colorPrimary: string; colorSecondary: string; stadium: string; serie: Serie;
   /** 3ª cor (tricolores, ex.: Santa Cruz): listras nas peças do X1. */
   colorTertiary?: string | null;
+  /** Desenho do uniforme escolhido pelo presidente (lib/kit.ts; cores nunca mudam). */
+  kitDesign?: string;
 }
 
 export interface Cooldown { cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean }
@@ -91,13 +93,15 @@ export interface Meta {
   /** Grupo do WhatsApp dos jogadores (COMMUNITY em rules.js). */
   community?: { whatsapp: string; everyHours: number };
   /** Diretoria e contratações (CLUB em rules.js). */
-  club?: { directors: number; roleLossDays: number; offerMin: number; offerMax: number; offerHours: number; maxOpenOffers: number; messageMax: number };
+  club?: { directors: number; roleLossDays: number; offerMin: number; offerMax: number; offerHours: number; maxOpenOffers: number; messageMax: number; kitChangeHours?: number };
   cooldowns: Record<Kind, { normal: number; vip: number }>;
   trailMin: { normal: number; vip: number };
   money: Record<string, number>;
   dexterityMax: number; nerfMinLevel: number;
   levels: { lvl: number; name: string; goals: number; skill: string | null }[];
   prizes: any; trailLines: { name: string; total: number; mines: number }[];
+  /** Desenhos de uniforme (KIT_DESIGNS da API): o presidente escolhe um; as cores são sempre as do time. */
+  kitDesigns?: { id: string; name: string; desc: string }[];
   unlock: Record<Kind, number>;
   chances: { penalty: number; foul: number; perDexterity: number; rebound: number[] };
   partySegments: string[];
@@ -419,9 +423,10 @@ export interface FaltaProKickResponse {
 // Frangaço: o jogo é o cliente Unity (/tv/?mode=penalty) falando direto com /api/frangaco/* — sem tipos aqui.
 
 // ─── VIP pago (PIX na Efí) ──────────────────────────────────────────────────
-export interface VipPack { key: string; days: number; price: number; perDay: number; tag: string | null }
+/** `money` = saldo do jogo que vem junto com o pacote. */
+export interface VipPack { key: string; days: number; price: number; perDay: number; money: number; tag: string | null }
 export interface VipPurchase {
-  id: number; packKey: string; days: number; amount: number; status: 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED';
+  id: number; packKey: string; days: number; money?: number; amount: number; status: 'PENDING' | 'PAID' | 'EXPIRED' | 'FAILED';
   /** PIX copia e cola e a imagem do QR (PNG em base64, sem o prefixo data:). */
   pixCode: string | null; qrImage: string | null; expiresAt: number; paidAt: number | null;
 }
@@ -450,6 +455,8 @@ export interface OfferSent {
 }
 export interface ClubState {
   team: Team; role: ClubRole | null; board: ClubBoard;
+  /** Uniforme do time: desenho atual e quando o presidente pode trocar de novo (ms; 0 = já pode). */
+  kit: { design: string; canChangeAt: number };
   claim: { ok: boolean; reason: string | null };
   contract: { until: number } | null;
   bank: number;

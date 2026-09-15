@@ -189,6 +189,8 @@ model Team {
   colorPrimary   String
   colorSecondary String
   colorTertiary  String? // 3ª cor (times tricolores, ex.: Santa Cruz preto/branco/vermelho) — listras no X1
+  kitDesign      String    @default("classico") // desenho do uniforme escolhido pelo presidente (KIT_DESIGNS em rules.js); cores nunca mudam
+  kitChangedAt   DateTime? // última troca (1 por dia — CLUB.kitChangeHours)
   stadium        String
   serie          Serie
   slogan         String?
@@ -543,6 +545,7 @@ model VipPurchase {
   user        User      @relation(fields: [userId], references: [id])
   packKey     String
   days        Int
+  money       Int       @default(0) // saldo do jogo que vem junto (VIP_PACKS.money na hora da compra)
   amountCents Int
   txid        String    @unique
   status      String    @default("PENDING")

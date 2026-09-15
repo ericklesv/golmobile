@@ -20,7 +20,7 @@ export function teamView(t) {
   if (!t) return null;
   return {
     id: t.id, slug: t.slug, name: t.name, abbr: t.abbr, state: t.state,
-    colorPrimary: t.colorPrimary, colorSecondary: t.colorSecondary, colorTertiary: t.colorTertiary ?? null, stadium: t.stadium, serie: t.serie,
+    colorPrimary: t.colorPrimary, colorSecondary: t.colorSecondary, colorTertiary: t.colorTertiary ?? null, kitDesign: t.kitDesign ?? 'classico', stadium: t.stadium, serie: t.serie,
   };
 }
 

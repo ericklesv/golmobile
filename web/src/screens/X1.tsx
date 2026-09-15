@@ -60,7 +60,7 @@ const MAX_PULL = 120; // FutPrego: arrasto (em unidades da tábua) para a força
 const MAX_PULL_BOTAO = 110; // Botão: idem, puxando o botão
 const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
 const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
-const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary, tertiary: t.colorTertiary ?? null });
+const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary, tertiary: t.colorTertiary ?? null, design: t.kitDesign ?? null });
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
 
 /** Botões que `side` pode tocar agora (no pênalti, só o cobrador). */

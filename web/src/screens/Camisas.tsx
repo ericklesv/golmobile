@@ -94,7 +94,7 @@ export function CamisasScreen() {
                   const n = slots[i];
                   const isMiss = !!reveal?.miss && i === slots.length - 1;
                   const isCurrent = !reveal && i === slots.length - 1;
-                  return <Slot key={i} n={n} miss={isMiss} current={isCurrent} primary={team.colorPrimary} secondary={team.colorSecondary} />;
+                  return <Slot key={i} n={n} miss={isMiss} current={isCurrent} primary={team.colorPrimary} secondary={team.colorSecondary} tertiary={team.colorTertiary} design={team.kitDesign} />;
                 })}
               </div>
 
@@ -128,7 +128,7 @@ export function CamisasScreen() {
                       <div className="mt-2 flex justify-center gap-1.5">
                         {game.last.seq.map((n, i) => (
                           <span key={i} className={`rounded-xl p-0.5 ${i === game.last!.seq.length - 1 ? 'ring-4 ring-danger' : ''}`}>
-                            <Jersey number={n} primary={team.colorPrimary} secondary={team.colorSecondary} size={44} />
+                            <Jersey number={n} primary={team.colorPrimary} secondary={team.colorSecondary} tertiary={team.colorTertiary} design={team.kitDesign} size={44} />
                           </span>
                         ))}
                       </div>
@@ -164,7 +164,7 @@ export function CamisasScreen() {
 }
 
 /** Uma casa da sequência: camisa virada (verde) ou escondida (branca com "?"). */
-function Slot({ n, miss, current, primary, secondary }: { n?: number; miss: boolean; current: boolean; primary: string; secondary: string }) {
+function Slot({ n, miss, current, primary, secondary, tertiary, design }: { n?: number; miss: boolean; current: boolean; primary: string; secondary: string; tertiary?: string | null; design?: string | null }) {
   if (n === undefined) {
     return (
       <div className="card-white flex aspect-[4/5] items-center justify-center" style={{ borderRadius: 16 }}>
@@ -175,7 +175,7 @@ function Slot({ n, miss, current, primary, secondary }: { n?: number; miss: bool
   return (
     <motion.div key={n} initial={{ rotateY: 90, scale: 0.9 }} animate={{ rotateY: 0, scale: 1 }} transition={{ duration: 0.35 }}
       className={`${miss ? 'card-orange' : 'card-green'} flex aspect-[4/5] items-center justify-center ${current ? 'ring-4 ring-gold' : ''} ${miss ? 'ring-4 ring-danger' : ''}`} style={{ borderRadius: 16 }}>
-      <Jersey number={n} primary={primary} secondary={secondary} className="h-auto w-[116%] max-w-none drop-shadow" />
+      <Jersey number={n} primary={primary} secondary={secondary} tertiary={tertiary} design={design} className="h-auto w-[116%] max-w-none drop-shadow" />
     </motion.div>
   );
 }

@@ -128,6 +128,7 @@ export const api = {
   clubCandidates: () => req<ClubCandidate[]>('GET', '/api/club/candidates'),
   clubClaim: () => req<ClubState>('POST', '/api/club/claim'),
   clubResign: () => req<ClubState>('POST', '/api/club/resign'),
+  clubKit: (design: string) => req<ClubState>('POST', '/api/club/kit', { design }), // presidente escolhe o desenho do uniforme
   clubAppoint: (nick: string) => req<ClubState>('POST', '/api/club/directors', { nick }),
   clubRemoveDirector: (nick: string) => req<ClubState>('POST', '/api/club/directors/remove', { nick }),
   clubPass: (nick: string) => req<ClubState>('POST', '/api/club/pass', { nick }),
@@ -149,6 +150,8 @@ export const api = {
   adminPatch: (id: number, body: AdminPatch) => req<AdminUserDetail>('PATCH', `/api/painel/users/${id}`, body),
   adminGols: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow; text: string | null }>('POST', `/api/painel/users/${id}/gols`, { qtd }),
   adminExp: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow }>('POST', `/api/painel/users/${id}/exp`, { qtd }),
+  adminVip: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow }>('POST', `/api/painel/users/${id}/vip`, { qtd }), // + dá, − retira
+  adminSaldo: (id: number, qtd: number) => req<{ ok: boolean; qtd: number; user: AdminUserRow }>('POST', `/api/painel/users/${id}/saldo`, { qtd }),
   adminLog: (page = 1) => req<AdminLogPage>('GET', `/api/painel/log?page=${page}`),
   adminFutprego: (page = 1) => req<AdminFutPregoPage>('GET', `/api/painel/x1?page=${page}`),
   adminMulti: (q = '', page = 1) => req<AdminMultiPage>('GET', `/api/painel/multicontas?q=${encodeURIComponent(q)}&page=${page}`),

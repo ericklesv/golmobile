@@ -5,7 +5,7 @@ import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
@@ -58,6 +58,7 @@ game.get('/meta', cached(10000), handle(async () => {
     items: catalogView(), // catálogo da loja (lib/items.js)
     club: CLUB, // diretoria e contratações
     community: COMMUNITY, // grupo do WhatsApp dos jogadores (convite a cada 100 h)
+    kitDesigns: KIT_DESIGNS, // desenhos de uniforme que o presidente pode escolher (cores sempre as do time)
   };
 }));
 

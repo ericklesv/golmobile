@@ -122,7 +122,7 @@ export function PenaltyScreen() {
   useEffect(() => {
     let alive = true;
     api.opponent().then(({ opponent }) => {
-      if (alive && opponent) setOppKit({ primary: opponent.colorPrimary, secondary: opponent.colorSecondary, gloves: '#e8e8e8', badge: opponent.slug });
+      if (alive && opponent) setOppKit({ primary: opponent.colorPrimary, secondary: opponent.colorSecondary, tertiary: opponent.colorTertiary ?? null, design: opponent.kitDesign ?? null, gloves: '#e8e8e8', badge: opponent.slug });
     }).catch(() => {});
     return () => { alive = false; };
   }, []);

@@ -131,6 +131,8 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<{ nick: string; email: string; bio: string; money: string; vipDays: string; dexterity: string; teamSlug: string; nickColor: string }>({ nick: '', email: '', bio: '', money: '', vipDays: '', dexterity: '', teamSlug: '', nickColor: '' });
   const [gols, setGols] = useState('10');
+  const [vipQtd, setVipQtd] = useState('5');
+  const [saldoQtd, setSaldoQtd] = useState('1000');
   const [exp, setExp] = useState('100');
   const [banHours, setBanHours] = useState('24');
 
@@ -184,6 +186,17 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   async function darGols(qtd: number) {
     if (!Number.isFinite(qtd) || qtd < 1 || qtd > 100) { toast('Gols: 1 a 100 por vez.', 'error'); return; }
     await run(async () => { const r = await api.adminGols(id, qtd); toast(`${r.qtd} gol(s) para ${r.user.nick}.`, 'success'); await reload(); });
+  }
+  // VIP (banco de dias) e saldo: dar ou retirar (pedido do dono, 15/09/2026); o servidor nunca deixa abaixo de 0
+  async function ajustarVip(qtd: number) {
+    if (!Number.isFinite(qtd) || qtd === 0) { toast('VIP: informe uma quantidade.', 'error'); return; }
+    if (qtd < 0 && !confirm(`Retirar ${-qtd} VIP de ${u!.nick}?`)) return;
+    await run(async () => { const r = await api.adminVip(id, qtd); toast(`${r.qtd >= 0 ? '+' : ''}${r.qtd} VIP para ${r.user.nick}.`, 'success'); await reload(); });
+  }
+  async function ajustarSaldo(qtd: number) {
+    if (!Number.isFinite(qtd) || qtd === 0) { toast('Saldo: informe uma quantidade.', 'error'); return; }
+    if (qtd < 0 && !confirm(`Retirar R$ ${-qtd} de ${u!.nick}?`)) return;
+    await run(async () => { const r = await api.adminSaldo(id, qtd); toast(`${r.qtd >= 0 ? '+' : ''}R$ ${r.qtd} para ${r.user.nick}.`, 'success'); await reload(); });
   }
   async function darExp(qtd: number) {
     if (!Number.isFinite(qtd) || qtd < 1) { toast('Exp: informe uma quantidade válida.', 'error'); return; }
@@ -278,6 +291,20 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
         <p className="mt-2 text-center text-[10px] font-bold text-muted">Gols valem de verdade: placar da partida, rodada e artilharias. Exp soma no bônus de nível.</p>
       </Panel>
 
+      <Panel title="VIP E SALDO" ribbon="yellow">
+        <div className="flex items-center gap-2">
+          <input className="field w-24" type="number" min={1} value={vipQtd} onChange={(e) => setVipQtd(e.target.value)} />
+          <button className="btn btn-green btn-sm flex-1" disabled={busy} onClick={() => ajustarVip(Math.floor(Number(vipQtd)))}>Dar VIP</button>
+          <button className="btn btn-red btn-sm flex-1" disabled={busy} onClick={() => ajustarVip(-Math.floor(Number(vipQtd)))}>Retirar VIP</button>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <input className="field w-24" type="number" min={1} step={100} value={saldoQtd} onChange={(e) => setSaldoQtd(e.target.value)} />
+          <button className="btn btn-green btn-sm flex-1" disabled={busy} onClick={() => ajustarSaldo(Math.floor(Number(saldoQtd)))}>Dar saldo</button>
+          <button className="btn btn-red btn-sm flex-1" disabled={busy} onClick={() => ajustarSaldo(-Math.floor(Number(saldoQtd)))}>Retirar saldo</button>
+        </div>
+        <p className="mt-2 text-center text-[10px] font-bold text-muted">VIP vai para o banco de dias do jogador (ele ativa quando quiser). Retirar nunca deixa abaixo de 0. Tudo fica no log.</p>
+      </Panel>
+
       <Panel title="EDITAR PERFIL" ribbon="orange">
         <div className="flex flex-col gap-2">
           <label className="label">Nick</label>
@@ -318,11 +345,11 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
 }
 
 // ─── Log de auditoria ───────────────────────────────────────────────────────
-const ACTION_LABEL: Record<string, string> = { editar: 'editou', gols: 'deu gols para', exp: 'deu exp para', banir: 'baniu', desbanir: 'desbaniu' };
+const ACTION_LABEL: Record<string, string> = { editar: 'editou', gols: 'deu gols para', exp: 'deu exp para', vip: 'deu VIP para', 'vip-retirar': 'retirou VIP de', saldo: 'deu saldo para', 'saldo-retirar': 'retirou saldo de', banir: 'baniu', desbanir: 'desbaniu', denuncia: 'resolveu denúncia de' };
 
 function payloadLabel(r: AdminLogRow): string {
   const p = r.payload ?? {};
-  if (r.action === 'gols' || r.action === 'exp') return `qtd: ${p.qtd ?? '?'}`;
+  if (['gols', 'exp', 'vip', 'vip-retirar', 'saldo', 'saldo-retirar'].includes(r.action)) return `qtd: ${p.qtd ?? '?'}`;
   if (r.action === 'banir') return p.banir?.horas ? `${p.banir.horas} h` : '';
   try { const s = JSON.stringify(p); return s === '{}' ? '' : s.slice(0, 120); } catch { return ''; }
 }

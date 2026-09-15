@@ -134,7 +134,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Ligado em 13/09/2026** com a conta Efí da plataforma Rifa Express (decisão do dono) + chave aleatória
   só do JogaGol; aviso registrado. A Rifa (outro repo, `ericklesv/rifaexpress`) tira da lista de PIX e do
   webhook todo txid "JG"+32 hex (`isJogaGolTxid`) — **não mudar o formato do `newTxid()`** sem mexer lá.
-  Sem credenciais, a tela mostra "A compra por PIX abre em breve".
+  Sem credenciais, a tela mostra "A compra por PIX abre em breve". **Os pacotes dão saldo junto** (pedido do dono,
+  15/09/2026; `VIP_PACKS[].money`, guardado em `VipPurchase.money` na compra — migração 0031 — e creditado na mesma
+  transação do VIP): R$ 1.000 · 3.000 · 6.000 · 12.000 · 30.000 · 60.000 (proposta: R$ 100/dia nos pequenos,
+  R$ 120/dia nos grandes; mudar só em `rules.js`). A tela mostra "+ R$ X de saldo" no pacote e no PIX confirmado.
   Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
   **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do
   scheduler): quem tem `vipUntil` no futuro e não está suspenso chuta sozinho quando a recarga do
@@ -232,6 +235,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   1000 (10 VIP) = 16 por amigo. `referralSweep` no scheduler (2 min) paga; `@@unique([referredId, milestone])` =
   cada marco paga uma vez. Jogando na mesma internet ou suspenso, o marco **espera**. A sugestão original (% dos VIPs
   comprados pelo convidado) NÃO foi feita. Mexeu? **`node scripts/test-referral.js`** (pasta api/, só banco LOCAL).
+- **Uniforme do time — desenho escolhido pelo presidente** (pedido do dono, 15/09/2026): `Team.kitDesign`
+  (+ `kitChangedAt`, migração 0030; `KIT_DESIGNS` em `rules.js`, exposto em `meta.kitDesigns`: clássico (faixa no
+  peito), liso, listras, faixas, metades, diagonal). **As cores são SEMPRE as do time** (primária, secundária e a 3ª
+  se houver) — só o desenho muda. `POST /api/club/kit {design}` (`setKitDesign` em club.js: só presidente, 1 troca a
+  cada `CLUB.kitChangeHours` = 24 h, vira lance do time); `clubState.kit {design, canChangeAt}`; tela: linha
+  "Uniforme" na DIRETORIA da página do time (todos veem; presidente tem "Mudar" → `KitModal` com as 6 camisas nas
+  cores do time). **Um pintor só, `web/src/lib/kit.ts`** (`kitPixel` por pixel, `discBands` para peça redonda),
+  usado em: `Jersey.tsx` (Camisas + escolha), `PregoBoard`/`BotaoField` (peças do X1) e `scenes/keeper.tsx`
+  (uniforme 3D — pinta as ilhas da camisa da `kit-mask.png` por cima; goleiro e barreira do pênalti, falta e Falta
+  PRO vestem o desenho do ADVERSÁRIO via `GET /api/me/opponent`, que já traz `kitDesign`/`colorTertiary`). Desenho
+  novo = entrada em `KIT_DESIGNS` + os pintores em `kit.ts`.
 - **Distintivos ao lado do nome** (pedido do dono, 13/09/2026; `services/badges.js`, `components/Badges.tsx`): **P**
   (Presidente) / **D** (Diretor) do cargo no time e o **top 3 de AGORA** — hora = estrela, rodada = medalha, temporada
   = troféu; 1º ouro, 2º prata, 3º bronze (`/ui/ico-{star,medal,trophy}_{gold,silver,bronze}.png`; estrela/troféu prata
@@ -339,6 +353,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   OpenStreetMap, `GeoMap` em `Admin.tsx`) com o centro da cidade que a geolocalização devolve — `geoForIp`
   (`lib/ip.js`) agora traz `lat/lon/mobile/proxy/hosting` e não grava "sem dados" por 24 h quando o ip-api
   responde 429 (limite de 45/min).
+  **Dar/retirar VIP e saldo** (pedido do dono, 15/09/2026): `POST /api/painel/users/:id/vip|saldo {qtd}` (negativo
+  retira; nunca abaixo de 0; ações `vip`/`vip-retirar`/`saldo`/`saldo-retirar` no log) — painel "VIP E SALDO" no
+  detalhe do jogador.
   Não confundir com `/api/admin` (x-admin-key, uso via curl) — intocado.
 - **Anti-robô do cadastro** (`lib/security.js`): honeypot `website` + tempo mínimo de 3 s no formulário. O front
   manda **`elapsedMs`** (abriu → enviou, medido no MESMO relógio do aparelho); o servidor NÃO compara com o relógio

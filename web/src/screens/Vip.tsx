@@ -1,3 +1,4 @@
+import { money as fmtMoney } from '../lib/format';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../lib/api';
@@ -127,6 +128,7 @@ export function VipScreen() {
               {p.tag && <span className="trap trap-orange absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px]">{p.tag}</span>}
               <div className="t-display leading-none text-navy-ink"><span className="text-[40px] tabular-nums">{p.days}</span></div>
               <div className="t-display text-[14px] text-muted">dias de VIP</div>
+              {p.money > 0 && <div className="mt-0.5 rounded-lg bg-gold/25 px-1.5 py-0.5 text-[11px] font-extrabold text-navy-ink">+ {fmtMoney(p.money)} de saldo</div>}
               <div className="t-display mt-1 text-[22px] text-orange-deep">{brl(p.price)}</div>
               <div className="text-[11px] font-extrabold text-muted">{brl(p.perDay)} por dia</div>
               <button onClick={() => buy(p)} disabled={!st.enabled || !!buying} className="btn btn-green btn-sm mt-2 w-full">{buying === p.key ? 'Gerando…' : 'Comprar com PIX'}</button>
@@ -185,7 +187,8 @@ function PixModal({ purchase, test, onClose, onPaid, onActivate }: { purchase: V
               <motion.div initial={{ scale: 0.4 }} animate={{ scale: [0.4, 1.12, 1] }} id="pix-title" className="ribbon ribbon-green mx-auto -mt-1 w-[90%]">PIX CONFIRMADO!</motion.div>
               <img src="/ui/ico-crown_silver.png" alt="" className="mx-auto mt-3 h-20 w-20" />
               <div className="t-display text-[30px] text-grass-deep">+{p.days} VIP</div>
-              <p className="text-[13px] font-extrabold">Os dias já estão guardados na sua conta.</p>
+              {(p.money ?? 0) > 0 && <div className="t-display text-[18px] text-navy-ink">+ {fmtMoney(p.money!)} de saldo</div>}
+              <p className="text-[13px] font-extrabold">Os dias já estão guardados na sua conta{(p.money ?? 0) > 0 ? ' e o saldo já entrou' : ''}.</p>
               <button onClick={() => onActivate(p.days)} className="btn btn-green btn-lg mt-4 w-full">Ativar {p.days} dias agora</button>
               <button onClick={onClose} className="btn btn-blue btn-md mt-2 w-full">Guardar para depois</button>
             </>

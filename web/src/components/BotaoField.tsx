@@ -1,5 +1,6 @@
 import { forwardRef, useId, type ReactNode } from 'react';
-import type { TeamPaint } from './PregoBoard';
+import { DiscBands, type TeamPaint } from './PregoBoard';
+import { discBands } from '../lib/kit';
 
 /**
  * Campo do Futebol de Botão (X1): a mesma moldura de madeira da tábua do FutPrego, campo pintado, as duas
@@ -82,21 +83,16 @@ export function BotaoDisc({ p, r, paint, selected = false, active = false, power
   p: BotaoPiece; r: number; paint: TeamPaint; selected?: boolean; active?: boolean; powerRing?: string | null;
 }) {
   const face = p.gk ? paint.secondary : paint.primary;
-  // tricolor (ex.: Santa Cruz): aro na 3ª cor e miolo listrado na horizontal — a 3ª cor separa as outras duas
+  // desenho do uniforme (lib/kit.ts) no miolo do botão; o goleiro usa as cores invertidas. Aro: 3ª cor se houver.
   const rim = paint.tertiary ?? (p.gk ? paint.primary : paint.secondary);
-  const bands = paint.tertiary ? (p.gk ? [paint.secondary, paint.tertiary, paint.primary] : [paint.primary, paint.tertiary, paint.secondary]) : null;
+  const db = discBands(p.gk ? { ...paint, primary: paint.secondary, secondary: paint.primary } : paint);
   const clip = useId();
-  const ri = r * 0.72, bh = (2 * ri) / 3;
+  const ri = r * 0.72;
   return (
     <>
       <ellipse cx={1.8} cy={2.6} rx={r} ry={r * 0.9} fill="#000" opacity="0.3" />
       <circle r={r} fill={rim} stroke="rgba(0,0,0,0.35)" strokeWidth="1" />
-      {bands ? (
-        <>
-          <clipPath id={clip}><circle r={ri} /></clipPath>
-          <g clipPath={`url(#${clip})`}>{bands.map((col, k) => <rect key={k} x={-ri} y={-ri + k * bh} width={2 * ri} height={bh + 0.3} fill={col} />)}</g>
-        </>
-      ) : <circle r={ri} fill={face} />}
+      {db ? <DiscBands cx={0} cy={0} r={ri} bands={db.bands} dir={db.dir} clip={clip} /> : <circle r={ri} fill={face} />}
       <circle r={r} fill="url(#bt-disc)" />
       {p.gk && <rect x={-r * 0.42} y={-r * 0.14} width={r * 0.84} height={r * 0.28} rx={r * 0.12} fill={rim} opacity="0.9" />}
       {active && !selected && <circle r={r + 3} fill="none" stroke="#FFD54A" strokeOpacity="0.5" strokeWidth="1.6" strokeDasharray="3 3" />}

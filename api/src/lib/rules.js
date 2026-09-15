@@ -373,13 +373,16 @@ export function ganhaPerdePrice(wins, chance) {
 // Decisões do dono (13/09/2026): pacotes de DIAS de VIP — 1 VIP = 1 dia; vão para o banco de VIPs do
 // jogador (User.vipDays), que ativa quando quiser (POST /api/me/activate-vip). Pagamento por PIX na Efí
 // (services/vip.js, lib/efi.js). PREÇOS aprovados pelo dono em 13/09/2026 — mudar só aqui.
+// `money` = saldo do jogo que vem junto (pedido do dono, 15/09/2026: "1.000 no de 3,99 e ir progredindo + bônus
+// quanto maior o pacote"): R$ 100 do jogo por dia de VIP nos pequenos, subindo para R$ 120/dia nos grandes —
+// proposta à espera do OK do dono; mudar só aqui (a compra guarda o valor em VipPurchase.money).
 export const VIP_PACKS = [
-  { key: 'vip10', days: 10, price: 3.99 },
-  { key: 'vip30', days: 30, price: 9.9 },
-  { key: 'vip60', days: 60, price: 17.9, tag: 'Mais vendido' },
-  { key: 'vip120', days: 120, price: 29.9 },
-  { key: 'vip250', days: 250, price: 54.9 },
-  { key: 'vip500', days: 500, price: 89.9, tag: 'Melhor preço' },
+  { key: 'vip10', days: 10, price: 3.99, money: 1000 },
+  { key: 'vip30', days: 30, price: 9.9, money: 3000 },
+  { key: 'vip60', days: 60, price: 17.9, money: 6000, tag: 'Mais vendido' },
+  { key: 'vip120', days: 120, price: 29.9, money: 12000 },
+  { key: 'vip250', days: 250, price: 54.9, money: 30000 },
+  { key: 'vip500', days: 500, price: 89.9, money: 60000, tag: 'Melhor preço' },
 ];
 /** O QR do PIX vale 30 min; no máximo 3 cobranças abertas por jogador ao mesmo tempo. */
 export const VIP_PIX = { expiresSec: 30 * 60, maxOpen: 3 };
@@ -396,7 +399,24 @@ export const VIP_OFFLINE_AUTO = false;
 // marcou gol por ele assume; o Presidente nomeia até 2 Diretores; os dois fazem propostas com o VIP do
 // próprio banco. Aceitou = vai para o time, recebe o VIP e fica com contrato de 1 DIA POR VIP. VIP guardado
 // pode ser doado para colega de time (contas na mesma internet não trocam VIP). Regras em services/club.js.
+/**
+ * Uniforme do time (pedido do dono, 15/09/2026): o PRESIDENTE escolhe o DESENHO; as cores são SEMPRE as do
+ * time (primária, secundária e a 3ª quando tiver — Team.colorTertiary), nunca mudam. Um desenho só, que vale
+ * em tudo: camisa do Camisas, uniforme 3D do goleiro/barreira (pênalti, falta, Falta PRO — inclusive como
+ * adversário) e as peças do X1 (prego e botão). Desenho novo aqui + `web/src/lib/kit.ts` (como pintar).
+ */
+export const KIT_DESIGNS = [
+  { id: 'classico', name: 'Clássico', desc: 'faixa no peito' },
+  { id: 'liso', name: 'Liso', desc: 'só a cor principal' },
+  { id: 'listras', name: 'Listras', desc: 'listras verticais' },
+  { id: 'faixas', name: 'Faixas', desc: 'faixas horizontais' },
+  { id: 'metades', name: 'Metades', desc: 'cada lado de uma cor' },
+  { id: 'diagonal', name: 'Diagonal', desc: 'faixa atravessada' },
+];
+export const KIT_DESIGN_IDS = KIT_DESIGNS.map((d) => d.id);
+
 export const CLUB = {
+  kitChangeHours: 24, // o presidente muda o desenho do uniforme no máximo 1 vez por dia (evita ficar piscando)
   directors: 2, // Presidente + até 2 Diretores
   roleLossDays: 3, // perde o cargo: 3 dias sem VIP, 3 dias sem entrar, suspenso ou saiu do time
   offerMin: 1, // VIP por proposta (= dias de contrato)

@@ -15,7 +15,7 @@
  */
 import { prisma } from '../prisma.js';
 import { GameError, badRequest, notFound, forbidden } from '../lib/errors.js';
-import { CLUB, isVip } from '../lib/rules.js';
+import { CLUB, isVip, KIT_DESIGNS, KIT_DESIGN_IDS } from '../lib/rules.js';
 import { teamView } from './view.js';
 import { invalidateRoles } from './badges.js';
 
@@ -149,6 +149,7 @@ export async function clubState(userId) {
   const block = role === 'PRESIDENTE' ? 'Você já é o presidente.' : await claimBlock(me, !!board.president);
   return {
     team: teamView(me.team), role, board,
+    kit: { design: me.team.kitDesign ?? 'classico', canChangeAt: me.team.kitChangedAt ? me.team.kitChangedAt.getTime() + CLUB.kitChangeHours * 3600_000 : 0 },
     claim: { ok: !block, reason: block },
     contract: underContract(me, now) ? { until: me.contractUntil.getTime() } : null,
     bank: me.vipDays,
@@ -191,6 +192,25 @@ export async function claimPresidency(userId) {
 export async function resign(userId) {
   if (!(await prisma.teamRole.findUnique({ where: { userId } }))) throw badRequest('Você não tem cargo no time.');
   await prisma.$transaction((tx) => leaveClub(tx, userId));
+  return clubState(userId);
+}
+
+/**
+ * Uniforme do time (pedido do dono, 15/09/2026): só o presidente muda o DESENHO (KIT_DESIGNS); as cores são as
+ * do time e não mudam. No máximo 1 troca a cada CLUB.kitChangeHours. Vira lance ao vivo do time.
+ */
+export async function setKitDesign(userId, design) {
+  const me = await requirePresident(userId);
+  if (!KIT_DESIGN_IDS.includes(design)) throw badRequest('Desenho de uniforme inválido.');
+  const team = me.team;
+  if (team.kitDesign === design) throw badRequest('O time já usa esse uniforme.');
+  const wait = team.kitChangedAt ? team.kitChangedAt.getTime() + CLUB.kitChangeHours * 3600_000 - Date.now() : 0;
+  if (wait > 0) throw new GameError(429, 'kit-cooldown', `O uniforme já foi trocado hoje. Dá para mudar de novo em ${Math.ceil(wait / 3600_000)} h.`, { remainingMs: wait });
+  const name = KIT_DESIGNS.find((d) => d.id === design).name;
+  await prisma.$transaction(async (tx) => {
+    await tx.team.update({ where: { id: team.id }, data: { kitDesign: design, kitChangedAt: new Date() } });
+    await activity(tx, userId, team.id, `${me.nick}, ${me.gender === 'F' ? 'presidente' : 'presidente'} do ${team.name}, escolheu o uniforme ${name} para o time.`);
+  });
   return clubState(userId);
 }
 

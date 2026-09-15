@@ -103,7 +103,7 @@ export function AlvoScreen() {
 
       <div className="relative flex items-center justify-between px-3 pb-1" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12" aria-label="Voltar"><img src="/ui/pi-back.png" className="h-5 w-5" alt="" /></button>
-        <div className="ribbon ribbon-orange text-[17px]">ALVO NO GOL</div>
+        <div className="ribbon ribbon-orange text-[17px]"><img src="/ui/ico-target.png" className="mr-1.5 h-6 w-6" alt="" />ALVO NO GOL</div>
         <div className={`trap ${shotsLeft <= 3 && !finished ? 'trap-orange' : 'trap-blue'} text-[13px] tabular-nums`}>{game ? `${shotsLeft} ${shotsLeft === 1 ? 'chute' : 'chutes'}` : '…'}</div>
       </div>
 
@@ -126,7 +126,7 @@ export function AlvoScreen() {
               let inner: React.ReactNode = null;
               if (shot?.hit) {
                 cls = 'item-green';
-                inner = piece ? <PieceIcon kind={piece.kind} className="h-7 w-7" /> : <img src="/ui/check-green.png" alt="" className="h-5 w-5 brightness-0 invert" />;
+                inner = piece ? <PieceIcon kind={piece.kind} className="h-7 w-7" /> : <img src="/ui/pi-boom.png" alt="" className="h-5 w-5 brightness-0 invert" />;
               } else if (shot) {
                 cls = 'item-yellow hue-wrong opacity-80';
                 inner = <img src="/ui/pi-close.png" alt="" className="h-4 w-4 opacity-90" />;

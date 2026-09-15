@@ -101,7 +101,7 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
-  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number };
+  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
   ganhaperde?: { start: number; drop: number; min: number; max: number; step: number; stepPrice: number; growth: number; pointsPerHit: number };
   /** Minigames jogáveis e o nível que libera cada um. */
   minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];

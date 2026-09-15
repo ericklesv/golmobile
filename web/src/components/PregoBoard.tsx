@@ -8,6 +8,8 @@ import { forwardRef, type ReactNode } from 'react';
  */
 
 export interface PregoBoardData {
+  /** Desenho sorteado para a partida (Clássico, Peteleco…). */
+  id?: string; name?: string;
   W: number; H: number; mouth: number; goalX: [number, number]; ball: number; nail: number; post: number;
   nails: { x: number; y: number; side: 0 | 1 }[]; posts: { x: number; y: number }[];
 }

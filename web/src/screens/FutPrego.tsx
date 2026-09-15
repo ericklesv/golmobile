@@ -41,6 +41,7 @@ export function FutPregoScreen() {
   const me = useAuth((s) => s.me)!;
   const refresh = useAuth((s) => s.refresh);
   const now = useAuth((s) => s.now);
+  const meta = useAuth((s) => s.meta);
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
   const [phase, setPhase] = useState<'connecting' | 'lobby' | 'waiting' | 'match' | 'kicked' | 'offline'>('connecting');
@@ -252,7 +253,7 @@ export function FutPregoScreen() {
   if (phase === 'connecting') body = <p className="t-out mt-10 text-center text-[15px] font-extrabold">Abrindo a tábua…</p>;
   else if (phase === 'offline') body = <Msg title="Sem conexão" text="Não deu para falar com o servidor do FutPrego. Confira a internet e abra de novo." onBack={() => nav('/')} />;
   else if (phase === 'kicked') body = <Msg title="Aberto em outra tela" text="O FutPrego foi aberto em outra aba ou aparelho. Continue por lá." onBack={() => nav('/')} />;
-  else if (phase === 'lobby') body = <Lobby rules={rules} open={open} busy={busy} me={me} lastResult={lastResult} onChallenge={challenge} onAccept={accept} />;
+  else if (phase === 'lobby') body = <Lobby rules={rules} open={open} busy={busy} me={me} lastResult={lastResult} onChallenge={challenge} onAccept={accept} board={meta?.futprego?.board} />;
   else if (phase === 'waiting' && waiting) body = (
     <Waiting rules={rules} elapsed={Math.max(0, now() - waiting.startedAt)} botOffer={waiting.botOffer}
       onCancel={() => send({ t: 'cancel' })} onBot={() => send({ t: 'bot' })} onKeep={() => setWaiting({ ...waiting, botOffer: false })} />
@@ -300,7 +301,7 @@ export function FutPregoScreen() {
         <PlayerBar p={match.players[you]} me turns={match.turns[you]} max={match.maxTurns} active={myTurn} left={left} total={match.turnSec}
           label={myTurn ? (aim ? `força ${Math.round(aim.power * 100)}%` : 'sua vez: puxe e solte') : null} />
         <div className="mt-1 flex w-full max-w-[380px] items-center justify-between px-1">
-          <span className="text-[11px] font-extrabold text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : `Valendo ${fmt(match.bet * 2)} e 1 gol`}</span>
+          <span className="text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : `Valendo ${fmt(match.bet * 2)} e 1 gol`}{match.board.name && <><br />Tábua {match.board.name}</>}</span>
           <button onClick={() => setConfirmLeave(true)} className="btn btn-gray btn-sm">Desistir</button>
         </div>
       </div>
@@ -342,16 +343,18 @@ function Msg({ title, text, onBack }: { title: string; text: string; onBack: () 
 }
 
 /** Começo: a tábua de enfeite, as regras em 3 linhas, desafiar e os desafios abertos. */
-function Lobby({ rules, open, busy, me, lastResult, onChallenge, onAccept }: {
+function Lobby({ rules, open, busy, me, lastResult, onChallenge, onAccept, board }: {
   rules: Rules; open: OpenChallenge[]; busy: boolean; me: { money: number; team: Team }; lastResult: Over | null;
-  onChallenge: () => void; onAccept: (id: number) => void;
+  onChallenge: () => void; onAccept: (id: number) => void; board: PregoBoardData | undefined;
 }) {
   return (
     <>
       {lastResult && <LastResult o={lastResult} />}
-      <div className="mx-auto mt-2" style={{ width: 'min(44vw, 180px, calc((100dvh - 470px) * 0.62))', minWidth: 96 }}>
-        <PregoBoard board={DEMO_BOARD} paint={[paintOf(me.team), { primary: '#FFFFFF', secondary: '#123C8A' }]} ball={<g transform={`translate(${DEMO_BOARD.W / 2} ${DEMO_BOARD.H / 2})`}><PregoBall r={DEMO_BOARD.ball} /></g>} className="w-full drop-shadow-[0_6px_0_rgba(0,0,0,0.25)]" />
-      </div>
+      {board && (
+        <div className="mx-auto mt-2" style={{ width: 'min(44vw, 180px, calc((100dvh - 470px) * 0.62))', minWidth: 96 }}>
+          <PregoBoard board={board} paint={[paintOf(me.team), { primary: '#FFFFFF', secondary: '#123C8A' }]} ball={<g transform={`translate(${board.W / 2} ${board.H / 2})`}><PregoBall r={board.ball} /></g>} className="w-full drop-shadow-[0_6px_0_rgba(0,0,0,0.25)]" />
+        </div>
+      )}
       <div className="panel-navy mt-3 px-3 py-2.5">
         <p className="text-[14px] font-extrabold leading-snug text-white">Futebol de prego 1x1, uma vez de cada. Cada um põe {fmt(rules.bet)}. Quem fizer o primeiro gol leva {fmt(rules.bet * 2)} e 1 gol para o time, e o time do outro perde 1 gol na rodada.</p>
         <p className="mt-1.5 text-[12px] font-bold leading-snug text-white/75">Sem gol em {rules.maxTurns} jogadas de cada, o dinheiro volta. Até {rules.maxGoalWinsPerDay} gols por dia; ganhar da mesma pessoa duas vezes seguidas, a segunda não vale gol.</p>
@@ -447,13 +450,3 @@ function OverResult({ over, me, onClose }: { over: Over | null; me: { team: Team
   return <GoalOverlay open goal={goal} title={title} text={text} money={money} team={me.team} onClose={onClose} autoClose={6000} />;
 }
 
-// tábua de enfeite do começo (a de verdade vem do servidor na partida)
-const DEMO_BOARD: PregoBoardData = (() => {
-  const W = 300, H = 460, mouth = 70;
-  const shape = [[141, 30], [159, 30], [58, 92], [118, 100], [182, 100], [242, 92], [40, 160], [112, 170], [188, 170], [260, 160], [104, 208], [196, 208]];
-  const nails: PregoBoardData['nails'] = [];
-  for (const [x, y] of shape) nails.push({ x, y: H - y, side: 0 });
-  for (const [x, y] of shape) nails.push({ x: W - x, y, side: 1 });
-  const g0 = (W - mouth) / 2, g1 = (W + mouth) / 2;
-  return { W, H, mouth, goalX: [g0, g1], ball: 7, nail: 4.2, post: 3.5, nails, posts: [{ x: g0, y: 0 }, { x: g1, y: 0 }, { x: g0, y: H }, { x: g1, y: H }] };
-})();

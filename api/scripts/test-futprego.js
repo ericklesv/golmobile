@@ -3,7 +3,8 @@
  * jogadores de teste conectados por WebSocket como se fossem celulares (IPs diferentes via X-Real-IP):
  * convite só para quem pode (time/internet/dinheiro), aceitar, cobrança dos R$ 200, gol do vencedor,
  * pote de R$ 400, o time do perdedor perdendo 1 gol, a regra da mesma dupla com o mesmo vencedor, a trava
- * de 3 gols por dia, empate (devolve), W.O. cedo (devolve), vez de quem não é a vez, treino com bot.
+ * de 3 gols por dia, empate (devolve), W.O. cedo (devolve), vez de quem não é a vez, treino com bot, e a
+ * SAÍDA DO MEIO: em toda partida a 1ª jogada tenta de propósito o peteleco que entraria sem a garantia.
  * Cria jogadores fp…
  *
  * Uso (na pasta api/, com a API local no ar):  node scripts/test-futprego.js   → "TUDO OK".
@@ -15,7 +16,7 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
 }
 import WebSocket from 'ws';
 const { prisma } = await import('../src/prisma.js');
-const { BOARD, simulateFlick, scorerOf } = await import('../src/lib/futprego.js');
+const { simulateFlick, scorerOf } = await import('../src/lib/futprego.js');
 const { FUTPREGO: F } = await import('../src/lib/rules.js');
 const { liveMatchForTeam } = await import('../src/services/league.js');
 
@@ -63,12 +64,12 @@ function phone(user, mode, ip) {
   return p;
 }
 
-/** Um peteleco que dá gol para `side` a partir de `ball` (ou que NÃO dá gol nenhum, se want = 'nada'). */
-function findFlick(ball, side, want) {
+/** Um peteleco que dá gol para `side` a partir de `ball` na tábua `board` (ou que NÃO dá gol, se want = 'nada'). */
+function findFlick(ball, side, want, board) {
   for (let i = 0; i < 1440; i++) {
     const ang = (i / 1440) * Math.PI * 2;
     for (const pw of want === 'nada' ? [0.05, 0.1, 0.2] : [1, 0.9, 0.8, 0.7, 0.6, 0.5]) {
-      const r = simulateFlick(ball, Math.cos(ang), Math.sin(ang), pw);
+      const r = simulateFlick(ball, Math.cos(ang), Math.sin(ang), pw, board);
       const s = scorerOf(r.goal);
       if (want === 'nada' ? s === null : s === side) return { dx: Math.cos(ang), dy: Math.sin(ang), power: pw, frames: r.frames.length };
     }
@@ -80,18 +81,24 @@ function findFlick(ball, side, want) {
  * Joga uma partida já começada: `plan(side)` diz o que cada lado faz na vez ('gol' ou 'nada').
  * Devolve a mensagem 'over' de cada um.
  */
+const kickoff = { tried: 0, blocked: 0, boards: new Set() };
 async function play(pa, pb, plan) {
   const ma = await pa.wait('match'), mb = await pb.wait('match');
   if (!ma || !mb) return null;
+  const board = ma.board;
+  kickoff.boards.add(board.id);
   const bySide = { [ma.you]: pa, [mb.you]: pb };
   let ball = ma.ball, turn = ma.turn;
   for (let n = 0; n < 2 * F.maxTurns + 2; n++) {
     const who = bySide[turn];
-    const f = findFlick(ball, turn, plan(turn)) ?? { dx: 1, dy: 0, power: 0.05 };
+    // 1ª jogada: se existir um peteleco da saída que entraria (sem a garantia), tenta ele de propósito
+    const ko = n === 0 ? findFlick(ball, turn, 'gol', board) : null;
+    const f = ko ?? findFlick(ball, turn, n === 0 ? 'nada' : plan(turn), board) ?? { dx: 1, dy: 0, power: 0.05 };
     who.send({ t: 'flick', dx: f.dx, dy: f.dy, power: f.power });
     const shot = await pa.wait('shot', 8000);
     await pb.wait('shot', 8000);
     if (!shot) return null;
+    if (ko) { kickoff.tried++; if (shot.goal === null) kickoff.blocked++; }
     ball = shot.ball;
     if (shot.goal !== null) break;
     const next = await pa.wait('turn', 8000);
@@ -226,6 +233,8 @@ check(mBot?.training === true && mBot.players[1].bot === true && mBot.bet === 0,
 gD.send({ t: 'giveup' });
 const oBot = await gD.wait('over', 5000);
 check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinheiro igual');
+
+check(kickoff.tried === kickoff.blocked, `saída do meio: ${kickoff.tried} tentativas de gol de primeira (peteleco que entraria sem a garantia), nenhuma valeu; tábuas sorteadas: ${[...kickoff.boards].join(', ')}`);
 
 for (const p of [gA, gB, gD, lobB, lobC, lobD]) p.close();
 await prisma.$disconnect();

@@ -12,6 +12,7 @@ import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js
 import rateLimit from 'express-rate-limit';
 import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
+import { BOARD as FUTPREGO_BOARD } from '../lib/futprego.js';
 import { boardView, playerClub } from '../services/club.js';
 import { withBadges, badgesOf, topHistory } from '../services/badges.js';
 import { matchPage } from '../services/match.js';
@@ -43,7 +44,7 @@ game.get('/meta', cached(10000), handle(async () => {
     stats: STATS,
     camisas: CAMISAS,
     ganhaperde: GANHAPERDE,
-    futprego: FUTPREGO,
+    futprego: { ...FUTPREGO, board: FUTPREGO_BOARD }, // a tábua (pregos) para a tela do começo
     resetHour: RESET_HOUR, // hora de virada de cada minigame diário
     // minigames jogáveis e o nível que libera cada um (janela de "subiu de nível": LIBERADO X! JOGAR AGORA)
     minigames: MINIGAMES.filter((g) => !g.soon).map(({ id, name, unlock, route, icon }) => ({ id, name, unlock, route, icon })),

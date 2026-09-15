@@ -16,7 +16,7 @@ import jwt from 'jsonwebtoken';
 import { randomInt } from 'node:crypto';
 import { config } from '../config.js';
 import { prisma } from '../prisma.js';
-import { BOARD, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
+import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
 import { FUTPREGO, MINIGAMES, levelOf } from '../lib/rules.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam } from '../services/league.js';
@@ -250,7 +250,8 @@ async function startBot(conn) {
 }
 
 function startMatch(a, b, dbId) {
-  const m = { id: nextId++, dbId, conns: [a, b], bot: !!b.bot, ball: { ...BOARD.center }, turn: randomInt(2), turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0 };
+  const board = BOARDS[randomInt(BOARDS.length)]; // um desenho de tábua por partida (ninguém decora a jogada)
+  const m = { id: nextId++, dbId, conns: [a, b], bot: !!b.bot, board, ball: { ...board.center }, turn: randomInt(2), turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0 };
   a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo na tábua do servidor
   matches.set(m.id, m);
   scheduleTurn(m, 1500, false);
@@ -260,7 +261,7 @@ function startMatch(a, b, dbId) {
 function sendMatch(c, resumed) {
   const m = c.match;
   send(c.ws, {
-    t: 'match', id: m.id, you: c.side, players: m.conns.map(playerView), board: BOARD, ball: m.ball,
+    t: 'match', id: m.id, you: c.side, players: m.conns.map(playerView), board: m.board, ball: m.ball,
     turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns, maxTurns: F.maxTurns, turnSec: F.turnSec,
     bet: m.bot ? 0 : F.bet, training: m.bot, resumed,
   });
@@ -286,7 +287,8 @@ function onFlick(conn, msg) {
 
 function playShot(m, side, dx, dy, power) {
   clearTimeout(m.turnTimer); clearTimeout(m.botTimer);
-  const r = simulateFlick(m.ball, dx, dy, power);
+  // 1ª jogada da partida (saída do meio): nunca é gol — os pregos quase nunca deixam, e a garantia segura o resto
+  const r = simulateFlick(m.ball, dx, dy, power, m.board, { closedGoals: m.shots[0] + m.shots[1] === 0 });
   m.turns[side]++;
   m.shots[side]++;
   m.timeouts[side] = 0;
@@ -327,7 +329,7 @@ function botPlay(m) {
   for (let i = 0; i < 4; i++) {
     const ang = base + ((randomInt(1000) / 1000) - 0.5) * 0.8;
     const pw = 0.45 + (randomInt(550) / 1000);
-    const r = simulateFlick(m.ball, Math.cos(ang), Math.sin(ang), pw);
+    const r = simulateFlick(m.ball, Math.cos(ang), Math.sin(ang), pw, m.board, { closedGoals: m.shots[0] + m.shots[1] === 0 });
     const s = scorerOf(r.goal);
     tries.push({ ang, pw, score: s === side ? 1000 : s !== null ? -1000 : -Math.hypot(r.end.x - t.x, r.end.y - t.y) });
   }

@@ -1,32 +1,46 @@
 /**
- * FutPrego — a tábua do futebol de prego e a física da bola (pura e determinística: a mesma jogada dá
+ * FutPrego — as tábuas do futebol de prego e a física da bola (pura e determinística: a mesma jogada dá
  * sempre o mesmo caminho). O servidor calcula; as telas só desenham os quadros que ele manda.
  *
  * Coordenadas do servidor: tábua de W x H, gol de CIMA em y = 0 e gol de BAIXO em y = H. O lado 0 fica
  * embaixo (defende o gol de baixo, ataca o de cima); o lado 1 fica em cima. Cada tela vira a tábua para
  * o jogador sempre atacar para cima. Todos os pregos (dos dois times) desviam a bola.
+ *
+ * Vários desenhos de tábua (pedido do dono, 14/09/2026 — para ninguém decorar uma jogada): cada partida
+ * sorteia um de BOARDS (os de LAYOUTS e os espelhos deles). Todos têm o prego central perto do meio de
+ * campo, como nas tábuas de verdade, e foram ajustados em scripts/futprego-balance.js para a saída do meio
+ * quase nunca achar caminho até o gol; o que sobra, a garantia da saída (closedGoals) segura.
  */
 
-export const BOARD = (() => {
-  const W = 300, H = 460;
-  const mouth = 70; // largura da boca do gol (afinado em scripts/futprego-balance.js: ~7 jogadas por partida)
-  const ball = 7, nail = 4.2;
-  // 12 pregos por time: goleiro de 2 pregos colados (a bola não passa entre eles), 4 na defesa, 4 no meio
-  // e 2 no ataque; y contado a partir do próprio gol
-  const shape = [
-    [141, 30], [159, 30],
-    [58, 92], [118, 100], [182, 100], [242, 92],
-    [40, 160], [112, 170], [188, 170], [260, 160],
-    [104, 208], [196, 208],
-  ];
+const W = 300, H = 460;
+const MOUTH = 70; // largura da boca do gol
+const BALL = 7, NAIL = 4.2, POST = 3.5;
+
+// Pregos de UM time (o de baixo), com y contado a partir do próprio gol; o time de cima é o mesmo girado
+// 180°. O 1º prego é o central, na linha do meio. Inspirados nas fotos de tábuas que o dono mandou.
+export const LAYOUTS = [
+  { id: 'classico', name: 'Clássico', shape: [[150,186], [135,29], [151,29], [60,80], [123,93], [161,78], [254,99], [27,174], [104,157], [180,187], [255,168], [98,202], [198,186]] },
+  { id: 'peteleco', name: 'Peteleco', shape: [[150,204], [139,21], [155,21], [82,72], [210,50], [143,70], [113,134], [185,102], [33,145], [136,124], [260,136], [89,165], [213,165]] },
+  { id: 'diagrama', name: 'Diagrama', shape: [[150,202], [123,28], [139,28], [63,54], [146,43], [222,52], [100,100], [195,121], [18,119], [74,129], [217,152], [288,133]] },
+];
+
+export function makeBoard(shape, id = 'custom', name = id) {
   const nails = [];
   for (const [x, y] of shape) nails.push({ x, y: H - y, side: 0 }); // time de baixo
-  for (const [x, y] of shape) nails.push({ x: W - x, y, side: 1 }); // time de cima (espelhado)
-  const g0 = (W - mouth) / 2, g1 = (W + mouth) / 2;
+  for (const [x, y] of shape) nails.push({ x: W - x, y, side: 1 }); // time de cima (girado 180°)
+  const g0 = (W - MOUTH) / 2, g1 = (W + MOUTH) / 2;
   // traves: pregos das pontas da boca do gol (a bola bate e volta)
   const posts = [{ x: g0, y: 0 }, { x: g1, y: 0 }, { x: g0, y: H }, { x: g1, y: H }];
-  return { W, H, mouth, goalX: [g0, g1], ball, nail, post: 3.5, nails, posts, center: { x: W / 2, y: H / 2 } };
-})();
+  return { id, name, W, H, mouth: MOUTH, goalX: [g0, g1], ball: BALL, nail: NAIL, post: POST, nails, posts, center: { x: W / 2, y: H / 2 } };
+}
+
+/** Todas as tábuas do sorteio: cada desenho e o espelho dele (esquerda ↔ direita — joga igual, parece outro). */
+export const BOARDS = LAYOUTS.flatMap(({ id, name, shape }) => [
+  makeBoard(shape, id, name),
+  makeBoard(shape.map(([x, y]) => [W - x, y]), `${id}-espelho`, `${name} (espelhado)`),
+]);
+/** A tábua padrão (tela do começo e testes antigos). */
+export const BOARD = BOARDS[0];
 
 export const PHYS = {
   dt: 1 / 240,       // passo da simulação (bola a 950/s anda 4 por passo: não atravessa prego)
@@ -43,9 +57,12 @@ const round1 = (v) => Math.round(v * 10) / 10;
 /**
  * Um peteleco: a bola sai de `start` na direção (dx, dy) com força 0..1. Devolve os quadros do caminho
  * ([x, y] a cada 1/30 s), onde parou e se entrou em algum gol ('top' = gol de cima, 'bottom' = de baixo).
+ * `opts.closedGoals` = garantia da saída do meio: a boca do gol vira linha de fundo (a bola bate e volta),
+ * então a 1ª jogada da partida nunca é gol, mesmo num caminho raríssimo que os pregos não pegaram.
  */
-export function simulateFlick(start, dx, dy, power) {
-  const B = BOARD, P = PHYS;
+export function simulateFlick(start, dx, dy, power, board = BOARD, opts = {}) {
+  const B = board, P = PHYS;
+  const closed = !!opts.closedGoals;
   const len = Math.hypot(dx, dy) || 1;
   const speed = P.vMin + Math.max(0, Math.min(1, power)) * (P.vMax - P.vMin);
   let x = start.x, y = start.y, vx = (dx / len) * speed, vy = (dy / len) * speed;
@@ -69,7 +86,7 @@ export function simulateFlick(start, dx, dy, power) {
     if (x < r) { x = r; if (vx < 0) vx = -vx * P.eWall; }
     else if (x > B.W - r) { x = B.W - r; if (vx > 0) vx = -vx * P.eWall; }
     // fundos: na boca do gol a bola passa (gol quando o centro cruza a linha); fora dela, volta
-    const inMouth = x > B.goalX[0] && x < B.goalX[1];
+    const inMouth = !closed && x > B.goalX[0] && x < B.goalX[1];
     if (y < r && !inMouth) { y = r; if (vy < 0) vy = -vy * P.eWall; }
     else if (y > B.H - r && !inMouth) { y = B.H - r; if (vy > 0) vy = -vy * P.eWall; }
     if (inMouth && y < 0) goal = 'top';
@@ -93,4 +110,4 @@ export function simulateFlick(start, dx, dy, power) {
 export const scorerOf = (goal) => (goal === 'top' ? 0 : goal === 'bottom' ? 1 : null);
 
 /** O gol que `side` ataca, em coordenadas do servidor (para o bot mirar). */
-export const targetOf = (side) => ({ x: BOARD.W / 2, y: side === 0 ? -10 : BOARD.H + 10 });
+export const targetOf = (side) => ({ x: W / 2, y: side === 0 ? -10 : H + 10 });

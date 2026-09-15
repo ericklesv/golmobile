@@ -501,6 +501,16 @@ servidos pelo próprio Express em `/api/uploads/`.
   miolo (caps que somam a largura toda não renderizam no CSS). Fontes: Lilita One + Nunito.
   Fundo: céu + gramado (`.app-frame` + `.stadium-bg`). **Nada de emoji nem "cara de site/IA"**
   (glassmorphism escuro, gradientes neon): botão é sprite, título é ribbon, ícone é PNG do pack.
+- **SEO e preview do link** (pedido do dono, 15/09/2026): tudo no **`web/index.html`** — título/descrição com as
+  palavras que o público procura (BRGOL/BR GOL, jogo de fazer gols, disputa de gols online), Open Graph + Twitter
+  card (`/og.jpg` 1200×630 < 300 KB e `/og-square.jpg` 600×600, gerados de `assets/play-store/destaque-1024x500.png`
+  e `icone-512.png` com PIL; URLs absolutas), JSON-LD (VideoGame + WebSite + FAQPage) e um **bloco estático dentro
+  de `#root`** (h1, seções, FAQ) que é o que os robôs sem JavaScript leem e a tela até o React montar (`createRoot`
+  troca tudo). Os robôs de WhatsApp/Telegram/Facebook NÃO rodam JS: mudou texto de apresentação, mudar no
+  `index.html` E na `Landing.tsx` (mesmos assuntos; conferir os fatos com as regras). Páginas públicas usam
+  `useSeo()` (`lib/seo.ts`: título, descrição, canonical, og:* por rota; volta ao padrão ao sair). `robots.txt`
+  (bloqueia /api, /admin, /debug*) e `sitemap.xml` (só páginas públicas) em `web/public/`. Preview em cache nos
+  apps: depois de mudar, forçar com o depurador do Facebook / @WebpageBot no Telegram.
 - Escudos reais em `web/public/escudos/<slug>.svg|png` (projeto privado para amigos);
   `Shield.tsx` renderiza `<img>` com fallback de sigla.
 - 3D: modelos glTF em `web/public/3d/` gerados dos packs comprados via `tools/3d/` (README lá).

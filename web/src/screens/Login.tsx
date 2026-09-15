@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/auth';
 import { toast } from '../components/Toast';
+import { useSeo } from '../lib/seo';
 
 export function LoginScreen() {
+  useSeo('Entrar', 'Entre no JogaGol com seu nick ou e-mail e volte a marcar gols pelo seu time.', '/entrar');
   const login = useAuth((s) => s.login);
   const nav = useNavigate();
   const [l, setL] = useState('');

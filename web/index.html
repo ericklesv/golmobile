@@ -6,16 +6,137 @@
     <meta name="theme-color" content="#1467D9" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="description" content="JogaGol — o jogo de gols do Brasil. Escolha seu time, chute, marque e suba na artilharia." />
+    <meta name="apple-mobile-web-app-title" content="JogaGol" />
+    <meta name="application-name" content="JogaGol" />
+
+    <!-- SEO + preview ao compartilhar o link (WhatsApp, Telegram, Facebook, X, Discord). O site é uma SPA e os
+         robôs desses apps NÃO rodam JavaScript: tudo que eles leem está aqui, no HTML estático, e vale para
+         qualquer rota (o nginx entrega este index.html em todas). As imagens ficam em /public (og.jpg 1200×630
+         < 300 KB — exigência do WhatsApp; og-square.jpg 600×600 para miniatura quadrada). URLs SEMPRE absolutas.
+         O texto dentro de #root é o que o Google lê antes de rodar o app (e a tela de carregamento até o React
+         montar — createRoot troca tudo); palavras-chave: BRGOL/BR GOL, jogo de fazer gols, disputa de gols online. -->
+    <title>JogaGol — jogo de fazer gols online, o novo BRGOL</title>
+    <meta name="description" content="Jogo de fazer gols online e grátis: escolha seu clube, marque gols de pênalti, falta e trilha e dispute a artilharia com outros jogadores. O sucessor do clássico BRGOL, no celular e no PC." />
+    <meta name="keywords" content="jogagol, brgol, br gol, jogo de fazer gols, disputa de gols online, jogo de gols, jogo de futebol online grátis, artilharia, gamegol, brasfoot, futebol de prego" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://jogagol.com.br/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="JogaGol" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://jogagol.com.br/" />
+    <meta property="og:title" content="JogaGol — jogo de fazer gols online, o novo BRGOL" />
+    <meta property="og:description" content="Escolha seu clube, marque gols e dispute a artilharia com outros jogadores. Grátis, no celular e no PC." />
+    <meta property="og:image" content="https://jogagol.com.br/og.jpg" />
+    <meta property="og:image:secure_url" content="https://jogagol.com.br/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="JogaGol — Chute · Marque · Suba" />
+    <meta property="og:image" content="https://jogagol.com.br/og-square.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="600" />
+    <meta property="og:image:height" content="600" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="JogaGol — jogo de fazer gols online, o novo BRGOL" />
+    <meta name="twitter:description" content="Escolha seu clube, marque gols e dispute a artilharia com outros jogadores. Grátis, no celular e no PC." />
+    <meta name="twitter:image" content="https://jogagol.com.br/og.jpg" />
+    <meta name="twitter:image:alt" content="JogaGol — Chute · Marque · Suba" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "VideoGame",
+          "@id": "https://jogagol.com.br/#jogo",
+          "name": "JogaGol",
+          "alternateName": ["Joga Gol", "JogaGol — o novo BRGOL"],
+          "url": "https://jogagol.com.br/",
+          "image": "https://jogagol.com.br/og.jpg",
+          "description": "Jogo de fazer gols online: escolha seu clube, marque gols de pênalti, falta e trilha, dispute a artilharia da hora, da rodada e da temporada e leve seu time ao título. Sucessor do clássico BRGOL (2008–2013).",
+          "inLanguage": "pt-BR",
+          "genre": ["Futebol", "Esporte", "Casual"],
+          "applicationCategory": "GameApplication",
+          "operatingSystem": "Web, Android",
+          "playMode": "MultiPlayer",
+          "isAccessibleForFree": true,
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL" },
+          "publisher": { "@type": "Organization", "name": "Managol Softwares", "url": "https://jogagol.com.br/" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://jogagol.com.br/#site",
+          "url": "https://jogagol.com.br/",
+          "name": "JogaGol",
+          "inLanguage": "pt-BR"
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://jogagol.com.br/#faq",
+          "mainEntity": [
+            { "@type": "Question", "name": "O JogaGol é o BRGOL?", "acceptedAnswer": { "@type": "Answer", "text": "O JogaGol é o sucessor do BRGOL (BR GOL), o jogo de fazer gols que existiu de 2008 a 2013. As regras são as mesmas — chute direto, pênalti, falta, trilha, rodadas de 24 horas e artilharia da hora, da rodada e da temporada — refeitas para o celular, com minigames diários e o FutPrego 1x1." } },
+            { "@type": "Question", "name": "O JogaGol é grátis?", "acceptedAnswer": { "@type": "Answer", "text": "Sim. Criar conta, escolher o clube, chutar e disputar a artilharia é grátis. Existe o VIP opcional, que dá recargas mais rápidas e vantagens na diretoria do time." } },
+            { "@type": "Question", "name": "Como funciona a disputa de gols?", "acceptedAnswer": { "@type": "Answer", "text": "Cada gol que você marca soma no placar do seu clube na rodada de 24 horas (que fecha às 19:00) e na sua artilharia. Os times disputam as Séries A, B e C com acesso e rebaixamento; os melhores artilheiros da rodada e da temporada ganham dinheiro do jogo e VIP." } },
+            { "@type": "Question", "name": "Dá para jogar no celular?", "acceptedAnswer": { "@type": "Answer", "text": "Sim. O JogaGol foi feito para o celular: abre no navegador, pode ser instalado como aplicativo (PWA) e também está chegando à Google Play. Funciona no PC também." } }
+          ]
+        }
+      ]
+    }
+    </script>
+    <style>
+      /* tela estática até o React montar (e o que os robôs leem): mesmo visual do jogo, sem depender do bundle */
+      .seo { min-height: 100vh; margin: 0 auto; max-width: 480px; padding: 40px 20px 32px; box-sizing: border-box; font-family: Nunito, system-ui, sans-serif; color: #fff; text-align: center; background: linear-gradient(180deg, #1467D9 0%, #2C8BF0 55%, #1E8A3C 100%); }
+      .seo img { display: block; margin: 0 auto; width: 224px; height: auto; filter: drop-shadow(0 10px 18px rgba(0,0,0,.4)); }
+      .seo h1 { font-family: 'Lilita One', Impact, sans-serif; font-weight: 400; font-size: 22px; line-height: 1.15; margin: 14px 0 6px; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+      .seo p { font-size: 14px; line-height: 1.45; margin: 0 0 12px; font-weight: 700; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+      .seo .cta { display: block; margin: 8px auto; max-width: 320px; padding: 14px 16px; border-radius: 14px; background: #FF8A1E; color: #fff; text-decoration: none; font-family: 'Lilita One', Impact, sans-serif; font-size: 18px; letter-spacing: .02em; box-shadow: 0 4px 0 #B85A05; }
+      .seo .cta.alt { background: #1467D9; box-shadow: 0 4px 0 #0B2D6B; font-size: 16px; }
+      .seo section { margin-top: 26px; padding: 14px 16px; border-radius: 16px; background: rgba(255,255,255,.92); color: #14335F; text-align: left; }
+      .seo section p { text-shadow: none; color: #14335F; font-weight: 700; }
+      .seo h2 { font-family: 'Lilita One', Impact, sans-serif; font-weight: 400; font-size: 19px; margin: 0 0 8px; color: #0B2D6B; }
+      .seo h3 { font-size: 14px; margin: 12px 0 4px; color: #0B2D6B; }
+      .seo .nota { font-size: 12px; opacity: .85; margin-top: 18px; }
+      .seo .nota a { color: #fff; }
+    </style>
+
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
-    <title>JogaGol</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="seo">
+        <img src="/brand/logo-v.webp" alt="JogaGol" width="600" height="648" />
+        <h1>JogaGol: o jogo de fazer gols online — grátis, no celular e no PC</h1>
+        <p>Escolha seu clube, chute, marque gols de pênalti, falta e trilha e dispute a artilharia da hora, da rodada e da temporada com outros jogadores. O sucessor do clássico BRGOL.</p>
+        <a class="cta" href="/cadastro">Escolher meu time</a>
+        <a class="cta alt" href="/entrar">Já tenho conta</a>
+
+        <section>
+          <h2>Como funciona a disputa de gols</h2>
+          <p>Você escolhe um clube brasileiro e cada gol seu soma no placar do time na rodada de 24 horas, que fecha todo dia às 19:00. Chute direto a cada 10 minutos, pênalti, falta e a trilha — tudo decidido no servidor, sem trapaça. Os clubes disputam as Séries A, B e C com acesso e rebaixamento, e os melhores artilheiros da rodada e da temporada ganham dinheiro do jogo e dias de VIP.</p>
+        </section>
+        <section>
+          <h2>Para quem jogava BRGOL (BR GOL)</h2>
+          <p>O JogaGol é o port fiel do BRGOL, o jogo de fazer gols de navegador que marcou época entre 2008 e 2013: as mesmas recargas, os mesmos rankings, a mesma artilharia por hora — agora feito para o celular, com visual de jogo de verdade, pênalti e falta em 3D, diretoria e contratações entre times. Se você curte Brasfoot, Gamegol ou qualquer jogo de futebol online leve de jogar todo dia, é aqui.</p>
+        </section>
+        <section>
+          <h2>Minigames de futebol todo dia</h2>
+          <p>Termo do futebol, quiz, Party GoL, memória dos escudos, estatísticas do Brasileirão, "de que time é?", camisas, alvo no gol, Hat Trick e Falta PRO: cada minigame renova numa hora do dia e vale gol para o seu time. No FutPrego, o futebol de prego 1x1 em tempo real, você desafia outros jogadores valendo aposta, gol e o Ranking X1.</p>
+        </section>
+        <section>
+          <h2>Perguntas frequentes</h2>
+          <h3>O JogaGol é grátis?</h3>
+          <p>Sim. Criar conta, escolher o clube, chutar e disputar a artilharia é grátis. O VIP é opcional e dá recargas mais rápidas e vantagens na diretoria do time.</p>
+          <h3>Precisa baixar alguma coisa?</h3>
+          <p>Não. Abre direto no navegador do celular ou do PC e pode ser instalado como aplicativo. A versão para Android na Google Play está a caminho.</p>
+          <h3>Posso trocar de time?</h3>
+          <p>Pode, a qualquer momento — salvo quando você aceita um contrato de contratação de outro clube, que prende por alguns dias.</p>
+        </section>
+        <p class="nota"><a href="/privacidade">Privacidade</a> · <a href="/termos">Termos de uso</a> · JogaGol é um produto da Managol Softwares.</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

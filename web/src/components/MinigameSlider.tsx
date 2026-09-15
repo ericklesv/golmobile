@@ -8,6 +8,16 @@ import { useCountdown } from './ui';
 import { countdown } from '../lib/format';
 import { toast } from './Toast';
 
+/** Texto ao vivo do card: fila do Cabeção ou desafios abertos do FutPrego (null = mostra a descrição). */
+function liveText(g: MinigameCard): string | null {
+  const l = g.live;
+  if (!l) return null;
+  if (l.queue !== undefined) return `${l.queue} na fila · ${l.playing} jogando`;
+  if (l.open) return l.open === 1 ? '1 pessoa desafiando agora' : `${l.open} pessoas desafiando agora`;
+  if (l.playing) return `${l.playing} jogando agora`;
+  return null;
+}
+
 /**
  * Slider horizontal de minigames da Home. Cada card mostra o estado: PRONTO (dá pra jogar),
  * CONTINUAR (começou e não terminou), JOGADO (volta em X), cadeado com o nível que libera,
@@ -33,7 +43,7 @@ function Card({ g }: { g: MinigameCard }) {
         {state === 'done' && g.won && <img src="/ui/check-green.png" alt="" className="absolute -bottom-1 -right-2 h-6 w-6" />}
       </div>
       <div className="t-display t-out text-[15px] leading-tight">{g.name}</div>
-      <div className="line-clamp-2 text-[10.5px] font-extrabold leading-tight text-white/85">{locked ? `Libera no nível ${g.unlockLevel}.` : g.live ? `${g.live.queue} na fila · ${g.live.playing} jogando` : g.desc}</div>
+      <div className="line-clamp-2 text-[10.5px] font-extrabold leading-tight text-white/85">{locked ? `Libera no nível ${g.unlockLevel}.` : liveText(g) ?? g.desc}</div>
       <div className="mt-auto flex flex-col items-center leading-none">
         <span className="text-[9px] font-extrabold uppercase text-white/75">{locked || g.soon ? 'prêmio' : state === 'done' ? 'volta em' : 'prêmio'}</span>
         <span className={`t-display text-[13px] ${state === 'done' ? 't-out' : 't-gold'}`}>{state === 'done' ? label : g.rewardLabel}</span>

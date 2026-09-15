@@ -23,7 +23,7 @@ export async function matchPage(id, now = Date.now()) {
   const side = (teamId) => (teamId === m.homeTeamId ? 'home' : teamId === m.awayTeamId ? 'away' : null);
   const since = new Date(now - 2 * 60_000);
 
-  const [scorers, kinds, hours, recent, table, h2h, onHome, onAway, seasonHome, seasonAway] = await Promise.all([
+  const [scorers, kinds, hours, recent, table, h2h, onHome, onAway, seasonHome, seasonAway, lostRows] = await Promise.all([
     prisma.goal.groupBy({ by: ['teamId', 'userId'], where: { matchId: id }, _count: { _all: true } }),
     prisma.goal.groupBy({ by: ['teamId', 'kind'], where: { matchId: id }, _count: { _all: true } }),
     prisma.goal.groupBy({ by: ['teamId', 'hourKey'], where: { matchId: id }, _count: { _all: true } }),
@@ -37,6 +37,8 @@ export async function matchPage(id, now = Date.now()) {
     prisma.user.count({ where: { teamId: m.awayTeamId, lastSeenAt: { gt: since } } }),
     topScorers({ seasonId: m.round.seasonId, teamId: m.homeTeamId }, 1),
     topScorers({ seasonId: m.round.seasonId, teamId: m.awayTeamId }, 1),
+    // gols tirados do placar: o time perdeu no FutPrego (realtime/futprego.js)
+    prisma.futPregoMatch.groupBy({ by: ['lostTeamId'], where: { lostMatchId: id }, _count: { _all: true } }),
   ]);
 
   // artilheiros: top 5 de cada lado + o da partida (mais gols; empate = quem chegou lá primeiro na lista)
@@ -99,6 +101,7 @@ export async function matchPage(id, now = Date.now()) {
     best, tops,
     scorersCount: { home: bySide.home.length, away: bySide.away.length },
     byKind, minigames: [...mini.values()].sort((a, b) => (b.home + b.away) - (a.home + a.away)),
+    lost: { home: lostRows.find((r) => r.lostTeamId === m.homeTeamId)?._count._all ?? 0, away: lostRows.find((r) => r.lostTeamId === m.awayTeamId)?._count._all ?? 0 },
     timeline,
     standing: { home: stand(m.homeTeamId), away: stand(m.awayTeamId) },
     online: live ? { home: onHome, away: onAway } : null,

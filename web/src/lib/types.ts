@@ -95,6 +95,7 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
+  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalWinsPerDay: number; woMinTurns: number; reconnectSec: number };
   ganhaperde?: { start: number; drop: number; min: number; max: number; step: number; stepPrice: number; growth: number; pointsPerHit: number };
   /** Minigames jogáveis e o nível que libera cada um. */
   minigames?: { id: string; name: string; unlock: number; route: string; icon: string }[];
@@ -174,7 +175,8 @@ export interface MinigameCard {
   id: string; name: string; desc: string; icon: string; route: string; rewardLabel: string; daily: boolean;
   unlockLevel: number; unlocked: boolean; soon: boolean;
   available: boolean; started: boolean; finished: boolean; won: boolean; nextAt: number | null;
-  live?: { queue: number; playing: number };
+  /** Cabeção: fila; FutPrego: desafios abertos (open). */
+  live?: { queue?: number; open?: number; playing: number };
 }
 export interface MemoriaCard { i: number; team: Team | null; matched: boolean }
 export interface MemoriaReward { goal: boolean; levelPoints: number; moves: number; text: string | null }
@@ -429,6 +431,8 @@ export interface MatchPage {
   best: MatchScorer | null; tops: { home: MatchScorer[]; away: MatchScorer[] };
   scorersCount: { home: number; away: number };
   byKind: { home: KindTally; away: KindTally }; minigames: { kind: string; label: string; home: number; away: number }[];
+  /** Gols tirados do placar porque alguém do time perdeu no FutPrego. */
+  lost?: { home: number; away: number };
   timeline: { key: string; hour: number; home: number; away: number }[];
   standing: { home: MatchStanding | null; away: MatchStanding | null };
   online: { home: number; away: number } | null;

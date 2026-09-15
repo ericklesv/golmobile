@@ -34,6 +34,7 @@ enum KickKind {
   FALTAPRO
   FRANGACO
   GANHAPERDE
+  FUTPREGO
 }
 
 enum SeasonStatus {
@@ -489,6 +490,34 @@ model CabecaoMatch {
   @@index([winnerId, createdAt])
   @@index([aId, createdAt])
   @@index([bId, createdAt])
+}
+
+// FutPrego (futebol de prego 1x1 por turnos): uma linha por partida de verdade (bot não grava). Nasce
+// PLAYING quando os dois pagam a aposta; se a API reiniciar no meio, a partida vira CANCELED e o
+// dinheiro volta (realtime/futprego.js). lostMatchId/lostTeamId = onde o time do perdedor perdeu 1 gol.
+model FutPregoMatch {
+  id          Int       @id @default(autoincrement())
+  aId         Int
+  bId         Int
+  aTeamId     Int
+  bTeamId     Int
+  aIp         String
+  bIp         String
+  bet         Int
+  status      String    @default("PLAYING") // PLAYING | FINISHED | CANCELED
+  winnerId    Int?
+  reason      String?   // gol | gol-contra | wo | desistiu | empate | wo-cedo | reinicio
+  turns       Int       @default(0)
+  goalAwarded Boolean   @default(false)
+  lostMatchId Int?
+  lostTeamId  Int?
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([aId, bId, createdAt])
+  @@index([winnerId, createdAt])
+  @@index([lostMatchId])
+  @@index([status])
 }
 
 // VIP pago (PIX na Efí): uma compra = uma cobrança com txid NOSSO (único). Só vira PAID quando a própria

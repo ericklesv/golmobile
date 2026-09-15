@@ -1,0 +1,233 @@
+/**
+ * FutPrego ponta a ponta contra a API LOCAL rodando (FP_API, padrão http://localhost:4320), com
+ * jogadores de teste conectados por WebSocket como se fossem celulares (IPs diferentes via X-Real-IP):
+ * convite só para quem pode (time/internet/dinheiro), aceitar, cobrança dos R$ 200, gol do vencedor,
+ * pote de R$ 400, o time do perdedor perdendo 1 gol, a regra da mesma dupla com o mesmo vencedor, a trava
+ * de 3 gols por dia, empate (devolve), W.O. cedo (devolve), vez de quem não é a vez, treino com bot.
+ * Cria jogadores fp…
+ *
+ * Uso (na pasta api/, com a API local no ar):  node scripts/test-futprego.js   → "TUDO OK".
+ */
+import 'dotenv/config';
+if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.test(process.env.DATABASE_URL || '')) {
+  console.error('test-futprego.js só roda no banco LOCAL (cria jogadores de teste).');
+  process.exit(1);
+}
+import WebSocket from 'ws';
+const { prisma } = await import('../src/prisma.js');
+const { BOARD, simulateFlick, scorerOf } = await import('../src/lib/futprego.js');
+const { FUTPREGO: F } = await import('../src/lib/rules.js');
+const { liveMatchForTeam } = await import('../src/services/league.js');
+
+const API = process.env.FP_API || 'http://localhost:4320';
+const WS = API.replace(/^http/, 'ws') + '/api/ws/futprego';
+let fails = 0;
+const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`); if (!ok) fails++; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+for (let i = 0; i < 40; i++) { try { if ((await fetch(`${API}/api/health`)).ok) break; } catch {} await sleep(500); }
+
+let seq = 0;
+async function mkUser(team, money) {
+  const nick = `fp${Date.now() % 1e5}${seq++}`;
+  await fetch(`${API}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, email: `${nick}@local.test`, password: 'teste123', teamSlug: team, gender: 'M' }) });
+  const { token } = await (await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: nick, password: 'teste123' }) })).json();
+  const u = await prisma.user.update({ where: { nickLower: nick.toLowerCase() }, data: { money } });
+  return { ...u, token };
+}
+const money = async (u) => (await prisma.user.findUnique({ where: { id: u.id } })).money;
+
+/** Um "celular": conexão com fila de mensagens e espera por tipo. */
+function phone(user, mode, ip) {
+  const ws = new WebSocket(`${WS}?token=${encodeURIComponent(user.token)}&mode=${mode}`, { headers: { 'X-Real-IP': ip } });
+  const box = [];
+  const waiters = [];
+  ws.on('message', (raw) => {
+    const m = JSON.parse(raw);
+    const i = waiters.findIndex((w) => w.pred(m));
+    if (i >= 0) { const [w] = waiters.splice(i, 1); clearTimeout(w.timer); w.resolve(m); } else box.push(m);
+  });
+  const p = {
+    ws, box, user,
+    open: new Promise((r) => ws.on('open', r)),
+    send: (m) => ws.send(JSON.stringify(m)),
+    wait(t, ms = 8000, extra = () => true) {
+      const pred = (m) => m.t === t && extra(m);
+      const i = box.findIndex(pred);
+      if (i >= 0) return Promise.resolve(box.splice(i, 1)[0]);
+      return new Promise((resolve) => { const w = { pred, resolve, timer: setTimeout(() => { waiters.splice(waiters.indexOf(w), 1); resolve(null); }, ms) }; waiters.push(w); });
+    },
+    has: (t) => box.some((m) => m.t === t),
+    clear: () => { box.length = 0; },
+    close: () => ws.close(),
+  };
+  return p;
+}
+
+/** Um peteleco que dá gol para `side` a partir de `ball` (ou que NÃO dá gol nenhum, se want = 'nada'). */
+function findFlick(ball, side, want) {
+  for (let i = 0; i < 1440; i++) {
+    const ang = (i / 1440) * Math.PI * 2;
+    for (const pw of want === 'nada' ? [0.05, 0.1, 0.2] : [1, 0.9, 0.8, 0.7, 0.6, 0.5]) {
+      const r = simulateFlick(ball, Math.cos(ang), Math.sin(ang), pw);
+      const s = scorerOf(r.goal);
+      if (want === 'nada' ? s === null : s === side) return { dx: Math.cos(ang), dy: Math.sin(ang), power: pw, frames: r.frames.length };
+    }
+  }
+  return null;
+}
+
+/**
+ * Joga uma partida já começada: `plan(side)` diz o que cada lado faz na vez ('gol' ou 'nada').
+ * Devolve a mensagem 'over' de cada um.
+ */
+async function play(pa, pb, plan) {
+  const ma = await pa.wait('match'), mb = await pb.wait('match');
+  if (!ma || !mb) return null;
+  const bySide = { [ma.you]: pa, [mb.you]: pb };
+  let ball = ma.ball, turn = ma.turn;
+  for (let n = 0; n < 2 * F.maxTurns + 2; n++) {
+    const who = bySide[turn];
+    const f = findFlick(ball, turn, plan(turn)) ?? { dx: 1, dy: 0, power: 0.05 };
+    who.send({ t: 'flick', dx: f.dx, dy: f.dy, power: f.power });
+    const shot = await pa.wait('shot', 8000);
+    await pb.wait('shot', 8000);
+    if (!shot) return null;
+    ball = shot.ball;
+    if (shot.goal !== null) break;
+    const next = await pa.wait('turn', 8000);
+    await pb.wait('turn', 8000);
+    if (!next) break; // empate: vem o 'over'
+    turn = next.turn;
+    await sleep((shot.frames.length * 1000) / 30 + 80);
+  }
+  const oa = await pa.wait('over', 12000), ob = await pb.wait('over', 12000);
+  return { oa, ob, youA: ma.you, youB: mb.you };
+}
+
+// ── jogadores: A (Náutico) desafia; B (Bahia) aceita; C (Náutico, mesmo time de A); D (Sport, sem dinheiro)
+const A = await mkUser('nautico', 1000), B = await mkUser('bahia', 1000), C = await mkUser('nautico', 1000), D = await mkUser('sport', 100);
+// as partidas do Náutico e do Bahia na rodada precisam ter gol para o perdedor perder
+const teamScore = async (teamId) => { const m = await liveMatchForTeam(teamId); return m ? (m.homeTeamId === teamId ? m.homeGoals : m.awayGoals) : null; };
+for (const t of [A.teamId, B.teamId]) { const m = await liveMatchForTeam(t); if (m) await prisma.match.update({ where: { id: m.id }, data: m.homeTeamId === t ? { homeGoals: 3 } : { awayGoals: 3 } }); }
+const liveB = await liveMatchForTeam(B.teamId);
+const scoreB = () => teamScore(B.teamId);
+
+const lobB = phone(B, 'lobby', '10.0.0.2'), lobC = phone(C, 'lobby', '10.0.0.3'), lobD = phone(D, 'lobby', '10.0.0.4');
+await Promise.all([lobB.open, lobC.open, lobD.open]);
+await sleep(300);
+
+// 1) convite
+let gA = phone(A, 'game', '10.0.0.1'); await gA.open;
+gA.send({ t: 'challenge' });
+const waiting = await gA.wait('waiting');
+const invB = await lobB.wait('invite', 3000), invC = await lobC.wait('invite', 1500), invD = await lobD.wait('invite', 500);
+check(!!waiting && invB?.from?.nick === A.nick && invB.seconds === F.inviteSec && invB.bet === F.bet, `desafio aberto: B recebeu "${invB?.from?.nick} está te desafiando" por ${invB?.seconds} s`);
+check(!invC && !invD, 'C (mesmo time de A) e D (sem R$ 200) não recebem convite');
+
+// 2) aceitar
+let gB = phone(B, 'game', '10.0.0.2'); await gB.open;
+const open = await gB.wait('open');
+check(open?.list?.some((x) => x.id === waiting.id), 'na tela do FutPrego, B vê o desafio de A para aceitar');
+gB.send({ t: 'accept', id: waiting.id });
+const closed = await lobB.wait('invite-close', 3000);
+check(!!closed, 'aceitou: o convite some das outras telas');
+
+// 3) partida 1: quem começar tenta o gol; o vencedor é quem marcar (gol na 1ª jogada)
+const before = { a: 1000, b: 1000, teamA: await teamScore(A.teamId), teamB: await teamScore(B.teamId) }; // a aposta saiu no aceite (passo 2)
+const r1 = await play(gA, gB, () => 'gol');
+check(!!r1?.oa && !!r1?.ob, 'partida 1 terminou para os dois');
+const w1 = r1.oa.winner === r1.youA ? A : B, l1 = w1 === A ? B : A;
+const o1w = w1 === A ? r1.oa : r1.ob, o1l = w1 === A ? r1.ob : r1.oa;
+const after1 = { a: await money(A), b: await money(B) };
+const net = (u) => (u === A ? after1.a - before.a : after1.b - before.b);
+check(net(w1) === F.bet && net(l1) === -F.bet, `dinheiro: vencedor ${w1.nick} +R$ ${net(w1)} (levou R$ ${F.bet * 2}), perdedor −R$ ${-net(l1)}`);
+check(o1w.goal === true && /FutPrego/.test(o1w.goalText || '') && o1w.money === F.bet * 2, `vencedor: gol valeu ("${(o1w.goalText || '').slice(0, 60)}…")`);
+const g1 = await prisma.goal.count({ where: { userId: w1.id, kind: 'FUTPREGO' } });
+check(g1 === 1, 'gol gravado como FUTPREGO para o vencedor');
+const row1 = await prisma.futPregoMatch.findFirst({ where: { OR: [{ aId: A.id }, { bId: A.id }] }, orderBy: { id: 'desc' } });
+check(row1.status === 'FINISHED' && row1.goalAwarded && row1.winnerId === w1.id, 'partida gravada: FINISHED, com gol');
+if (before.teamA !== null && before.teamB !== null) {
+  const [wt, lt] = w1 === A ? ['teamA', 'teamB'] : ['teamB', 'teamA'];
+  const now = { teamA: await teamScore(A.teamId), teamB: await teamScore(B.teamId) };
+  check(now[wt] === before[wt] + 1 && now[lt] === before[lt] - 1 && o1l.lost === true && !!row1.lostMatchId,
+    `placar da rodada: time do vencedor ${before[wt]} → ${now[wt]} (+1), time do perdedor ${before[lt]} → ${now[lt]} (−1)`);
+}
+
+// 4) revanche com o MESMO vencedor: o 2º não vale gol (nem tira)
+const pw = w1 === A ? gA : gB, pl = w1 === A ? gB : gA;
+gA.send({ t: 'challenge' });
+const w2wait = await gA.wait('waiting');
+gA.clear(); gB.clear();
+gB.send({ t: 'accept', id: w2wait.id });
+const goalsBefore2 = liveB ? await scoreB() : null;
+const r2 = await play(gA, gB, (side) => ((side === r1.youA) === (w1 === A) ? 'gol' : 'nada'));
+const o2w = w1 === A ? r2.oa : r2.ob;
+check(r2.oa.winner === (w1 === A ? r2.youA : r2.youB), `revanche: ${w1.nick} ganhou de novo`);
+check(o2w.goal === false && o2w.why === 'repetido' && o2w.money === F.bet * 2, 'mesma dupla, mesmo vencedor 2 vezes seguidas: o 2º não vale gol, mas leva o pote');
+check((await prisma.goal.count({ where: { userId: w1.id, kind: 'FUTPREGO' } })) === 1 && (!liveB || (await scoreB()) === goalsBefore2), 'nenhum gol a mais e nenhum gol tirado');
+
+// 5) agora o outro ganha: vale
+gA.send({ t: 'challenge' });
+const w3wait = await gA.wait('waiting');
+gA.clear(); gB.clear();
+gB.send({ t: 'accept', id: w3wait.id });
+const r3 = await play(gA, gB, (side) => ((side === r1.youA) === (w1 === A) ? 'nada' : 'gol'));
+const o3w = l1 === A ? r3.oa : r3.ob;
+check(o3w.goal === true, `terceira: ${l1.nick} ganhou e o gol valeu (resultado diferente do anterior)`);
+
+// 6) empate: ninguém marca em 10 jogadas de cada → dinheiro volta
+const bef6 = { a: await money(A), b: await money(B) };
+gA.send({ t: 'challenge' });
+const w6 = await gA.wait('waiting');
+gA.clear(); gB.clear();
+gB.send({ t: 'accept', id: w6.id });
+const r6 = await play(gA, gB, () => 'nada');
+check(r6?.oa?.refund === true && r6.oa.why === 'empate' && (await money(A)) === bef6.a && (await money(B)) === bef6.b, `10 jogadas de cada sem gol: empate e os R$ ${F.bet} voltaram`);
+
+// 7) vez errada: o peteleco de quem não é a vez é ignorado; W.O. logo no começo devolve o dinheiro
+const bef7 = { a: await money(A), b: await money(B) };
+gA.send({ t: 'challenge' });
+const w7 = await gA.wait('waiting');
+gA.clear(); gB.clear();
+gB.send({ t: 'accept', id: w7.id });
+const m7a = await gA.wait('match'), m7b = await gB.wait('match');
+const notTurn = m7a.turn === m7a.you ? gB : gA;
+notTurn.send({ t: 'flick', dx: 0, dy: -1, power: 1 });
+check(!(await gA.wait('shot', 1200)), 'peteleco fora da vez: ignorado');
+check((await money(A)) === bef7.a - F.bet, 'na partida: a aposta já saiu');
+gB.close();
+const drop = await gA.wait('opp-dropped', 3000);
+const o7 = await gA.wait('over', (F.reconnectSec + 5) * 1000);
+check(!!drop && o7?.reason === 'wo' && o7.refund === true && o7.why === 'wo-cedo' && (await money(A)) === bef7.a && (await money(B)) === bef7.b, `B caiu e não voltou em ${F.reconnectSec} s antes de jogar: W.O. cedo, dinheiro devolvido aos dois`);
+
+// 8) trava de 3 gols por dia: com 3 vitórias valendo hoje, a próxima leva o pote mas não o gol
+gB = phone(B, 'game', '10.0.0.2'); await gB.open;
+for (let i = 0; i < 3; i++) await prisma.futPregoMatch.create({ data: { aId: A.id, bId: D.id, aTeamId: A.teamId, bTeamId: D.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: A.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } });
+await prisma.futPregoMatch.create({ data: { aId: A.id, bId: B.id, aTeamId: A.teamId, bTeamId: B.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: B.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } }); // o último A x B foi do B
+gA.send({ t: 'challenge' });
+const w8 = await gA.wait('waiting');
+gA.clear(); gB.clear();
+gB.send({ t: 'accept', id: w8.id });
+const r8 = await play(gA, gB, (side) => (side === (r1.youA) ? 'gol' : 'nada'));
+const o8 = r8.oa;
+check(o8.winner === r8.youA && o8.goal === false && o8.why === 'limite' && o8.money === F.bet * 2, `A já tinha ${F.maxGoalWinsPerDay} gols hoje: levou o pote, sem gol`);
+
+// 9) sem dinheiro: D não consegue desafiar; treino com bot não mexe no dinheiro
+const gD = phone(D, 'game', '10.0.0.4'); await gD.open;
+gD.send({ t: 'challenge' });
+const eD = await gD.wait('error', 3000);
+check(eD?.code === 'no-money', `D sem R$ ${F.bet}: "${eD?.message}"`);
+await prisma.user.update({ where: { id: D.id }, data: { money: 500 } });
+gD.send({ t: 'challenge' });
+await gD.wait('waiting', 3000);
+gD.send({ t: 'bot' });
+const mBot = await gD.wait('match', 3000);
+check(mBot?.training === true && mBot.players[1].bot === true && mBot.bet === 0, `treino contra ${mBot?.players?.[1]?.nick}: não vale dinheiro`);
+gD.send({ t: 'giveup' });
+const oBot = await gD.wait('over', 5000);
+check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinheiro igual');
+
+for (const p of [gA, gB, gD, lobB, lobC, lobD]) p.close();
+await prisma.$disconnect();
+console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');
+process.exit(fails ? 1 : 0);

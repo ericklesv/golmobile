@@ -419,6 +419,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   não dá dinheiro. Respostas em `answers.js` (a lista do Termo do Corujão, 46 dias à frente,
   + 21 palavras do dono intercaladas): **palavra nova entra no fim**, antes do dia #114
   (03/01/2027). Dicionário em `palavras.txt` (resposta fora do léxico entra lá, à mão).
+  **Chat sem spoiler** (dono, 15/09/2026: "proibir mandar a palavra do dia do Termo no chat; quando enviar, ficar com
+  ****"; `lib/termo/spoiler.js` → `maskTermo`, chamado em `routes/chat.js` no GET e na resposta do POST): a palavra de
+  HOJE vira `*****` — maiúscula/minúscula, com/sem acento, letras separadas ("s a n t o"), esticadas ("santooo") e com
+  número ("s4nt0"); só a palavra inteira ("santos" fica). É só na LEITURA: o banco guarda o texto real (denúncia vê o
+  escrito) e a de ontem volta a aparecer depois da meia-noite. Dia de palavra comum (JOGOS, LIGAS) esconde também a
+  conversa normal — é a regra. **Mexeu? Rode `node scripts/test-termo-chat.js`** (pasta api/, banco LOCAL, API no ar).
 - **Estatísticas** (`services/stats.js`, `lib/stats/`; nível 3): "quem tem mais X?" entre dois
   jogadores do **Brasileirão 2024** (dados reais da API-Football em
   `lib/stats/brasileirao-2024.json`; o jogo NÃO chama a API) + **duelos do dono**

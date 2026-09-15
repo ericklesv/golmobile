@@ -2,6 +2,7 @@
  * Chat — salas "geral" (todo mundo) e "time" (só a torcida do time do jogador).
  * Polling: GET devolve as últimas 60 (ou só as novas com ?after=<id>).
  * "Mensagem com cores" é a habilidade do nível 8 (Titular) — abaixo disso a cor é ignorada.
+ * A palavra do Termo de hoje aparece como ***** (lib/termo/spoiler.js — só na leitura; o banco guarda o texto real).
  */
 import { Router } from 'express';
 import { z } from 'zod';
@@ -11,6 +12,7 @@ import { requireAuth } from '../lib/auth.js';
 import { levelOf, isVip } from '../lib/rules.js';
 import { teamView, nickFadeOf } from '../services/view.js';
 import { badgeLookup } from '../services/badges.js';
+import { maskTermo } from '../lib/termo/spoiler.js';
 
 export const chat = Router();
 chat.use(requireAuth);
@@ -82,6 +84,7 @@ chat.get('/:room', handle(async (req) => {
     where: { room, ...(after ? { id: { gt: after } } : {}), ...(blocked.length ? { userId: { notIn: blocked } } : {}) },
     orderBy: { id: 'desc' }, take: 60, include: { user: userSel },
   });
+  for (const r of rows) r.text = maskTermo(r.text); // palavra do Termo de hoje vira ***** (antes das menções: nem ali ela vaza)
   const [online, mentions] = await Promise.all([
     prisma.user.count({ where: { lastSeenAt: { gt: new Date(Date.now() - 2 * 60_000) }, ...(room !== 'geral' ? { teamId: user.teamId } : {}) } }),
     resolveMentions(rows.map((r) => r.text)),
@@ -108,6 +111,7 @@ chat.post('/:room', handle(async (req) => {
   }
   lastSent.set(user.id, now);
   const m = await prisma.chatMessage.create({ data: { room, userId: user.id, text, color }, include: { user: userSel } });
+  m.text = maskTermo(m.text); // gravada como foi escrita; quem mandou já vê com *****
   const v = view(m, await resolveMentions([m.text]));
   Object.assign(v.user, (await badgeLookup())(v.user.id));
   return v;

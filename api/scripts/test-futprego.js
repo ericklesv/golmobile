@@ -7,7 +7,8 @@
  * SAÍDA DO MEIO: em toda partida a 1ª jogada tenta de propósito o peteleco que entraria sem a garantia.
  * Cria jogadores fp…
  *
- * Uso (na pasta api/, com a API local no ar):  node scripts/test-futprego.js   → "TUDO OK".
+ * Uso (na pasta api/, com a API local no ar e X1_JOGO=FUTPREGO no .env dela):  node scripts/test-futprego.js
+ *   → "TUDO OK". (O Futebol de Botão tem o dele: scripts/test-botao.js.)
  */
 import 'dotenv/config';
 if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.test(process.env.DATABASE_URL || '')) {
@@ -15,13 +16,15 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
   process.exit(1);
 }
 import WebSocket from 'ws';
+import jwt from 'jsonwebtoken';
 const { prisma } = await import('../src/prisma.js');
 const { simulateFlick, scorerOf } = await import('../src/lib/futprego.js');
 const { FUTPREGO: F } = await import('../src/lib/rules.js');
 const { liveMatchForTeam } = await import('../src/services/league.js');
+const { config } = await import('../src/config.js');
 
 const API = process.env.FP_API || 'http://localhost:4320';
-const WS = API.replace(/^http/, 'ws') + '/api/ws/futprego';
+const WS = API.replace(/^http/, 'ws') + '/api/ws/x1';
 let fails = 0;
 const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`); if (!ok) fails++; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -30,11 +33,12 @@ for (let i = 0; i < 40; i++) { try { if ((await fetch(`${API}/api/health`)).ok) 
 let seq = 0;
 async function mkUser(team, money) {
   const nick = `fp${Date.now() % 1e5}${seq++}`;
-  await fetch(`${API}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, email: `${nick}@local.test`, password: 'teste123', teamSlug: team, gender: 'M' }) });
-  const { token } = await (await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: nick, password: 'teste123' }) })).json();
-  const u = await prisma.user.update({ where: { nickLower: nick.toLowerCase() }, data: { money } });
-  return { ...u, token };
+  const t = await prisma.team.findUnique({ where: { slug: team } });
+  const u = await prisma.user.create({ data: { nick, nickLower: nick.toLowerCase(), email: `${nick}@local.test`, passwordHash: 'x', teamId: t.id, money } });
+  return { ...u, token: jwt.sign({ uid: u.id, nick: u.nick }, config.jwtSecret, { expiresIn: '1d' }) };
 }
+const today = await (await fetch(`${API}/api/x1/status`)).json();
+if (today.today?.game !== 'FUTPREGO') { console.error(`o X1 de hoje na API é ${today.today?.game}: suba a API com X1_JOGO=FUTPREGO`); process.exit(1); }
 const money = async (u) => (await prisma.user.findUnique({ where: { id: u.id } })).money;
 
 /** Um "celular": conexão com fila de mensagens e espera por tipo. */
@@ -154,8 +158,8 @@ check(net(w1) === F.bet && net(l1) === -F.bet, `dinheiro: vencedor ${w1.nick} +R
 check(o1w.goal === true && /FutPrego/.test(o1w.goalText || '') && o1w.money === F.bet * 2, `vencedor: gol valeu ("${(o1w.goalText || '').slice(0, 60)}…")`);
 const g1 = await prisma.goal.count({ where: { userId: w1.id, kind: 'FUTPREGO' } });
 check(g1 === 1, 'gol gravado como FUTPREGO para o vencedor');
-const row1 = await prisma.futPregoMatch.findFirst({ where: { OR: [{ aId: A.id }, { bId: A.id }] }, orderBy: { id: 'desc' } });
-check(row1.status === 'FINISHED' && row1.goalAwarded && row1.winnerId === w1.id, 'partida gravada: FINISHED, com gol');
+const row1 = await prisma.x1Match.findFirst({ where: { OR: [{ aId: A.id }, { bId: A.id }] }, orderBy: { id: 'desc' } });
+check(row1.status === 'FINISHED' && row1.goalAwarded && row1.winnerId === w1.id && row1.game === 'FUTPREGO' && !!row1.seasonId, 'partida gravada: FINISHED, com gol, jogo FUTPREGO e a temporada');
 if (before.teamA !== null && before.teamB !== null) {
   const [wt, lt] = w1 === A ? ['teamA', 'teamB'] : ['teamB', 'teamA'];
   const now = { teamA: await teamScore(A.teamId), teamB: await teamScore(B.teamId) };
@@ -216,8 +220,8 @@ check(!!drop && o7?.reason === 'wo' && o7.refund === true && o7.why === 'wo-cedo
 
 // 8) trava de 3 gols por dia: com 3 vitórias valendo hoje, a próxima leva o pote mas não o gol
 gB = phone(B, 'game', '10.0.0.2'); await gB.open;
-for (let i = 0; i < 3; i++) await prisma.futPregoMatch.create({ data: { aId: A.id, bId: D.id, aTeamId: A.teamId, bTeamId: D.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: A.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } });
-await prisma.futPregoMatch.create({ data: { aId: A.id, bId: B.id, aTeamId: A.teamId, bTeamId: B.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: B.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } }); // o último A x B foi do B
+for (let i = 0; i < 3; i++) await prisma.x1Match.create({ data: { aId: A.id, bId: D.id, aTeamId: A.teamId, bTeamId: D.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: A.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } });
+await prisma.x1Match.create({ data: { aId: A.id, bId: B.id, aTeamId: A.teamId, bTeamId: B.teamId, aIp: 'x', bIp: 'y', bet: F.bet, status: 'FINISHED', winnerId: B.id, reason: 'gol', goalAwarded: true, finishedAt: new Date() } }); // o último A x B foi do B
 gA.send({ t: 'challenge' });
 const w8 = await gA.wait('waiting');
 gA.clear(); gB.clear();

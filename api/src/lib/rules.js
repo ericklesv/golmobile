@@ -218,7 +218,7 @@ export const MINIGAMES = [
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-glove.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: 'gol + até 30 de nível' },
   { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: '1 gol a cada gol + até 30 de nível' },
   { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: 'gol + até 20 de nível + R$ 50 por alvo' },
-  { id: 'FUTPREGO', name: 'FutPrego', unlock: 0, daily: false, route: '/futprego', icon: '/ui/ico-futprego.svg', desc: 'Futebol de prego 1x1 ao vivo, uma vez de cada. Cada um põe R$ 200; quem marcar primeiro leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
+  { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia: FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
   { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: '1 gol + 5 de nível a cada acerto' },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'FRANGACO', name: 'Frangaço', unlock: 10, daily: true, route: '/frangaco', icon: '/ui/ico-crown_silver.png', desc: 'Duelo de pênaltis contra um clube da sua série: bata 5 e defenda 5. Mata-mata de 4 fases.', reward: 'gol + R$ 500 se for campeão', soon: true }, // DESATIVADO (dono, 14/09/2026: "muito bugado") — card EM BREVE e /api/frangaco/* recusa
@@ -302,6 +302,11 @@ export const GANHAPERDE = { start: 50, drop: 5, min: 5, max: 75, step: 5, stepPr
 RESET_HOUR.GANHAPERDE = 21;
 DAILY_GAMES.push('GANHAPERDE');
 KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
+// X1 (jogos 1x1 ao vivo — dono, 15/09/2026: "jogos X1 rotativos, cada dia 1 jogo para não ficar
+// enjoativo"): um jogo por dia de calendário (vira à meia-noite de Brasília), FutPrego e Futebol de Botão
+// se alternando (x1GameOf). As regras de convite, aposta, gol e travas abaixo (FUTPREGO.*) valem para
+// TODOS os jogos do X1. Ranking do X1: vitórias que valeram gol na temporada.
+//
 // FutPrego (futebol de prego 1x1 por turnos, ao vivo — decisões do dono, 14/09/2026): quem desafia
 // espera; quem está nas telas com as abas recebe um convite pequeno por 10 s (nunca dentro de minigame
 // ou chute). Cada um paga R$ 200 e quem marcar primeiro leva os R$ 400 + 1 gol para o time, e o time
@@ -309,12 +314,23 @@ KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 // diferentes; no máximo 3 gols por dia; a mesma dupla com o mesmo vencedor duas vezes seguidas = o
 // 2º não vale gol (nem tira); W.O. antes de cada um jogar 2 vezes = devolve o dinheiro. Sem gol em 10
 // jogadas de cada = empate, dinheiro devolvido. Ninguém aceitou em 1 min = oferece treino com bot
-// (não vale gol nem dinheiro). Física em lib/futprego.js; fila e partidas em realtime/futprego.js.
+// (não vale gol nem dinheiro). Física em lib/futprego.js; fila e partidas em realtime/x1.js.
 export const FUTPREGO = {
   bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, challengeMaxSec: 300,
   maxGoalWinsPerDay: 3, woMinTurns: 2, reconnectSec: 20,
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
+export const X1 = { games: ['FUTPREGO', 'BOTAO'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' } };
+/** O jogo do X1 no dia de calendário `day` (calendarDay de lib/time.js). */
+export const x1GameOf = (day) => X1.games[((day % X1.games.length) + X1.games.length) % X1.games.length];
+// Futebol de Botão (X1; como o SnapFC, sem poderes — só no peteleco): 7 botões por time (goleiro na
+// área + 6 na linha, que não entram nas áreas). Cada vez = 2 petelecos do mesmo jogador (15 s cada); quem
+// começa só dá 1 na primeira vez (medido: assim quem começa vence ~45%, e não 68% com 3). O 1º GOL ACABA
+// a partida (dono, 15/09/2026: "4 minutos é muito tempo, é melhor então 1 gol acaba" — ~1 min em média);
+// 9 vezes sem gol = pênaltis, 3 de cada e depois alternados. Física em lib/botao.js; regras em
+// lib/botaoMatch.js; equilíbrio em scripts/botao-balance.js.
+export const BOTAO = { snapsPerTurn: 2, firstTurnSnaps: 1, snapSec: 15, goalsToWin: 1, maxTurns: 9, penalties: 3, suddenDeath: 7 };
+KIND_LABEL.BOTAO = 'Futebol de Botão';
 
 /** Chance de GANHA (%) sem pagar nada, depois de `wins` acertos no dia. */
 export const ganhaPerdeBase = (wins) => Math.max(GANHAPERDE.min, GANHAPERDE.start - GANHAPERDE.drop * wins);

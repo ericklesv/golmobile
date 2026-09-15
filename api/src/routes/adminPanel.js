@@ -269,17 +269,18 @@ adminPanel.get('/multicontas', handle(async (req) => {
   };
 }));
 
-// ─── FutPrego: histórico dos confrontos (pedido do dono, 15/09/2026) ────────
-// GET /api/painel/futprego?page= — toda partida de verdade (contra bot não grava), a mais recente
-// primeiro, com data/hora, os dois jogadores e times, vencedor, motivo, jogadas, aposta, se o gol contou
-// e de qual time saiu 1 gol. `sameIp` = os dois na mesma internet (conta falsa jogando contra si mesma).
-adminPanel.get('/futprego', handle(async (req) => {
+// ─── X1 (FutPrego e Futebol de Botão): histórico dos confrontos (pedido do dono, 15/09/2026) ────────
+// GET /api/painel/x1?page= (ou /futprego, o nome antigo) — toda partida de verdade (contra bot não grava),
+// a mais recente primeiro, com o jogo, data/hora, os dois jogadores e times, vencedor, motivo, jogadas,
+// aposta, se o gol contou e de qual time saiu 1 gol. `sameIp` = os dois na mesma internet (conta falsa
+// jogando contra si mesma).
+adminPanel.get(['/x1', '/futprego'], handle(async (req) => {
   const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
   const [total, rows] = await Promise.all([
-    prisma.futPregoMatch.count(),
-    prisma.futPregoMatch.findMany({ orderBy: { id: 'desc' }, skip: (page - 1) * PAGE, take: PAGE }),
+    prisma.x1Match.count(),
+    prisma.x1Match.findMany({ orderBy: { id: 'desc' }, skip: (page - 1) * PAGE, take: PAGE }),
   ]);
-  // FutPregoMatch guarda só ids (sem relação no schema): busca jogadores e times de uma vez
+  // X1Match guarda só ids (sem relação no schema): busca jogadores e times de uma vez
   const userIds = [...new Set(rows.flatMap((m) => [m.aId, m.bId, m.winnerId].filter(Boolean)))];
   const teamIds = [...new Set(rows.flatMap((m) => [m.aTeamId, m.bTeamId, m.lostTeamId].filter(Boolean)))];
   const [users, teams] = await Promise.all([
@@ -291,7 +292,7 @@ adminPanel.get('/futprego', handle(async (req) => {
   return {
     page, pages: Math.max(1, Math.ceil(total / PAGE)), total,
     rows: rows.map((m) => ({
-      id: m.id, at: m.createdAt, finishedAt: m.finishedAt, status: m.status, reason: m.reason, turns: m.turns, bet: m.bet,
+      id: m.id, game: m.game, at: m.createdAt, finishedAt: m.finishedAt, status: m.status, reason: m.reason, turns: m.turns, bet: m.bet,
       a: player(m.aId, m.aTeamId), b: player(m.bId, m.bTeamId),
       winnerId: m.winnerId, goalAwarded: m.goalAwarded, lostTeam: teamView(T.get(m.lostTeamId)), sameIp: !!m.aIp && m.aIp === m.bIp,
     })),

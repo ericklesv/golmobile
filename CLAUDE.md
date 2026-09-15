@@ -145,12 +145,29 @@ depois que o novo estiver estável. Não instalar nada dele.
   pedido do dono em 14/09/2026 para gravar vídeo de propaganda): chutes sem recarga (`cooldownFor` = 0), sem captcha e
   minigames sem limite do dia (`routes/daily.js` apaga as partidas terminadas do jogador a cada chamada). Junte com
   `MINIGAMES_LIVRES=1` (Hat Trick/Falta PRO/Frangaço). **NUNCA no .env da VPS.**
-- **FutPrego — retrospecto contra o adversário** (pedido do dono, 15/09/2026; `headToHead` em
-  `realtime/futprego.js`): ao casar a partida, a mensagem `match` de cada lado traz `h2h` na perspectiva de quem
-  recebe (`{total, wins, losses, draws, last: ['V'|'D'|'E' × até 5, a mais recente primeiro], lastAt}`; `null` no
-  treino contra bot). Conta só partida de verdade FINISHED entre os dois, sem `wo-cedo`. A tela mostra a faixa
-  `H2HStrip` entre a barra do adversário e a tábua ("Contra X: 2V · 1E · 0D" + últimas 5; "Primeiro confronto"
-  se nunca jogaram). Coberto no `scripts/test-futprego.js`.
+- **X1 — jogos 1x1 ao vivo, um por dia** (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar enjoativo";
+  substituiu o card do FutPrego). `realtime/x1.js` (WebSocket `/api/ws/x1`, e `/api/ws/futprego` como nome antigo;
+  `mode=game` na tela `/x1` = `screens/X1.tsx`, `mode=lobby` no convite `components/X1Invite.tsx`). O jogo do dia
+  alterna à meia-noite de Brasília (`x1GameOf(calendarDay)` em `rules.js`, `X1.games`): **FutPrego** (futebol de
+  prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão** (`lib/botao.js` = física
+  determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de dinheiro e travas
+  iguais para os dois (`FUTPREGO` em rules.js): cada um põe R$ 200, quem vence leva R$ 400 + 1 gol e o time do
+  outro perde 1 gol na rodada; até 3 gols por dia no X1; mesma dupla com o mesmo vencedor duas vezes seguidas = a
+  2ª não vale gol; W.O./desistência antes de cada um jogar 2 vezes = aposta devolvida; bot de treino depois de
+  1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por time (goleiro preso na área; os de linha não
+  entram em área), 2 petelecos por vez num botão seu (quem começa dá 1 na 1ª vez — medido: assim quem começa
+  vence ~45%), 15 s cada; **o 1º gol acaba** (dono: "4 minutos é muito tempo"); sem gol em 9 vezes (somando os
+  dois) = pênaltis (3 de cada, depois alternadas). Partidas na tabela `FutPregoMatch` (modelo Prisma `X1Match`,
+  migração 0027: `game`, `seasonId`, `scoreA/B`). **Ranking do X1** (`x1Ranking`, aba X1 em Rankings,
+  `GET /api/rankings/x1`): vitórias que VALERAM GOL na temporada (as travas acima impedem dois amigos de subirem
+  combinados); desempate: menos derrotas. **Perfil**: `x1` em `GET /api/players/:nick` (`x1Record`: total, por
+  jogo e temporada com posição) → `components/X1Record.tsx`. **Retrospecto contra o adversário** (`headToHead`):
+  a mensagem `match` de cada lado traz `h2h` na perspectiva de quem recebe (`{total, wins, losses, draws, last:
+  ['V'|'D'|'E' × até 5], lastAt}`; `null` no treino), contando os dois jogos do X1; faixa `H2HStrip` na tela.
+  Teste no PC: `X1_JOGO=BOTAO` ou `FUTPREGO` força o jogo do dia e `FUTPREGO_MESMO_IP=1` deixa jogar com duas
+  janelas na mesma internet (os dois ignorados com NODE_ENV=production) — **NUNCA no .env da VPS**. Mexeu? Rode
+  (pasta api/, só banco LOCAL, API no ar com o `X1_JOGO` certo) `node scripts/test-botao.js`,
+  `node scripts/test-futprego.js` e, sem banco, `node scripts/botao-balance.js` (física e equilíbrio do Botão).
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi
@@ -264,8 +281,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   Toda ação fica na tabela `AdminAction` (`GET /api/painel/log`). Entrada discreta no perfil.
   Aba **Contas criadas** (pedido do dono, 14/09/2026): a mesma lista em ordem de criação, mais nova primeiro
   (`GET /api/painel/users?order=criadas`), com e-mail, gols, "criada dd/mm às hh:mm" e "convite de X" (convites).
-  Aba **FutPrego** (pedido do dono, 15/09/2026; `GET /api/painel/futprego?page=`): histórico dos confrontos de
-  verdade (`FutPregoMatch`; contra bot não grava), o mais recente primeiro — data/hora, os dois jogadores com time,
+  Aba **X1** (pedido do dono, 15/09/2026; `GET /api/painel/x1?page=`, ou `/futprego`): histórico dos confrontos de
+  verdade (`X1Match`; contra bot não grava), o mais recente primeiro — jogo (FutPrego/Botão), data/hora, os dois jogadores com time,
   vencedor e motivo, jogadas, aposta, se o gol contou (e de qual time saiu 1 gol) e selo "mesma internet"
   (`aIp === bIp`). Tocar no nick abre o detalhe do jogador.
   Aba **Multiconta** (pedido do dono, 15/09/2026; `GET /api/painel/multicontas?page=&q=`): IPs com 2+ contas vivas
@@ -395,7 +412,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/frangaco/state` · `POST /api/frangaco/run|incoming|kick{xAnunciado,xReal|null}|save{ms,x?,y?}` (Frangaço — contrato do cliente Unity em /tv/?mode=penalty) · `GET /api/daily/frangaco` (estado do slider)
 `GET /api/chat/:room?after=` · `POST /api/chat/:room{text,color?}` (salas `geral` e `time`; cor só do nível 8; 3 s entre mensagens; sem links; não traz mensagens de quem eu bloqueei)
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
-`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/futprego?page=` · `GET /api/painel/multicontas?page=&q=` (painel de admin)
+`GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/x1?page=` · `GET /api/painel/multicontas?page=&q=` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

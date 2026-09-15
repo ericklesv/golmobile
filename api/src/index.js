@@ -30,7 +30,7 @@ import { account } from './routes/account.js';
 import { ensureSeason } from './services/league.js';
 import { startScheduler } from './services/scheduler.js';
 import { attachCabecao, cabecaoStatus } from './realtime/cabecao.js';
-import { attachFutPrego, futpregoStatus } from './realtime/futprego.js';
+import { attachX1, x1Status } from './realtime/x1.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -67,7 +67,8 @@ app.use('/api/ref', referral);
 app.use('/api/pay', pay); // aviso de PIX da Efí (sem login)
 app.use('/api/account', account); // exclusão de conta, bloqueios e denúncias (Play Store)
 app.get('/api/cabecao/status', (_req, res) => res.json(cabecaoStatus())); // fila do Cabeção (WebSocket em /api/ws/cabecao)
-app.get('/api/futprego/status', (_req, res) => res.json(futpregoStatus())); // desafios e partidas do FutPrego (WebSocket em /api/ws/futprego)
+app.get('/api/x1/status', (_req, res) => res.json(x1Status())); // X1: jogo do dia, desafios e partidas (WebSocket em /api/ws/x1)
+app.get('/api/futprego/status', (_req, res) => res.json(x1Status())); // endereço antigo (FutPrego virou o X1)
 app.use('/api', game);
 
 app.use((_req, res) => res.status(404).json({ error: 'not-found', message: 'Rota não encontrada.' }));
@@ -77,7 +78,7 @@ ensureSeason()
     startScheduler();
     const server = http.createServer(app);
     attachCabecao(server);
-    attachFutPrego(server);
+    attachX1(server);
     server.listen(config.port, () => { console.log(`brgol-api na porta ${config.port}`); if (process.env.NODE_ENV === 'production') tg.info(`🚀 API subiu (pid ${process.pid}${process.env.GIT_COMMIT ? `, ${process.env.GIT_COMMIT.slice(0, 7)}` : ''})`); });
   })
   .catch((e) => {

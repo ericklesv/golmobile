@@ -38,8 +38,8 @@ export async function matchPage(id, now = Date.now()) {
     prisma.user.count({ where: { teamId: m.awayTeamId, lastSeenAt: { gt: since } } }),
     topScorers({ seasonId: m.round.seasonId, teamId: m.homeTeamId }, 1),
     topScorers({ seasonId: m.round.seasonId, teamId: m.awayTeamId }, 1),
-    // gols tirados do placar: o time perdeu no FutPrego (realtime/futprego.js)
-    prisma.futPregoMatch.groupBy({ by: ['lostTeamId'], where: { lostMatchId: id }, _count: { _all: true } }),
+    // gols tirados do placar: o time perdeu no X1 (realtime/x1.js)
+    prisma.x1Match.groupBy({ by: ['lostTeamId'], where: { lostMatchId: id }, _count: { _all: true } }),
   ]);
 
   // artilheiros: top 5 de cada lado + o da partida (mais gols; empate = quem chegou lá primeiro na lista)

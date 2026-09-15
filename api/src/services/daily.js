@@ -13,7 +13,7 @@ import { layoutFor, applyShot, summarize, rewardFor } from '../lib/alvo.js';
 import { questionsOfDay as qualtimeQuestions } from '../lib/qualtime/bank.js';
 import { teamView } from './view.js';
 import { cabecaoStatus } from '../realtime/cabecao.js';
-import { futpregoStatus } from '../realtime/futprego.js';
+import { x1Status } from '../realtime/x1.js';
 import { evaluate, keyOf, loadDictionary } from '../lib/termo/rules.js';
 import { wordOfDay } from '../lib/termo/answers.js';
 import { BANK, questionsOfDay } from '../lib/quiz/questions.js';
@@ -275,7 +275,7 @@ export async function minigamesHub(userId, now = new Date()) {
       unlockLevel: g.unlock, unlocked, soon: !!g.soon,
       available: unlocked && !g.soon && (d ? d.available : true),
       started: d?.started ?? false, finished: d?.finished ?? false, won: d?.won ?? false, nextAt: d?.nextAt ?? null,
-      live: g.id === 'CABECAO' ? cabecaoStatus() : g.id === 'FUTPREGO' ? futpregoStatus() : undefined, // fila do head soccer / desafios do FutPrego
+      live: g.id === 'CABECAO' ? cabecaoStatus() : g.id === 'X1' ? x1Status() : undefined, // fila do head soccer / X1: jogo do dia e desafios
     };
   });
   // Ordem do slider (regra do dono): disponíveis primeiro (o que já começou na frente), depois

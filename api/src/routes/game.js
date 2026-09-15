@@ -5,7 +5,7 @@ import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
@@ -13,8 +13,9 @@ import rateLimit from 'express-rate-limit';
 import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { BOARD as FUTPREGO_BOARD } from '../lib/futprego.js';
+import { BOTAO_FIELD, kickoffLayout as botaoKickoff } from '../lib/botao.js';
 import { boardView, playerClub } from '../services/club.js';
-import { futpregoRecord } from '../realtime/futprego.js';
+import { x1Record, x1Ranking, x1Today } from '../realtime/x1.js';
 import { withBadges, badgesOf, topHistory } from '../services/badges.js';
 import { matchPage } from '../services/match.js';
 
@@ -46,6 +47,7 @@ game.get('/meta', cached(10000), handle(async () => {
     camisas: CAMISAS,
     ganhaperde: GANHAPERDE,
     futprego: { ...FUTPREGO, board: FUTPREGO_BOARD }, // a tábua (pregos) para a tela do começo
+    x1: { names: X1.names, today: x1Today(), botao: BOTAO, field: BOTAO_FIELD, kickoff: botaoKickoff() }, // X1: jogo do dia e regras do Futebol de Botão (campo de enfeite no começo)
     resetHour: RESET_HOUR, // hora de virada de cada minigame diário
     // minigames jogáveis e o nível que libera cada um (janela de "subiu de nível": LIBERADO X! JOGAR AGORA)
     minigames: MINIGAMES.filter((g) => !g.soon).map(({ id, name, unlock, route, icon }) => ({ id, name, unlock, route, icon })),
@@ -89,12 +91,13 @@ game.get('/home', cached(5000), handle(async (req) => {
 }));
 
 // ─── Rankings ───────────────────────────────────────────────────────────────
-const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha'];
+const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha', 'x1'];
 game.get('/rankings/:scope', cached(5000), handle(async (req) => {
   const scope = String(req.params.scope);
   if (!SCOPES.includes(scope)) throw badRequest('Ranking inválido.');
   const take = Math.min(100, Number(req.query.limit) || 50);
   const round = await currentRound();
+  if (scope === 'x1') { const r = await x1Ranking(take); return { scope, key: r.season, rows: await withBadges(r.rows) }; } // vitórias no X1 na temporada
   if (scope === 'hora') return { scope, key: hourKey(), rows: await withBadges(await topScorers({ hourKey: hourKey() }, take)) };
   if (scope === 'rodada') return { scope, key: round?.number ?? null, rows: round ? await withBadges(await topScorers({ roundId: round.id }, take)) : [] };
   if (scope === 'temporada') return { scope, key: round?.season?.number ?? null, rows: round ? await withBadges(await topScorers({ seasonId: round.seasonId }, take)) : [] };
@@ -214,7 +217,7 @@ game.get('/players/:nick', handle(async (req) => {
     ...(await playerClub(user)), // cargo no time e contrato
     tops: (await badgesOf(user.id)).tops, // top 3 de agora (hora/rodada/temporada)
     history: await topHistory(user.id), // vezes em 1º/2º/3º e no top 10
-    futprego: await futpregoRecord(user.id), // vitórias, derrotas e empates no FutPrego
+    x1: await x1Record(user.id), // vitórias, derrotas e empates no X1 (total, por jogo e na temporada)
     positions: { geral: geral + 1, penal: penal + 1, falta: falta + 1, trilha: trilha + 1 },
     recent: recent.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt })),
   };

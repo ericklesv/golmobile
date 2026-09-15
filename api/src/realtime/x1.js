@@ -1,15 +1,17 @@
 /**
- * FutPrego — convites, partidas por turnos e WebSocket (`/api/ws/futprego?token=<jwt>&mode=lobby|game`).
+ * X1 — jogos 1x1 ao vivo, um por dia (dono, 15/09/2026: "jogos X1 rotativos, cada dia 1 jogo para não
+ * ficar enjoativo"): FutPrego e Futebol de Botão se alternando (x1GameOf em lib/rules.js). WebSocket em
+ * `/api/ws/x1?token=<jwt>&mode=lobby|game` (o endereço antigo /api/ws/futprego continua valendo).
  *
  * - mode=lobby: aberto pelas telas com as abas (Layout). Só recebe o convite pequeno ("Fulano está te
- *   desafiando no FutPrego") por FUTPREGO.inviteSec. Dentro de minigame/chute a Layout não está montada,
- *   então o convite nunca aparece lá (pedido do dono, 14/09/2026).
- * - mode=game: a tela do FutPrego. Desafia (se já houver um desafio compatível aberto, vira partida na
- *   hora), aceita, joga, desiste.
+ *   desafiando no X1") por FUTPREGO.inviteSec. Dentro de minigame/chute a Layout não está montada, então o
+ *   convite nunca aparece lá.
+ * - mode=game: a tela do X1. Desafia no jogo do dia (se já houver um desafio compatível aberto, vira partida
+ *   na hora), aceita, joga, desiste.
  * Pareamento: jogadores, times e IPs diferentes, sem bloqueio entre eles. Cada um paga FUTPREGO.bet ao
- * começar (a partida é gravada PLAYING); o servidor calcula cada peteleco (lib/futprego.js) e manda os
- * quadros para as duas telas. Regras de gol, dinheiro e travas: settle(). Uma instância PM2 só — o estado
- * fica em memória; se a API reiniciar no meio, refundStale() devolve a aposta das partidas abertas.
+ * começar (a partida é gravada PLAYING); o servidor calcula cada peteleco (lib/futprego.js ou lib/botao.js)
+ * e manda os quadros para as duas telas. Gol, dinheiro e travas: settle() — iguais nos dois jogos. Uma
+ * instância PM2 só — o estado fica em memória; se a API reiniciar no meio, refundStale() devolve a aposta.
  */
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
@@ -17,47 +19,48 @@ import { randomInt } from 'node:crypto';
 import { config } from '../config.js';
 import { prisma } from '../prisma.js';
 import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
-import { FUTPREGO, MINIGAMES, levelOf } from '../lib/rules.js';
+import { BOTAO_FIELD } from '../lib/botao.js';
+import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove } from '../lib/botaoMatch.js';
+import { FUTPREGO, BOTAO, X1, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
 import { applyResult, loadUser } from '../services/play.js';
-import { liveMatchForTeam } from '../services/league.js';
+import { liveMatchForTeam, currentRound } from '../services/league.js';
 import { teamView } from '../services/view.js';
-import { nextMidnight } from '../lib/time.js';
+import { nextMidnight, calendarDay } from '../lib/time.js';
+import { nickFadeOf } from '../lib/items.js';
 
-const F = FUTPREGO;
+const F = FUTPREGO; // regras de convite, aposta, gol e travas (valem para todo o X1)
 const BOT_NAMES = ['Zagalinho', 'Pé de Pano', 'Perna Longa', 'Canhotinha', 'Bicudo', 'Matador', 'Camisa 10', 'Prego Torto'];
 const INVITE_GAP_MS = 20_000; // uma tela não recebe mais de um convite novo a cada 20 s
 const MAX_TIMEOUTS = 3;       // perdeu a vez 3 vezes seguidas = W.O.
 const conns = new Set();       // { ws, user, ip, mode, match, side, challenge, seen, ... }
-const challenges = new Map();  // id -> { id, from, at, shownTo, botTimer, expireTimer }
+const challenges = new Map();  // id -> { id, game, from, at, shownTo, botTimer, expireTimer }
 const matches = new Map();     // id -> partida
 const lastOver = new Map();    // userId -> { at, msg } (quem caiu vê o resultado ao voltar)
 let nextId = 1;
 
 function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); }
 const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message });
+const rnd01 = () => randomInt(1_000_000) / 1_000_000;
 
-/**
- * Campanha do jogador no FutPrego (perfil): partidas de verdade que terminaram (bot não grava). Vitória =
- * ele venceu; derrota = o outro venceu; empate = 10 jogadas de cada sem gol. Partida que acabou antes de
- * cada um jogar 2 vezes (dinheiro devolvido) ou cancelada não conta.
- */
-export async function futpregoRecord(userId) {
-  const mine = { OR: [{ aId: userId }, { bId: userId }] };
-  const [wins, losses, draws] = await Promise.all([
-    prisma.futPregoMatch.count({ where: { status: 'FINISHED', winnerId: userId } }),
-    prisma.futPregoMatch.count({ where: { status: 'FINISHED', winnerId: { not: null }, NOT: { winnerId: userId }, ...mine } }),
-    prisma.futPregoMatch.count({ where: { status: 'FINISHED', reason: 'empate', ...mine } }),
-  ]);
-  return { wins, losses, draws };
+/** O jogo do X1 de hoje, o de amanhã e quando troca (meia-noite de Brasília). */
+// SÓ NO PC (X1_JOGO=BOTAO ou FUTPREGO no api/.env; ignorado em produção): força o jogo do dia para testar.
+const forcedGame = () => (process.env.NODE_ENV !== 'production' && X1.games.includes(process.env.X1_JOGO) ? process.env.X1_JOGO : null);
+
+export function x1Today(now = new Date()) {
+  const day = calendarDay(now);
+  const game = forcedGame() ?? x1GameOf(day);
+  const next = forcedGame() ? X1.games.find((g) => g !== game) : x1GameOf(day + 1); // forçado: "amanhã" mostra o outro
+  return { game, name: X1.names[game], next, nextName: X1.names[next], switchAt: nextMidnight(now).getTime() };
 }
 
 /**
  * Retrospecto entre dois jogadores (pedido do dono, 15/09/2026): partidas de verdade que terminaram entre
- * eles — W.O. cedo (aposta devolvida) e canceladas não contam. Vai na mensagem `match` de cada lado, na
- * perspectiva de quem recebe (sendMatch). `last` = quem venceu as últimas 5, a mais recente primeiro (null = empate).
+ * eles no X1 (os dois jogos juntos) — W.O. cedo (aposta devolvida) e canceladas não contam. Vai na mensagem
+ * `match` de cada lado, na perspectiva de quem recebe (sendMatch). `last` = quem venceu as últimas 5, a mais
+ * recente primeiro (null = empate).
  */
 async function headToHead(aId, bId) {
-  const rows = await prisma.futPregoMatch.findMany({
+  const rows = await prisma.x1Match.findMany({
     where: { status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId, bId }, { aId: bId, bId: aId }] },
     orderBy: { id: 'desc' }, select: { winnerId: true, finishedAt: true },
   });
@@ -68,8 +71,65 @@ async function headToHead(aId, bId) {
   };
 }
 
-export function futpregoStatus() {
-  return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0) };
+export function x1Status() {
+  return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0), today: x1Today() };
+}
+
+// ─── Campanha e ranking (perfil e aba de rankings) ──────────────────────────
+
+const recordOf = async (userId, where = {}) => {
+  const mine = { OR: [{ aId: userId }, { bId: userId }] };
+  const [wins, losses, draws] = await Promise.all([
+    prisma.x1Match.count({ where: { ...where, status: 'FINISHED', winnerId: userId } }),
+    prisma.x1Match.count({ where: { ...where, status: 'FINISHED', winnerId: { not: null }, NOT: { winnerId: userId }, ...mine } }),
+    prisma.x1Match.count({ where: { ...where, status: 'FINISHED', reason: 'empate', ...mine } }),
+  ]);
+  return { wins, losses, draws };
+};
+
+/**
+ * Campanha do jogador no X1 (perfil): total de sempre, por jogo e a temporada (vitórias que contam no
+ * ranking + posição). Partida de treino com bot não grava; W.O. antes de cada um jogar 2 vezes (dinheiro
+ * devolvido) e partidas canceladas não contam.
+ */
+export async function x1Record(userId) {
+  const round = await currentRound();
+  const seasonId = round?.seasonId ?? null;
+  const [total, futprego, botao, seasonWins] = await Promise.all([
+    recordOf(userId), recordOf(userId, { game: 'FUTPREGO' }), recordOf(userId, { game: 'BOTAO' }),
+    seasonId ? prisma.x1Match.count({ where: { seasonId, goalAwarded: true, winnerId: userId } }) : 0,
+  ]);
+  // posição = a mesma do Ranking do X1 (mesmo desempate: menos derrotas, depois quem entrou antes)
+  const position = seasonId && seasonWins > 0 ? (await x1Ranking(100_000)).rows.find((r) => r.userId === userId)?.position ?? null : null;
+  return { ...total, games: { FUTPREGO: futprego, BOTAO: botao }, season: { number: round?.season?.number ?? null, wins: seasonWins, position } };
+}
+
+/**
+ * Ranking do X1 da temporada: quem tem mais vitórias que VALERAM GOL (as mesmas travas do gol: no máximo
+ * FUTPREGO.maxGoalWinsPerDay por dia e ganhar da mesma pessoa duas vezes seguidas não conta — senão dois
+ * amigos combinados subiam sem parar). Empate: menos derrotas na temporada fica na frente.
+ */
+export async function x1Ranking(take = 50) {
+  const round = await currentRound();
+  if (!round) return { season: null, rows: [] };
+  const seasonId = round.seasonId;
+  const groups = await prisma.x1Match.groupBy({ by: ['winnerId'], where: { seasonId, goalAwarded: true, winnerId: { not: null } }, _count: { _all: true } });
+  if (!groups.length) return { season: round.season?.number ?? null, rows: [] };
+  const ids = groups.map((g) => g.winnerId);
+  const [users, lossRows] = await Promise.all([
+    prisma.user.findMany({ where: { id: { in: ids }, deletedAt: null }, include: { team: { select: { id: true, slug: true, name: true, abbr: true, colorPrimary: true, colorSecondary: true, stadium: true, serie: true, state: true } } } }),
+    prisma.$queryRaw`SELECT u.id, COUNT(m.id)::int AS n FROM "User" u JOIN "FutPregoMatch" m ON (m."aId" = u.id OR m."bId" = u.id)
+      WHERE u.id = ANY(${ids}) AND m."seasonId" = ${seasonId} AND m.status = 'FINISHED' AND m."winnerId" IS NOT NULL AND m."winnerId" <> u.id GROUP BY u.id`,
+  ]);
+  const losses = new Map(lossRows.map((r) => [r.id, r.n]));
+  const byId = new Map(users.map((u) => [u.id, u]));
+  const rows = groups
+    .filter((g) => byId.has(g.winnerId))
+    .map((g) => ({ u: byId.get(g.winnerId), wins: g._count._all, losses: losses.get(g.winnerId) ?? 0 }))
+    .sort((a, b) => b.wins - a.wins || a.losses - b.losses || a.u.id - b.u.id)
+    .slice(0, take)
+    .map((r, i) => ({ position: i + 1, userId: r.u.id, nick: r.u.nick, avatarUrl: r.u.avatarUrl ?? null, nickColor: r.u.nickColor ?? null, nickFade: nickFadeOf(r.u), vip: isVip(r.u), team: r.u.team, wins: r.wins, losses: r.losses, goals: r.wins }));
+  return { season: round.season?.number ?? null, rows };
 }
 
 /** IP de verdade: o nginx da VPS grava o X-Real-IP (o 1º valor do X-Forwarded-For o próprio jogador forja). */
@@ -87,14 +147,17 @@ async function authenticate(req) {
 }
 
 const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user.avatarUrl ?? null, team: teamView(c.user.team), bot: !!c.bot });
-const rulesView = () => ({ bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalWinsPerDay: F.maxGoalWinsPerDay });
+const rulesView = () => ({
+  bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalWinsPerDay: F.maxGoalWinsPerDay,
+  botao: { snapsPerTurn: BOTAO.snapsPerTurn, firstTurnSnaps: BOTAO.firstTurnSnaps, snapSec: BOTAO.snapSec, goalsToWin: BOTAO.goalsToWin, maxTurns: BOTAO.maxTurns, penalties: BOTAO.penalties },
+});
 /** Jogador ocupado: numa partida ou com desafio aberto (em qualquer conexão). */
 const busyUser = (userId) => [...conns].some((c) => c.user.id === userId && (c.match || c.challenge));
 
-export function attachFutPrego(server) {
+export function attachX1(server) {
   const wss = new WebSocketServer({ noServer: true });
   server.on('upgrade', async (req, socket, head) => {
-    if (!req.url.startsWith('/api/ws/futprego')) return; // o Cabeção cuida do dele
+    if (!req.url.startsWith('/api/ws/x1') && !req.url.startsWith('/api/ws/futprego')) return; // o Cabeção cuida do dele
     let auth;
     try { auth = await authenticate(req); } catch { socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); socket.destroy(); return; }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req, auth));
@@ -107,7 +170,7 @@ export function attachFutPrego(server) {
       for (const m of matches.values()) for (const c of m.conns) if (!c.bot && c.user.id === user.id && c !== conn && c.dropped) takeOver(c, conn);
     }
     conns.add(conn);
-    send(ws, { t: 'hello', me: user.id, rules: rulesView() });
+    send(ws, { t: 'hello', me: user.id, rules: rulesView(), today: x1Today() });
     if (mode === 'lobby') offerOpen(conn).catch(() => {});
     else if (conn.match) sendMatch(conn, true);
     else {
@@ -115,7 +178,7 @@ export function attachFutPrego(server) {
       if (lo && Date.now() - lo.at < 10 * 60_000) { send(ws, { ...lo.msg, late: true }); lastOver.delete(user.id); }
       sendOpenList(conn).catch(() => {});
     }
-    ws.on('message', (raw) => { let m; try { m = JSON.parse(raw); } catch { return; } onMessage(conn, m).catch((e) => console.error('[futprego]', e)); });
+    ws.on('message', (raw) => { let m; try { m = JSON.parse(raw); } catch { return; } onMessage(conn, m).catch((e) => console.error('[x1]', e)); });
     ws.on('close', () => {
       conns.delete(conn);
       if (conn.challenge && !conn.replaced) cancelChallenge(conn.challenge, 'saiu');
@@ -126,7 +189,7 @@ export function attachFutPrego(server) {
   setInterval(() => { // keepalive (o nginx fecha conexão parada)
     for (const c of conns) { if (!c.alive) { c.ws.terminate(); continue; } c.alive = false; try { c.ws.ping(); } catch {} }
   }, 25_000).unref();
-  refundStale().catch((e) => console.error('[futprego] devolução das partidas abertas', e));
+  refundStale().catch((e) => console.error('[x1] devolução das partidas abertas', e));
   return wss;
 }
 
@@ -138,6 +201,7 @@ async function onMessage(conn, m) {
   if (m.t === 'accept') return acceptChallenge(conn, Number(m.id));
   if (m.t === 'bot') return startBot(conn);
   if (m.t === 'flick') return onFlick(conn, m);
+  if (m.t === 'snap') return onSnap(conn, m);
   if (m.t === 'giveup' && conn.match && !conn.match.done) return finish(conn.match, { winner: 1 - conn.side, reason: 'desistiu' });
 }
 
@@ -158,11 +222,13 @@ async function canPlay(conn) {
   const u = await prisma.user.findUnique({ where: { id: conn.user.id }, include: { team: true } });
   if (!u || u.deletedAt) return 'Conta indisponível.';
   conn.user = u; // time, dinheiro e foto atualizados
-  const g = MINIGAMES.find((x) => x.id === 'FUTPREGO');
-  if (g && levelOf(u).lvl < g.unlock) return `O FutPrego libera no nível ${g.unlock}.`;
+  const g = MINIGAMES.find((x) => x.id === 'X1');
+  if (g && levelOf(u).lvl < g.unlock) return `O X1 libera no nível ${g.unlock}.`;
   if (u.money < F.bet) return `Você precisa de R$ ${F.bet} para jogar.`;
   return null;
 }
+
+const challengeView = (ch) => ({ id: ch.id, game: ch.game, gameName: X1.names[ch.game], from: playerView(ch.from), at: ch.at });
 
 async function createChallenge(conn) {
   if (conn.match || conn.challenge) return;
@@ -170,16 +236,17 @@ async function createChallenge(conn) {
   const problem = await canPlay(conn);
   if (problem) return err(conn, 'no-money', problem);
   if (conn.match || conn.challenge || conn.ws.readyState !== conn.ws.OPEN) return;
-  // alguém já está desafiando e dá para jogar com ele: vira partida na hora
+  const game = x1Today().game;
+  // alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora
   for (const ch of [...challenges.values()].sort((a, b) => a.at - b.at)) {
-    if (await compatible(ch.from, conn)) return acceptChallenge(conn, ch.id);
+    if (ch.game === game && (await compatible(ch.from, conn))) return acceptChallenge(conn, ch.id);
   }
-  const ch = { id: nextId++, from: conn, at: Date.now(), shownTo: new Set() };
+  const ch = { id: nextId++, game, from: conn, at: Date.now(), shownTo: new Set() };
   ch.botTimer = setTimeout(() => send(conn.ws, { t: 'bot-offer' }), F.botAfterSec * 1000);
   ch.expireTimer = setTimeout(() => { if (challenges.has(ch.id)) { send(conn.ws, { t: 'expired', message: 'Ninguém aceitou o desafio. Tente de novo mais tarde.' }); cancelChallenge(ch, 'expirou'); } }, F.challengeMaxSec * 1000);
   challenges.set(ch.id, ch);
   conn.challenge = ch;
-  send(conn.ws, { t: 'waiting', id: ch.id, at: ch.at, botAt: ch.at + F.botAfterSec * 1000, until: ch.at + F.challengeMaxSec * 1000 });
+  send(conn.ws, { t: 'waiting', id: ch.id, game, gameName: X1.names[game], at: ch.at, botAt: ch.at + F.botAfterSec * 1000, until: ch.at + F.challengeMaxSec * 1000 });
   await broadcastInvite(ch);
   await refreshOpenLists();
 }
@@ -212,7 +279,7 @@ async function broadcastInvite(ch, only = null) {
     if (now - c.lastInviteAt < INVITE_GAP_MS) continue;
     c.seen.add(ch.id); c.lastInviteAt = now;
     ch.shownTo.add(c);
-    send(c.ws, { t: 'invite', id: ch.id, from: playerView(ch.from), bet: F.bet, seconds: F.inviteSec });
+    send(c.ws, { t: 'invite', id: ch.id, game: ch.game, gameName: X1.names[ch.game], from: playerView(ch.from), bet: F.bet, seconds: F.inviteSec });
   }
 }
 
@@ -222,10 +289,10 @@ async function offerOpen(conn) {
   if (open) await broadcastInvite(open, conn);
 }
 
-/** Na tela do FutPrego (sem partida nem desafio): a lista de desafios abertos que dá para aceitar. */
+/** Na tela do X1 (sem partida nem desafio): a lista de desafios abertos que dá para aceitar. */
 async function sendOpenList(conn) {
   const list = [];
-  for (const ch of challenges.values()) if (ch.from !== conn && (await compatible(ch.from, conn))) list.push({ id: ch.id, from: playerView(ch.from), at: ch.at });
+  for (const ch of challenges.values()) if (ch.from !== conn && (await compatible(ch.from, conn))) list.push(challengeView(ch));
   send(conn.ws, { t: 'open', list });
 }
 async function refreshOpenLists() {
@@ -242,8 +309,9 @@ async function acceptChallenge(conn, id) {
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
   if (!(await compatible(ch.from, conn))) return err(conn, 'incompatible', 'Vocês não podem se enfrentar (mesmo time ou mesma internet).');
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
-  const a = ch.from, b = conn;
+  const a = ch.from, b = conn, game = ch.game;
   cancelChallenge(ch, 'aceito'); // sai da lista e fecha os convites (antes de qualquer espera: ninguém mais pega)
+  const round = await currentRound().catch(() => null);
   let row;
   try {
     row = await prisma.$transaction(async (tx) => {
@@ -251,15 +319,15 @@ async function acceptChallenge(conn, id) {
       if (!pa.count) throw Object.assign(new Error('a'), { who: 'a' });
       const pb = await tx.user.updateMany({ where: { id: b.user.id, money: { gte: F.bet } }, data: { money: { decrement: F.bet } } });
       if (!pb.count) throw Object.assign(new Error('b'), { who: 'b' });
-      return tx.futPregoMatch.create({ data: { aId: a.user.id, bId: b.user.id, aTeamId: a.user.teamId, bTeamId: b.user.teamId, aIp: a.ip, bIp: b.ip, bet: F.bet } });
+      return tx.x1Match.create({ data: { game, seasonId: round?.seasonId ?? null, aId: a.user.id, bId: b.user.id, aTeamId: a.user.teamId, bTeamId: b.user.teamId, aIp: a.ip, bIp: b.ip, bet: F.bet } });
     });
   } catch (e) {
     if (e.who === 'a') { err(a, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`); return send(b.ws, { t: 'taken', message: `${a.user.nick} ficou sem dinheiro para jogar.` }); }
     if (e.who === 'b') { err(b, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`); return createChallenge(a); } // o desafio dele volta
     throw e;
   }
-  const h2h = await headToHead(a.user.id, b.user.id).catch((e) => { console.error('[futprego] retrospecto:', e.message); return null; });
-  startMatch(a, b, row.id, h2h);
+  const h2h = await headToHead(a.user.id, b.user.id).catch((e) => { console.error('[x1] retrospecto:', e.message); return null; });
+  startMatch(a, b, row.id, game, h2h);
   for (const c of [a, b]) if (!conns.has(c)) onDisconnect(c);
 }
 
@@ -272,36 +340,41 @@ async function randomTeamExcept(teamId) {
   return pool[randomInt(pool.length)];
 }
 
-/** Ninguém aceitou e o jogador topou treinar: bot de time aleatório (não vale gol nem dinheiro). */
+/** Ninguém aceitou e o jogador topou treinar: bot de time aleatório no jogo do dia (não vale gol nem dinheiro). */
 async function startBot(conn) {
   if (conn.match) return;
+  const game = conn.challenge?.game ?? x1Today().game;
   if (conn.challenge) cancelChallenge(conn.challenge, 'bot');
   const team = await randomTeamExcept(conn.user.teamId);
   const nick = `BOT ${BOT_NAMES[randomInt(BOT_NAMES.length)]}`;
   const bot = { ws: null, user: { id: -1, nick, avatarUrl: null, team, teamId: team.id }, ip: 'bot', bot: true, match: null, side: -1 };
-  startMatch(conn, bot, null);
+  startMatch(conn, bot, null, game);
 }
 
-function startMatch(a, b, dbId, h2h = null) {
-  const board = BOARDS[randomInt(BOARDS.length)]; // um desenho de tábua por partida (ninguém decora a jogada)
-  const m = { id: nextId++, dbId, conns: [a, b], bot: !!b.bot, board, ball: { ...board.center }, turn: randomInt(2), turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
-  a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo na tábua do servidor
+function startMatch(a, b, dbId, game, h2h = null) {
+  const first = randomInt(2);
+  const m = { id: nextId++, dbId, game, conns: [a, b], bot: !!b.bot, turn: first, turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
+  if (game === 'BOTAO') m.bs = newBotaoMatch(first);
+  else { m.board = BOARDS[randomInt(BOARDS.length)]; m.ball = { ...m.board.center }; } // FutPrego: um desenho de tábua por partida (ninguém decora a jogada)
+  a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo no campo do servidor
   matches.set(m.id, m);
-  scheduleTurn(m, 1500, false);
+  if (game === 'BOTAO') scheduleSnap(m, 1500, false); else scheduleTurn(m, 1500, false);
   for (const c of m.conns) sendMatch(c, false);
 }
 
 function sendMatch(c, resumed) {
   const m = c.match;
   const h = m.h2h, me = c.user.id, opp = m.conns[1 - c.side].user.id;
-  send(c.ws, {
-    t: 'match', id: m.id, you: c.side, players: m.conns.map(playerView), board: m.board, ball: m.ball,
-    turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns, maxTurns: F.maxTurns, turnSec: F.turnSec,
-    bet: m.bot ? 0 : F.bet, training: m.bot, resumed,
-    // retrospecto contra ESTE adversário, do ponto de vista de quem recebe (null no treino contra bot)
+  const base = {
+    t: 'match', id: m.id, game: m.game, gameName: X1.names[m.game], you: c.side, players: m.conns.map(playerView), turnEndsAt: m.turnEndsAt, bet: m.bot ? 0 : F.bet, training: m.bot, resumed,
+    // retrospecto contra ESTE adversário no X1, do ponto de vista de quem recebe (null no treino contra bot)
     h2h: h ? { total: h.total, wins: h.wins[me] ?? 0, losses: h.wins[opp] ?? 0, draws: h.draws, last: h.last.map((w) => (w === null ? 'E' : w === me ? 'V' : 'D')), lastAt: h.lastAt } : null,
-  });
+  };
+  if (m.game === 'BOTAO') send(c.ws, { ...base, field: BOTAO_FIELD, botao: botaoView(m.bs), turn: m.bs.turn, snapSec: BOTAO.snapSec });
+  else send(c.ws, { ...base, board: m.board, ball: m.ball, turn: m.turn, turns: m.turns, maxTurns: F.maxTurns, turnSec: F.turnSec });
 }
+
+// ─── FutPrego: 1 peteleco na bola por vez ───────────────────────────────────
 
 /** Passa a vez para m.turn depois de `delayMs` (a animação do peteleco anterior). */
 function scheduleTurn(m, delayMs, announce = true) {
@@ -315,7 +388,7 @@ function scheduleTurn(m, delayMs, announce = true) {
 
 function onFlick(conn, msg) {
   const m = conn.match;
-  if (!m || m.done || conn.side !== m.turn || Date.now() < m.busyUntil) return;
+  if (!m || m.done || m.game !== 'FUTPREGO' || conn.side !== m.turn || Date.now() < m.busyUntil) return;
   const dx = Number(msg.dx), dy = Number(msg.dy), power = Number(msg.power);
   if (![dx, dy, power].every(Number.isFinite) || Math.hypot(dx, dy) < 1e-6) return;
   playShot(m, conn.side, dx, dy, Math.max(0.05, Math.min(1, power)));
@@ -373,6 +446,63 @@ function botPlay(m) {
   playShot(m, side, Math.cos(pick.ang), Math.sin(pick.ang), pick.pw);
 }
 
+// ─── Futebol de Botão: 2 petelecos por vez num botão seu ────────────────────
+
+/** Relógio do próximo peteleco (quem está na vez: m.bs.turn) depois de `delayMs` (a animação). */
+function scheduleSnap(m, delayMs, announce = true, extra = {}) {
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer);
+  m.turnEndsAt = Date.now() + delayMs + BOTAO.snapSec * 1000;
+  if (announce) for (const c of m.conns) send(c.ws, { t: 'bturn', botao: botaoView(m.bs), turnEndsAt: m.turnEndsAt, ...extra });
+  m.turnTimer = setTimeout(() => timeoutSnap(m), delayMs + BOTAO.snapSec * 1000 + 800);
+  if (m.conns[m.bs.turn].bot) m.botTimer = setTimeout(() => botSnap(m), delayMs + 800 + randomInt(1200));
+}
+
+function onSnap(conn, msg) {
+  const m = conn.match;
+  if (!m || m.done || m.game !== 'BOTAO' || conn.side !== m.bs.turn || Date.now() < m.busyUntil) return;
+  const idx = Number(msg.idx), dx = Number(msg.dx), dy = Number(msg.dy), power = Number(msg.power);
+  if (![idx, dx, dy, power].every(Number.isFinite) || Math.hypot(dx, dy) < 1e-6) return;
+  playSnap(m, conn.side, idx, dx, dy, power);
+}
+
+function playSnap(m, side, idx, dx, dy, power) {
+  const res = applySnap(m.bs, side, idx, dx, dy, power, rnd01);
+  if (!res) return; // botão que não é dele, fora da vez etc.
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer);
+  m.shots[side]++; m.timeouts[side] = 0;
+  m.turns = [m.shots[0], m.shots[1]];
+  const animMs = Math.round((res.sim.frames.length * 1000) / 30);
+  m.busyUntil = Date.now() + animMs;
+  const goal = res.events.find((e) => e.t === 'goal');
+  const pen = res.events.find((e) => e.t === 'penalty');
+  const over = res.events.find((e) => e.t === 'over');
+  for (const c of m.conns) send(c.ws, { t: 'snap', side, idx, frames: res.sim.frames, goal: goal ?? null, penalty: pen ?? null, botao: botaoView(m.bs) });
+  if (over) { m.turnTimer = setTimeout(() => finish(m, { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason === 'gols' ? (goal?.own ? 'gol-contra' : 'gol') : over.reason }), animMs + 900); return; }
+  const started = res.events.find((e) => e.t === 'penalties');
+  scheduleSnap(m, animMs + (goal || pen ? 1100 : 350), true, started ? { penaltiesStart: true } : {});
+}
+
+function timeoutSnap(m) {
+  if (m.done) return;
+  const side = m.bs.turn;
+  const events = skipSnap(m.bs, rnd01);
+  m.timeouts[side]++;
+  for (const c of m.conns) send(c.ws, { t: 'bskip', side, botao: botaoView(m.bs) });
+  if (m.timeouts[side] >= MAX_TIMEOUTS && m.bs.phase === 'play') return finish(m, { winner: 1 - side, reason: 'wo' });
+  const over = events.find((e) => e.t === 'over');
+  if (over) return finish(m, { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason });
+  scheduleSnap(m, 300, true, events.some((e) => e.t === 'penalties') ? { penaltiesStart: true } : {});
+}
+
+function botSnap(m) {
+  if (m.done || !m.conns[m.bs.turn].bot) return;
+  const mv = botaoBotMove(m.bs, m.bs.turn, rnd01, 0.45);
+  if (!mv) return timeoutSnap(m);
+  playSnap(m, m.bs.turn, mv.idx, mv.dx, mv.dy, mv.power);
+}
+
+// ─── Queda, fim e dinheiro (iguais nos dois jogos) ──────────────────────────
+
 function takeOver(from, to) {
   const m = from.match;
   if (!m || m.done) return;
@@ -404,11 +534,11 @@ async function finish(m, result) {
   matches.delete(m.id);
   let info = null;
   if (!m.bot) {
-    try { info = await settle(m, result); } catch (e) { console.error('[futprego] falha ao fechar a partida', e); info = { error: true }; }
+    try { info = await settle(m, result); } catch (e) { console.error('[x1] falha ao fechar a partida', e); info = { error: true }; }
   }
   for (const c of m.conns) {
     if (c.bot) continue;
-    const msg = { t: 'over', winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView), ...personal(info, m, c.side, result) };
+    const msg = { t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null, pen: m.bs?.pen?.kicks ?? null, ...personal(info, m, c.side, result) };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
     c.match = null; c.side = -1;
   }
@@ -430,31 +560,33 @@ function personal(info, m, side, result) {
 /**
  * Fecha a partida no banco (uma vez só: só a linha PLAYING vira FINISHED). Empate ou W.O./desistência
  * antes de cada um jogar FUTPREGO.woMinTurns vezes = devolve a aposta. Vitória: o vencedor leva o pote e,
- * se valer (no máximo maxGoalWinsPerDay por dia; a mesma dupla com o mesmo vencedor duas vezes seguidas
- * não vale — regra do dono), 1 gol para o time dele e o time do perdedor perde 1 gol na partida da rodada
- * (nunca abaixo de 0).
+ * se valer (no máximo maxGoalWinsPerDay por dia no X1; a mesma dupla com o mesmo vencedor duas vezes
+ * seguidas não vale — regra do dono), 1 gol para o time dele e o time do perdedor perde 1 gol na partida da
+ * rodada (nunca abaixo de 0). Só as vitórias que valeram gol contam no Ranking do X1.
  */
 async function settle(m, result) {
   const [a, b] = m.conns;
   const now = new Date();
+  const label = X1.names[m.game];
   const minShots = Math.min(m.shots[0], m.shots[1]); // petelecos de verdade (perder a vez não conta)
   const early = (result.reason === 'wo' || result.reason === 'desistiu') && minShots < F.woMinTurns;
+  const score = m.bs ? { scoreA: m.bs.score[0], scoreB: m.bs.score[1] } : { scoreA: result.winner === 0 ? 1 : 0, scoreB: result.winner === 1 ? 1 : 0 };
   return prisma.$transaction(async (tx) => {
-    const closed = await tx.futPregoMatch.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'FINISHED', finishedAt: now, turns: m.turns[0] + m.turns[1], reason: result.reason } });
+    const closed = await tx.x1Match.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'FINISHED', finishedAt: now, turns: m.shots[0] + m.shots[1], reason: result.reason, ...score } });
     if (!closed.count) return { error: true };
     if (result.winner === null || early) {
       await tx.user.updateMany({ where: { id: { in: [a.user.id, b.user.id] } }, data: { money: { increment: F.bet } } });
-      if (early) await tx.futPregoMatch.update({ where: { id: m.dbId }, data: { reason: 'wo-cedo' } });
+      if (early) await tx.x1Match.update({ where: { id: m.dbId }, data: { reason: 'wo-cedo' } });
       return { refund: true, why: early ? 'wo-cedo' : 'empate' };
     }
     const w = m.conns[result.winner], l = m.conns[1 - result.winner];
     const pot = F.bet * 2;
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
-    await tx.futPregoMatch.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
+    await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
     const dayStart = new Date(nextMidnight(now).getTime() - 24 * 3600_000);
-    const todays = await tx.futPregoMatch.count({ where: { winnerId: w.user.id, goalAwarded: true, createdAt: { gte: dayStart } } });
+    const todays = await tx.x1Match.count({ where: { winnerId: w.user.id, goalAwarded: true, createdAt: { gte: dayStart } } });
     if (todays >= F.maxGoalWinsPerDay) return { pot, goal: false, why: 'limite' };
-    const prev = await tx.futPregoMatch.findFirst({
+    const prev = await tx.x1Match.findFirst({
       where: { id: { not: m.dbId }, status: 'FINISHED', reason: { not: 'wo-cedo' }, OR: [{ aId: a.user.id, bId: b.user.id }, { aId: b.user.id, bId: a.user.id }] },
       orderBy: { id: 'desc' }, select: { winnerId: true },
     });
@@ -462,8 +594,9 @@ async function settle(m, result) {
 
     const winner = await loadUser(tx, w.user.id);
     const live = await liveMatchForTeam(winner.teamId, tx);
-    const phrase = result.reason === 'gol-contra' ? `venceu ${l.user.nick} no FutPrego (gol contra dele)` : `venceu ${l.user.nick} no FutPrego`;
-    const { text } = await applyResult(tx, winner, { kind: 'FUTPREGO', goal: true, now, match: live, money: 0, phrase });
+    const how = result.reason === 'gol-contra' ? ' (gol contra dele)' : result.reason === 'penaltis' ? ' nos pênaltis' : '';
+    const phrase = `venceu ${l.user.nick} no ${label}${how}`;
+    const { text } = await applyResult(tx, winner, { kind: m.game, goal: true, now, match: live, money: 0, phrase });
     // o time do perdedor perde 1 gol na partida da rodada (nunca abaixo de 0)
     const loser = await tx.user.findUnique({ where: { id: l.user.id }, include: { team: true } });
     let lost = null;
@@ -473,11 +606,11 @@ async function settle(m, result) {
       const { count } = await tx.match.updateMany({ where: { id: lm.id, status: 'LIVE', [field]: { gt: 0 } }, data: { [field]: { decrement: 1 } } });
       if (count) lost = { matchId: lm.id, teamId: loser.teamId };
     }
-    await tx.futPregoMatch.update({ where: { id: m.dbId }, data: { goalAwarded: true, lostMatchId: lost?.matchId ?? null, lostTeamId: lost?.teamId ?? null } });
+    await tx.x1Match.update({ where: { id: m.dbId }, data: { goalAwarded: true, lostMatchId: lost?.matchId ?? null, lostTeamId: lost?.teamId ?? null } });
     await tx.activity.create({
       data: {
-        userId: loser.id, teamId: loser.teamId, kind: 'FUTPREGO', goal: false,
-        text: lost ? `${loser.team.name} perdeu 1 gol: ${loser.nick} perdeu para ${w.user.nick} no FutPrego.` : `${loser.nick} perdeu para ${w.user.nick} no FutPrego.`,
+        userId: loser.id, teamId: loser.teamId, kind: m.game, goal: false,
+        text: lost ? `${loser.team.name} perdeu 1 gol: ${loser.nick} perdeu para ${w.user.nick} no ${label}.` : `${loser.nick} perdeu para ${w.user.nick} no ${label}.`,
       },
     });
     return { pot, goal: true, goalText: text, lost: !!lost, lostTeam: loser.team.name, remaining: F.maxGoalWinsPerDay - todays - 1 };
@@ -486,12 +619,12 @@ async function settle(m, result) {
 
 /** A API reiniciou no meio de partidas: elas viram CANCELED e a aposta volta para os dois. */
 async function refundStale() {
-  const stale = await prisma.futPregoMatch.findMany({ where: { status: 'PLAYING' }, select: { id: true, aId: true, bId: true, bet: true } });
+  const stale = await prisma.x1Match.findMany({ where: { status: 'PLAYING' }, select: { id: true, aId: true, bId: true, bet: true } });
   for (const s of stale) {
     await prisma.$transaction(async (tx) => {
-      const { count } = await tx.futPregoMatch.updateMany({ where: { id: s.id, status: 'PLAYING' }, data: { status: 'CANCELED', reason: 'reinicio', finishedAt: new Date() } });
+      const { count } = await tx.x1Match.updateMany({ where: { id: s.id, status: 'PLAYING' }, data: { status: 'CANCELED', reason: 'reinicio', finishedAt: new Date() } });
       if (count) await tx.user.updateMany({ where: { id: { in: [s.aId, s.bId] } }, data: { money: { increment: s.bet } } });
     });
   }
-  if (stale.length) console.log(`[futprego] ${stale.length} partida(s) aberta(s) no reinício: aposta devolvida`);
+  if (stale.length) console.log(`[x1] ${stale.length} partida(s) aberta(s) no reinício: aposta devolvida`);
 }

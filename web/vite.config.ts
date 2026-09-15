@@ -29,7 +29,7 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5174, proxy: { '/api': 'http://localhost:4310' } },
+  server: { port: 5174, proxy: { '/api': { target: 'http://localhost:4310', ws: true } } }, // ws: Cabeção e FutPrego
   build: {
     chunkSizeWarningLimit: 1500,
     rollupOptions: { output: { manualChunks: { three: ['three', '@react-three/fiber', '@react-three/drei'] } } },

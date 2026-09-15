@@ -111,9 +111,13 @@ async function onMessage(conn, m) {
 
 // ─── Desafios e convites ────────────────────────────────────────────────────
 
+// SÓ NO PC (FUTPREGO_MESMO_IP=1 no api/.env; ignorado em produção): deixa jogar com duas janelas na mesma
+// internet para testar. NUNCA na VPS.
+const sameIpOk = () => process.env.NODE_ENV !== 'production' && process.env.FUTPREGO_MESMO_IP === '1';
+
 /** Os dois podem se enfrentar? (jogadores, times e IPs diferentes, sem bloqueio) */
 async function compatible(a, b) {
-  if (a.user.id === b.user.id || a.user.teamId === b.user.teamId || a.ip === b.ip) return false;
+  if (a.user.id === b.user.id || a.user.teamId === b.user.teamId || (a.ip === b.ip && !sameIpOk())) return false;
   const block = await prisma.userBlock.findFirst({ where: { OR: [{ userId: a.user.id, blockedId: b.user.id }, { userId: b.user.id, blockedId: a.user.id }] }, select: { id: true } });
   return !block;
 }

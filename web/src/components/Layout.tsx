@@ -62,8 +62,15 @@ export function Layout() {
         <div className="flex items-center gap-2 bg-navy-deep/85 px-3 py-2 backdrop-blur">
           {/* Em telas estreitas (< 480 px) o bloco nick/xp ocupa o espaço que sobra e a logo some — a barra de xp
               tinha largura fixa e, com o nick encolhendo (min-w-0), estourava por cima do nível e da logo. */}
+          {/* envelope das mensagens: sobre o canto da foto (não gasta largura — no celular o escudo sumia quando ele ficava ao lado) */}
+          <span className="relative shrink-0">
+            <button onClick={() => nav('/perfil')} className="block" aria-label="Meu perfil"><Avatar url={me.avatarUrl} size={44} /></button>
+            <button onClick={() => nav('/mensagens')} className="absolute -bottom-1.5 -right-2 flex items-center" aria-label={unread > 0 ? `${unread} mensagens não lidas` : 'Mensagens'}>
+              <img src="/ui/ico-mail.png" alt="" className="h-6 w-6 object-contain drop-shadow" />
+              {unread > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-[16px] min-w-[16px] items-center justify-center rounded-full border-2 border-white bg-orange-deep px-0.5 font-display text-[9px] leading-none text-white">{unread > 99 ? '99+' : unread}</span>}
+            </button>
+          </span>
           <button onClick={() => nav('/perfil')} className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left min-[480px]:flex-none" aria-label="Meu perfil">
-            <Avatar url={me.avatarUrl} size={44} />
             <div className="min-w-[52px] flex-1 overflow-hidden min-[480px]:flex-none">
               <div className={`t-display truncate text-[15px] leading-tight ${nickProps(me, { plain: 'text-white', vipClass: 'text-sky-light', dark: true }).className}`} style={nickProps(me, { dark: true }).style}>{me.nick}{me.vip && <img src="/ui/ico-crown_silver.png" className="ico ml-1 h-4 w-4" alt="VIP" />}</div>
               <div className="bar mt-0.5 w-full max-w-[96px]" style={{ height: 14 }}>
@@ -82,10 +89,6 @@ export function Layout() {
             <button onClick={() => nav('/loja')} className="resbar text-[14px]" aria-label="Dinheiro"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-7 w-7" alt="" />{money(me.money)}</button>
             <VipBar onClick={() => nav('/vip')} className="text-[14px]" />
           </div>
-          <button onClick={() => nav('/mensagens')} className="relative shrink-0" aria-label={unread > 0 ? `${unread} mensagens não lidas` : 'Mensagens'}>
-            <img src="/ui/ico-mail.png" alt="" className="h-8 w-8 object-contain drop-shadow" />
-            {unread > 0 && <span className="absolute -right-1.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-orange-deep px-1 font-display text-[10px] leading-none text-white">{unread > 99 ? '99+' : unread}</span>}
-          </button>
           <button onClick={() => nav(`/time/${me.team.slug}`)} className="shrink-0" aria-label={me.team.name}><Shield team={me.team} size={34} /></button>
         </div>
       </header>

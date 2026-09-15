@@ -97,7 +97,7 @@ export function OfferModal({ nick, gender, teamName, onClose, onSent }: { nick: 
           <p className="mt-1 text-[11px] font-extrabold text-muted">Você tem {vipWord(me.vipDays)} guardados</p>
           <textarea className="field mt-2 min-h-[64px] text-left text-sm" maxLength={rules?.messageMax ?? 140} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder={`Recado para ${nick} (opcional)`} />
           <div className="mt-2 rounded-xl bg-sky/10 p-2 text-left text-[12px] font-bold leading-snug">
-            Se {ele} aceitar: joga pelo {me.team.name}, recebe {vipWord(vip)} e fica {dayWord(vip)} sem poder trocar de time.
+            Se {ele} aceitar: joga pelo {me.team.name}, ganha {dayWord(vip)} de VIP valendo na hora e fica {dayWord(vip)} sem poder trocar de time.
             <span className="mt-1 block text-muted">O VIP sai do seu banco agora e volta se {ele} recusar ou não responder em {rules?.offerHours ?? 48} h.</span>
           </div>
           <button onClick={send} disabled={busy} className="btn btn-green btn-md mt-3 w-full">{busy ? 'Enviando…' : `Enviar proposta de ${vipWord(vip)}`}</button>
@@ -108,7 +108,7 @@ export function OfferModal({ nick, gender, teamName, onClose, onSent }: { nick: 
   );
 }
 
-/** Doação de VIP guardado para colega do mesmo time. */
+/** Doação de VIP guardado para colega do mesmo time — chega JÁ ATIVO para ele (club.js activateVip). */
 export function GiftModal({ nick, onClose, onSent }: { nick: string; onClose: () => void; onSent: () => void }) {
   const me = useAuth((s) => s.me)!;
   const refresh = useAuth((s) => s.refresh);
@@ -133,7 +133,7 @@ export function GiftModal({ nick, onClose, onSent }: { nick: string; onClose: ()
         <>
           <div className="mt-3"><VipStepper value={n} max={me.vipDays} onChange={setN} chips={[1, 5, 10, 30]} /></div>
           <p className="mt-1 text-[11px] font-extrabold text-muted">Você tem {vipWord(me.vipDays)} guardados</p>
-          <p className="mt-2 rounded-xl bg-sky/10 p-2 text-[12px] font-bold leading-snug">Os VIPs saem do seu banco e vão para o banco de {nick}. Não dá para desfazer.</p>
+          <p className="mt-2 rounded-xl bg-sky/10 p-2 text-[12px] font-bold leading-snug">Os VIPs saem do seu banco e já começam a valer para {nick}: {dayWord(n)} a mais de VIP ativo. Não dá para desfazer.</p>
           <button onClick={send} disabled={busy} className="btn btn-yellow btn-md mt-3 w-full">{busy ? 'Enviando…' : `Mandar ${vipWord(n)}`}</button>
           <button onClick={onClose} className="btn btn-blue btn-sm mt-2 w-full">Voltar</button>
         </>

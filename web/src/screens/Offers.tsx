@@ -138,7 +138,7 @@ export function OffersScreen() {
             <Shield team={confirm.team} size={72} className="mx-auto" />
             <div id="accept-title" className="t-display mt-1 text-[22px] leading-tight">Jogar pelo {confirm.team.name}?</div>
             <ul className="mt-2 flex flex-col gap-1 rounded-xl bg-sky/10 p-3 text-left text-[13px] font-bold leading-snug">
-              <li>Você recebe <b>{confirm.vip} VIP</b> no seu banco.</li>
+              <li>Você ganha <b>{confirm.vip} {confirm.vip === 1 ? 'dia' : 'dias'} de VIP</b>, valendo na hora.</li>
               <li>Fica <b>{confirm.days} {confirm.days === 1 ? 'dia' : 'dias'}</b> no {confirm.team.name} sem poder trocar de time.</li>
               <li>Seus gols passam a contar para o {confirm.team.name} a partir de agora.</li>
               {st.role && <li className="text-orange-deep">Você sai da diretoria do {st.team.name}.</li>}
@@ -164,7 +164,7 @@ function SignedSheet({ offer, until, onClose }: { offer: OfferReceived; until: n
         <Shield team={offer.team} size={96} />
       </motion.div>
       <div className="t-display mt-2 text-[20px] leading-tight">Agora você joga pelo {offer.team.name}</div>
-      <p className="mt-1 text-[13px] font-extrabold text-grass-deep">+{offer.vip} VIP guardados</p>
+      <p className="mt-1 text-[13px] font-extrabold text-grass-deep">+{offer.vip} {offer.vip === 1 ? 'dia' : 'dias'} de VIP, já valendo</p>
       <p className="text-[12px] font-bold text-muted">Contrato até {dayMonth(until)}</p>
       <button onClick={() => { onClose(); nav('/time'); }} className="btn btn-green btn-md mt-4 w-full">Ver meu time</button>
       <button onClick={onClose} className="btn btn-blue btn-sm mt-2 w-full">Fechar</button>

@@ -325,7 +325,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   sem entrar ou é suspenso (`clubSweep`: scheduler a cada 5 min + antes de cada tela/ação).
   **Proposta** (Presidente/Diretor, pelo perfil do jogador de outro time): 1–100 VIP do banco de quem propõe
   — sai na hora e **volta** se for recusada, cancelada, vencer (48 h) ou quem propôs sair da diretoria; toda
-  volta passa por `closeOffer` (troca `PENDING` uma vez só). **Aceitou**: vai para o time, recebe o VIP e ganha
+  volta passa por `closeOffer` (troca `PENDING` uma vez só). **VIP que chega pela diretoria — contratação ou doação —
+  entra JÁ ATIVO** (dono, 15/09/2026: "para o jogador usar no time"; `activateVip` em club.js soma em `vipUntil` a partir
+  do que falta, NUNCA no banco `vipDays` — não dá para guardar, trocar por saldo nem repassar; a linha de quem recebe
+  fica travada para duas chegadas ao mesmo tempo somarem as duas). **Aceitou**: vai para o time, recebe o VIP ativo e ganha
   **contrato de 1 dia por VIP** (`contractUntil`: não troca de time — `change-team` recusa — nem recebe/aceita
   outra proposta); as outras propostas abertas são canceladas (VIP volta). O aceite trava a linha do jogador
   (`SELECT … FOR UPDATE`): dois "aceitar" ao mesmo tempo fecham um só. **Doação**: VIP guardado para colega do

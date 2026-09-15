@@ -103,10 +103,14 @@ check(as.received.length === 2 && as.received.every((o) => o.days === o.vip) && 
 
 // aceita a do T1
 const oT1 = as.received.find((o) => o.team.slug === T1.slug);
+const a1 = await U(alvo.id);
 as = await C.acceptOffer(alvo.id, oT1.id);
 const a2 = await U(alvo.id);
 const dias = Math.round((a2.contractUntil.getTime() - Date.now()) / DAY);
-check(a2.teamId === T1.id && a2.vipDays === 10 && dias === 10, `aceitou: joga no ${T1.name}, +10 VIP e contrato de ${dias} dias`);
+check(a2.teamId === T1.id && dias === 10, `aceitou: joga no ${T1.name} com contrato de ${dias} dias`);
+// o VIP da contratação já começa a contar (dono, 15/09/2026): soma no VIP ativo, o banco não muda
+const vipBase = Math.max(a1.vipUntil?.getTime() ?? 0, Date.now());
+check(a2.vipDays === a1.vipDays && Math.abs(a2.vipUntil.getTime() - (vipBase + 10 * DAY)) < 60_000, `os 10 VIP entraram JÁ ATIVOS (VIP até ${a2.vipUntil.toISOString()}) e o banco ficou em ${a2.vipDays}`);
 check((await bank(p3.id)) === 30 && as.received.length === 0, `a outra proposta foi cancelada e o VIP voltou para o presidente do ${T3.name} (30)`);
 const feed = await prisma.activity.findFirst({ where: { userId: alvo.id }, orderBy: { id: 'desc' } });
 check(/contratad[oa] pelo .* por 10 VIP \(saiu do /.test(feed?.text ?? ''), `lance no feed: "${feed?.text}"`);
@@ -151,7 +155,8 @@ const bp = await bank(p.id), bp3 = await bank(p3.id);
 const res = await Promise.allSettled(zs.received.map((o) => C.acceptOffer(z.id, o.id)));
 const zf = await U(z.id);
 const won = zf.teamId === T1.id ? 8 : 9;
-check(res.filter((r) => r.status === 'fulfilled').length === 1 && zf.vipDays === won && (await bank(p.id)) + (await bank(p3.id)) === bp + bp3 + (17 - won), `dois "aceitar" ao mesmo tempo: fechou 1 só (+${won} VIP), o VIP da outra voltou`);
+const zDays = Math.round((zf.vipUntil.getTime() - Date.now()) / DAY);
+check(res.filter((r) => r.status === 'fulfilled').length === 1 && zf.vipDays === 0 && zDays === won && (await bank(p.id)) + (await bank(p3.id)) === bp + bp3 + (17 - won), `dois "aceitar" ao mesmo tempo: fechou 1 só (+${won} dias de VIP ativo), o VIP da outra voltou`);
 
 // perda de cargo por 3 dias sem entrar / sem VIP
 await prisma.user.update({ where: { id: d2.id }, data: { lastSeenAt: new Date(Date.now() - 4 * DAY) } });
@@ -175,8 +180,21 @@ check(st.role === null && st.board.president?.nick === d3.nick, 'passou a presid
 
 // doação
 await prisma.user.update({ where: { id: q.id }, data: { vipDays: 12 } });
+const d3a = await U(d3.id);
 let g = await C.giftVip(q.id, d3.nick, 5);
 check(g.ok && (await bank(q.id)) === 7 && (await prisma.vipGift.count({ where: { fromUserId: q.id } })) === 1, 'doou 5 VIP para colega de time');
+// chega JÁ ATIVO para quem recebe (dono, 15/09/2026): +5 dias no VIP que ele tinha, banco dele igual
+const d3b = await U(d3.id);
+const d3base = Math.max(d3a.vipUntil?.getTime() ?? 0, Date.now());
+check(d3b.vipDays === d3a.vipDays && Math.abs(d3b.vipUntil.getTime() - (d3base + 5 * DAY)) < 60_000, `quem recebeu: +5 dias de VIP ativo (banco igual, ${d3b.vipDays})`);
+const giftMsg = await prisma.message.findFirst({ where: { userId: d3.id }, orderBy: { id: 'desc' } });
+check(/já começou a contar: seu VIP agora vai até/.test(giftMsg?.text ?? ''), `mensagem na caixa: "${giftMsg?.text}"`);
+// VIP vencido: a doação começa de agora
+const semVipAgora = await mk(T1, { lastIp: '10.9.9.9', vipUntil: new Date(Date.now() - 3 * DAY) });
+await C.giftVip(q.id, semVipAgora.nick, 1);
+const sv = await U(semVipAgora.id);
+check(Math.abs(sv.vipUntil.getTime() - (Date.now() + DAY)) < 60_000 && sv.vipDays === 0, 'para quem estava com o VIP vencido: 1 dia a partir de agora');
+await prisma.user.update({ where: { id: q.id }, data: { vipDays: 7 } }); // o resto do teste conta com 7 guardados
 check((await C.clubState(d3.id)).gifts[0]?.nick === q.nick, 'quem recebeu vê de quem veio');
 e = await err(C.giftVip(q.id, r1.nick, 1));
 check(e?.status === 400, 'para jogador de outro time: não');
@@ -185,8 +203,11 @@ check(e?.status === 402 && (await bank(q.id)) === 7, 'mais do que tem guardado: 
 const mesmaNet = await mk(T1, { lastIp: q.lastIp });
 e = await err(C.giftVip(q.id, mesmaNet.nick, 1));
 check(e?.status === 403, 'conta na mesma internet: não');
+const d3r = await U(d3.id);
 const giftRace = await Promise.allSettled([1, 2, 3].map(() => C.giftVip(q.id, d3.nick, 3)));
 check(giftRace.filter((r) => r.status === 'fulfilled').length === 2 && (await bank(q.id)) === 1, '3 doações de 3 ao mesmo tempo com 7 guardados: só 2 passam (nunca fica negativo)');
+const d3s = await U(d3.id);
+check(d3s.vipUntil.getTime() === d3r.vipUntil.getTime() + 6 * DAY, 'as 2 doações que passaram somaram as duas no VIP de quem recebeu (+6 dias, nenhum perdido)');
 
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');
 await prisma.$disconnect();

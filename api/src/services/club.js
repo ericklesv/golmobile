@@ -8,10 +8,13 @@
  * - Proposta: o VIP sai do banco na hora (fica preso na proposta) e volta se ela não fechar — recusada,
  *   cancelada, vencida (48 h) ou quem propôs saiu da diretoria. Toda volta passa por `closeOffer`, que só
  *   muda a proposta de PENDING uma vez: o VIP nunca volta duas vezes.
- * - Aceitou: vai para o time, recebe o VIP e ganha contrato de 1 dia por VIP (não troca de time nem aceita
- *   outra proposta até acabar). As outras propostas abertas para ele são canceladas (o VIP volta).
- * - Doação: VIP guardado para colega do mesmo time. Contas na mesma internet (mesmo IP) não trocam VIP
- *   nem negociam entre si (conta falsa juntando VIP numa conta só).
+ * - Aceitou: vai para o time, recebe o VIP JÁ ATIVO e ganha contrato de 1 dia por VIP (não troca de time nem
+ *   aceita outra proposta até acabar). As outras propostas abertas para ele são canceladas (o VIP volta).
+ * - Doação: VIP guardado de quem doa para colega do mesmo time — chega JÁ ATIVO. Contas na mesma internet
+ *   (mesmo IP) não trocam VIP nem negociam entre si (conta falsa juntando VIP numa conta só).
+ * - VIP que chega pela diretoria (contratação ou doação) começa a contar na hora (dono, 15/09/2026: "é para o
+ *   jogador usar no time"): soma em `vipUntil`, nunca no banco `vipDays` — não dá para guardar, trocar por
+ *   saldo nem repassar. `activateVip`.
  */
 import { prisma } from '../prisma.js';
 import { GameError, badRequest, notFound, forbidden } from '../lib/errors.js';
@@ -28,6 +31,19 @@ const underContract = (u, now = Date.now()) => !!(u.contractUntil && u.contractU
 const sameNet = (a, b) => !!(a.lastIp && b.lastIp && a.lastIp === b.lastIp);
 const fmtDate = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
 const byNick = (nick) => prisma.user.findUnique({ where: { nickLower: String(nick ?? '').trim().toLowerCase() }, include: { team: true, teamRole: true } });
+
+/**
+ * Soma `days` dias no VIP ATIVO do jogador (a partir do que ainda falta, ou de agora se venceu) — VIP da diretoria
+ * não passa pelo banco. A linha do jogador tem de estar travada na transação (FOR UPDATE): dois VIPs chegando ao
+ * mesmo tempo não podem ler o mesmo `vipUntil` e perder dias. Devolve o novo `vipUntil`.
+ */
+async function activateVip(tx, userId, days, now = new Date()) {
+  const { vipUntil } = await tx.user.findUnique({ where: { id: userId }, select: { vipUntil: true } });
+  const base = vipUntil && vipUntil.getTime() > now.getTime() ? vipUntil.getTime() : now.getTime();
+  const until = new Date(base + days * DAY);
+  await tx.user.update({ where: { id: userId }, data: { vipUntil: until } });
+  return until;
+}
 const scoredFor = async (userId, teamId) => !!(await prisma.goal.findFirst({ where: { userId, teamId }, select: { id: true } }));
 /** Cargo do jogador no time em que ele está (um cargo de time antigo ainda não varrido não conta). */
 const roleIn = (u) => (u.teamRole && u.teamRole.teamId === u.teamId ? u.teamRole : null);
@@ -326,7 +342,8 @@ export async function acceptOffer(userId, id) {
     if (!ok.count) return { fail: [409, 'closed', 'Essa proposta já foi encerrada.'] };
     await leaveClub(tx, userId); // cargo no time antigo e propostas que ele tinha feito
     // igual à troca de time: zera os contadores da rodada (gols já feitos ficam com o time antigo)
-    await tx.user.update({ where: { id: userId }, data: { teamId: o.teamId, goalsRound: 0, roundId: null, vipDays: { increment: o.vip }, contractUntil: new Date(now.getTime() + o.vip * DAY) } });
+    await tx.user.update({ where: { id: userId }, data: { teamId: o.teamId, goalsRound: 0, roundId: null, contractUntil: new Date(now.getTime() + o.vip * DAY) } });
+    await activateVip(tx, userId, o.vip, now); // o VIP da contratação já começa a contar (linha travada lá em cima)
     const others = await tx.transferOffer.findMany({ where: { toUserId: userId, status: 'PENDING', id: { not: o.id } } });
     for (const x of others) await closeOffer(tx, x, 'CANCELED');
     await activity(tx, userId, o.teamId, `${me.nick} foi ${me.gender === 'F' ? 'contratada' : 'contratado'} pelo ${o.team.name} por ${o.vip} VIP (saiu do ${me.team.name}).`);
@@ -364,9 +381,11 @@ export async function giftVip(userId, nick, days) {
   await prisma.$transaction(async (tx) => {
     const paid = await tx.user.updateMany({ where: { id: userId, vipDays: { gte: n } }, data: { vipDays: { decrement: n } } });
     if (!paid.count) throw new GameError(402, 'no-vip', `Você não tem ${n} VIP guardados.`);
-    await tx.user.update({ where: { id: u.id }, data: { vipDays: { increment: n } } });
+    // chega JÁ ATIVO para o colega (trava a linha dele: duas doações ao mesmo tempo somam as duas)
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${u.id} FOR UPDATE`;
+    const until = await activateVip(tx, u.id, n);
     await tx.vipGift.create({ data: { fromUserId: userId, toUserId: u.id, teamId: me.teamId, days: n } });
-    await notify.gift(u.id, { from: me.nick, days: n }, tx).catch((e) => console.error('[inbox] doação:', e.message));
+    await notify.gift(u.id, { from: me.nick, days: n, until }, tx).catch((e) => console.error('[inbox] doação:', e.message));
   });
   return { ok: true, to: u.nick, days: n };
 }

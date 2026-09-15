@@ -59,7 +59,7 @@ export async function x1Record(userId, { season = null, round = null } = {}, db 
     const gone = new Set((await db.user.findMany({ where: { id: { in: list.map((s) => s.userId) }, deletedAt: { not: null } }, select: { id: true } })).map((u) => u.id));
     const shown = list.filter((s) => !gone.has(s.userId));
     const i = shown.findIndex((s) => s.userId === userId);
-    return { points: i >= 0 ? shown[i].points : 0, played: i >= 0 ? shown[i].played : 0, position: i >= 0 ? i + 1 : null, eligible: i >= 0 && shown[i].played >= X1.prizes.minGames };
+    return { points: i >= 0 ? shown[i].points : 0, played: i >= 0 ? shown[i].played : 0, position: i >= 0 ? i + 1 : null, eligible: i >= 0 && shown[i].played >= FUTPREGO.prizes.minGames };
   };
   const seasonView = season ? { number: season.number, ...(await standing(season.startsAt)) } : null;
   const roundView = round ? { number: round.number, ...(await standing(round.startsAt)) } : null;

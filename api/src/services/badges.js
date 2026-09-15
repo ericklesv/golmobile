@@ -15,7 +15,7 @@ import { prisma } from '../prisma.js';
 import { hourKey } from '../lib/time.js';
 import { liveRound, topScorers } from './league.js';
 import { x1Ranking } from './x1.js';
-import { X1 } from '../lib/rules.js';
+import { FUTPREGO } from '../lib/rules.js';
 
 const TOPS_TTL = 15_000, ROLES_TTL = 30_000;
 let tops = { at: 0, value: null, pending: null };
@@ -37,8 +37,8 @@ export const liveTops = () => cached(tops, TOPS_TTL, async () => {
     topScorers({ hourKey: hourKey() }, 3),
     live ? topScorers({ roundId: live.roundId }, 3) : [],
     live ? topScorers({ seasonId: live.seasonId }, 3) : [],
-    period ? x1Ranking({ from: period.startsAt, table: X1.prizes.round, take: 30 }) : [],
-    period ? x1Ranking({ from: period.season.startsAt, table: X1.prizes.season, take: 30 }) : [],
+    period ? x1Ranking({ from: period.startsAt, table: FUTPREGO.prizes.round, take: 30 }) : [],
+    period ? x1Ranking({ from: period.season.startsAt, table: FUTPREGO.prizes.season, take: 30 }) : [],
     x1Ranking({ take: 3 }),
   ]);
   const ids = (rows) => rows.map((x) => x.userId);

@@ -24,16 +24,18 @@ const NAVY = '#0B2D6B';
 // com 4 gomos grandes coloridos + 4 gomos brancos "de costura" nos buracos, para ler como bola de verdade.
 const T = 0.5773;
 const PATCHES: { n: V3; a: number; fill: string }[] = [
-  { n: [T, T, T], a: 0.78, fill: '#2BA83A' },
-  { n: [-T, -T, T], a: 0.78, fill: '#E5322D' },
-  { n: [-T, T, -T], a: 0.78, fill: '#2EA8FF' },
-  { n: [T, -T, -T], a: 0.78, fill: '#2BA83A' },
-  { n: [1, 0, 0], a: 0.42, fill: '#E5322D' },
-  { n: [-1, 0, 0], a: 0.42, fill: '#2EA8FF' },
-  { n: [0, 1, 0], a: 0.42, fill: '#E5322D' },
-  { n: [0, -1, 0], a: 0.42, fill: '#2EA8FF' },
-  { n: [0, 0, 1], a: 0.34, fill: NAVY },
-  { n: [0, 0, -1], a: 0.34, fill: NAVY },
+  // 4 gomos grandes em tetraedro (verde/vermelho/azul/verde), com branco sobrando entre eles
+  { n: [T, T, T], a: 0.6, fill: '#2BA83A' },
+  { n: [-T, -T, T], a: 0.6, fill: '#E5322D' },
+  { n: [-T, T, -T], a: 0.6, fill: '#2EA8FF' },
+  { n: [T, -T, -T], a: 0.6, fill: '#E5322D' },
+  // 6 pintas pequenas nos "buracos" (octaedro) — as marcas pretas da Trionda
+  { n: [1, 0, 0], a: 0.2, fill: NAVY },
+  { n: [-1, 0, 0], a: 0.2, fill: NAVY },
+  { n: [0, 1, 0], a: 0.2, fill: NAVY },
+  { n: [0, -1, 0], a: 0.2, fill: NAVY },
+  { n: [0, 0, 1], a: 0.2, fill: NAVY },
+  { n: [0, 0, -1], a: 0.2, fill: NAVY },
 ];
 
 const norm = (v: V3): V3 => { const l = Math.hypot(...v) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
@@ -112,7 +114,7 @@ export const TriondaBall = forwardRef<TriondaApi, { r: number; idle?: boolean }>
       <ellipse cx={r * 0.22} cy={r * 0.34} rx={r} ry={r * 0.85} fill="#000" opacity="0.3" />
       <circle r={r} fill="#FFFFFF" />
       <g clipPath={`url(#${clip})`}>
-        {base.map((p, i) => <ellipse key={i} ref={(el) => { els.current[i] = el; }} fill={p.fill} stroke={NAVY} strokeWidth={r * 0.06} />)}
+        {base.map((p, i) => <ellipse key={i} ref={(el) => { els.current[i] = el; }} fill={p.fill} stroke={NAVY} strokeWidth={r * 0.04} />)}
         <circle r={r} fill={`url(#${shade})`} />
       </g>
       <ellipse cx={-r * 0.36} cy={-r * 0.42} rx={r * 0.22} ry={r * 0.12} transform={`rotate(-38 ${-r * 0.36} ${-r * 0.42})`} fill="#fff" opacity="0.9" />

@@ -5,6 +5,8 @@ export type Kind = 'AUTO' | 'PENALTY' | 'FOUL' | 'TRAIL';
 export interface Team {
   id: number; slug: string; name: string; abbr: string; state: string;
   colorPrimary: string; colorSecondary: string; stadium: string; serie: Serie;
+  /** 3ª cor (tricolores, ex.: Santa Cruz): listras nas peças do X1. */
+  colorTertiary?: string | null;
 }
 
 export interface Cooldown { cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean }
@@ -109,7 +111,7 @@ export interface Meta {
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
   /** Regras do X1 (os dois jogos) — o nome ficou do FutPrego. `points`/`prizes` = Ranking X1. */
   futprego?: {
-    bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number; woMinTurns: number; reconnectSec: number;
+    bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number; reconnectSec: number;
     points?: { win: number; draw: number; loss: number }; prizes?: { minGames: number; round: { from: number; to: number; money: number; vip: number }[]; season: { from: number; to: number; money: number; vip: number }[] };
     board?: import('../components/PregoBoard').PregoBoardData;
   };

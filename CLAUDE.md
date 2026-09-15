@@ -159,8 +159,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   pode na hora; dono, 15/09/2026: "como o X1 ficou ilimitado, o vip perdeu valor" — `FUTPREGO.challengeCooldownSec`,
   `challengeCooldownUntil` em x1.js lê a última partida FINISHED no banco; a tela recebe `cooldown`/`over.cooldownUntil`,
   desliga o botão com o relógio e mostra "Vire VIP e jogue o X1 ilimitado!"; item "X1 ilimitado" na tela do VIP);
-  mesma dupla com o mesmo vencedor duas vezes seguidas = a 2ª não vale gol; W.O./desistência antes de cada um jogar
-  2 vezes = aposta devolvida; bot de treino depois de 1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por
+  mesma dupla com o mesmo vencedor duas vezes seguidas = a 2ª não vale gol; **sair da partida = derrota, SEMPRE**
+  (bug explorado, dono 15/09/2026: desistir, fechar o app — W.O. após `reconnectSec` — ou perder a vez 3 vezes é
+  derrota de quem saiu; o antigo "W.O. cedo" que devolvia a aposta antes de cada um jogar 2 vezes ACABOU, `woMinTurns`
+  não existe mais; resultado já decidido fica em `m.pending` até a animação acabar — quem desistir/cair nesse
+  meio-tempo leva o gol/o resultado, não a desistência); bot de treino depois de 1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por
   time (goleiro preso na área; os de linha não entram em área), 2 petelecos por vez num botão seu (quem começa dá 1 na
   1ª vez — medido: assim quem começa vence ~45%), 15 s cada; **o 1º gol acaba** (dono: "4 minutos é muito tempo");
   sem gol em 9 vezes (somando os dois) = pênaltis (3 de cada, depois alternadas). Partidas na tabela `FutPregoMatch`
@@ -205,7 +208,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Lances ao vivo** (pedido do dono, 15/09/2026): todo resultado que conta entra em `Activity` (kind = o jogo,
   `FUTPREGO` ou `BOTAO`) em `settle()` — vitória com gol (via `applyResult`, + linha do perdedor), vitória sem gol
   (limite de 10 por hora / revanche repetida, com o motivo), empate; `how` acrescenta "por W.O." / "(ele desistiu)" /
-  "(gol contra dele)" / "nos pênaltis". W.O. cedo (aposta devolvida) não gera lance.
+  "(gol contra dele)" / "nos pênaltis".
+  **3ª cor do time** (`Team.colorTertiary`, migração 0029; `c3` em `data/teams.js`; só Santa Cruz = branco por
+  enquanto, pedido da torcida 15/09/2026): no X1 a peça fica listrada na horizontal primária · terciária · secundária
+  (prego em `PregoBoard`, botão em `BotaoField` com o aro na 3ª cor) — a 3ª cor no meio separa as outras ("sem o
+  preto tocar no vermelho").
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi

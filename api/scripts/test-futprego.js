@@ -209,7 +209,7 @@ const r6 = await play(gA, gB, () => 'nada');
 check(r6?.oa?.refund === true && r6.oa.why === 'empate' && (await money(A)) === bef6.a && (await money(B)) === bef6.b, `10 jogadas de cada sem gol: empate e os R$ ${F.bet} voltaram`);
 check(r6.oa.h2h?.draws === 1 && r6.oa.rivalry?.kind === 'acirrado' && r6.ob.rivalry?.kind === 'acirrado', `empate com o confronto 2 a 1: "${r6.oa.rivalry?.text}"`);
 
-// 7) vez errada: o peteleco de quem não é a vez é ignorado; W.O. logo no começo devolve o dinheiro
+// 7) vez errada: o peteleco de quem não é a vez é ignorado; cair e não voltar = derrota, mesmo sem ter jogado (dono, 15/09/2026)
 const bef7 = { a: await money(A), b: await money(B) };
 gA.send({ t: 'challenge' });
 const w7 = await gA.wait('waiting');
@@ -223,8 +223,41 @@ check((await money(A)) === bef7.a - F.bet, 'na partida: a aposta já saiu');
 gB.close();
 const drop = await gA.wait('opp-dropped', 3000);
 const o7 = await gA.wait('over', (F.reconnectSec + 5) * 1000);
-check(!!drop && o7?.reason === 'wo' && o7.refund === true && o7.why === 'wo-cedo' && (await money(A)) === bef7.a && (await money(B)) === bef7.b, `B caiu e não voltou em ${F.reconnectSec} s antes de jogar: W.O. cedo, dinheiro devolvido aos dois`);
-check(!o7.rivalry && !o7.h2h, 'W.O. cedo não entra no retrospecto: sem frase no fim');
+check(!!drop && o7?.reason === 'wo' && o7.winner === m7a.you && !o7.refund && (await money(A)) === bef7.a + F.bet && (await money(B)) === bef7.b - F.bet, `B caiu e não voltou em ${F.reconnectSec} s antes de jogar: W.O. = derrota do B, A leva o pote`);
+check(!!o7.h2h && o7.h2h.wins >= 1, 'W.O. entra no retrospecto');
+// desistir com um gol a caminho não escapa do gol: vale o gol (reason gol), não a desistência
+{
+  gB = phone(B, 'game', '10.0.0.2'); await gB.open;
+  gA.send({ t: 'challenge' });
+  const w = await gA.wait('waiting');
+  gA.clear(); gB.clear();
+  gB.send({ t: 'accept', id: w.id });
+  const ma = await gA.wait('match'), mb = await gB.wait('match');
+  lastMatchMsgs = { ma, mb };
+  const bySide = { [ma.you]: gA, [mb.you]: gB };
+  let ball = ma.ball, turn = ma.turn, goalShot = null;
+  for (let n = 0; n < 2 * F.maxTurns + 2 && !goalShot; n++) {
+    const who = bySide[turn];
+    const f = findFlick(ball, turn, n === 0 ? 'nada' : 'gol', ma.board) ?? { dx: 1, dy: 0, power: 0.05 };
+    who.send({ t: 'flick', dx: f.dx, dy: f.dy, power: f.power });
+    const shot = await gA.wait('shot', 8000); await gB.wait('shot', 8000);
+    if (!shot) break;
+    if (shot.goal !== null) { goalShot = shot; break; }
+    ball = shot.ball;
+    const next = await gA.wait('turn', 8000); await gB.wait('turn', 8000);
+    if (!next) break;
+    turn = next.turn;
+    await sleep((shot.frames.length * 1000) / 30 + 80);
+  }
+  if (goalShot) {
+    const loserSide = 1 - goalShot.goal;
+    bySide[loserSide].send({ t: 'giveup' }); // desiste durante a animação do gol
+    const oa = await gA.wait('over', 12000), ob = await gB.wait('over', 12000);
+    check(oa?.reason?.startsWith('gol') && oa.winner === goalShot.goal && ob?.reason === oa.reason, `desistir com gol a caminho: vale o gol (${oa?.reason}), não a desistência`);
+  } else {
+    check(false, 'não achei um peteleco de gol para testar a desistência com gol a caminho');
+  }
+}
 
 // 8) trava de gols por hora (ganhar): com maxGoalsPerHour vitórias valendo nesta hora, a próxima leva o pote mas não o gol
 gB = phone(B, 'game', '10.0.0.2'); await gB.open;

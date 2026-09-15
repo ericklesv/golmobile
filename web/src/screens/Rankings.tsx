@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import type { TopRow } from '../lib/types';
@@ -50,6 +50,7 @@ export function RankingsScreen() {
       <div className="flex justify-center"><div className="ribbon ribbon-orange ribbon-lg"><img src="/ui/ico-trophy_s.png" className="mr-2 h-9 w-9" alt="" />{scope === 'x1' ? 'RANKING X1' : 'ARTILHARIA'}</div></div>
       <Tabs value={scope} onChange={pick} items={ITEMS} />
       {scope === 'x1' && <Tabs value={x1} onChange={pickX1} items={X1_ITEMS} />}
+      {scope === 'x1' && <Link to="/x1" className="btn btn-orange btn-sm self-center">Jogar o X1 de hoje</Link>}
       <Panel title={sub} ribbon="blue">
         {rows === null ? <div className="flex justify-center py-8"><Spinner /></div> : <TopList rows={rows} highlight={me.nick} empty={scope === 'x1' ? 'Ninguém pontuou no Ranking X1 ainda. Desafie alguém no X1!' : 'Ninguém pontuou aqui ainda. Vai lá e chuta!'} />}
       </Panel>

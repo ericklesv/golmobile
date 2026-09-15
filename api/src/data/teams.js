@@ -27,7 +27,7 @@ export const TEAMS = [
   { slug: 'ponte-preta', name: 'Ponte Preta', abbr: 'PON', state: 'SP', c1: '#000000', c2: '#FFFFFF', stadium: 'Moisés Lucarelli', serie: 'B' },
   { slug: 'guarani', name: 'Guarani', abbr: 'GUA', state: 'SP', c1: '#0B6B3A', c2: '#FFFFFF', stadium: 'Brinco de Ouro', serie: 'B' },
   { slug: 'nautico', name: 'Náutico', abbr: 'NAU', state: 'PE', c1: '#C8102E', c2: '#FFFFFF', stadium: 'Aflitos', serie: 'B' },
-  { slug: 'santa-cruz', name: 'Santa Cruz', abbr: 'STA', state: 'PE', c1: '#000000', c2: '#E4002B', stadium: 'Arruda', serie: 'B' },
+  { slug: 'santa-cruz', name: 'Santa Cruz', abbr: 'STA', state: 'PE', c1: '#000000', c2: '#E4002B', c3: '#FFFFFF', stadium: 'Arruda', serie: 'B' }, // tricolor: c3 = listra branca entre o preto e o vermelho (X1)
   { slug: 'america-mg', name: 'América-MG', abbr: 'AME', state: 'MG', c1: '#0A7A3B', c2: '#000000', stadium: 'Independência', serie: 'B' },
   { slug: 'avai', name: 'Avaí', abbr: 'AVA', state: 'SC', c1: '#0072BB', c2: '#FFFFFF', stadium: 'Ressacada', serie: 'B' },
   { slug: 'figueirense', name: 'Figueirense', abbr: 'FIG', state: 'SC', c1: '#000000', c2: '#FFFFFF', stadium: 'Orlando Scarpelli', serie: 'B' },

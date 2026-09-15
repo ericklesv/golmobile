@@ -167,7 +167,8 @@ async function onMessage(conn, m) {
   if (m.t === 'bot') return startBot(conn);
   if (m.t === 'flick') return onFlick(conn, m);
   if (m.t === 'snap') return onSnap(conn, m);
-  if (m.t === 'giveup' && conn.match && !conn.match.done) return finish(conn.match, { winner: 1 - conn.side, reason: 'desistiu' });
+  // desistir = derrota (se o resultado já está decidido e só falta a animação, vale ele — não a desistência)
+  if (m.t === 'giveup' && conn.match && !conn.match.done) return finish(conn.match, conn.match.pending ?? { winner: 1 - conn.side, reason: 'desistiu' });
 }
 
 // ─── Desafios e convites ────────────────────────────────────────────────────
@@ -373,7 +374,12 @@ function playShot(m, side, dx, dy, power) {
   const animMs = Math.round((r.frames.length * 1000) / 30);
   m.busyUntil = Date.now() + animMs;
   for (const c of m.conns) send(c.ws, { t: 'shot', side, frames: r.frames, ball: r.end, goal: scorer, own: scorer !== null && scorer !== side, turns: m.turns });
-  if (scorer !== null) { m.turnTimer = setTimeout(() => finish(m, { winner: scorer, reason: scorer === side ? 'gol' : 'gol-contra' }), animMs + 900); return; }
+  if (scorer !== null) {
+    // gol decidido: fica pendente até a animação acabar — quem desistir ou cair nesse meio-tempo não escapa dele
+    m.pending = { winner: scorer, reason: scorer === side ? 'gol' : 'gol-contra' };
+    m.turnTimer = setTimeout(() => finish(m, m.pending), animMs + 900);
+    return;
+  }
   nextTurn(m, side, animMs + 400);
 }
 
@@ -444,7 +450,12 @@ function playSnap(m, side, idx, dx, dy, power) {
   const pen = res.events.find((e) => e.t === 'penalty');
   const over = res.events.find((e) => e.t === 'over');
   for (const c of m.conns) send(c.ws, { t: 'snap', side, idx, frames: res.sim.frames, goal: goal ?? null, penalty: pen ?? null, botao: botaoView(m.bs) });
-  if (over) { m.turnTimer = setTimeout(() => finish(m, { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason === 'gols' ? (goal?.own ? 'gol-contra' : 'gol') : over.reason }), animMs + 900); return; }
+  if (over) {
+    // resultado decidido (gol, pênaltis…): fica pendente até a animação acabar — desistir/cair agora não escapa dele
+    m.pending = { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason === 'gols' ? (goal?.own ? 'gol-contra' : 'gol') : over.reason };
+    m.turnTimer = setTimeout(() => finish(m, m.pending), animMs + 900);
+    return;
+  }
   const started = res.events.find((e) => e.t === 'penalties');
   scheduleSnap(m, animMs + (goal || pen ? 1100 : 350), true, started ? { penaltiesStart: true } : {});
 }
@@ -489,7 +500,7 @@ function onDisconnect(conn) {
   send(m.conns[1 - conn.side].ws, { t: 'opp-dropped', seconds: F.reconnectSec });
   conn.dropTimer = setTimeout(() => {
     if (m.done || !conn.dropped || m.conns[conn.side] !== conn) return;
-    finish(m, { winner: 1 - conn.side, reason: 'wo' });
+    finish(m, m.pending ?? { winner: 1 - conn.side, reason: 'wo' });
   }, F.reconnectSec * 1000);
 }
 
@@ -543,8 +554,10 @@ function personal(info, m, side, result) {
 }
 
 /**
- * Fecha a partida no banco (uma vez só: só a linha PLAYING vira FINISHED). Empate ou W.O./desistência
- * antes de cada um jogar FUTPREGO.woMinTurns vezes = devolve a aposta. Vitória: o vencedor leva o pote e,
+ * Fecha a partida no banco (uma vez só: só a linha PLAYING vira FINISHED). Empate = devolve a aposta.
+ * **W.O. e desistência são SEMPRE derrota de quem saiu** (decisão do dono, 15/09/2026: jogadores fechavam o app
+ * ou desistiam ao ver que iam perder e, antes de cada um jogar 2 vezes, a aposta voltava e nada contava — o
+ * "W.O. cedo" acabou; as linhas antigas `wo-cedo` ficam no histórico e fora do ranking). Vitória: o vencedor leva o pote e,
  * se valer (no máximo maxGoalsPerHour gols na hora cheia no X1; a mesma dupla com o mesmo vencedor duas
  * vezes seguidas não vale — regras do dono), 1 gol para o time dele. O time do perdedor perde 1 gol na
  * partida da rodada (nunca abaixo de 0) quando o gol valeu e o perdedor ainda não fez o time perder
@@ -555,21 +568,18 @@ async function settle(m, result) {
   const [a, b] = m.conns;
   const now = new Date();
   const label = X1.names[m.game];
-  const minShots = Math.min(m.shots[0], m.shots[1]); // petelecos de verdade (perder a vez não conta)
-  const early = (result.reason === 'wo' || result.reason === 'desistiu') && minShots < F.woMinTurns;
   const score = m.bs ? { scoreA: m.bs.score[0], scoreB: m.bs.score[1] } : { scoreA: result.winner === 0 ? 1 : 0, scoreB: result.winner === 1 ? 1 : 0 };
   return prisma.$transaction(async (tx) => {
     const closed = await tx.x1Match.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'FINISHED', finishedAt: now, turns: m.shots[0] + m.shots[1], reason: result.reason, ...score } });
     if (!closed.count) return { error: true };
     // todo resultado que conta vai para os Lances ao vivo (pedido do dono, 15/09/2026); W.O. cedo (aposta devolvida) não
     const feed = (user, text) => tx.activity.create({ data: { userId: user.id, teamId: user.teamId, kind: m.game, goal: false, text } });
-    if (result.winner === null || early) {
+    if (result.winner === null) {
       await tx.user.updateMany({ where: { id: { in: [a.user.id, b.user.id] } }, data: { money: { increment: F.bet } } });
-      if (early) await tx.x1Match.update({ where: { id: m.dbId }, data: { reason: 'wo-cedo' } });
-      else await feed(a.user, m.game === 'BOTAO'
+      await feed(a.user, m.game === 'BOTAO'
         ? `${a.user.nick} e ${b.user.nick} empataram no ${label}, até nos pênaltis: aposta devolvida.`
         : `${a.user.nick} e ${b.user.nick} empataram no ${label}: ninguém marcou em ${F.maxTurns} jogadas, aposta devolvida.`);
-      return { refund: true, why: early ? 'wo-cedo' : 'empate' };
+      return { refund: true, why: 'empate' };
     }
     const w = m.conns[result.winner], l = m.conns[1 - result.winner];
     const pot = F.bet * 2;

@@ -60,7 +60,7 @@ const MAX_PULL = 120; // FutPrego: arrasto (em unidades da tábua) para a força
 const MAX_PULL_BOTAO = 110; // Botão: idem, puxando o botão
 const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
 const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
-const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary });
+const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary, tertiary: t.colorTertiary ?? null });
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
 
 /** Botões que `side` pode tocar agora (no pênalti, só o cobrador). */
@@ -522,7 +522,7 @@ export function X1Screen() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 left-1/2 z-[80] flex w-full max-w-[480px] -translate-x-1/2 items-center bg-navy-deep/70 px-4" role="dialog" aria-modal="true">
               <div className="panel w-full text-center text-navy-ink">
                 <div className="t-display text-[20px]">Desistir da partida?</div>
-                <p className="mt-1 text-[13px] font-bold leading-snug text-muted">{match?.training ? 'É só um treino: nada muda.' : 'Conta como derrota: você perde a aposta e o seu time pode perder 1 gol. Se ainda não jogou 2 vezes, o dinheiro volta para os dois.'}</p>
+                <p className="mt-1 text-[13px] font-bold leading-snug text-muted">{match?.training ? 'É só um treino: nada muda.' : 'Conta como derrota: você perde a aposta, o ponto no Ranking X1 e o seu time pode perder 1 gol. Fechar o app dá no mesmo.'}</p>
                 <button onClick={() => { giveUp(); }} className="btn btn-red btn-md mt-3 w-full">Desistir</button>
                 <button onClick={() => setConfirmLeave(false)} className="btn btn-blue btn-sm mt-2 w-full">Continuar jogando</button>
               </div>
@@ -770,8 +770,7 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   if (over.training) { title = won ? 'VENCEU O TREINO' : 'FIM DO TREINO'; text = 'Treino contra bot não vale gol nem dinheiro. Desafie alguém de verdade!'; goal = won; }
   else if (over.refund) {
     title = 'EMPATE';
-    text = over.why === 'wo-cedo' ? `A partida acabou antes de cada um jogar 2 vezes: os ${fmt(over.money)} voltaram.`
-      : botao ? `Empate até nos pênaltis: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;
+    text = botao ? `Empate até nos pênaltis: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;
   } else if (won) {
     goal = true; money = over.money;
     title = over.goal ? 'GOOOL!!!' : 'VENCEU!';

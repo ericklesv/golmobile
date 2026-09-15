@@ -7,9 +7,9 @@ const prisma = new PrismaClient();
 for (const t of TEAMS) {
   await prisma.team.upsert({
     where: { slug: t.slug },
-    create: { slug: t.slug, name: t.name, abbr: t.abbr, state: t.state, colorPrimary: t.c1, colorSecondary: t.c2, stadium: t.stadium, serie: t.serie },
+    create: { slug: t.slug, name: t.name, abbr: t.abbr, state: t.state, colorPrimary: t.c1, colorSecondary: t.c2, colorTertiary: t.c3 ?? null, stadium: t.stadium, serie: t.serie },
     // não sobrescreve a série (muda com acesso/rebaixamento)
-    update: { name: t.name, abbr: t.abbr, state: t.state, colorPrimary: t.c1, colorSecondary: t.c2, stadium: t.stadium },
+    update: { name: t.name, abbr: t.abbr, state: t.state, colorPrimary: t.c1, colorSecondary: t.c2, colorTertiary: t.c3 ?? null, stadium: t.stadium },
   });
 }
 console.log(`Seed: ${TEAMS.length} times ok.`);

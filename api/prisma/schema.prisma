@@ -188,6 +188,7 @@ model Team {
   state          String
   colorPrimary   String
   colorSecondary String
+  colorTertiary  String? // 3ª cor (times tricolores, ex.: Santa Cruz preto/branco/vermelho) — listras no X1
   stadium        String
   serie          Serie
   slogan         String?

@@ -147,7 +147,7 @@ check(pw.x1?.wins === 1 && pw.x1.points === P.win && pw.x1.games.BOTAO.wins === 
 const pl = await (await fetch(`${API}/api/players/${l.nick}`)).json();
 check(pl.x1?.losses === 1 && pl.x1.games.BOTAO.losses === 1 && pl.x1.points === P.loss, `perfil do perdedor: ${pl.x1?.losses} derrota, ${pl.x1?.points} pontos`);
 
-// W.O. cedo: B cai logo depois de começar (menos de 2 petelecos de cada) → dinheiro volta
+// cair e não voltar = derrota, mesmo antes de jogar (dono, 15/09/2026 — o "W.O. cedo" com aposta devolvida acabou)
 const bef = { a: await money(A), b: await money(B) };
 gA.clear(); gB.clear();
 gA.send({ t: 'challenge' });
@@ -156,7 +156,7 @@ gB.send({ t: 'accept', id: w2.id });
 await gA.wait('match'); await gB.wait('match');
 gB.close();
 const o2 = await gA.wait('over', (F.reconnectSec + 5) * 1000);
-check(o2?.reason === 'wo' && o2.refund === true && (await money(A)) === bef.a && (await money(B)) === bef.b, `B caiu antes de jogar: W.O. cedo, dinheiro devolvido`);
+check(o2?.reason === 'wo' && !o2.refund && o2.winner === (o2.you) && (await money(A)) === bef.a + F.bet && (await money(B)) === bef.b - F.bet, `B caiu antes de jogar: W.O. = derrota do B, A leva o pote`);
 
 // treino contra o bot no Botão: o bot joga sozinho e a partida acaba
 gA.clear();

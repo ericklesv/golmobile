@@ -323,7 +323,7 @@ KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 // partidas em realtime/x1.js.
 export const FUTPREGO = {
   bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, challengeMaxSec: 300,
-  maxGoalsPerHour: 10, woMinTurns: 2, reconnectSec: 20, challengeCooldownSec: 120,
+  maxGoalsPerHour: 10, reconnectSec: 20, challengeCooldownSec: 120,
   // Ranking X1 (decisão do dono, 15/09/2026): 3 por vitória, 1 por empate, −2 por derrota (pode ficar negativo).
   // Conta as partidas dos dois jogos do X1 (FutPrego e Futebol de Botão).
   points: { win: 3, draw: 1, loss: -2 },

@@ -14,6 +14,7 @@ import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { BOARD as FUTPREGO_BOARD } from '../lib/futprego.js';
 import { boardView, playerClub } from '../services/club.js';
+import { futpregoRecord } from '../realtime/futprego.js';
 import { withBadges, badgesOf, topHistory } from '../services/badges.js';
 import { matchPage } from '../services/match.js';
 
@@ -213,6 +214,7 @@ game.get('/players/:nick', handle(async (req) => {
     ...(await playerClub(user)), // cargo no time e contrato
     tops: (await badgesOf(user.id)).tops, // top 3 de agora (hora/rodada/temporada)
     history: await topHistory(user.id), // vezes em 1º/2º/3º e no top 10
+    futprego: await futpregoRecord(user.id), // vitórias, derrotas e empates no FutPrego
     positions: { geral: geral + 1, penal: penal + 1, falta: falta + 1, trilha: trilha + 1 },
     recent: recent.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt })),
   };

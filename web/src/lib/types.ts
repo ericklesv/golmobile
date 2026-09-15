@@ -154,6 +154,8 @@ export interface PublicPlayer {
   id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number; nickColor?: string | null; nickFade?: NickFade;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
+  /** Campanha no FutPrego (só partidas de verdade que terminaram). */
+  futprego?: { wins: number; losses: number; draws: number };
   positions: { geral: number; penal: number; falta: number; trilha: number };
   recent: FeedItem[];
   role: ClubRole | null; contractUntil: number | null;

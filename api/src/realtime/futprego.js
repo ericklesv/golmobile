@@ -36,6 +36,21 @@ let nextId = 1;
 function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); }
 const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message });
 
+/**
+ * Campanha do jogador no FutPrego (perfil): partidas de verdade que terminaram (bot não grava). Vitória =
+ * ele venceu; derrota = o outro venceu; empate = 10 jogadas de cada sem gol. Partida que acabou antes de
+ * cada um jogar 2 vezes (dinheiro devolvido) ou cancelada não conta.
+ */
+export async function futpregoRecord(userId) {
+  const mine = { OR: [{ aId: userId }, { bId: userId }] };
+  const [wins, losses, draws] = await Promise.all([
+    prisma.futPregoMatch.count({ where: { status: 'FINISHED', winnerId: userId } }),
+    prisma.futPregoMatch.count({ where: { status: 'FINISHED', winnerId: { not: null }, NOT: { winnerId: userId }, ...mine } }),
+    prisma.futPregoMatch.count({ where: { status: 'FINISHED', reason: 'empate', ...mine } }),
+  ]);
+  return { wins, losses, draws };
+}
+
 export function futpregoStatus() {
   return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0) };
 }

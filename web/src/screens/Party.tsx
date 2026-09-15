@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import type { PartyStatus } from '../lib/types';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useAnimation } from 'framer-motion';
 import { api } from '../lib/api';
@@ -22,12 +23,15 @@ export function PartyScreen() {
   const [result, setResult] = useState<{ win: boolean; goal: boolean; prize: number } | null>(null);
   const [overlay, setOverlay] = useState(false);
   const [rot, setRot] = useState(0);
+  const [st, setSt] = useState<PartyStatus | null>(null); // giros de hoje (5 comum, 10 VIP)
+  useEffect(() => { api.partyStatus().then(setSt).catch(() => {}); }, []);
   const ctrl = useAnimation();
   const n = segs.length;
   const step = 360 / n;
 
   async function spin() {
     if (spinning) return;
+    if (st && st.left <= 0) { toast(st.vip ? `Você já usou os ${st.max} giros de hoje.` : `Você já usou os ${st.max} giros de hoje. VIP tem ${st.vipMax} por dia.`, 'error'); return; }
     if (me.money < bet) { toast(`Você precisa de ${fmt(bet)} para apostar.`, 'error'); return; }
     setSpinning(true);
     setResult(null);
@@ -41,6 +45,7 @@ export function PartyScreen() {
       await ctrl.start({ rotate: [rot, to], transition: { duration: 3.8, ease: [0.15, 0.85, 0.25, 1] } });
       setRot(to);
       setResult({ win: r.win, goal: r.goal, prize: r.prize });
+      setSt((s) => (s ? { ...s, spins: r.spins, max: r.max, left: r.left } : s));
       await refresh();
       setTimeout(() => setOverlay(true), 250);
     } catch (e) {
@@ -58,6 +63,12 @@ export function PartyScreen() {
         <div className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</div>
       </div>
       <p className="relative px-6 text-center text-[13px] font-extrabold text-white">A roleta do JogaGol: aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire. Parou em <span className="t-gold t-display">GOL</span> ({segs.filter((s) => s === 'GOL').length} de {n} casas), você recebe <span className="t-green t-display">{fmt(prize)}</span>; em ERROU, perde a aposta. A primeira vitória do dia ainda vale <span className="t-gold t-display">1 gol</span>. Só dinheiro virtual!</p>
+      {st && (
+        <p className="relative mt-1 text-center text-[13px] font-extrabold text-white">
+          Giros hoje: <span className={`t-display ${st.left > 0 ? 't-gold' : 't-red'}`}>{st.spins}/{st.max}</span>
+          {!st.vip && <span className="text-white/80"> · VIP tem {st.vipMax} por dia</span>}
+        </p>
+      )}
 
       <div className="relative mx-auto mt-4 w-[320px]">
         <img src="/ui/roulette-bg.png" alt="" className="absolute inset-0 h-full w-full" />

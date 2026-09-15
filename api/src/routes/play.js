@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { handle, GameError } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
-import { autoKick, penalty, foul, trailPick, partySpin } from '../services/play.js';
+import { autoKick, penalty, foul, trailPick, partySpin, partyStatus } from '../services/play.js';
 import { captchaRequired, newCaptcha, checkCaptcha } from '../lib/captcha.js';
 
 export const play = Router();
@@ -36,3 +36,4 @@ play.post('/foul', handle((req) => { guardCaptcha(req); return foul(req.user.id,
 // Trilha: o captcha vale para começar uma trilha nova (as jogadas seguintes da mesma trilha não pedem)
 play.post('/trail', handle((req) => { if (!req.user.trailState?.active) guardCaptcha(req); return trailPick(req.user.id, Number(req.body?.index)); }));
 play.post('/party', handle((req) => partySpin(req.user.id)));
+play.get('/party', handle((req) => partyStatus(req.user.id))); // giros de hoje e limite

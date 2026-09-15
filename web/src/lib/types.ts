@@ -85,7 +85,9 @@ export interface TrailResult {
   lineMines: boolean[] | null; money: number; text: string | null; cooldownMs: number; kickedAt: number;
 }
 
-export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number }
+export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number; spins: number; max: number; left: number }
+/** Giros da roleta hoje (GET /api/play/party): usados, limite (VIP tem mais) e quantos faltam. */
+export interface PartyStatus { bet: number; prize: number; spins: number; max: number; left: number; vip: boolean; freeMax: number; vipMax: number }
 
 export interface Meta {
   /** Chave pública do Turnstile (captcha invisível no cadastro); null = desligado no servidor. */

@@ -20,8 +20,9 @@ export const MONEY = {
   PENALTY: 20,
   FOUL: 30,
   TRAIL: 40,
-  PARTY_BET: 50,
-  PARTY_PRIZE: 150,
+  PARTY_BET: 500, // roleta do Party GoL (dono, 15/09/2026: de 50/150 para 500/1500)
+  PARTY_PRIZE: 1500,
+  MINIGAME_WIN: 500, // saldo por vitória nos minigames diários, além do gol (dono, 15/09/2026) — ver MINIGAME_MONEY_KINDS
   DEXTERITY_PRICE: 1000,
   VIP_TO_MONEY: 50000, // Loja: 1 VIP guardado vira R$ 50 mil (ideia do erickles "1 vip por 100k"; dono cortou pela metade em 15/09/2026)
   NERF_PRICE: 1000,
@@ -29,6 +30,13 @@ export const MONEY = {
 export const DEXTERITY_MAX = 30;
 export const NERF_MIN_LEVEL = 14;
 export const PARTY_WIN_CHANCE = 3 / 8; // roleta de 8 fatias, 3 de GOL
+/** Giros da roleta por dia (Brasília): jogador comum e VIP ativo (dono, 15/09/2026). Conta pelas Activity PARTY do dia. */
+export const PARTY_SPINS = { free: 5, vip: 10 };
+/**
+ * Minigames que dão MONEY.MINIGAME_WIN de saldo a cada gol/vitória (applyResult põe quando o serviço manda
+ * `money: 0`). Fora: chutes (têm o valor próprio), PARTY (aposta), X1 (pote) e FRANGACO (manda o dele).
+ */
+export const MINIGAME_MONEY_KINDS = ['TERMO', 'QUIZ', 'STATS', 'MEMORIA', 'QUALTIME', 'CAMISAS', 'ALVO', 'HATTRICK', 'FALTAPRO', 'GANHAPERDE', 'CABECAO'];
 
 // ─── Chances ────────────────────────────────────────────────────────────────
 // Pênalti: goleiro escolhe 1 de 3 cantos → 66,6% base. Destreza soma +1%/ponto,
@@ -211,7 +219,7 @@ export const resetLabel = (game) => ({ 0: 'à meia-noite', 12: 'ao meio-dia' }[R
 export const MINIGAMES = [
   { id: 'TERMO', name: 'Termo do dia', unlock: 0, daily: true, route: '/termo', icon: '/ui/ico-gift_purple.png', desc: 'Acerte a palavra de futebol em até 6 tentativas.', reward: 'gol + até 30 de nível' },
   { id: 'QUIZ', name: 'Quiz do dia', unlock: 0, daily: true, route: '/quiz', icon: '/ui/ico-chesticon_gold01_l.png', desc: '5 perguntas de futebol, 20 s cada.', reward: 'gol + até 30 de nível' },
-  { id: 'PARTY', name: 'Party GoL', unlock: 1, daily: false, route: '/partygol', icon: '/ui/ico-coin02.png', desc: 'Aposte R$ 50 na roleta e leve R$ 150. Primeira vitória do dia vale gol.', reward: 'gol + R$ 150' },
+  { id: 'PARTY', name: 'Party GoL', unlock: 1, daily: false, route: '/partygol', icon: '/ui/ico-coin02.png', desc: 'Aposte R$ 500 na roleta e leve R$ 1.500. Primeira vitória do dia vale gol. 5 giros por dia (VIP: 10).', reward: 'gol + R$ 1.500' },
   { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: 'gol + até 30 de nível' },
   { id: 'STATS', name: 'Estatísticas', unlock: 3, daily: true, route: '/estatisticas', icon: '/ui/ico-ranking.png', desc: 'Quem tem mais? Acertou, segue; errou, acaba. 5 seguidos é gol.', reward: 'gol + até 30 de nível' },
   { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Pista → escudo e escudo → pista. 10 rodadas, 7 s cada; 8 acertos é gol.', reward: 'gol + até 30 de nível' },

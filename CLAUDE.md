@@ -94,7 +94,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   3 vidas — vários gols no dia; não "corrigir" para 1 gol.
   o slider vem ordenado do servidor: disponíveis primeiro (começado na frente), depois os já
   jogados pelo que volta antes, depois bloqueados por nível, por fim "em breve". Party GoL:
-  R$ 150 por vitória e o gol só na primeira vitória do dia (senão dinheiro compraria gols). Fora de produção,
+  aposta R$ 500 e paga R$ 1.500 (dono, 15/09/2026; antes 50/150), **5 giros por dia, VIP ativo 10** (`PARTY_SPINS`;
+  conta as Activity PARTY do dia; `GET /api/play/party` = giros usados/limite) e o gol só na primeira vitória do dia
+  (senão dinheiro compraria gols). **Saldo nos minigames** (dono, 15/09/2026): `applyResult` dá `MONEY.MINIGAME_WIN`
+  (R$ 500) por gol quando o serviço manda `money: 0` e o kind está em `MINIGAME_MONEY_KINDS` (Termo, Quiz, Stats,
+  Memória, Qualtime, Camisas, Alvo, Hat Trick, Falta PRO, Ganha ou Perde, Cabeção — fora chutes, PARTY, X1 e
+  Frangaço, que têm o próprio valor); o texto do gol ganha "E leva R$ 500 no bolso!". Fora de produção,
   `TERMO_DAY=<n>` / `QUIZ_DAY=<n>` forçam o dia (teste da virada).
 - **Quiz do dia** (`lib/quiz/`): 5 perguntas de 4 alternativas, 20 s cada. O relógio é do
   servidor (começa no `POST next`; estourou + 2,5 s de tolerância = erro); alternativas

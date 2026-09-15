@@ -8,8 +8,7 @@ import { hourKey, nextMidnight } from '../lib/time.js';
 import {
   COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE,
   DEXTERITY_BONUS_PER_POINT, PARTY_WIN_CHANCE, REBOUND_CHANCE, KIND_LABEL,
-  cooldownFor, levelOf, reboundLevel,
-} from '../lib/rules.js';
+  cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, isVip } from '../lib/rules.js';
 import { liveMatchForTeam } from './league.js';
 import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines } from '../lib/items.js';
 
@@ -74,6 +73,9 @@ async function scoreOnLiveMatch(tx, teamId, match) {
 /** Aplica gol/erro: contadores, Goal, Activity, placar da partida. (Os minigames diários também usam.) */
 export async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) {
   const hk = hourKey(now);
+  // saldo dos minigames (dono, 15/09/2026): quem manda money 0 e é minigame ganha MONEY.MINIGAME_WIN por gol
+  const bonus = goal && !(money > 0) && MINIGAME_MONEY_KINDS.includes(kind);
+  money = bonus ? MONEY.MINIGAME_WIN : (money ?? 0);
   if (goal && match) match = await scoreOnLiveMatch(tx, user.teamId, match); // o placar primeiro: define a rodada do gol
   const seasonId = match?.round?.seasonId ?? null;
   const roundId = match?.roundId ?? null;
@@ -96,6 +98,7 @@ export async function applyResult(tx, user, { kind, goal, now, match, phrase, mo
       data: { userId: user.id, teamId: user.teamId, matchId: match?.id ?? null, roundId, seasonId, hourKey: hk, kind, money },
     });
     text = goalText(user, match, kind, phrase);
+    if (bonus) text += ` E leva R$ ${money.toLocaleString('pt-BR')} no bolso!`;
   } else {
     text = `${phrase} ${user.nick} (${user.team?.name ?? ''}) errou ${KIND_LABEL[kind] === 'falta' ? 'a falta' : KIND_LABEL[kind] === 'trilha' ? 'na trilha' : 'o pênalti'}.`;
   }
@@ -292,6 +295,12 @@ export async function trailPick(userId, pickIndex) {
 export const PARTY_SEGMENTS = ['GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'GOL', 'ERROU', 'ERROU'];
 export async function partySpin(userId) {
   return prisma.$transaction(async (tx) => {
+    // giros por dia (dono, 15/09/2026): 5 para quem não é VIP, 10 para VIP ativo — cada giro deixa uma Activity PARTY
+    const me0 = await tx.user.findUnique({ where: { id: userId }, select: { vipUntil: true } });
+    const max = isVip(me0) ? PARTY_SPINS.vip : PARTY_SPINS.free;
+    const dayStart0 = new Date(nextMidnight(new Date()).getTime() - 24 * 3600_000);
+    const spins = await tx.activity.count({ where: { userId, kind: 'PARTY', createdAt: { gte: dayStart0 } } });
+    if (spins >= max) throw new GameError(429, 'party-limit', isVip(me0) ? `Você já usou os ${max} giros de hoje. A roleta volta à meia-noite.` : `Você já usou os ${max} giros de hoje. VIP tem ${PARTY_SPINS.vip} por dia — ou volte à meia-noite.`, { spins, max });
     const res = await tx.user.updateMany({
       where: { id: userId, money: { gte: MONEY.PARTY_BET } },
       data: { money: { decrement: MONEY.PARTY_BET }, partyTries: { increment: 1 } },
@@ -321,6 +330,15 @@ export async function partySpin(userId) {
       text = win ? `${user.nick} acertou no Party GoL e faturou R$ ${MONEY.PARTY_PRIZE}!` : `${user.nick} errou no Party GoL.`;
       await tx.activity.create({ data: { userId, teamId: user.teamId, kind: 'PARTY', goal: false, text } });
     }
-    return { win, goal, text, segment, segments: PARTY_SEGMENTS, money: user.money, prize: win ? MONEY.PARTY_PRIZE : 0, bet: MONEY.PARTY_BET };
+    return { win, goal, text, segment, segments: PARTY_SEGMENTS, money: user.money, prize: win ? MONEY.PARTY_PRIZE : 0, bet: MONEY.PARTY_BET, spins: spins + 1, max, left: max - spins - 1 };
   });
+}
+
+/** Estado da roleta para a tela: giros usados hoje e o limite (VIP ativo tem mais). */
+export async function partyStatus(userId) {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { vipUntil: true } });
+  const max = isVip(u) ? PARTY_SPINS.vip : PARTY_SPINS.free;
+  const dayStart = new Date(nextMidnight(new Date()).getTime() - 24 * 3600_000);
+  const spins = await prisma.activity.count({ where: { userId, kind: 'PARTY', createdAt: { gte: dayStart } } });
+  return { bet: MONEY.PARTY_BET, prize: MONEY.PARTY_PRIZE, spins, max, left: Math.max(0, max - spins), vip: isVip(u), freeMax: PARTY_SPINS.free, vipMax: PARTY_SPINS.vip };
 }

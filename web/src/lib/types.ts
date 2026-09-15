@@ -101,7 +101,7 @@ export interface Meta {
   resetHour?: Record<string, number>;
   hattrick?: { lives: number; pointsPerGoal: number; maxPoints: number };
   faltapro?: { kicks: number; goalAt: number; pointsPerGoal: number; maxPoints: number; targetMoney: number };
-  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalsPerHour: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
+  futprego?: { bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; challengeMaxSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number; woMinTurns: number; reconnectSec: number; board?: import('../components/PregoBoard').PregoBoardData };
   /** X1: o jogo de hoje (vira às 20h) e o campo do Futebol de Botão (com os botões na saída, para o enfeite do começo). */
   x1?: {
     names: Record<X1Game, string>; today: X1Today;

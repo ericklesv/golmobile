@@ -317,10 +317,13 @@ KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 // artilharia da hora); a mesma dupla com o mesmo vencedor duas vezes seguidas = o 2º não vale gol (nem
 // tira); W.O. antes de cada um jogar 2 vezes = devolve o dinheiro. Sem gol em 10 jogadas de cada =
 // empate, dinheiro devolvido. Ninguém aceitou em 1 min = oferece treino com bot (não vale gol nem
-// dinheiro). Física em lib/futprego.js; fila e partidas em realtime/x1.js.
+// dinheiro). Quem NÃO é VIP espera challengeCooldownSec (2 min) depois de terminar uma partida para
+// DESAFIAR de novo; aceitar desafio pode na hora (dono, 15/09/2026: "como o X1 ficou ilimitado, o vip
+// perdeu valor"; a tela diz "Vire VIP e jogue o X1 ilimitado!"). Física em lib/futprego.js; fila e
+// partidas em realtime/x1.js.
 export const FUTPREGO = {
   bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, challengeMaxSec: 300,
-  maxGoalsPerHour: 10, woMinTurns: 2, reconnectSec: 20,
+  maxGoalsPerHour: 10, woMinTurns: 2, reconnectSec: 20, challengeCooldownSec: 120,
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
 export const X1 = { games: ['FUTPREGO', 'BOTAO'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' }, switchHour: 20 };

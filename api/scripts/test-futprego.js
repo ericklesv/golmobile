@@ -31,10 +31,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 for (let i = 0; i < 40; i++) { try { if ((await fetch(`${API}/api/health`)).ok) break; } catch {} await sleep(500); }
 
 let seq = 0;
-async function mkUser(team, money) {
+// VIP por padrão: sem VIP há 2 min de espera para desafiar depois de cada partida (testada no passo 10)
+async function mkUser(team, money, { vip = true } = {}) {
   const nick = `fp${Date.now() % 1e5}${seq++}`;
   const t = await prisma.team.findUnique({ where: { slug: team } });
-  const u = await prisma.user.create({ data: { nick, nickLower: nick.toLowerCase(), email: `${nick}@local.test`, passwordHash: 'x', teamId: t.id, money } });
+  const u = await prisma.user.create({ data: { nick, nickLower: nick.toLowerCase(), email: `${nick}@local.test`, passwordHash: 'x', teamId: t.id, money, vipUntil: vip ? new Date(Date.now() + 86_400_000) : null } });
   return { ...u, token: jwt.sign({ uid: u.id, nick: u.nick }, config.jwtSecret, { expiresIn: '1d' }) };
 }
 const today = await (await fetch(`${API}/api/x1/status`)).json();
@@ -247,6 +248,36 @@ const oC = r8b?.oa, oB = r8b?.ob;
 check(oC?.winner === r8b?.youA && oC.goal === true && oB?.lost === false && oB.lossLimit === true, `B já tinha feito o time perder ${F.maxGoalsPerHour} gols nesta hora: o gol de C valeu e o time de B não perdeu`);
 if (bef8b.c !== null && bef8b.b !== null) check((await teamScore(C.teamId)) === bef8b.c + 1 && (await teamScore(B.teamId)) === bef8b.b, `placar: time de C ${bef8b.c} → ${await teamScore(C.teamId)}, time de B ficou em ${await teamScore(B.teamId)}`);
 gC.close();
+
+// 10) sem VIP: espera challengeCooldownSec depois de cada partida para DESAFIAR; aceitar pode na hora; VIP não espera
+const E = await mkUser('fortaleza', 1000, { vip: false });
+const gE = phone(E, 'game', '10.0.0.5'); await gE.open;
+const cd0 = await gE.wait('cooldown', 3000);
+check(!!cd0 && cd0.until === null && cd0.vip === false, 'sem VIP e sem partida ainda: pode desafiar (sem espera)');
+gE.send({ t: 'challenge' });
+const wE = await gE.wait('waiting');
+gB.clear();
+gB.send({ t: 'accept', id: wE.id });
+const rE = await play(gE, gB, (side) => (side === 0 ? 'gol' : 'nada')); // E desafiou: lado 0
+check(rE?.oa?.cooldownUntil > Date.now() + (F.challengeCooldownSec - 20) * 1000 && rE?.ob?.cooldownUntil === null, `acabou a partida: E (sem VIP) espera ${F.challengeCooldownSec} s para desafiar; B (VIP) não espera`);
+gE.send({ t: 'challenge' });
+const eCd = await gE.wait('error', 3000);
+check(eCd?.code === 'cooldown' && /Vire VIP e jogue o X1 ilimitado/.test(eCd.message) && eCd.until > Date.now(), `E tenta desafiar de novo: "${eCd?.message}"`);
+gB.clear();
+gB.send({ t: 'challenge' });
+const wB = await gB.wait('waiting', 3000);
+check(!!wB, 'B (VIP) desafia logo depois da partida');
+gE.clear();
+gE.send({ t: 'accept', id: wB?.id });
+const mE = await gE.wait('match', 3000);
+check(!!mE, 'E (esperando para desafiar) aceita o desafio de B na hora');
+gE.send({ t: 'giveup' });
+await gE.wait('over', 5000); await gB.wait('over', 5000);
+gE.close();
+const gE2 = phone(E, 'game', '10.0.0.5'); await gE2.open;
+const cd1 = await gE2.wait('cooldown', 3000);
+check(cd1?.until > Date.now(), 'reabriu a tela do X1: a espera continua (vem do banco)');
+gE2.close();
 
 // 9) sem dinheiro: D não consegue desafiar; treino com bot não mexe no dinheiro
 const gD = phone(D, 'game', '10.0.0.4'); await gD.open;

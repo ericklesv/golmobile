@@ -155,7 +155,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   iguais para os dois (`FUTPREGO` em rules.js): cada um põe R$ 200, quem vence leva R$ 400 + 1 gol e o time do
   outro perde 1 gol na rodada; **até 10 gols por hora por jogador, para ganhar e para perder** (dono, 15/09/2026;
   `FUTPREGO.maxGoalsPerHour`, hora cheia de Brasília: com 10 vitórias valendo gol na hora, a próxima leva o pote sem
-  gol; quem já fez o time perder 10 na hora perde a partida sem tirar gol do time — `lossLimit` na tela); mesma dupla com o mesmo vencedor duas vezes seguidas = a
+  gol; quem já fez o time perder 10 na hora perde a partida sem tirar gol do time — `lossLimit` na tela); **quem não
+  é VIP espera 2 min depois de terminar uma partida para DESAFIAR de novo** (aceitar pode na hora; dono, 15/09/2026:
+  "como o X1 ficou ilimitado, o vip perdeu valor" — `FUTPREGO.challengeCooldownSec`, `challengeCooldownUntil` em
+  x1.js lê a última partida FINISHED no banco; a tela recebe `cooldown`/`over.cooldownUntil`, desliga o botão com o
+  relógio e mostra "Vire VIP e jogue o X1 ilimitado!"; item "X1 ilimitado" na tela do VIP); mesma dupla com o mesmo vencedor duas vezes seguidas = a
   2ª não vale gol; W.O./desistência antes de cada um jogar 2 vezes = aposta devolvida; bot de treino depois de
   1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por time (goleiro preso na área; os de linha não
   entram em área), 2 petelecos por vez num botão seu (quem começa dá 1 na 1ª vez — medido: assim quem começa

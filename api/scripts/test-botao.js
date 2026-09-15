@@ -31,10 +31,11 @@ const status = await (await fetch(`${API}/api/x1/status`)).json();
 if (status.today?.game !== 'BOTAO') { console.error(`o X1 de hoje na API é ${status.today?.game}: suba a API com X1_JOGO=BOTAO`); process.exit(1); }
 
 let seq = 0;
+// VIP: sem VIP há 2 min de espera para desafiar depois de cada partida (testada no test-futprego.js)
 async function mkUser(team, money) {
   const nick = `bt${Date.now() % 1e5}${seq++}`;
   const t = await prisma.team.findUnique({ where: { slug: team } });
-  const u = await prisma.user.create({ data: { nick, nickLower: nick.toLowerCase(), email: `${nick}@local.test`, passwordHash: 'x', teamId: t.id, money } });
+  const u = await prisma.user.create({ data: { nick, nickLower: nick.toLowerCase(), email: `${nick}@local.test`, passwordHash: 'x', teamId: t.id, money, vipUntil: new Date(Date.now() + 86_400_000) } });
   return { ...u, token: jwt.sign({ uid: u.id, nick: u.nick }, config.jwtSecret, { expiresIn: '1d' }) };
 }
 const money = async (u) => (await prisma.user.findUnique({ where: { id: u.id } })).money;

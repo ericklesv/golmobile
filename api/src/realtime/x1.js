@@ -151,11 +151,30 @@ async function authenticate(req) {
 
 const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user.avatarUrl ?? null, team: teamView(c.user.team), bot: !!c.bot });
 const rulesView = () => ({
-  bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalsPerHour: F.maxGoalsPerHour,
+  bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalsPerHour: F.maxGoalsPerHour, challengeCooldownSec: F.challengeCooldownSec,
   botao: { snapsPerTurn: BOTAO.snapsPerTurn, firstTurnSnaps: BOTAO.firstTurnSnaps, snapSec: BOTAO.snapSec, goalsToWin: BOTAO.goalsToWin, maxTurns: BOTAO.maxTurns, penalties: BOTAO.penalties },
 });
 /** Jogador ocupado: numa partida ou com desafio aberto (em qualquer conexão). */
 const busyUser = (userId) => [...conns].some((c) => c.user.id === userId && (c.match || c.challenge));
+
+/**
+ * Até quando (ms) quem NÃO é VIP espera para DESAFIAR de novo: challengeCooldownSec depois de terminar a
+ * última partida de verdade (qualquer resultado; treino com bot não conta). null = pode desafiar agora.
+ * Aceitar desafio nunca espera. Vem do banco: vale também depois de a API reiniciar.
+ */
+async function challengeCooldownUntil(user) {
+  if (isVip(user)) return null;
+  const last = await prisma.x1Match.findFirst({
+    where: { status: 'FINISHED', finishedAt: { not: null }, OR: [{ aId: user.id }, { bId: user.id }] },
+    orderBy: { finishedAt: 'desc' }, select: { finishedAt: true },
+  });
+  const until = last ? last.finishedAt.getTime() + F.challengeCooldownSec * 1000 : 0;
+  return until > Date.now() ? until : null;
+}
+const cooldownText = (until) => {
+  const s = Math.max(1, Math.ceil((until - Date.now()) / 1000));
+  return `Você pode desafiar de novo em ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}. Aceitar desafio pode na hora. Vire VIP e jogue o X1 ilimitado!`;
+};
 
 export function attachX1(server) {
   const wss = new WebSocketServer({ noServer: true });
@@ -181,6 +200,8 @@ export function attachX1(server) {
       if (lo && Date.now() - lo.at < 10 * 60_000) { send(ws, { ...lo.msg, late: true }); lastOver.delete(user.id); }
       sendOpenList(conn).catch(() => {});
     }
+    // quem não é VIP: até quando espera para desafiar de novo (a tela mostra o relógio)
+    if (mode === 'game') challengeCooldownUntil(user).then((until) => send(ws, { t: 'cooldown', until, vip: isVip(user) })).catch(() => {});
     ws.on('message', (raw) => { let m; try { m = JSON.parse(raw); } catch { return; } onMessage(conn, m).catch((e) => console.error('[x1]', e)); });
     ws.on('close', () => {
       conns.delete(conn);
@@ -238,6 +259,9 @@ async function createChallenge(conn) {
   if (busyUser(conn.user.id)) return err(conn, 'busy', 'Você já está numa partida ou desafiando em outra tela.');
   const problem = await canPlay(conn);
   if (problem) return err(conn, 'no-money', problem);
+  // não é VIP e terminou uma partida há menos de 2 min: não desafia (aceitar pode)
+  const until = await challengeCooldownUntil(conn.user);
+  if (until) return send(conn.ws, { t: 'error', code: 'cooldown', until, message: cooldownText(until) });
   if (conn.match || conn.challenge || conn.ws.readyState !== conn.ws.OPEN) return;
   const game = x1Today().game;
   // alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora
@@ -541,7 +565,9 @@ async function finish(m, result) {
   }
   for (const c of m.conns) {
     if (c.bot) continue;
-    const msg = { t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null, pen: m.bs?.pen?.kicks ?? null, ...personal(info, m, c.side, result) };
+    // partida de verdade que fechou: quem não é VIP espera challengeCooldownSec para desafiar de novo
+    const cd = !m.bot && info && !info.error ? { cooldownUntil: isVip(c.user) ? null : Date.now() + F.challengeCooldownSec * 1000 } : {};
+    const msg = { t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null, pen: m.bs?.pen?.kicks ?? null, ...personal(info, m, c.side, result), ...cd };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
     c.match = null; c.side = -1;
   }

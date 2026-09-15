@@ -26,7 +26,7 @@ import { money as fmt, timeLeft } from '../lib/format';
 type Side = 0 | 1;
 interface Player { id: number; nick: string; avatarUrl: string | null; team: Team; bot: boolean }
 interface Rules {
-  bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalsPerHour: number;
+  bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number;
   botao?: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; penalties: number };
 }
 /** Retrospecto contra o adversário desta partida no X1 (só partidas de verdade que terminaram; null no treino). */
@@ -47,6 +47,8 @@ interface Over {
   game?: X1Game; winner: Side | null; reason: string; you: Side; training: boolean; money: number; pot?: number; goal?: boolean; why?: string | null;
   goalText?: string | null; lost?: boolean; lostTeam?: string | null; refund?: boolean; players?: Player[]; text?: string; late?: boolean;
   score?: [number, number] | null; pen?: [boolean[], boolean[]] | null; lossLimit?: boolean;
+  /** Quem não é VIP: até quando espera para desafiar de novo (null = pode já; ausente no treino). */
+  cooldownUntil?: number | null;
 }
 interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number }
 interface Shown { ball: { x: number; y: number }; pieces: BotaoPiece[] }
@@ -99,6 +101,7 @@ export function X1Screen() {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [busy, setBusy] = useState(false);
   const [season, setSeason] = useState<PublicPlayer['x1'] | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null); // sem VIP: espera para desafiar de novo
   const [, tick] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -178,7 +181,8 @@ export function X1Screen() {
       case 'canceled': setWaiting(null); setPhase('lobby'); break;
       case 'expired': toast(m.message, 'error'); setWaiting(null); setPhase('lobby'); break;
       case 'taken': setBusy(false); toast(m.message, 'error'); setWaiting(null); setPhase('lobby'); break;
-      case 'error': setBusy(false); toast(m.message, 'error'); break;
+      case 'error': setBusy(false); if (m.code === 'cooldown') setCooldownUntil(m.until ?? null); toast(m.message, 'error'); break;
+      case 'cooldown': setCooldownUntil(m.until ?? null); break;
       case 'kicked': setPhase('kicked'); break;
       case 'match': {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setBigText(null); setOppDropped(false); setConfirmLeave(false);
@@ -300,6 +304,7 @@ export function X1Screen() {
 
   function showOver(o: Over) {
     setOver(o); setLastResult(o); setAim(null); setSent(false);
+    if (o.cooldownUntil !== undefined) setCooldownUntil(o.cooldownUntil); // o relógio começa quando a partida acaba
     if (!o.training) refresh();
   }
   function closeOver() { setOver(null); setMatch(null); setShown(null); setGoalFlash(null); setBigText(null); setPhase('lobby'); }
@@ -395,6 +400,7 @@ export function X1Screen() {
   else if (phase === 'kicked') body = <Msg title="Aberto em outra tela" text="O X1 foi aberto em outra aba ou aparelho. Continue por lá." onBack={() => nav('/')} />;
   else if (phase === 'lobby') body = (
     <Lobby rules={rules} today={today} open={open} busy={busy} me={me} lastResult={lastResult} season={season} now={now()}
+      cooldownLeft={cooldownUntil ? Math.max(0, cooldownUntil - now()) : 0}
       onChallenge={challenge} onAccept={accept} board={meta?.futprego?.board} field={meta?.x1?.field} kickoff={meta?.x1?.kickoff} />
   );
   else if (phase === 'waiting' && waiting) body = (
@@ -547,9 +553,9 @@ function rulesText(game: X1Game, r: Rules) {
 }
 
 /** Começo: o X1 de hoje (e o de amanhã), as regras, a campanha na temporada, os desafios abertos e desafiar. */
-function Lobby({ rules, today, open, busy, me, lastResult, season, now, onChallenge, onAccept, board, field, kickoff }: {
+function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldownLeft, onChallenge, onAccept, board, field, kickoff }: {
   rules: Rules; today: X1Today | null; open: OpenChallenge[]; busy: boolean; me: { money: number; team: Team }; lastResult: Over | null;
-  season: PublicPlayer['x1'] | null; now: number; onChallenge: () => void; onAccept: (id: number) => void;
+  season: PublicPlayer['x1'] | null; now: number; cooldownLeft: number; onChallenge: () => void; onAccept: (id: number) => void;
   board: PregoBoardData | undefined; field: BotaoFieldData | undefined; kickoff: { pieces: BotaoPiece[]; ball: { x: number; y: number } } | undefined;
 }) {
   const game: X1Game = today?.game ?? 'FUTPREGO';
@@ -604,9 +610,28 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, onChalle
           ))}
         </div>
       )}
-      <button onClick={onChallenge} disabled={busy || me.money < rules.bet} className="btn btn-green btn-lg mt-3 w-full">{busy ? 'Chamando…' : `Desafiar alguém (${fmt(rules.bet)})`}</button>
+      <button onClick={onChallenge} disabled={busy || me.money < rules.bet || cooldownLeft > 0} className="btn btn-green btn-lg mt-3 w-full tabular-nums">
+        {busy ? 'Chamando…' : cooldownLeft > 0 ? `Desafiar de novo em ${mmss(cooldownLeft)}` : `Desafiar alguém (${fmt(rules.bet)})`}
+      </button>
+      {cooldownLeft > 0 && <VipNudge minutes={Math.round((rules.challengeCooldownSec ?? 120) / 60)} />}
       {me.money < rules.bet && <p className="t-out mt-2 text-center text-[12px] font-extrabold">Você precisa de {fmt(rules.bet)} para jogar.</p>}
     </>
+  );
+}
+
+const mmss = (ms: number) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+/** Sem VIP, esperando para desafiar: o convite para o VIP (aceitar desafio continua liberado na lista acima). */
+function VipNudge({ minutes }: { minutes: number }) {
+  return (
+    <Link to="/vip" className="card-orange mt-2 flex items-center gap-3 text-left" style={{ borderRadius: 18 }}>
+      <img src="/ui/ico-crown_silver.png" alt="" className="h-11 w-11 shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="t-display t-out block text-[16px] leading-tight">Vire VIP e jogue o X1 ilimitado!</span>
+        <span className="mt-0.5 block text-[12px] font-bold leading-snug text-white/90">Sem VIP, você espera {minutes} {minutes === 1 ? 'minuto' : 'minutos'} depois de cada partida para desafiar. Aceitar desafio pode na hora.</span>
+      </span>
+      <span className="btn btn-yellow btn-sm shrink-0">Ver VIP</span>
+    </Link>
   );
 }
 

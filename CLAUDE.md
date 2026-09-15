@@ -177,7 +177,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **X1 — jogos 1x1 ao vivo, um por dia** (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar enjoativo";
   substituiu o card do FutPrego). `realtime/x1.js` (WebSocket `/api/ws/x1`, e `/api/ws/futprego` como nome antigo;
   `mode=game` na tela `/x1` = `screens/X1.tsx`, `mode=lobby` no convite `components/X1Invite.tsx`). O jogo do dia
-  alterna **às 20h de Brasília** (dono, 15/09/2026; `X1.switchHour`, `x1GameOf(dayNumberAt(20))` em `rules.js`/`x1.js`,
+  alterna **às 19h de Brasília, junto com o fechamento da rodada** (dono, 15/09/2026 — antes era às 20h; `X1.switchHour`, `x1GameOf(dayNumberAt(19))` em `rules.js`/`x1.js`,
   `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão**
   (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de
   dinheiro e travas iguais para os dois (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva

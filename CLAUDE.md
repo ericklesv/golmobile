@@ -177,7 +177,8 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **X1 — jogos 1x1 ao vivo, um por dia** (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar enjoativo";
   substituiu o card do FutPrego). `realtime/x1.js` (WebSocket `/api/ws/x1`, e `/api/ws/futprego` como nome antigo;
   `mode=game` na tela `/x1` = `screens/X1.tsx`, `mode=lobby` no convite `components/X1Invite.tsx`). O jogo do dia
-  alterna **às 20h de Brasília** (dono, 15/09/2026; `X1.switchHour`, `x1GameOf(dayNumberAt(20))` em `rules.js`/`x1.js`,
+  alterna **às 20h de Brasília** (dono, 15/09/2026 — **confirmado de novo em 15/09 à noite: 20h, e não 19h junto
+  com a rodada**, revertendo o commit b97f004; `X1.switchHour`, `x1GameOf(dayNumberAt(20))` em `rules.js`/`x1.js`,
   `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão**
   (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de
   dinheiro e travas iguais para os dois (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva
@@ -244,12 +245,16 @@ depois que o novo estiver estável. Não instalar nada dele.
   desce), some em `showMs` (2,8 s); som "pop" ao receber. **Silenciar** (X vermelho no balão do adversário ou na
   bandeja): só na tela de quem silenciou, vale a partida (zera na próxima; `resumed` mantém). No treino, o bot
   responde com uma sorteada. Mexeu? `node scripts/test-botao.js` tem o caso (relay, ritmo, chave inválida, VIP).
-  **Raio-X (brincadeira do dono, 15/09/2026; SÓ a conta MVGIC)**: na tela do X1 a tecla **R** liga/desliga a
-  trajetória exata da mira (traço branco; dourado + "GOL" quando entra; no Botão também o caminho do botão em azul).
-  Enquanto arrasta, a tela manda `{t:'preview', seq, dx, dy, power[, idx]}` (~12/s) e o servidor (`onPreview` em
-  `realtime/x1.js`, `XRAY_NICKS`) simula com a MESMA física do peteleco (`simulateFlick`/`simulateSnap` são
-  determinísticos — o sorteio só entra no goleiro dos pênaltis) e devolve `{t:'preview', seq, path, piece, goal}`;
-  outra conta é ignorada em silêncio. Nada no banco.
+  **Raio-X (brincadeira do dono, 15/09/2026; SÓ as contas MVGIC e ericklesv)**: na tela do X1 a tecla **R** liga/
+  desliga a trajetória exata da mira (traço branco; dourado + "GOL" quando entra; no Botão também o caminho do botão
+  em azul). Enquanto arrasta, a tela manda `{t:'preview', seq, dx, dy, power[, idx]}` (~12/s) e o servidor
+  (`onPreview` em `realtime/x1.js`, `XRAY_NICKS` — e `XRAY_NICKS` em `X1.tsx`) simula com a MESMA física do peteleco
+  (`simulateFlick`/`simulateSnap` são determinísticos — o sorteio só entra no goleiro dos pênaltis) e devolve
+  `{t:'preview', seq, path, piece, goal}`; outra conta é ignorada em silêncio. **Os dois precisam saber quando o
+  outro está com o Raio-X ligado** (dono): a tela manda `{t:'xray', on}` ao ligar/desligar (e ao reconectar), o
+  adversário — se for uma das duas contas — recebe `xray-opp` (selo vermelho "RAIO-X" na barra dele + toast) e a
+  `match` traz `oppXray`; ligar manda aviso no Telegram (`tg.info`, agrupado por 10 min). Contas comuns não veem
+  nada. Nada no banco.
   **Trava de atualização — deploy sem partida travada** (pedido do dono, 15/09/2026: o `pm2 restart` derrubava as
   partidas no meio, a tela ficava "travada"): o `brgol-deploy.sh` (cópia em `tools/vps/brgol-deploy.sh`), quando a API
   muda, faz 1) `POST /api/admin/x1/drain {seconds}` (`startX1Drain` em `realtime/x1.js`: ninguém desafia/aceita/

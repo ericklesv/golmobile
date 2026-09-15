@@ -30,6 +30,7 @@ import { teamView } from '../services/view.js';
 import { X1_PLAYED, X1_COUNTED } from '../services/x1.js';
 import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
+import { tg } from '../lib/telegram.js';
 import { takeSlot } from '../lib/security.js';
 import { deviceOf } from '../lib/device.js';
 
@@ -211,6 +212,7 @@ async function onMessage(conn, m) {
   if (m.t === 'snap') return onSnap(conn, m);
   if (m.t === 'provocar') return onProvocar(conn, m);
   if (m.t === 'preview') return onPreview(conn, m);
+  if (m.t === 'xray') return onXray(conn, m);
   // desistir = derrota (se o resultado já está decidido e só falta a animação, vale ele — não a desistência)
   if (m.t === 'giveup' && conn.match && !conn.match.done) return finish(conn.match, conn.match.pending ?? { winner: 1 - conn.side, reason: 'desistiu' });
 }
@@ -389,6 +391,7 @@ function sendMatch(c, resumed) {
   const m = c.match;
   const base = {
     t: 'match', id: m.id, game: m.game, gameName: X1.names[m.game], you: c.side, players: m.conns.map(playerView), turnEndsAt: m.turnEndsAt, bet: m.bot ? 0 : F.bet, training: m.bot, sameTeam: !!m.sameTeam, resumed,
+    oppXray: isXrayNick(c) && !!m.conns[1 - c.side].xray, // Raio-X do adversário (só as contas que podem usar ficam sabendo)
     // retrospecto contra ESTE adversário no X1, do ponto de vista de quem recebe (null no treino contra bot)
     h2h: m.h2h ? h2hOf(m.h2h, c.user.id) : null,
   };
@@ -536,6 +539,7 @@ function botSnap(m) {
 // ─── Queda, fim e dinheiro (iguais nos dois jogos) ──────────────────────────
 
 function takeOver(from, to) {
+  to.xray = from.xray;
   const m = from.match;
   if (!m || m.done) return;
   clearTimeout(from.dropTimer);
@@ -560,12 +564,26 @@ function onDisconnect(conn) {
 
 // ─── Raio-X (brincadeira do dono, 15/09/2026) ───────────────────────────────
 
-// Só para estas contas: a tecla R na tela do X1 mostra a trajetória exata da mira antes de soltar. A física dos dois
-// jogos é determinística (o sorteio só entra no goleiro dos pênaltis), então o servidor simula a MESMA jogada que o
-// peteleco de verdade faria e devolve o caminho da bola. Ninguém mais recebe nada (mensagem ignorada).
-const XRAY_NICKS = new Set(['MVGIC']);
+// Só para estas contas (dono e colaborador): a tecla R na tela do X1 mostra a trajetória exata da mira antes de
+// soltar. A física dos dois jogos é determinística (o sorteio só entra no goleiro dos pênaltis), então o servidor
+// simula a MESMA jogada que o peteleco de verdade faria e devolve o caminho da bola. Ninguém mais recebe nada
+// (mensagem ignorada). **Os dois precisam saber quando o outro está com o Raio-X ligado** (dono, 15/09/2026): a tela
+// avisa o servidor ao ligar/desligar (`xray`), o adversário — se for uma destas contas — vê o selo "RAIO-X" na barra
+// (`xray-opp`, e `oppXray` na `match` de quem entra no meio) e ligar manda aviso no Telegram dos dois.
+const XRAY_NICKS = new Set(['MVGIC', 'ericklesv']);
+const isXrayNick = (c) => !!c && !c.bot && XRAY_NICKS.has(c.user.nick);
+function onXray(conn, msg) {
+  if (!isXrayNick(conn)) return;
+  const on = !!msg.on;
+  if (conn.xray === on) return;
+  conn.xray = on;
+  const m = conn.match;
+  const opp = m && !m.done ? m.conns[1 - conn.side] : null;
+  if (isXrayNick(opp)) send(opp.ws, { t: 'xray-opp', on });
+  if (on) tg.info(`🩻 ${tg.esc(conn.user.nick)} ligou o Raio-X no X1${m ? ` (${X1.names[m.game]} contra ${tg.esc(m.conns[1 - conn.side].user.nick)})` : ''}`, { key: `xray:${conn.user.id}`, every: 10 * 60_000 });
+}
 function onPreview(conn, msg) {
-  if (!XRAY_NICKS.has(conn.user.nick)) return;
+  if (!isXrayNick(conn)) return;
   const m = conn.match;
   if (!m || m.done) return;
   const now = Date.now();

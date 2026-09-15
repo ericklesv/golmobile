@@ -67,6 +67,7 @@ interface Shown { ball: { x: number; y: number }; pieces: BotaoPiece[] }
 
 const MAX_PULL = 120; // FutPrego: arrasto (em unidades da tábua) para a força máxima
 const MAX_PULL_BOTAO = 110; // Botão: idem, puxando o botão
+const XRAY_NICKS = ['MVGIC', 'ericklesv']; // Raio-X (tecla R): quem pode usar — e quem fica sabendo quando o outro usa
 const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
 const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
 const paintOf = (t: Team): TeamPaint => ({ primary: t.colorPrimary, secondary: t.colorSecondary, tertiary: t.colorTertiary ?? null, design: t.kitDesign ?? null });
@@ -123,6 +124,7 @@ export function X1Screen() {
   // Raio-X (brincadeira do dono, 15/09/2026; só a conta MVGIC — o servidor também confere): a tecla R liga/desliga a
   // trajetória exata da mira, que o servidor simula com a mesma física do peteleco de verdade
   const [xray, setXray] = useState(false);
+  const [oppXray, setOppXray] = useState(false); // o adversário (MVGIC/ericklesv) está com o Raio-X ligado
   const [preview, setPreview] = useState<{ path: [number, number][]; piece: [number, number][] | null; goal: string | null } | null>(null);
   const previewSeq = useRef(0);
   const previewAt = useRef(0);
@@ -160,19 +162,21 @@ export function X1Screen() {
 
   // relógio da vez / da espera
   useEffect(() => { const iv = setInterval(() => tick((n) => n + 1), 250); return () => clearInterval(iv); }, []);
-  // Raio-X: tecla R (só MVGIC)
+  // Raio-X: tecla R (só MVGIC e ericklesv; o servidor confere de novo e avisa o outro)
   useEffect(() => {
-    if (me.nick !== 'MVGIC') return;
+    if (!XRAY_NICKS.includes(me.nick)) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'r' && e.key !== 'R') return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      setXray((v) => { toast(v ? 'Raio-X desligado' : 'Raio-X ligado: a trajetória aparece enquanto você mira'); return !v; });
+      setXray((v) => { toast(v ? 'Raio-X desligado' : 'Raio-X ligado: a trajetória aparece enquanto você mira'); send({ t: 'xray', on: !v }); return !v; });
       setPreview(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [me.nick]);
+  // o servidor guarda o Raio-X por conexão: ao (re)conectar, conta de novo
+  useEffect(() => { if (xray) send({ t: 'xray', on: true }); }, [phase === 'lobby' || phase === 'match']);
   // o jogo do dia vira às 20h (com a tela aberta): os jogos se alternam
   useEffect(() => {
     if (!today) return;
@@ -230,6 +234,7 @@ export function X1Screen() {
       case 'cooldown': setCooldownUntil(m.until ?? null); break;
       case 'drain': setDrainUntil(m.until ?? null); break; // atualização do jogo: trava/destrava a busca
       case 'preview': if (m.seq === previewSeq.current) setPreview({ path: m.path ?? [], piece: m.piece ?? null, goal: m.goal ?? null }); break; // Raio-X: só a resposta da mira atual
+      case 'xray-opp': setOppXray(!!m.on); if (m.on) toast('O adversário ligou o Raio-X!', 'error'); break;
       case 'no-match': // voltei "dentro" de uma partida ou espera que o servidor não tem mais (a API reiniciou)
         if (phaseRef.current === 'match' || phaseRef.current === 'waiting') {
           toast(phaseRef.current === 'match' ? 'A partida foi encerrada: o JogaGol foi atualizado. A aposta voltou e nada contou.' : 'A busca foi cancelada porque a conexão caiu. Desafie de novo.', 'error');
@@ -240,6 +245,7 @@ export function X1Screen() {
       case 'match': {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setBigText(null); setOppDropped(false); setConfirmLeave(false);
         setTray(false); setBubbles([null, null]); setProvocarUntil(0); if (!m.resumed) setMuted(false);
+        setOppXray(!!m.oppXray); if (m.oppXray) toast('O adversário está com o Raio-X ligado!', 'error');
         const base = { id: m.id, you: m.you, players: m.players, turnEndsAt: m.turnEndsAt, bet: m.bet, training: m.training, sameTeam: !!m.sameTeam, h2h: m.h2h ?? null };
         let ball: { x: number; y: number };
         if (m.game === 'BOTAO') {
@@ -581,7 +587,7 @@ export function X1Screen() {
 
     body = (
       <div className="flex flex-1 flex-col items-center">
-        <PlayerBar p={match.players[opp]} active={oppActive} left={left} total={total} label={oppLabel} bubble={bubbles[opp]} muted={muted} onMute={muteOpp} />
+        <PlayerBar p={match.players[opp]} active={oppActive} left={left} total={total} label={oppLabel} bubble={bubbles[opp]} muted={muted} onMute={muteOpp} xray={oppXray} />
         {h2hOn && <H2HStrip h2h={match.h2h!} opp={match.players[opp].nick} />}
         {match.game === 'BOTAO' && <BotaoStrip bv={match.bv} you={you} oppNick={match.players[opp].nick} firstSnaps={rules.botao?.firstTurnSnaps ?? 1} />}
         <div className="relative my-1.5" style={{ width: `min(92vw, 380px, calc((100dvh - ${250 + (h2hOn ? 26 : 0) + extraH}px) * 0.62))` }}>
@@ -773,7 +779,7 @@ function Waiting({ rules, gameName, elapsed, botOffer, onCancel, onBot, onKeep }
  * Barra do jogador. `bubble` = a provocação dele agora (balão ao lado do avatar: o meu sobe, o do adversário desce,
  * como a torre do Clash Royale); no balão do adversário há o X de silenciar. `muted` = já silenciei este adversário.
  */
-function PlayerBar({ p, me = false, active, left, total, label, bubble, muted, onMute }: { p: Player; me?: boolean; active: boolean; left: number; total: number; label: string | null; bubble?: Bubble | null; muted?: boolean; onMute?: () => void }) {
+function PlayerBar({ p, me = false, active, left, total, label, bubble, muted, onMute, xray = false }: { p: Player; me?: boolean; active: boolean; left: number; total: number; label: string | null; bubble?: Bubble | null; muted?: boolean; onMute?: () => void; xray?: boolean }) {
   const pct = Math.max(0, Math.min(1, left / total));
   return (
     <div className={`relative z-10 flex w-full max-w-[380px] items-center gap-2 rounded-2xl px-2 py-1 ${active ? 'bg-gold/30 ring-2 ring-gold' : 'bg-navy-deep/40'}`}>
@@ -783,6 +789,7 @@ function PlayerBar({ p, me = false, active, left, total, label, bubble, muted, o
         <div className="truncate text-[11px] font-extrabold text-white/85">{label ?? p.team.name}</div>
       </div>
       {muted && <span className="flex shrink-0 items-center gap-1 rounded-full bg-navy-deep/70 px-2 py-0.5 text-[10px] font-black text-white/90"><img src="/ui/pi-sound_off.png" className="h-3 w-3" alt="" />silenciado</span>}
+      {xray && <span className="shrink-0 rounded bg-danger px-1.5 py-0.5 font-display text-[10px] text-white" title="O adversário está vendo a trajetória">RAIO-X</span>}
       <AnimatePresence>
         {bubble && (
           <motion.div key={bubble.id} initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0, y: me ? 6 : -6 }} transition={{ type: 'spring', stiffness: 380, damping: 16 }}

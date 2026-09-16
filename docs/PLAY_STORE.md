@@ -105,6 +105,11 @@ bubblewrap build --skipPwaValidation     # → app-release-bundle.aab (loja) e a
 - [x] Primeiro build feito e **publicado no Teste interno** (14/09, versão 1 / 1.0.0, 1,98 MB na loja).
 - [x] Testado no **emulador** (14/09): abre sem barra de endereço, login OK, `/vip` mostra "chega em
   breve" no lugar dos pacotes PIX. Num celular: `adb install app-release-signed.apk`.
+- **APK de teste publicado (16/09/2026, pedido do dono, enquanto o teste fechado não termina):**
+  `https://jogagol.com.br/app/JogaGol-1.0.0-teste.apk` — nginx `location /app/` → `/var/www/brgol/downloads/`
+  (fora do `dist`, que o deploy apaga; MIME `application/vnd.android.package-archive`). Versão nova: copiar o
+  `app-release-signed.apk` novo para lá com outro nome (`scp` como root, `chown brgol`). **Quem instalou o APK
+  precisa desinstalar antes de instalar pela loja** (a loja assina com a chave do Play App Signing, não a de upload).
 
 #### 4b. Emulador Android no PC (montado 14/09/2026)
 Serve para VOCÊ testar e para entrar como testador pela Play Store sem celular — nunca para inflar a

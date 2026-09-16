@@ -490,6 +490,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   retira; nunca abaixo de 0; ações `vip`/`vip-retirar`/`saldo`/`saldo-retirar` no log) — painel "VIP E SALDO" no
   detalhe do jogador.
   Não confundir com `/api/admin` (x-admin-key, uso via curl) — intocado.
+- **LEIA: `docs/INCIDENTE-2026-09-16-cadastro-falsos-positivos.md`** — o anti-robô barrou jogadores reais (honeypot
+  preenchido por autofill; "rápido demais" por relógio adiantado) que nunca voltaram. Tem evidências, o que já foi feito e
+  uma lista de PENDÊNCIAS para a IA do Erickles investigar e levar a ele (contato com as pessoas, varredura de outros
+  falsos positivos, decisão sobre Turnstile).
 - **Anti-robô do cadastro** (`lib/security.js`): tempo mínimo de 3 s no formulário — **sem honeypot** desde 16/09/2026
   (o autofill do Android no WebView do Instagram preenchia o campo escondido `website` e barrou 10x um jogador real,
   zero robôs; não reintroduzir). O front

@@ -30,9 +30,9 @@ const registerSchema = z.object({
   teamSlug: z.string().min(1, 'Escolha um time.'),
   gender: z.enum(['M', 'F']).default('M'),
   ref: z.string().trim().max(16).optional(), // código do link de convite (services/referral.js)
-  // anti-robô (lib/security.js): honeypot, tempo que o formulário ficou aberto (elapsedMs; fronts antigos
+  // anti-robô (lib/security.js): tempo que o formulário ficou aberto (elapsedMs; fronts antigos
   // mandam startedAt) e token do Turnstile (se ligado)
-  website: z.string().max(200).optional(),
+  website: z.string().max(200).optional(), // ex-honeypot; aceito de fronts em cache e ignorado (16/09/2026)
   elapsedMs: z.number().optional(),
   startedAt: z.number().optional(),
   turnstileToken: z.string().max(4000).optional(),
@@ -43,7 +43,7 @@ auth.post('/register', registerLimiter, handle(async (req) => {
   const ip = clientIp(req);
   // barrado = aviso no Telegram (1 por IP a cada 10 min; os repetidos viram contador)
   const barrado = (motivo) => tg.warn(`🧱 Cadastro barrado (${motivo}) — IP <code>${tg.esc(ip)}</code>, nick <code>${tg.esc(body.nick)}</code>, e-mail <code>${tg.esc(body.email)}</code>`, { key: `reg-block:${ip}`, every: 10 * 60_000 });
-  try { checkRegisterForm(body); } catch (e) { barrado(e.code === 'slow-down' ? 'rápido demais' : 'honeypot'); throw e; }
+  try { checkRegisterForm(body); } catch (e) { barrado('rápido demais'); throw e; }
   try { await verifyTurnstile(body.turnstileToken, ip); } catch (e) { barrado('captcha'); throw e; }
   if (isDisposableEmail(body.email)) { barrado('e-mail descartável'); throw badRequest('Use um e-mail de verdade — endereços temporários não são aceitos.'); }
   const team = await prisma.team.findUnique({ where: { slug: body.teamSlug } });

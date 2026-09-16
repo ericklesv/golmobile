@@ -23,9 +23,9 @@ export function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [gender, setGender] = useState<'M' | 'F'>('M');
   const [busy, setBusy] = useState(false);
-  // anti-robô (api/src/lib/security.js): honeypot que humano não vê, tempo que o formulário ficou aberto (medido
-  // aqui, no relógio do aparelho — o servidor não compara com o relógio dele) e token do Turnstile
-  const [website, setWebsite] = useState('');
+  // anti-robô (api/src/lib/security.js): tempo que o formulário ficou aberto (medido aqui, no relógio do
+  // aparelho — o servidor não compara com o relógio dele) e token do Turnstile. O honeypot `website` foi
+  // removido em 16/09/2026: o autofill do Android no WebView do Instagram preenchia e barrava jogador real.
   const [startedAt] = useState(() => Date.now());
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const onToken = useCallback((t: string | null) => setTurnstileToken(t), []);
@@ -38,7 +38,7 @@ export function RegisterScreen() {
     if (busy) return;
     if (!teamSlug) { toast('Escolha seu time.', 'error'); setStep(1); return; }
     setBusy(true);
-    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender, ref: savedInvite() ?? undefined, website, elapsedMs: Math.max(0, Date.now() - startedAt), turnstileToken: turnstileToken ?? undefined }); clearInvite(); nav('/', { replace: true }); }
+    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender, ref: savedInvite() ?? undefined, elapsedMs: Math.max(0, Date.now() - startedAt), turnstileToken: turnstileToken ?? undefined }); clearInvite(); nav('/', { replace: true }); }
     catch (err: any) { toast(err?.message ?? 'Falha no cadastro.', 'error'); }
     finally { setBusy(false); }
   }
@@ -90,9 +90,6 @@ export function RegisterScreen() {
                 <button type="button" key={g} onClick={() => setGender(g)} className={`btn btn-md flex-1 ${gender === g ? 'btn-blue' : 'btn-gray'}`}>{g === 'M' ? 'Jogador' : 'Jogadora'}</button>
               ))}
             </div>
-            {/* honeypot: fica fora da tela; robô que preenche é barrado no servidor */}
-            <input value={website} onChange={(e) => setWebsite(e.target.value)} name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
-              className="absolute -left-[9999px] h-px w-px opacity-0" />
             <Turnstile onToken={onToken} />
           </div>
           <button className="btn btn-orange btn-lg w-full" disabled={busy}>{busy ? 'Criando…' : 'Criar jogador'}</button>

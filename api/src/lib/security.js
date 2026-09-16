@@ -1,6 +1,6 @@
 /**
  * Segurança da API (pedido do dono, 15/09/2026 — o concorrente sofre com DDoS e cadastro em massa):
- *   - cadastro: teto de contas por IP em 24 h, e-mail descartável barrado, honeypot + tempo mínimo no
+ *   - cadastro: teto de contas por IP em 24 h, e-mail descartável barrado, tempo mínimo no
  *     formulário, Turnstile (captcha invisível da Cloudflare) quando TURNSTILE_SECRET estiver no .env;
  *   - login: trava POR CONTA depois de N senhas erradas (o limite por IP não segura botnet);
  *   - cache curto em memória para as rotas públicas pesadas (rankings, liga, home…): numa rajada o
@@ -38,15 +38,17 @@ export function isDisposableEmail(email) {
   return false;
 }
 
-// ─── Cadastro: honeypot + tempo mínimo ──────────────────────────────────────
-/** `website` é um campo escondido do formulário (humano não vê, robô preenche); `elapsedMs` = quanto tempo
+// ─── Cadastro: tempo mínimo ─────────────────────────────────────────────────
+/** SEM honeypot desde 16/09/2026: o campo escondido `website` era preenchido pelo autofill do Android
+ *  (Samsung Pass/Google) dentro do WebView do Instagram, que ignora autocomplete=off — 10 bloqueios na vida
+ *  do site, TODOS de um mesmo jogador real (Galaxy S24+) que nunca conseguiu se cadastrar, e nenhum robô.
+ *  O campo ainda é aceito (front em cache) e ignorado. `elapsedMs` = quanto tempo
  *  o formulário ficou aberto, medido NO APARELHO (abriu e enviou pelo mesmo relógio — só serve para pegar
  *  script que envia na hora). Fronts antigos ainda mandam `startedAt` (hora em que abriu, no relógio do
  *  aparelho); comparar isso com o relógio do servidor barrava gente com o PC adiantado ("rápido demais"
  *  depois de 1 min no formulário — caso real de 15/09/2026), então esse caminho só vale enquanto o front
  *  em cache não atualiza e NUNCA barra diferença negativa (relógio na frente = não é robô). */
 export function checkRegisterForm(body) {
-  if (typeof body?.website === 'string' && body.website.trim() !== '') throw badRequest('Cadastro inválido.');
   const slow = () => new GameError(429, 'slow-down', 'Calma, craque! Confira os dados e tente de novo.');
   const elapsed = Number(body?.elapsedMs);
   if (Number.isFinite(elapsed)) {

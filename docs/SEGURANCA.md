@@ -71,8 +71,10 @@ com o passo 1 e a Cloudflare já segura o grosso (o IP de origem fica "secreto" 
 - Limite de **5 cadastros por hora por IP** (`registerLimiter`) e **3 contas por IP em 24 h**
   (`User.createdIp`, migração 0026; erro `too-many-accounts`).
 - **E-mail descartável** barrado (`disposable-email-domains`, ~120 mil domínios, subdomínios inclusos).
-- **Honeypot** (`website`, campo fora da tela no `Register.tsx`) + **tempo mínimo de 3 s** no formulário
-  (`startedAt` do cliente).
+- **Tempo mínimo de 3 s** no formulário (`elapsedMs` do cliente). O **honeypot** `website` foi REMOVIDO em
+  16/09/2026: o autofill do Android (Samsung Pass/Google) no WebView do Instagram preenchia o campo escondido
+  mesmo com `autocomplete=off` — 10 bloqueios, todos de um único jogador real, zero robôs. Não reintroduzir
+  campo escondido com nome que autofill reconheça; se precisar de mais defesa, ligar o Turnstile.
 - **Turnstile** quando configurado (1b). Cloudflare fora do ar não trava o cadastro (registra e deixa passar).
 - Painel de admin recebe `createdIp` na lista (ver contas em série do mesmo IP).
 
@@ -131,7 +133,7 @@ Mesmo bot e mesmo chat do Managol (o dono pediu "da mesmíssima forma"): `TELEGR
 `TELEGRAM_CHAT_ID` no `api/.env` da VPS (copiados do `.env` do Managol) e em `/etc/brgol-telegram.conf`
 (root, para os scripts). Toda mensagem começa com "⚽ JogaGol". Vazio = desligado.
 - **API** (`api/src/lib/telegram.js`, `tg.info/warn/error`): 👤 cadastro novo (nick, time, e-mail, IP,
-  convite) · 🧱 cadastro barrado (honeypot, rápido demais, captcha, e-mail descartável, teto por IP — 1
+  convite) · 🧱 cadastro barrado (rápido demais, captcha, e-mail descartável, teto por IP — 1
   aviso por IP a cada 10 min, repetidos viram "+N iguais") · 🔒 conta trancada por senhas erradas ·
   🛒 PIX gerado · 💰 **VIP pago** (nick, dias, valor) · Efí com problema · 🚩 denúncia (com o texto) ·
   🗑️ conta excluída · 🛡️ toda ação do painel de admin · 🔴 erro 500 (rota + mensagem, 1 por rota a

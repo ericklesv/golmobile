@@ -434,7 +434,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   diretoria e o pareamento do Cabeção). Sem nginx (PC/testes) cai no X-Forwarded-For. **Mexeu? Rode
   `node scripts/test-contas-por-ip.js`** (pasta api/, banco LOCAL, API no ar; tem de dar "TUDO OK").
 - **Segurança** (`lib/security.js`; plano completo, Cloudflare e comandos da VPS em **`docs/SEGURANCA.md`**;
-  pedido do dono, 15/09/2026): cadastro com honeypot (`website`) + 3 s mínimos no formulário (`startedAt`),
+  pedido do dono, 15/09/2026): cadastro com 3 s mínimos no formulário (`elapsedMs`; honeypot REMOVIDO 16/09),
   e-mail descartável barrado (`disposable-email-domains`), **5 cadastros/h por IP** e **3 contas por IP em
   24 h** (`User.createdIp`, migração 0026), **Turnstile** só com `TURNSTILE_SITE_KEY`+`TURNSTILE_SECRET` no
   `.env` (a meta manda `turnstileSiteKey`; `components/Turnstile.tsx`); login com **trava por conta** (10
@@ -490,7 +490,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   retira; nunca abaixo de 0; ações `vip`/`vip-retirar`/`saldo`/`saldo-retirar` no log) — painel "VIP E SALDO" no
   detalhe do jogador.
   Não confundir com `/api/admin` (x-admin-key, uso via curl) — intocado.
-- **Anti-robô do cadastro** (`lib/security.js`): honeypot `website` + tempo mínimo de 3 s no formulário. O front
+- **Anti-robô do cadastro** (`lib/security.js`): tempo mínimo de 3 s no formulário — **sem honeypot** desde 16/09/2026
+  (o autofill do Android no WebView do Instagram preenchia o campo escondido `website` e barrou 10x um jogador real,
+  zero robôs; não reintroduzir). O front
   manda **`elapsedMs`** (abriu → enviou, medido no MESMO relógio do aparelho); o servidor NÃO compara com o relógio
   dele — comparar `startedAt` do cliente com `Date.now()` do servidor barrava quem tinha o PC adiantado ("rápido
   demais" depois de 1 min no formulário; caso real de 15/09/2026). `startedAt` ainda é aceito de fronts em cache,

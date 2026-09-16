@@ -16,7 +16,7 @@ interface AuthState {
   setMe: (me: Me) => void;
   refresh: () => Promise<void>;
   login: (login: string, password: string) => Promise<void>;
-  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string; ref?: string; website?: string; elapsedMs?: number; turnstileToken?: string }) => Promise<void>;
+  register: (b: { nick: string; email: string; password: string; teamSlug: string; gender: string; ref?: string; elapsedMs?: number; turnstileToken?: string }) => Promise<void>;
   logout: () => void;
   now: () => number;
 }

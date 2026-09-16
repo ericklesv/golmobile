@@ -1,5 +1,5 @@
 /**
- * Segurança (lib/security.js) direto no banco LOCAL: teto de contas por IP, e-mail descartável, honeypot,
+ * Segurança (lib/security.js) direto no banco LOCAL: teto de contas por IP, e-mail descartável,
  * tempo mínimo do formulário, trava de login por conta, cache das rotas públicas, limite de busca.
  * Sobe a API na porta 4398 e bate nela por HTTP; o IP é simulado por X-Forwarded-For (trust proxy 1 —
  * o pedido vem de 127.0.0.1, que é o "proxy"). Cria jogadores de teste, por isso só roda em localhost.
@@ -34,8 +34,9 @@ const IP_REG = livre('203.0.113'), IP_A = livre('198.51.100'), IP_OUTRO = livre(
 const reg = (n, extra = {}, ip = IP_REG) => call('POST', '/api/auth/register', { nick: n, email: `${n}@teste.com`, password: 'senha123', gender: 'M', teamSlug: team.slug, elapsedMs: 10_000, ...extra }, { ip });
 
 console.log('cadastro');
-let r = await reg(`sec${tag}a`, { website: 'http://spam' });
-ok(r.status === 400, 'honeypot preenchido = 400');
+// honeypot removido em 16/09/2026 (autofill do Android preenchia e barrava jogador real): `website` cheio passa
+let r = await reg(`sec${tag}a`, { website: 'https://jogagol.com.br' });
+ok(r.status === 200 || r.status === 201, 'campo website preenchido (autofill / front em cache) NÃO barra mais');
 r = await reg(`sec${tag}b`, { elapsedMs: 800 });
 ok(r.status === 429 && r.data.error === 'slow-down', 'formulário enviado em < 3 s = 429');
 r = await reg(`sec${tag}b`, { elapsedMs: undefined, startedAt: Date.now() - 500 });
@@ -43,10 +44,11 @@ ok(r.status === 429 && r.data.error === 'slow-down', 'front antigo (startedAt) e
 r = await reg(`sec${tag}c`, { email: `sec${tag}c@mailinator.com` });
 ok(r.status === 400 && /temporários/.test(r.data.message), 'e-mail descartável = 400');
 // relógio do aparelho adiantado (caso real de 15/09/2026): 70 s no formulário, PC 2 min na frente do servidor
-r = await reg(`sec${tag}b`, { website: 'http://spam', elapsedMs: undefined, startedAt: Date.now() + 120_000 - 70_000 });
-ok(r.status === 400, 'front antigo com relógio adiantado NÃO cai em "rápido demais" (chega ao honeypot = 400)');
-// as recusas acima (6 do mesmo IP, mais que o limite de 5/h) não gastam a cota: o cadastro certo passa
-r = await reg(`sec${tag}b`, { website: 'http://spam' });
+r = await reg(`sec${tag}b`, { email: `sec${tag}b@mailinator.com`, elapsedMs: undefined, startedAt: Date.now() + 120_000 - 70_000 });
+ok(r.status === 400 && /temporários/.test(r.data.message), 'front antigo com relógio adiantado NÃO cai em "rápido demais" (chega à checagem de e-mail = 400)');
+// as recusas acima (5 do mesmo IP, no limite de 5/h) não gastam a cota: o cadastro certo passa
+r = await reg(`sec${tag}b`, { elapsedMs: 800 });
+r = await reg(`sec${tag}b`, { elapsedMs: 800 });
 r = await reg(`sec${tag}b`);
 ok(r.status === 200 || r.status === 201, 'depois de 7 recusas do mesmo IP, o cadastro certo ainda passa (recusa não conta no limite/h)');
 const ipA = IP_A;

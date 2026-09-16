@@ -129,8 +129,9 @@ Decisão do dono: "não é o recomendado, mas é o que tem pra hoje".
   -C /var/www/brgol/` → `.env`: copiar para `api/.env` → `pm2 restart brgol-api`.
 
 ## Avisos no Telegram — FEITO em 15/09/2026
-Mesmo bot e mesmo chat do Managol (o dono pediu "da mesmíssima forma"): `TELEGRAM_BOT_TOKEN` +
-`TELEGRAM_CHAT_ID` no `api/.env` da VPS (copiados do `.env` do Managol) e em `/etc/brgol-telegram.conf`
+Mesmo bot do Managol (@Managol_bot), mas **desde 16/09/2026 o chat do JogaGol é o grupo "JogaGol - ADMIN"**
+(`TELEGRAM_CHAT_ID=-5485010092`, com o dono e o Erickles; antes era o privado do dono — o Managol continua no
+privado). `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` no `api/.env` da VPS e em `/etc/brgol-telegram.conf`
 (root, para os scripts). Toda mensagem começa com "⚽ JogaGol". Vazio = desligado.
 - **API** (`api/src/lib/telegram.js`, `tg.info/warn/error`): 👤 cadastro novo (nick, time, e-mail, IP,
   convite) · 🧱 cadastro barrado (rápido demais, captcha, e-mail descartável, teto por IP — 1

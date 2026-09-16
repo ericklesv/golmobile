@@ -182,7 +182,7 @@ export function X1Screen() {
   }, [me.nick]);
   // o servidor guarda o Raio-X por conexão: ao (re)conectar, conta de novo
   useEffect(() => { if (xray) send({ t: 'xray', on: true }); }, [phase === 'lobby' || phase === 'match']);
-  // o jogo do dia vira às 20h (com a tela aberta): os jogos se alternam
+  // o jogo do dia vira às 19h, junto com a rodada (com a tela aberta): os jogos se alternam
   useEffect(() => {
     if (!today) return;
     const t = window.setTimeout(() => setToday((d) => (d ? { ...d, game: d.next, name: d.nextName, next: d.game, nextName: d.name, switchAt: d.switchAt + 86_400_000 } : d)), Math.max(1000, today.switchAt - Date.now() + 1500));
@@ -699,7 +699,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
           <div className="t-display text-[26px] leading-[1.05]">{today?.name ?? GAME_NAME[game]}</div>
           {today && (
             <p className="mt-1.5 text-[12px] font-bold leading-snug text-muted">
-              Às {today.switchHour ?? 20}h troca para <b className="text-navy-ink">{today.nextName}</b>{today.switchAt > now ? `, daqui a ${timeLeft(today.switchAt - now)}` : ''}.
+              Às {today.switchHour ?? 19}h troca para <b className="text-navy-ink">{today.nextName}</b>{today.switchAt > now ? `, daqui a ${timeLeft(today.switchAt - now)}` : ''}.
             </p>
           )}
           <Link to="/rankings?aba=x1" className="mt-2 inline-flex items-center gap-1 text-[12px] font-extrabold text-sky-deep underline decoration-2 underline-offset-2">Ranking X1 (com prêmios)</Link>

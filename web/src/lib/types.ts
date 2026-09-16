@@ -142,7 +142,7 @@ export interface Meta {
     points?: { win: number; draw: number; loss: number }; prizes?: { minGames: number; round: { from: number; to: number; money: number; vip: number }[]; season: { from: number; to: number; money: number; vip: number }[] };
     board?: import('../components/PregoBoard').PregoBoardData;
   };
-  /** X1: o jogo de hoje (vira às 20h) e o campo do Futebol de Botão (com os botões na saída, para o enfeite do começo). */
+  /** X1: o jogo de hoje (vira às 19h, com a rodada) e o campo do Futebol de Botão (com os botões na saída, para o enfeite do começo). */
   x1?: {
     names: Record<X1Game, string>; today: X1Today;
     botao: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; penalties: number; suddenDeath: number };

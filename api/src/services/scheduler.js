@@ -1,4 +1,5 @@
 import { settleDueRounds, closePastHours, ensureSeason, refreshLiveRound } from './league.js';
+import { dailyReportTick } from './dailyReport.js';
 import { vipOfflineAutoKicks } from './play.js';
 import { VIP_OFFLINE_AUTO } from '../lib/rules.js';
 import { tg } from '../lib/telegram.js';
@@ -41,6 +42,8 @@ async function tick() {
       const n = await referralSweep();
       if (n) console.log('[convite] marcos pagos:', n);
     }
+    // relatório diário no Telegram (08:00 de Brasília, o dia anterior) — um erro aqui não segura o resto
+    await dailyReportTick().catch((e) => { console.error('[relatorio] erro:', e); tg.error(`Relatório diário: ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'relatorio', every: 60 * 60_000 }); });
   } catch (e) {
     console.error('[scheduler] erro:', e);
     tg.error(`Scheduler (liga/hora/rodada): ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'scheduler', every: 10 * 60_000 });

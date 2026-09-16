@@ -177,7 +177,8 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **X1 — jogos 1x1 ao vivo, um por dia** (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar enjoativo";
   substituiu o card do FutPrego). `realtime/x1.js` (WebSocket `/api/ws/x1`, e `/api/ws/futprego` como nome antigo;
   `mode=game` na tela `/x1` = `screens/X1.tsx`, `mode=lobby` no convite `components/X1Invite.tsx`). O jogo do dia
-  alterna **às 19h de Brasília, junto com o fechamento da rodada** (`X1.switchHour`, `x1GameOf(dayNumberAt(19))` em `rules.js`/`x1.js`,
+  alterna **às 19h de Brasília, junto com o fechamento da rodada** (decisão FINAL do dono em 16/09/2026, depois de
+  ir e voltar entre 19h e 20h no dia 15 — não mudar de novo sem ele pedir; `X1.switchHour`, `x1GameOf(dayNumberAt(19))` em `rules.js`/`x1.js`,
   **atenção ao histórico**: o dono pediu 19h em 15/09, o Guilherme reverteu na mesma noite anotando "confirmado
   20h" (commit 02dd9d4) e o dono pediu 19h DE NOVO em 16/09 — se for mudar, combine entre vocês antes;
   `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão**
@@ -455,6 +456,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   nginx), SSH só por chave, unattended-upgrades. **Backup:** diário na VPS (`/usr/local/bin/brgol-backup.sh`
   = `tools/vps/brgol-backup.sh`, 03:40, `/var/backups/brgol`) + cópia mensal no PC do Guilherme
   (`tools/backup-local.ps1`, tarefa "JogaGol backup mensal"). Restaurar: `docs/SEGURANCA.md` → Backup.
+- **Relatório diário no Telegram** (pedido do outro investidor, 16/09/2026; `services/dailyReport.js`): todo dia às
+  **08:00 de Brasília** o grupo recebe o gráfico (PNG: 14 dias de contas criadas, gols e jogadores com 20+ gols; barra
+  de ontem em laranja, média 7d tracejada) + texto do dia anterior com ▲/▼ % vs dia anterior e vs média 7d, mais
+  jogadores que marcaram, PIX pagos (R$) e partidas do X1. SVG → PNG pelo `sharp` (**fonte DejaVu instalada na VPS
+  em 16/09** — sem fonte o texto sai vazio); `tg.photo()`; `DailyReport` (migração 0037) = dia já enviado (não repete
+  no reinício). Reenviar/testar: `POST /api/admin/relatorio-diario {day?, force?}` (x-admin-key; `?ver=1` só devolve
+  o PNG). Métrica nova = `series()` + `text` + painel em `renderDailyChart`.
 - **Telegram** (`lib/telegram.js`, `tg.info/warn/error`, mesmo bot do Managol (@Managol_bot) via `TELEGRAM_BOT_TOKEN`/
   `TELEGRAM_CHAT_ID`; pedido do dono, 15/09/2026; **desde 16/09 o chat é o grupo "JogaGol - ADMIN" (dono + Erickles),
   id em `docs/SEGURANCA.md` — trocar de chat = `api/.env` + `/etc/brgol-telegram.conf` + `pm2 restart`**): cadastro, cadastro barrado, conta trancada, PIX gerado/pago,

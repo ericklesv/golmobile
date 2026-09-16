@@ -60,8 +60,24 @@ function send(prefix, text, { key, every } = {}) {
   if (!timer) timer = setTimeout(flush, 300);
 }
 
+/** Manda uma foto (PNG em Buffer) com legenda em HTML (até 1024 caracteres) — relatório diário. Direto, sem fila. */
+async function photo(png, caption) {
+  if (!TOKEN || !CHAT) return false;
+  try {
+    const form = new FormData();
+    form.append('chat_id', CHAT);
+    form.append('caption', caption.slice(0, 1024));
+    form.append('parse_mode', 'HTML');
+    form.append('photo', new Blob([png], { type: 'image/png' }), 'relatorio.png');
+    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: 'POST', body: form, signal: AbortSignal.timeout(20000) });
+    if (!res.ok) { console.warn(`[telegram] foto falhou (${res.status}): ${(await res.text()).slice(0, 160)}`); return false; }
+    return true;
+  } catch (e) { console.warn('[telegram] foto erro:', e.message); return false; }
+}
+
 export const tg = {
   enabled: () => !!(TOKEN && CHAT),
+  photo,
   esc, money,
   info: (text, opts) => send('ℹ️', text, opts),
   warn: (text, opts) => send('⚠️', text, opts),

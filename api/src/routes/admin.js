@@ -5,6 +5,7 @@ import { requireAdminKey } from '../lib/auth.js';
 import { settleDueRounds, ensureSeason, closePastHours } from '../services/league.js';
 import { LEVELS } from '../lib/rules.js';
 import { startX1Drain, cancelX1Matches, stopX1Drain, x1Status } from '../realtime/x1.js';
+import { buildDailyReport, renderDailyChart, sendDailyReport } from '../services/dailyReport.js';
 
 export const admin = Router();
 admin.use(requireAdminKey);
@@ -26,6 +27,15 @@ admin.post('/x1/drain', handle((req) => startX1Drain(Number(req.body?.seconds) |
 admin.post('/x1/cancel', handle(() => cancelX1Matches('atualizacao')));
 admin.post('/x1/resume', handle(() => stopX1Drain())); // deploy abortado: destrava sem reiniciar
 admin.get('/x1/status', handle(() => x1Status()));
+
+// Relatório diário do Telegram (services/dailyReport.js): manda agora o de `day` (AAAA-MM-DD; padrão ontem), de novo se
+// preciso (`force`); com `?ver=1` só devolve o PNG do gráfico (conferir sem mandar).
+admin.post('/relatorio-diario', handle(async (req, res) => {
+  const day = req.body?.day ? String(req.body.day) : null;
+  if (req.query.ver) { const r = await buildDailyReport(day); res.type('png').send(await renderDailyChart(r)); return; }
+  const r = await sendDailyReport(day, { force: req.body?.force !== false });
+  return { day: r.day, skipped: !!r.skipped, text: r.text };
+}));
 
 admin.post('/vip', handle(async (req) => {
   const user = await prisma.user.findUnique({ where: { nickLower: String(req.body?.nick || '').toLowerCase() } });

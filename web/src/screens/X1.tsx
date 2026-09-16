@@ -307,11 +307,15 @@ export function X1Screen() {
           }
         }, () => {
           const last = frames[frames.length - 1];
-          if (before) setShown({ ball: { x: last[0][0], y: last[0][1] }, pieces: before.pieces.map((p, j) => ({ ...p, x: last[j + 1]?.[0] ?? p.x, y: last[j + 1]?.[1] ?? p.y })) });
+          // O servidor pode ter TIRADO botões nesta jogada: os goleiros quando o death match começa, ou o botão
+          // que acabou de jogar. Aí a cena boa é a DELE — o último quadro da animação ainda tem os botões
+          // antigos, e a seleção/mira passaria a sair do botão errado (bug de 16/09: "não consegui atacar
+          // quando eu sou o primeiro do death match", com os goleiros ainda desenhados em campo).
+          const mesmosBotoes = !!before && m.botao?.pieces?.length === before.pieces.length;
+          if (mesmosBotoes) setShown({ ball: { x: last[0][0], y: last[0][1] }, pieces: before.pieces.map((p, j) => ({ ...p, x: last[j + 1]?.[0] ?? p.x, y: last[j + 1]?.[1] ?? p.y })) });
+          else setShown(shownOf(m.botao));
           setMatch((x) => (x && x.game === 'BOTAO' ? { ...x, bv: m.botao } : x));
           if (m.goal) { setGoalFlash(m.goal.side === 0 ? 'top' : 'bottom'); setBigText(m.goal.own ? 'GOL CONTRA!' : 'GOL!'); }
-          // death match: o botão que jogou sai do campo — o servidor manda a cena já sem ele
-          if (m.out) setShown(shownOf(m.botao));
         });
         break;
       }

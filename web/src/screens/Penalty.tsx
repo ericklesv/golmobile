@@ -173,7 +173,7 @@ export function PenaltyScreen() {
         <div className="stadium-bg" />
         {!shot && captcha.box}
         <p className="t-display t-out relative text-center text-[13px] uppercase tracking-widest">
-          {shot ? (result?.goal ? 'É GOL!' : 'O goleiro foi no canto certo…') : `Escolha o canto · destreza ${me.dexterity} · ${Math.round((2 / 3 + me.dexterity / 100) * 100)}% de acerto`}
+          {shot ? (result?.goal ? 'É GOL!' : 'O goleiro foi no canto certo…') : `Escolha o canto · ${Math.round(me.chance.PENALTY * 100)}% de acerto`}
         </p>
         <div className="relative flex items-end justify-around px-2">
           <KickArrowButton dir="left" label="Esquerda" onClick={() => kick('left')} disabled={!ready || busy || !!shot} />

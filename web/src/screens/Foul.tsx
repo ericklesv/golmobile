@@ -195,7 +195,7 @@ export function FoulScreen() {
         <div className="stadium-bg" />
         {!shot && captcha.box}
         <p className="t-display t-out relative text-center text-[13px] uppercase tracking-widest">
-          {shot ? (result?.goal ? 'É GOL!' : 'Não foi dessa vez…') : `Escolha a cobrança · ${Math.round((0.5 + me.dexterity / 100) * 100)}% de acerto`}
+          {shot ? (result?.goal ? 'É GOL!' : 'Não foi dessa vez…') : `Escolha a cobrança · ${Math.round(me.chance.FOUL * 100)}% de acerto`}
         </p>
         <div className="relative flex items-end justify-around px-2">
           <KickArrowButton dir="left" label="Por fora" onClick={() => kick('left')} disabled={!ready || busy || !!shot} />

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PublicPlayer } from '../lib/types';
 import { NameBadges, TopHistory } from '../components/Badges';
 import { X1Record } from '../components/X1Record';
+import { SkillTracks } from '../components/Skills';
 import { InvitePanel } from '../components/Invite';
 import { WhatsButton } from '../components/WhatsInvite';
 import { Link, useNavigate } from 'react-router-dom';
@@ -60,8 +61,6 @@ export function ProfileScreen() {
     try { setMe(await api.removeAvatar()); toast('Foto removida.', 'success'); } catch (err) { toast((err as Error).message, 'error'); } finally { setBusy(false); }
   }
 
-  const dexMax = meta?.dexterityMax ?? 30;
-
   async function saveBio() {
     try { setMe(await api.setBio(bio)); toast('Texto pessoal salvo.', 'success'); } catch (e) { toast((e as Error).message, 'error'); }
   }
@@ -107,9 +106,14 @@ export function ProfileScreen() {
 
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Dinheiro" value={fmt(me.money)} icon="/ui/ico-coin01_s.png" />
-        <Stat label="Destreza" value={`${me.dexterity}/${dexMax}`} icon="/ui/ico-energy.png" />
+        <Stat label="Pontos" value={String(me.skills.points)} icon="/ui/ico-star_gold.png" sub="para habilidades" />
         <Stat label="VIP" value={me.vip ? 'ATIVO' : `${me.vipDays} un.`} icon="/ui/ico-crown_silver.png" sub={me.vip && me.vipUntil ? `até ${new Date(me.vipUntil).toLocaleDateString('pt-BR')}` : undefined} />
       </div>
+
+      <Panel title="HABILIDADES" ribbon="green">
+        <SkillTracks skills={me.skills} chance={me.chance} />
+        <Link to="/loja" className="btn btn-green btn-sm mt-2 w-full">Subir nível na Loja</Link>
+      </Panel>
 
       <InvitePanel />
 
@@ -133,7 +137,7 @@ export function ProfileScreen() {
       <X1Record record={pub?.x1} history={pub?.history} isMe />
 
       <button onClick={() => { sound.setEnabled(!som); setSom(!som); }} className={`btn btn-md w-full ${som ? 'btn-sky' : 'btn-gray'}`}><img src={som ? '/ui/pi-sound_on.png' : '/ui/pi-sound_off.png'} className="h-6 w-6" alt="" /> Sons da interface: {som ? 'ligados' : 'desligados'}</button>
-      <Link to="/loja" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-goldpouch.png" className="h-6 w-6" alt="" /> Loja: destreza, VIP e itens</Link>
+      <Link to="/loja" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-goldpouch.png" className="h-6 w-6" alt="" /> Loja: habilidades, VIP e itens</Link>
       <WhatsButton />
       {me.isAdmin && <Link to="/admin" className="btn btn-gray btn-md w-full"><img src="/ui/pi-setting.png" className="h-5 w-5" alt="" /> Painel de admin</Link>}
       <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL} · <Link to="/niveis" className="t-gold t-display">níveis</Link> · <Link to="/regras" className="t-gold t-display">regras</Link></p>

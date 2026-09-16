@@ -19,7 +19,7 @@ import { randomInt } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { GameError } from '../lib/errors.js';
 import { dayNumberAt, nextResetAt } from '../lib/time.js';
-import { MINIGAMES, RESET_HOUR, resetLabel, levelOf, DEXTERITY_MAX } from '../lib/rules.js';
+import { MINIGAMES, RESET_HOUR, resetLabel, levelOf, SKILL_BY_KEY } from '../lib/rules.js';
 import { FRANGACO as C, parseKick, stepEntry, stepIncoming, stepKick, stepSave, pendingExpired } from '../lib/frangaco.js';
 import { applyResult, loadUser } from './play.js';
 import { liveMatchForTeam, currentRound } from './league.js';
@@ -203,8 +203,8 @@ export async function frangacoState(userId) {
   return {
     temporada,
     meuTime: { ...clubView(user.team), kitHome: kitOf(user.team.colorPrimary, user.team.colorSecondary) },
-    // batedor e goleiro = o PRÓPRIO jogador: precisão pela destreza, reflexo pelo nível (0,35–0,8)
-    meuBatedor: { nome: user.nick, precisao: r2(0.4 + 0.6 * Math.min(1, user.dexterity / DEXTERITY_MAX)), designado: true },
+    // batedor e goleiro = o PRÓPRIO jogador: precisão pela Pontaria, reflexo pelo nível (0,35–0,8)
+    meuBatedor: { nome: user.nick, precisao: r2(0.4 + 0.6 * Math.min(1, (user.skillAim ?? 0) / SKILL_BY_KEY.AIM.max)), designado: true },
     meuGoleiro: { nome: user.nick, reflexo: r2(0.35 + 0.45 * Math.min(1, lvl / 20)), designado: true },
     meusTitulos: meus,
     minhaPosicao: meus > 0 ? titulos.findIndex((t) => t.userId === userId) + 1 : null,
@@ -265,7 +265,7 @@ export function frangacoKick(userId, body = {}) {
   const aim = parseKick(body);
   return withFrangaco(userId, async (ctx) => {
     const user = await loadUser(ctx.tx, userId);
-    const { r, fim } = stepKick(rand, ctx.st, { ...aim, dexterity: user.dexterity },
+    const { r, fim } = stepKick(rand, ctx.st, { ...aim, pontaria: user.skillAim ?? 0 },
       !!(ctx.row.finishedAt ?? ctx.patch.finishedAt));
     const mensagem = await applyFim(ctx, fim, user);
     return {

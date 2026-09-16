@@ -1,4 +1,4 @@
-import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -56,8 +56,6 @@ export const api = {
   opponent: () => req<{ opponent: import('./types').Team | null }>('GET', '/api/me/opponent'),
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
   setNickFade: (from: string | null, to: string | null) => req<Me>('POST', '/api/me/nick-fade', { from, to }),
-  buyDexterity: (qty = 1) => req<Me>('POST', '/api/me/buy-dexterity', { qty }),
-  nerf: (nick: string) => req<{ ok: boolean; me: Me }>('POST', `/api/me/nerf/${encodeURIComponent(nick)}`),
   activateVip: (days: number) => req<Me>('POST', '/api/me/activate-vip', { days }),
   // play
   autoKick: () => req<KickResult>('POST', '/api/play/auto'),
@@ -158,6 +156,8 @@ export const api = {
   shopNick: (nick: string) => req<Me>('POST', '/api/shop/nick', { nick }),
   shopNickColor: (color: string | null) => req<Me>('POST', '/api/shop/nick-color', { color }),
   shopTeam: (teamSlug: string, currency: 'money' | 'vip') => req<Me>('POST', '/api/shop/team', { teamSlug, currency }), // Troca de time (paga)
+  /** Sobe 1 nível de uma habilidade pagando com ponto de nível, dinheiro ou VIP guardado. */
+  shopSkill: (key: SkillKey, currency: 'point' | 'money' | 'vip') => req<{ me: Me }>('POST', '/api/shop/skill', { key, currency }),
   // painel de admin (só usuários com isAdmin; o servidor nega os demais)
   adminUsers: (q = '', page = 1, order: 'recentes' | 'criadas' = 'recentes') => req<AdminUsersPage>('GET', `/api/painel/users?q=${encodeURIComponent(q)}&page=${page}&order=${order}`),
   adminUser: (id: number) => req<AdminUserDetail>('GET', `/api/painel/users/${id}`),

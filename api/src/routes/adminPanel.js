@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { prisma } from '../prisma.js';
 import { handle, badRequest, notFound, GameError } from '../lib/errors.js';
 import { requireAdmin } from '../lib/auth.js';
-import { levelOf, levelPoints, isVip, MONEY, DEXTERITY_MAX } from '../lib/rules.js';
+import { levelOf, levelPoints, isVip, MONEY, SKILL_BY_KEY } from '../lib/rules.js';
 import { NICK_RULE, NICK_COLORS } from '../lib/items.js';
 import { teamView, nickFadeOf } from '../services/view.js';
 import { applyResult, loadUser } from '../services/play.js';
@@ -45,7 +45,7 @@ function detailView(u, geo, now = Date.now()) {
   return {
     ...rowView(u, now),
     gender: u.gender, bio: u.bio ?? null, createdAt: u.createdAt,
-    dexterity: u.dexterity, levelBonus: u.levelBonus ?? 0, vipUntil: u.vipUntil,
+    skillAim: u.skillAim ?? 0, skillShot: u.skillShot ?? 0, levelBonus: u.levelBonus ?? 0, vipUntil: u.vipUntil,
     conn: { ip: u.lastIp ?? null, at: u.lastIpAt ?? null, geo }, // geo null = sem dados
   };
 }
@@ -108,7 +108,8 @@ const patchSchema = z.object({
   bio: z.string().max(400, 'Texto pessoal: máximo de 400 caracteres.').nullable().optional(),
   money: z.number().int().min(0).max(1_000_000_000).optional(),
   vipDays: z.number().int().min(0).max(100_000).optional(),
-  dexterity: z.number().int().min(0).max(DEXTERITY_MAX).optional(),
+  skillAim: z.number().int().min(0).max(SKILL_BY_KEY.AIM.max).optional(),
+  skillShot: z.number().int().min(0).max(SKILL_BY_KEY.SHOT.max).optional(),
   nickColor: z.string().nullable().optional(),
   teamSlug: z.string().min(1).optional(),
   /** Horas de banimento: > 0 bane a partir de agora; 0 desbane. */
@@ -136,7 +137,8 @@ adminPanel.patch('/users/:id', handle(async (req) => {
   if (body.bio !== undefined && (body.bio ?? null) !== (u.bio ?? null)) { data.bio = body.bio; changed.bio = true; }
   if (body.money !== undefined && body.money !== u.money) { data.money = body.money; changed.money = { de: u.money, para: body.money }; }
   if (body.vipDays !== undefined && body.vipDays !== u.vipDays) { data.vipDays = body.vipDays; changed.vipDays = { de: u.vipDays, para: body.vipDays }; }
-  if (body.dexterity !== undefined && body.dexterity !== u.dexterity) { data.dexterity = body.dexterity; changed.dexterity = { de: u.dexterity, para: body.dexterity }; }
+  if (body.skillAim !== undefined && body.skillAim !== (u.skillAim ?? 0)) { data.skillAim = body.skillAim; changed.skillAim = { de: u.skillAim ?? 0, para: body.skillAim }; }
+  if (body.skillShot !== undefined && body.skillShot !== (u.skillShot ?? 0)) { data.skillShot = body.skillShot; changed.skillShot = { de: u.skillShot ?? 0, para: body.skillShot }; }
   if (body.nickColor !== undefined && (body.nickColor ?? null) !== (u.nickColor ?? null)) {
     if (body.nickColor !== null && !NICK_COLORS.some((c) => c.key === body.nickColor)) throw badRequest('Cor de nick inválida.');
     data.nickColor = body.nickColor; changed.nickColor = { de: u.nickColor ?? null, para: body.nickColor };

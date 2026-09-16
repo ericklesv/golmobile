@@ -12,7 +12,7 @@
  * DEFESA: o servidor sorteia um alvo + janela de reação; o clique chega em
  * {ms, x, y} e é validado pelo relógio DO SERVIDOR (tolerância de rede).
  */
-import { DEXTERITY_MAX } from './rules.js';
+import { SKILL_BY_KEY } from './rules.js';
 import { GameError, badRequest } from './errors.js';
 
 export const FRANGACO = {
@@ -37,11 +37,11 @@ export const FRANGACO = {
   pendingBudgetMs: 20_000,     // aba fechada: passou disso desde o /incoming, resolve como gol da IA
   goalW: 7.32, goalH: 2.44,
   // Cobrança
-  spreadBase: 0.11,            // dispersão em x (fração do gol) com destreza 0
-  spreadDexCut: 0.5,           // destreza máxima corta metade da dispersão
+  spreadBase: 0.11,            // dispersão em x (fração do gol) sem Pontaria
+  spreadDexCut: 0.5,           // Pontaria no máximo corta metade da dispersão
   fintaMin: 0.12,              // |xReal - xAnunciado| a partir daqui conta como finta de verdade
   keeperReach: 0.11,           // alcance base do goleiro IA (fração da largura do gol)
-  dexReachCut: 0.25,           // destreza máxima encurta 25% do alcance efetivo do goleiro
+  dexReachCut: 0.25,           // Pontaria no máximo encurta 25% do alcance efetivo do goleiro
   trustAnnounced: 0.88,        // sem finta: o goleiro "quase sempre pega" (vai no anunciado)
   announceBias: 0.62,          // com finta: chance do goleiro ACREDITAR no canto anunciado
   fintaReadChance: 0.7,        // desconfiou da finta: chance de ler o chute real (fintar tem risco)
@@ -57,14 +57,14 @@ const noise = (rand) => (rand() + rand() + rand()) / 1.5 - 1;
 
 /**
  * Resolve a MINHA cobrança. `xAnunciado` 0..1 (o canto que o goleiro lê);
- * `xReal` 0..1 ou null (a finta — sem ela a bola vai na anunciada); a destreza
+ * `xReal` 0..1 ou null (a finta — sem ela a bola vai na anunciada); a Pontaria
  * aperta a dispersão e "seca" o goleiro, como no pênalti/falta.
  * Devolve { gol, motivo, xBola, yBola, xGk, fintou } — motivos que o Unity
  * traduz: gol em 'gol' | 'tirou-tinta' | 'rebote-trave' | 'vazou' (frango);
  * perdeu em 'travessao' | 'fora' | 'defendeu'.
  */
-export function resolveKick(rand, { xAnunciado, xReal, dexterity = 0 }) {
-  const dex = clamp(dexterity / DEXTERITY_MAX, 0, 1);
+export function resolveKick(rand, { xAnunciado, xReal, pontaria = 0 }) {
+  const dex = clamp(pontaria / SKILL_BY_KEY.AIM.max, 0, 1);
   const fintou = xReal != null && Math.abs(xReal - xAnunciado) >= FRANGACO.fintaMin;
   const aim = xReal ?? xAnunciado;
 
@@ -92,7 +92,7 @@ export function resolveKick(rand, { xAnunciado, xReal, dexterity = 0 }) {
     const entrou = rand() < 0.5;
     return { gol: entrou, motivo: entrou ? 'rebote-trave' : 'travessao', xBola: clamp01(xBola), yBola: clamp(yBola, 0, 1.04), xGk, fintou };
   }
-  // alcance do goleiro: rasteira é mais fácil de pegar; a destreza "seca" o goleiro
+  // alcance do goleiro: rasteira é mais fácil de pegar; a Pontaria "seca" o goleiro
   const reach = FRANGACO.keeperReach * (1 + (1 - clamp01(yBola)) * 0.9) * (1 - FRANGACO.dexReachCut * dex);
   const alcancou = Math.abs(xBola - xGk) <= reach && yBola <= 0.92;
   if (alcancou) {
@@ -292,11 +292,11 @@ export function parseKick(body = {}) {
 }
 
 /** POST /kick: resolve a MINHA cobrança e avança o duelo. */
-export function stepKick(rand, st, { xAnunciado, xReal, dexterity }, finished) {
+export function stepKick(rand, st, { xAnunciado, xReal, pontaria }, finished) {
   const run = st.run;
   if (run?.status !== 'ativo') throw noRun(finished);
   if (run.duel.turn !== 'user') throw new GameError(409, 'not-your-kick', 'Agora é a sua vez de DEFENDER.');
-  const r = resolveKick(rand, { xAnunciado, xReal, dexterity });
+  const r = resolveKick(rand, { xAnunciado, xReal, pontaria });
   run.duel.kicks.push({
     n: run.duel.kicks.length + 1, gol: r.gol, motivo: r.motivo, fintou: r.fintou,
     xAnunciado, xReal, xBola: r.xBola, yBola: r.yBola, xGk: r.xGk, keeperMs: r.keeperMs ?? null,

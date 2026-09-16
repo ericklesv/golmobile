@@ -2,7 +2,7 @@
  * Presença da Semana (services/pass.js) direto no banco LOCAL, simulando os dias (o serviço aceita `now`):
  * prêmios dos 7 dias, um resgate por dia (inclusive dois toques ao mesmo tempo), XP em dobro para VIP,
  * VIP do 7º dia ativando na hora (sem ir para o banco), 2ª semana seguida = 2 VIP, pulou um dia = volta
- * ao dia 1, Energia que nunca rebaixa e destreza no máximo virando dinheiro. Cria jogadores tp…
+ * ao dia 1 e Energia que nunca rebaixa. Cria jogadores tp…
  *
  * Uso (na pasta api/):  node scripts/test-pass.js   → tem de terminar em "TUDO OK".
  */
@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
 }
 const { prisma } = await import('../src/prisma.js');
 const { passState, passClaim } = await import('../src/services/pass.js');
-const { LOGIN_PASS, DEXTERITY_MAX, levelOf } = await import('../src/lib/rules.js');
+const { LOGIN_PASS, levelOf } = await import('../src/lib/rules.js');
 
 let fails = 0;
 const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`); if (!ok) fails++; };
@@ -46,12 +46,12 @@ await passClaim(u.id, at(3)); x = await U(u.id);
 const boost = x.items.find((i) => i.itemKey === 'BOOST_AUTO');
 check(x.levelBonus === 180 && boost && Math.round((boost.expiresAt - at(3)) / 3_600_000) === 28, 'dia 4: +60 XP e Boost Auto por 28 h');
 await passClaim(u.id, at(4)); x = await U(u.id);
-check(x.levelBonus === 250 && x.dexterity === 1, 'dia 5: +70 XP e +1 de destreza');
+check(x.levelBonus === 250 && x.money === 4000, 'dia 5: +70 XP e R$ 1.000 (era +1 de destreza)');
 await passClaim(u.id, at(5)); x = await U(u.id);
 const en2 = x.items.filter((i) => i.itemKey === 'ENERGY' && i.expiresAt > at(5)); // a do dia 2 já venceu
 check(x.levelBonus === 340 && en2.length === 1 && en2[0].level === 2, 'dia 6: +90 XP e Energia nível 2');
 r = await passClaim(u.id, at(6, 10)); x = await U(u.id);
-check(x.levelBonus === 490 && x.money === 8000 && x.vipDays === 0 && Math.round((x.vipUntil - at(6, 10)) / 3_600_000) === 24 && r.reward.vip === 1,
+check(x.levelBonus === 490 && x.money === 9000 && x.vipDays === 0 && Math.round((x.vipUntil - at(6, 10)) / 3_600_000) === 24 && r.reward.vip === 1,
   `dia 7: +150 XP, R$ 5.000 e VIP ATIVO por 24 h (banco de VIPs continua ${x.vipDays}) → nível ${levelOf(x).lvl}`);
 
 // ── semana 2 seguida: VIP ativo ganha XP em dobro; 7º dia = 2 VIP
@@ -77,8 +77,8 @@ const race = await Promise.allSettled([passClaim(v.id, at(0)), passClaim(v.id, a
 const vv = await U(v.id);
 check(race.filter((p) => p.status === 'fulfilled').length === 1 && vv.levelBonus === 30 && vv.money === 1000, '3 toques ao mesmo tempo: o prêmio sai uma vez só');
 
-// ── Energia nunca rebaixa; destreza no máximo vira dinheiro
-const w = await mk({ dexterity: DEXTERITY_MAX });
+// ── Energia nunca rebaixa
+const w = await mk();
 await prisma.userItem.create({ data: { userId: w.id, itemKey: 'ENERGY', level: 3, expiresAt: new Date(at(1).getTime() + 2 * 3_600_000) } });
 await passClaim(w.id, at(0)); await passClaim(w.id, at(1));
 let ww = await U(w.id);
@@ -86,7 +86,7 @@ const e3 = ww.items.find((i) => i.itemKey === 'ENERGY');
 check(e3.level === 3 && Math.round((e3.expiresAt - at(1)) / 3_600_000) === 28, 'tinha Energia nível 3: o dia 2 não rebaixa (continua nível 3, agora com 28 h)');
 for (let d = 2; d <= 4; d++) await passClaim(w.id, at(d));
 ww = await U(w.id);
-check(ww.dexterity === DEXTERITY_MAX && ww.money === 1000 + 2000 + 1000, 'destreza já no máximo: o dia 5 vira R$ 1.000');
+check(ww.money === 1000 + 2000 + 1000, 'dia 5: R$ 1.000 (o dia que dava destreza virou dinheiro)');
 
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');
 await prisma.$disconnect();

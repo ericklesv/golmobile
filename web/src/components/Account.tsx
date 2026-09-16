@@ -96,7 +96,7 @@ export function DeleteAccountModal({ onClose }: { onClose: () => void }) {
   return (
     <Sheet labelId="delete-title" onClose={onClose}>
       <div id="delete-title" className="t-display text-[22px] leading-tight text-danger">Excluir minha conta</div>
-      <p className="mt-2 text-[13px] font-bold text-navy-ink">Isso apaga <b>{me.nick}</b> para sempre: nick, e-mail, foto, texto pessoal, mensagens, dinheiro, destreza, itens e VIP guardado. Não dá para desfazer.</p>
+      <p className="mt-2 text-[13px] font-bold text-navy-ink">Isso apaga <b>{me.nick}</b> para sempre: nick, e-mail, foto, texto pessoal, mensagens, dinheiro, habilidades, itens e VIP guardado. Não dá para desfazer.</p>
       <p className="mt-2 text-[12px] font-bold text-muted">Os gols que você marcou continuam no placar do seu time e nas rodadas já fechadas, sem o seu nome.</p>
       <label className="no-drag mt-3 flex items-start gap-2 text-left text-[12px] font-extrabold text-navy-ink">
         <input type="checkbox" checked={sure} onChange={(e) => setSure(e.target.checked)} className="mt-0.5 h-5 w-5" />

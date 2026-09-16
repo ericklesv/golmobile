@@ -6,8 +6,8 @@ import { prisma } from '../prisma.js';
 import { GameError, badRequest, cooldown as cooldownError } from '../lib/errors.js';
 import { hourKey, nextMidnight } from '../lib/time.js';
 import {
-  COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE,
-  DEXTERITY_BONUS_PER_POINT, PARTY_WIN_CHANCE, REBOUND_CHANCE, KIND_LABEL,
+  COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE,
+  CHANCE_CAP, skillBonus, PARTY_WIN_CHANCE, REBOUND_CHANCE, KIND_LABEL,
   cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, isVip } from '../lib/rules.js';
 import { liveMatchForTeam } from './league.js';
 import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines } from '../lib/items.js';
@@ -165,7 +165,7 @@ export async function penalty(userId, direction) {
     requireUnlocked(user, 'PENALTY');
     const cd = await claimCooldown(tx, user, 'PENALTY', now);
     const match = await liveMatchForTeam(user.teamId, tx);
-    const chance = 2 / 3 + user.dexterity * DEXTERITY_BONUS_PER_POINT + bootBonus(user, now.getTime()); // chuteira da loja
+    const chance = Math.min(CHANCE_CAP.PENALTY, PENALTY_BASE_CHANCE + skillBonus(user, 'PENALTY') + bootBonus(user, now.getTime())); // base + Pontaria + chuteira
     const lvl = levelOf(user).lvl;
     let goal = rnd() < chance;
     let rebound = false;
@@ -191,7 +191,7 @@ export async function foul(userId, direction) {
     requireUnlocked(user, 'FOUL');
     const cd = await claimCooldown(tx, user, 'FOUL', now);
     const match = await liveMatchForTeam(user.teamId, tx);
-    const chance = FOUL_BASE_CHANCE + user.dexterity * DEXTERITY_BONUS_PER_POINT + bootBonus(user, now.getTime()); // chuteira da loja
+    const chance = Math.min(CHANCE_CAP.FOUL, FOUL_BASE_CHANCE + skillBonus(user, 'FOUL') + bootBonus(user, now.getTime())); // base + Chute + chuteira
     const lvl = levelOf(user).lvl;
     let goal = rnd() < chance;
     let rebound = false;

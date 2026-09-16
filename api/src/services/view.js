@@ -1,5 +1,5 @@
 /** Projeções de dados para o cliente (nunca expõe hash, e-mail alheio, layout da trilha). */
-import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel } from '../lib/rules.js';
+import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel, skillPointsLeft, shotChance } from '../lib/rules.js';
 import { itemsView, nickFadeOf } from '../lib/items.js';
 export { nickFadeOf };
 import { hourKey } from '../lib/time.js';
@@ -42,7 +42,9 @@ export function meView(user, now = Date.now()) {
     isAdmin: user.isAdmin, createdAt: user.createdAt,
     team: teamView(user.team),
     money: user.money, vipDays: user.vipDays, vipUntil: user.vipUntil, vip: isVip(user, now),
-    dexterity: user.dexterity,
+    dexterity: user.dexterity, // LEGADO (a destreza acabou em 16/09/2026)
+    skills: { AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, points: skillPointsLeft(user) }, // habilidades
+    chance: { PENALTY: shotChance(user, 'PENALTY', now), FOUL: shotChance(user, 'FOUL', now) }, // acerto de verdade (habilidade + chuteira, com teto)
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     levelBonus: user.levelBonus ?? 0, levelPoints: levelPoints(user),
@@ -70,7 +72,7 @@ export function publicView(user, now = Date.now()) {
   const level = levelOf(user);
   return {
     id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, avatarUrl: user.avatarUrl ?? null, createdAt: user.createdAt,
-    team: teamView(user.team), vip: isVip(user, now), dexterity: user.dexterity, nickColor: user.nickColor ?? null, nickFade: nickFadeOf(user, now),
+    team: teamView(user.team), vip: isVip(user, now), skills: { AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0 }, nickColor: user.nickColor ?? null, nickFade: nickFadeOf(user, now),
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     stats: {

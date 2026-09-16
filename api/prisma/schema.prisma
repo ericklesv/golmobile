@@ -88,7 +88,13 @@ model User {
   money     Int       @default(0) // R$ virtuais
   vipDays   Int       @default(0) // unidades de VIP no banco (1 unidade = 1 dia)
   vipUntil  DateTime?
-  dexterity Int       @default(0) // destreza 0..30
+  dexterity Int       @default(0) // LEGADO: a destreza acabou em 16/09/2026 (virou habilidade); fica 0, o dinheiro foi devolvido
+  // Habilidades (dono, 16/09/2026, no modelo do BRGOL 2.0): 10 níveis cada; cada nível custa 1 ponto de nível,
+  // R$ 25 mil ou 1 VIP (services/skills.js). `skillPoints` = quantos níveis foram pagos com PONTO (os pontos
+  // disponíveis são nível − skillPoints).
+  skillAim    Int     @default(0) // Pontaria: acerto do pênalti
+  skillShot   Int     @default(0) // Chute: acerto da falta
+  skillPoints Int     @default(0) // níveis pagos com ponto de nível
 
   // Contadores de gols (espelham a tabela Goal para leitura rápida)
   goalsTotal  Int     @default(0)

@@ -133,7 +133,7 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
   const meta = useAuth((s) => s.meta);
   const [u, setU] = useState<AdminUserDetail | null>(null);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState<{ nick: string; email: string; bio: string; money: string; vipDays: string; dexterity: string; teamSlug: string; nickColor: string }>({ nick: '', email: '', bio: '', money: '', vipDays: '', dexterity: '', teamSlug: '', nickColor: '' });
+  const [form, setForm] = useState<{ nick: string; email: string; bio: string; money: string; vipDays: string; skillAim: string; skillShot: string; teamSlug: string; nickColor: string }>({ nick: '', email: '', bio: '', money: '', vipDays: '', skillAim: '', skillShot: '', teamSlug: '', nickColor: '' });
   const [gols, setGols] = useState('10');
   const [vipQtd, setVipQtd] = useState('5');
   const [msgTitle, setMsgTitle] = useState('');
@@ -151,7 +151,7 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
     setU(d);
     setForm({
       nick: d.nick, email: d.email, bio: d.bio ?? '', money: String(d.money), vipDays: String(d.vipDays),
-      dexterity: String(d.dexterity), teamSlug: d.team?.slug ?? '', nickColor: d.nickColor ?? '',
+      skillAim: String(d.skillAim), skillShot: String(d.skillShot), teamSlug: d.team?.slug ?? '', nickColor: d.nickColor ?? '',
     });
   };
 
@@ -181,7 +181,8 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
     if (form.bio !== (u.bio ?? '')) b.bio = form.bio;
     if (form.money !== '' && Number(form.money) !== u.money) b.money = Math.floor(Number(form.money));
     if (form.vipDays !== '' && Number(form.vipDays) !== u.vipDays) b.vipDays = Math.floor(Number(form.vipDays));
-    if (form.dexterity !== '' && Number(form.dexterity) !== u.dexterity) b.dexterity = Math.floor(Number(form.dexterity));
+    if (form.skillAim !== '' && Number(form.skillAim) !== u.skillAim) b.skillAim = Math.floor(Number(form.skillAim));
+    if (form.skillShot !== '' && Number(form.skillShot) !== u.skillShot) b.skillShot = Math.floor(Number(form.skillShot));
     if (form.teamSlug && form.teamSlug !== (u.team?.slug ?? '')) b.teamSlug = form.teamSlug;
     if ((form.nickColor || null) !== (u.nickColor ?? null)) b.nickColor = form.nickColor || null;
     return b;
@@ -246,7 +247,7 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
           <span>Gols: <b className="t-gold">{num(u.goalsTotal)}</b></span>
           <span>Dinheiro: <b className="t-gold">{fmt(u.money)}</b></span>
           <span>Exp extra: <b className="t-gold">{num(u.levelBonus)}</b></span>
-          <span>Destreza: <b className="t-gold">{u.dexterity}</b></span>
+          <span>Pontaria/Chute: <b className="t-gold">{u.skillAim}/{u.skillShot}</b></span>
           <span>VIP no banco: <b className="t-gold">{u.vipDays} un.</b></span>
           <span>VIP até: <b className="t-gold">{dt(u.vipUntil)}</b></span>
           <span>Criado: <b className="t-gold">{dt(u.createdAt)}</b></span>
@@ -376,10 +377,17 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
           <input className="field" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <label className="label">Texto pessoal</label>
           <textarea className="field min-h-[64px] text-sm" maxLength={400} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div><label className="label">Dinheiro</label><input className="field" type="number" min={0} value={form.money} onChange={(e) => setForm({ ...form, money: e.target.value })} /></div>
             <div><label className="label">VIP (un.)</label><input className="field" type="number" min={0} value={form.vipDays} onChange={(e) => setForm({ ...form, vipDays: e.target.value })} /></div>
-            <div><label className="label">Destreza</label><input className="field" type="number" min={0} max={meta?.dexterityMax ?? 30} value={form.dexterity} onChange={(e) => setForm({ ...form, dexterity: e.target.value })} /></div>
+            {(meta?.skills ?? []).map((sk) => (
+              <div key={sk.key}>
+                <label className="label">{sk.name} (0–{sk.max})</label>
+                <input className="field" type="number" min={0} max={sk.max}
+                  value={sk.key === 'AIM' ? form.skillAim : form.skillShot}
+                  onChange={(e) => setForm({ ...form, [sk.key === 'AIM' ? 'skillAim' : 'skillShot']: e.target.value })} />
+              </div>
+            ))}
           </div>
           <label className="label">Time</label>
           <select className="field" value={form.teamSlug} onChange={(e) => setForm({ ...form, teamSlug: e.target.value })}>

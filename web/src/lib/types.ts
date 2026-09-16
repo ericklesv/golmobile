@@ -13,12 +13,25 @@ export interface Team {
 
 export interface Cooldown { cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean }
 
+/** Habilidades (rules.js SKILLS): Pontaria melhora o pênalti, Chute melhora a falta. 10 níveis cada. */
+export type SkillKey = 'AIM' | 'SHOT';
+export type SkillLevels = Record<SkillKey, number>;
+export interface SkillDef {
+  key: SkillKey; name: string; kind: 'PENALTY' | 'FOUL'; icon: string; desc: string;
+  /** níveis (10), quanto cada nível soma no acerto, o acerto de quem está no nível 0 e o teto */
+  max: number; perLevel: number; base: number; cap: number;
+}
+
 export interface Me {
   /** Mensagens não lidas na caixa (/api/me e heartbeat). */
   unread?: number;
   id: number; nick: string; email: string; gender: string; bio: string | null; avatarUrl: string | null; isAdmin: boolean; createdAt: string;
   team: Team;
-  money: number; vipDays: number; vipUntil: string | null; vip: boolean; dexterity: number;
+  money: number; vipDays: number; vipUntil: string | null; vip: boolean;
+  /** Habilidades (Loja): nível de cada uma e quantos pontos de nível ainda dá para gastar. */
+  skills: SkillLevels & { points: number };
+  /** Acerto de verdade de cada chute, já com habilidade, chuteira e teto. */
+  chance: { PENALTY: number; FOUL: number };
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   hourKey: string | null; roundId: number | null; seasonId: number | null;
   /** Pontos de nível = gols + levelBonus (minigames diários). A barra de nível usa estes. */
@@ -103,13 +116,17 @@ export interface Meta {
   cooldowns: Record<Kind, { normal: number; vip: number }>;
   trailMin: { normal: number; vip: number };
   money: Record<string, number>;
-  dexterityMax: number; nerfMinLevel: number;
+  /** Habilidades: catálogo (nome, ícone, teto, quanto cada nível soma) e o preço de um nível. */
+  skills: SkillDef[];
+  skillCost: { point: number; money: number; vip: number };
+  /** Piso de recarga de todo chute (ms) e nerf desligado desde 16/09/2026. */
+  cooldownMin: number; nerfOff: boolean;
   levels: { lvl: number; name: string; goals: number; skill: string | null }[];
   prizes: any; trailLines: { name: string; total: number; mines: number }[];
   /** Desenhos de uniforme (KIT_DESIGNS da API): o presidente escolhe um; as cores são sempre as do time. */
   kitDesigns?: { id: string; name: string; desc: string }[];
   unlock: Record<Kind, number>;
-  chances: { penalty: number; foul: number; perDexterity: number; rebound: number[] };
+  chances: { penalty: number; foul: number; cap: { PENALTY: number; FOUL: number }; rebound: number[] };
   partySegments: string[];
   termo: { letters: number; tries: number; levelPoints: number[] };
   quiz: { questions: number; seconds: number; pointsPerHit: number; goalAt: number };
@@ -181,7 +198,7 @@ export interface League {
 }
 
 export interface PublicPlayer {
-  id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; dexterity: number; nickColor?: string | null; nickFade?: NickFade;
+  id: number; nick: string; gender: string; bio: string | null; avatarUrl: string | null; createdAt: string; team: Team; vip: boolean; skills: SkillLevels; nickColor?: string | null; nickFade?: NickFade;
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   stats: Me['stats']; level: { lvl: number; name: string }; online: boolean;
   /** Campanha no X1 (só partidas de verdade que terminaram): total com os pontos do Ranking X1, por jogo e a temporada. */
@@ -350,7 +367,7 @@ export interface AdminUserRow {
   device?: string | null; deviceMobile?: boolean | null; deviceCode?: string | null;
 }
 export interface AdminUserDetail extends AdminUserRow {
-  gender: string; bio: string | null; dexterity: number; levelBonus: number; vipUntil: string | null;
+  gender: string; bio: string | null; skillAim: number; skillShot: number; levelBonus: number; vipUntil: string | null;
   /** Última conexão do jogador: IP + geolocalização (geo null = sem dados). */
   conn: { ip: string | null; at: string | null; geo: AdminGeo | null };
   /** Outras contas vivas na mesma internet (IP do cadastro ou último visto em comum). */
@@ -366,7 +383,7 @@ export interface AdminUsersPage { page: number; pages: number; total: number; us
 /** Campos editáveis; banHours > 0 bane a partir de agora, 0 desbane. */
 export interface AdminPatch {
   nick?: string; email?: string; bio?: string | null; money?: number; vipDays?: number;
-  dexterity?: number; nickColor?: string | null; teamSlug?: string; banHours?: number;
+  skillAim?: number; skillShot?: number; nickColor?: string | null; teamSlug?: string; banHours?: number;
 }
 export interface AdminLogRow { id: number; admin: string; target: string | null; targetAvatar: string | null; action: string; payload: any; at: string }
 export interface AdminLogPage { page: number; pages: number; total: number; rows: AdminLogRow[] }
@@ -480,10 +497,8 @@ export interface ClubCandidate { id: number; nick: string; avatarUrl: string | n
 
 // ─── Presença da Semana (login diário) ────────────────────────────────────────
 export interface PassReward {
-  xp: number; baseXp: number; money: number; dexterity: number; vip: number;
+  xp: number; baseXp: number; money: number; vip: number;
   item: { key: string; level: number | null; name: string; icon: string; hours: number } | null;
-  /** destreza já no máximo: o ponto virou dinheiro (valor em R$) */
-  dexterityAsMoney?: number;
 }
 export interface PassDay extends PassReward { step: number; done: boolean }
 export interface PassState {

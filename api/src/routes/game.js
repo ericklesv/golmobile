@@ -5,7 +5,7 @@ import { handle, notFound, badRequest } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, DEXTERITY_BONUS_PER_POINT, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
@@ -38,10 +38,14 @@ game.get('/meta', cached(10000), handle(async () => {
   return {
     nickFades: NICK_FADE_COLORS, // paleta do nick em degradê (VIP)
     turnstileSiteKey: turnstileEnabled() ? TURNSTILE_SITE_KEY : null, // captcha invisível no cadastro (lib/security.js); null = desligado
-    cooldowns: COOLDOWNS, trailMin: TRAIL_MIN, money: MONEY, dexterityMax: DEXTERITY_MAX, nerfMinLevel: NERF_MIN_LEVEL,
+    cooldowns: COOLDOWNS, trailMin: TRAIL_MIN, money: MONEY, nerfOff: NERF_OFF, // destreza e nerf acabaram em 16/09/2026
     levels: LEVELS, prizes: PRIZES, trailLines: TRAIL_LINES, unlock: UNLOCK_LEVEL,
     serieASwap: SERIE_A_SWAP, // troca automática na Série A (time sem gol na rodada × quem mais marcou fora dela)
-    chances: { penalty: 2 / 3, foul: FOUL_BASE_CHANCE, perDexterity: DEXTERITY_BONUS_PER_POINT, rebound: REBOUND_CHANCE },
+    chances: { penalty: PENALTY_BASE_CHANCE, foul: FOUL_BASE_CHANCE, cap: CHANCE_CAP, rebound: REBOUND_CHANCE },
+    // Pontaria e Chute: a tela monta o resto com me.skills (nível) e me.chance (acerto de verdade)
+    skills: SKILLS.map(({ key, name, kind, icon, desc, max, perLevel }) => ({ key, name, kind, icon, desc, max, perLevel, base: kind === 'PENALTY' ? PENALTY_BASE_CHANCE : FOUL_BASE_CHANCE, cap: CHANCE_CAP[kind] })),
+    skillCost: SKILL_COST, // 1 ponto de nível, R$ 25 mil ou 1 VIP
+    cooldownMin: COOLDOWN_MIN, // piso de 4:30 em todos os chutes
     partySegments: PARTY_SEGMENTS,
     termo: TERMO,
     quiz: { questions: QUIZ.questions, seconds: QUIZ.seconds, pointsPerHit: QUIZ.pointsPerHit, goalAt: QUIZ.goalAt },

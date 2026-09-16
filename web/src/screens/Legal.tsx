@@ -129,7 +129,7 @@ export function TermsScreen() {
       </Panel>
       <Panel title="DINHEIRO, VIP E ITENS" ribbon="orange">
         <ul>
-          <li>O dinheiro do jogo (R$ virtuais), a destreza, os itens da loja e os prêmios <b>não têm valor real</b>, não podem ser sacados nem trocados por dinheiro de verdade.</li>
+          <li>O dinheiro do jogo (R$ virtuais), as habilidades, os itens da loja e os prêmios <b>não têm valor real</b>, não podem ser sacados nem trocados por dinheiro de verdade.</li>
           <li><b>VIP</b> é um serviço digital: dias de benefícios dentro do jogo. A compra é feita por PIX no site ou pelo Google Play no app; os dias entram na conta assim que o pagamento é confirmado e você ativa quando quiser.</li>
           <li>Por ser conteúdo digital entregue na hora, pedidos de reembolso devem ser enviados a {CONTACT_EMAIL} em até 7 dias da compra (compras pelo Google Play seguem também a política de reembolso do Google) e são analisados conforme o Código de Defesa do Consumidor. Dias de VIP já ativados não são reembolsados.</li>
           <li>Preços e pacotes podem mudar; o preço vale no momento da compra.</li>
@@ -171,7 +171,7 @@ export function DeleteAccountInfoScreen() {
           <li>Nick, e-mail, senha, gênero do avatar, foto de perfil (o arquivo também), texto pessoal e cor do nick.</li>
           <li>Endereço IP e localização aproximada.</li>
           <li>Todas as suas mensagens no chat e as denúncias que você fez.</li>
-          <li>Dinheiro do jogo, destreza, itens, VIP guardado e ativo, cargo no time, propostas e contratos.</li>
+          <li>Dinheiro do jogo, habilidades, itens, VIP guardado e ativo, cargo no time, propostas e contratos.</li>
         </ul>
         <h3>O que fica (sem o seu nome)</h3>
         <ul>

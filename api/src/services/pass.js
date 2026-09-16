@@ -11,7 +11,7 @@
  */
 import { prisma } from '../prisma.js';
 import { GameError } from '../lib/errors.js';
-import { LOGIN_PASS, DEXTERITY_MAX, MONEY, isVip } from '../lib/rules.js';
+import { LOGIN_PASS, isVip } from '../lib/rules.js';
 import { ITEM_BY_KEY, activeItemsWhere } from '../lib/items.js';
 import { calendarDay, nextMidnight } from '../lib/time.js';
 
@@ -37,7 +37,6 @@ function rewardFor(step, week, vip) {
     xp: d.xp * (vip ? LOGIN_PASS.vipXp : 1), baseXp: d.xp,
     money: d.money ?? 0,
     item: item ? { key: item.key, level: d.item.level ?? null, name: item.name, icon: item.icon, hours: Math.round(item.durationMs / 3_600_000) } : null,
-    dexterity: d.dexterity ?? 0,
     vip: d.vip ? (week >= 2 ? LOGIN_PASS.streakVip : d.vip) : 0,
   };
 }
@@ -81,11 +80,7 @@ export async function passClaim(userId, now = new Date()) {
       const user = await tx.user.findUnique({ where: { id: userId }, include: { items: activeItemsWhere(now) } });
       const r = rewardFor(pos.step, pos.week, isVip(user, now.getTime()));
       const data = { levelBonus: { increment: r.xp } };
-      let money = r.money;
-      if (r.dexterity) {
-        if (user.dexterity + r.dexterity <= DEXTERITY_MAX) data.dexterity = { increment: r.dexterity };
-        else { money += r.dexterity * MONEY.DEXTERITY_PRICE; r.dexterityAsMoney = r.dexterity * MONEY.DEXTERITY_PRICE; }
-      }
+      const money = r.money;
       if (money) data.money = { increment: money };
       if (r.vip) {
         const base = user.vipUntil && user.vipUntil.getTime() > now.getTime() ? user.vipUntil.getTime() : now.getTime();

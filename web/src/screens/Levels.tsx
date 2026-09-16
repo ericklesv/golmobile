@@ -24,7 +24,7 @@ export function LevelsScreen() {
         <div className="mt-3">
           <Bar value={me.levelPoints - me.level.goals} max={(next?.goals ?? me.levelPoints) - me.level.goals} label={next ? `faltam ${num(next.goals - me.levelPoints)} para ${next.name}` : 'nível máximo'} yellow />
         </div>
-        <p className="mt-2 text-center text-[11px] font-bold text-white/80">Cada gol vale 1 ponto. O Termo e o Quiz do dia dão pontos extras. Quanto mais alto o nível, mais chutes, menos espera na Trilha e rebotes (segunda chance) nos chutes.</p>
+        <p className="mt-2 text-center text-[11px] font-bold text-white/80">Cada gol vale 1 ponto. O Termo e o Quiz do dia dão pontos extras. Todo nível dá 1 ponto para as habilidades (Pontaria e Chute, na Loja) — e ainda tira espera da Trilha e dá rebotes (segunda chance) nos chutes.</p>
       </section>
 
       <Panel title="A ESCADA DO CRAQUE" ribbon="orange">
@@ -39,7 +39,7 @@ export function LevelsScreen() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className={`t-display text-[15px] ${now ? 'text-orange-deep' : done ? 'text-grass-deep' : 'text-navy-ink'}`}>{l.name}{now && <span className="ml-2 trap trap-orange text-[9px]">VOCÊ</span>}</div>
-                  <div className="text-[11px] font-bold text-muted">{l.skill ?? 'Começo de carreira'}</div>
+                  <div className="text-[11px] font-bold text-muted">{l.skill ?? (l.lvl === 0 ? 'Começo de carreira' : '+1 ponto de habilidade')}</div>
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="font-display text-base text-navy-ink">{num(l.goals)}</div>

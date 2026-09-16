@@ -90,7 +90,7 @@ await prisma.user.update({ where: { id: bUser.id }, data: { bannedUntil: null } 
 
 console.log('exclusão de conta');
 // B ganha foto, bio, dinheiro, uma proposta recebida e mensagens; depois se exclui
-await prisma.user.update({ where: { id: bUser.id }, data: { bio: 'minha bio', money: 500, vipDays: 3, dexterity: 2 } });
+await prisma.user.update({ where: { id: bUser.id }, data: { bio: 'minha bio', money: 500, vipDays: 3, skillAim: 2, skillPoints: 2 } });
 await call('POST', '/api/chat/geral', { text: 'mensagem que deve sumir' }, B);
 await call('POST', '/api/chat/geral', { text: `oi @${nickB}` }, A);
 await prisma.activity.create({ data: { userId: bUser.id, teamId: bUser.teamId, kind: 'AUTO', goal: true, text: `GOOOL! CRAQUE ${nickB} chutou forte!` } });
@@ -102,7 +102,7 @@ ok(del.status === 400, 'sem senha = 400');
 del = await call('DELETE', '/api/account', { password: 'senha123' }, B);
 ok(del.status === 200 && del.data.ok, 'B exclui a conta');
 const gone = await prisma.user.findUnique({ where: { id: bUser.id } });
-ok(gone.deletedAt && gone.nick === `excluido-${bUser.id}` && gone.email.startsWith('excluido-') && gone.passwordHash === '!' && gone.bio === null && gone.money === 0 && gone.vipDays === 0 && gone.dexterity === 0 && gone.lastIp === null, 'linha anonimizada');
+ok(gone.deletedAt && gone.nick === `excluido-${bUser.id}` && gone.email.startsWith('excluido-') && gone.passwordHash === '!' && gone.bio === null && gone.money === 0 && gone.vipDays === 0 && gone.skillAim === 0 && gone.skillPoints === 0 && gone.lastIp === null, 'linha anonimizada');
 ok((await prisma.chatMessage.count({ where: { userId: bUser.id } })) === 0, 'mensagens de B apagadas');
 ok((await prisma.userBlock.count({ where: { blockedId: bUser.id } })) === 0, 'bloqueios envolvendo B apagados');
 const act = await prisma.activity.findFirst({ where: { userId: bUser.id } });

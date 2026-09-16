@@ -14,12 +14,11 @@ import { NameBadges, TopHistory } from '../components/Badges';
 import { ReportModal } from '../components/Account';
 import { nickProps } from '../lib/nick';
 import { X1Record } from '../components/X1Record';
+import { SkillTracks } from '../components/Skills';
 
 export function PlayerScreen() {
   const { nick } = useParams();
   const me = useAuth((s) => s.me)!;
-  const meta = useAuth((s) => s.meta);
-  const setMe = useAuth((s) => s.setMe);
   const [p, setP] = useState<PublicPlayer | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState<'offer' | 'gift' | 'report' | null>(null);
@@ -31,13 +30,6 @@ export function PlayerScreen() {
   if (p === undefined) return <div className="flex justify-center py-16"><Spinner /></div>;
   if (!p) return <Empty text="Jogador não encontrado." />;
 
-  const canNerf = me.level.lvl >= (meta?.nerfMinLevel ?? 14) && p.level.lvl >= (meta?.nerfMinLevel ?? 14) && p.id !== me.id && p.dexterity > 0;
-  async function nerf() {
-    if (busy || !window.confirm(`Nerfar ${p!.nick} por R$ 1.000? Ele perde 1 ponto de destreza.`)) return;
-    setBusy(true);
-    try { const r = await api.nerf(p!.nick); setMe(r.me); setP(await api.player(p!.nick)); toast(`${p!.nick} foi nerfado!`, 'success'); }
-    catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
-  }
   const rate = (g: number, t: number) => (t ? `${Math.round((g / t) * 100)}%` : '—');
   const isMe = p.id === me.id;
   const sameTeam = p.team.slug === me.team.slug;
@@ -86,14 +78,16 @@ export function PlayerScreen() {
       <Panel title="NÚMEROS" ribbon="blue">
         <div className="grid grid-cols-2 gap-2 text-center">
           {[
-            ['gols na carreira', num(p.goalsTotal)], ['destreza', p.dexterity],
+            ['gols na carreira', num(p.goalsTotal)], ['gols na temporada', p.goalsSeason],
             [`pênaltis · ${rate(p.stats.penalty.goals, p.stats.penalty.tries)}`, `${p.stats.penalty.goals}/${p.stats.penalty.tries}`],
             [`faltas · ${rate(p.stats.foul.goals, p.stats.foul.tries)}`, `${p.stats.foul.goals}/${p.stats.foul.tries}`],
             [`trilha · ${rate(p.stats.trail.goals, p.stats.trail.tries)}`, `${p.stats.trail.goals}/${p.stats.trail.tries}`],
-            ['gols na temporada', p.goalsSeason],
+            ['gols nesta rodada', p.goalsRound],
           ].map(([l, v]) => <div key={l as string} className="rounded-xl bg-sky/10 py-2"><div className="font-display text-xl text-navy-ink">{v}</div><div className="label">{l}</div></div>)}
         </div>
       </Panel>
+
+      <Panel title="HABILIDADES" ribbon="green"><SkillTracks skills={p.skills} /></Panel>
 
       <X1Record record={p.x1} history={p.history} isMe={isMe} />
 
@@ -114,7 +108,6 @@ export function PlayerScreen() {
         </div>
       )}
 
-      {canNerf && <button onClick={nerf} disabled={busy} className="btn btn-red btn-md w-full">Nerfar destreza (R$ 1.000)</button>}
       {!isMe && (
         <div className="flex gap-2">
           <button onClick={() => setModal('report')} className="btn btn-gray btn-sm flex-1"><img src="/ui/flag-orange.png" className="h-5 w-5" alt="" /> Denunciar</button>

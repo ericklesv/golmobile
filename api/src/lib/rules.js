@@ -1,7 +1,7 @@
 // Regras do jogo — porta 1:1 do BRGOL original (ver docs/BRGOL_ORIGINAL.md).
 // Este arquivo é a fonte da verdade; o cliente recebe os valores via /api/meta.
 import { MIN } from './time.js';
-import { applyItemCooldown } from './items.js';
+import { applyItemCooldown, bootBonus } from './items.js';
 
 // ─── Recargas (não-VIP / VIP) ───────────────────────────────────────────────
 export const COOLDOWNS = {
@@ -12,6 +12,10 @@ export const COOLDOWNS = {
   TRAIL:   { normal: 10 * MIN, vip: 5 * MIN },
 };
 export const TRAIL_MIN = { normal: 5 * MIN, vip: 2.5 * MIN };
+/** Piso das recargas de chute — direto, pênalti e falta — com VIP, níveis e itens juntos (dono, 16/09/2026 —
+ *  feedback do hitou: "4:30 pra todos os chutes é o ideal, isso estando bem upado no full"; antes o VIP com
+ *  Energia 5 chutava de 2:30 em 2:30). A Trilha tem o piso dela (TRAIL_MIN), que é o prêmio dos níveis. */
+export const COOLDOWN_MIN = 4.5 * MIN;
 export const COOLDOWN_TOLERANCE_MS = 1500;
 
 // ─── Dinheiro ───────────────────────────────────────────────────────────────
@@ -23,12 +27,12 @@ export const MONEY = {
   PARTY_BET: 500, // roleta do Party GoL (dono, 15/09/2026: de 50/150 para 500/1500)
   PARTY_PRIZE: 1500,
   MINIGAME_WIN: 500, // saldo por vitória nos minigames diários, além do gol (dono, 15/09/2026) — ver MINIGAME_MONEY_KINDS
-  DEXTERITY_PRICE: 1000,
+  DEXTERITY_PRICE: 1000, // LEGADO: preço do ponto de destreza, usado só para devolver o dinheiro
   VIP_TO_MONEY: 50000, // Loja: 1 VIP guardado vira R$ 50 mil (ideia do erickles "1 vip por 100k"; dono cortou pela metade em 15/09/2026)
   NERF_PRICE: 1000,
 };
-export const DEXTERITY_MAX = 30;
-export const NERF_MIN_LEVEL = 14;
+// Nerf DESLIGADO em 16/09/2026 (dono: "desligar o nerf por enquanto"): ele tirava destreza, que acabou.
+export const NERF_OFF = true;
 export const PARTY_WIN_CHANCE = 3 / 8; // roleta de 8 fatias, 3 de GOL
 /** Giros da roleta por dia (Brasília): jogador comum e VIP ativo (dono, 15/09/2026). Conta pelas Activity PARTY do dia. */
 export const PARTY_SPINS = { free: 5, vip: 10 };
@@ -38,11 +42,44 @@ export const PARTY_SPINS = { free: 5, vip: 10 };
  */
 export const MINIGAME_MONEY_KINDS = ['TERMO', 'QUIZ', 'STATS', 'MEMORIA', 'QUALTIME', 'CAMISAS', 'ALVO', 'HATTRICK', 'FALTAPRO', 'GANHAPERDE', 'CABECAO'];
 
+// ─── Habilidades (dono, 16/09/2026, no modelo do BRGOL 2.0) ────────────────────────────────────────────────
+// Feedback do hitou (jogador veterano do BRGOL): em 2 dias ele já tinha 96,7% no pênalti, porque a destreza custava
+// R$ 1.000 o ponto (R$ 30 mil pelo teto) e o nível não dava acerto nenhum. Lá o acerto é habilidade de LONGO PRAZO:
+// base baixa (35% pênalti / 30% falta) e 10 níveis que levam a ~88%/~83%, cada nível pago com 1 ponto, dinheiro ou VIP.
+// Aqui: base 45%/35%, +4,3 p.p. por nível na Pontaria (pênalti) e +4,8 na Falta → 88% e 83% no nível 10.
+// Cada nível custa 1 PONTO DE NÍVEL (cada nível do jogador dá 1), R$ 25 mil OU 1 VIP do banco — o jogador escolhe.
+// A DESTREZA ACABOU: não soma mais nada e o dinheiro foi devolvido (scripts/devolver-destreza.js).
+export const SKILLS = [
+  { key: 'AIM', name: 'Pontaria', kind: 'PENALTY', icon: 'ico-target', desc: 'Aumenta o acerto do pênalti.', max: 10, perLevel: 0.043 },
+  { key: 'SHOT', name: 'Chute', kind: 'FOUL', icon: 'ico-ball', desc: 'Aumenta o acerto da falta.', max: 10, perLevel: 0.048 },
+];
+export const SKILL_BY_KEY = Object.fromEntries(SKILLS.map((s) => [s.key, s]));
+export const SKILL_FIELD = { AIM: 'skillAim', SHOT: 'skillShot' };
+export const SKILL_COST = { point: 1, money: 25000, vip: 1 };
+/** Teto do acerto, já com chuteira (ninguém chega a 100%). */
+export const CHANCE_CAP = { PENALTY: 0.95, FOUL: 0.90 };
+
+/** Quanto a habilidade soma no acerto do chute (0 se não tem). */
+export function skillBonus(user, kind) {
+  const s = SKILLS.find((x) => x.kind === kind);
+  return s ? (user?.[SKILL_FIELD[s.key]] ?? 0) * s.perLevel : 0;
+}
+/** Acerto de verdade de um chute: base + habilidade + chuteira, com teto (PENALTY/FOUL). */
+export function shotChance(user, kind, now = Date.now()) {
+  const base = kind === 'PENALTY' ? PENALTY_BASE_CHANCE : FOUL_BASE_CHANCE;
+  return Math.min(CHANCE_CAP[kind], base + skillBonus(user, kind) + bootBonus(user, now));
+}
+
+/** Pontos de habilidade disponíveis: 1 por nível do jogador, menos os já gastos. */
+export function skillPointsLeft(user) {
+  return Math.max(0, levelOf(user).lvl - (user?.skillPoints ?? 0));
+}
+
 // ─── Chances ────────────────────────────────────────────────────────────────
-// Pênalti: goleiro escolhe 1 de 3 cantos → 66,6% base. Destreza soma +1%/ponto,
-// reduzindo a chance do goleiro adivinhar. Falta: 50% base + destreza.
-export const FOUL_BASE_CHANCE = 0.5;
-export const DEXTERITY_BONUS_PER_POINT = 0.01;
+// Base de quem nunca gastou nada; sobe pela habilidade (+4,3/+4,8 p.p. por nível) e pela chuteira, com teto
+// em CHANCE_CAP. Antes era 66,6% no pênalti (goleiro em 1 de 3 cantos) e 50% na falta, mais +1% por destreza.
+export const PENALTY_BASE_CHANCE = 0.45; // era 2/3 (dono, 16/09/2026)
+export const FOUL_BASE_CHANCE = 0.35; // era 0,5
 
 // Trilha: linhas [total, errados]. Defesa 4/1, meio 3/1, ataque 3/2 (~17% de gol).
 // Ataque com 2 errados desde 12/09/2026 (com 1 estava fácil, ~33%).
@@ -101,7 +138,7 @@ export const LEVELS = [
   { lvl: 11, name: 'Medalha de Ouro', goals: 831, skill: '-15 s na Trilha', trail: 15 },
   { lvl: 12, name: 'Veterano', goals: 983, skill: '-15 s na Trilha', trail: 15 },
   { lvl: 13, name: 'Super Veterano', goals: 1151, skill: '-15 s na Trilha', trail: 15 },
-  { lvl: 14, name: 'Campeão', goals: 1335, skill: 'Nerfar (aplicar e receber)' },
+  { lvl: 14, name: 'Campeão', goals: 1335, skill: null }, // era o nerf, desligado em 16/09/2026
   { lvl: 15, name: 'Bronze Star', goals: 1536, skill: 'Rebote Pênalti nível 1', rebound: 'PENALTY' },
   { lvl: 16, name: 'Double Bronze Star', goals: 1756, skill: 'Rebote Falta nível 1', rebound: 'FOUL' },
   { lvl: 17, name: 'Triple Bronze Star', goals: 1995, skill: 'Rebote Pênalti nível 2', rebound: 'PENALTY' },
@@ -169,7 +206,9 @@ export const freeMode = () => process.env.NODE_ENV !== 'production' && process.e
 
 export function cooldownFor(user, kind, now = Date.now()) {
   if (freeMode()) return 0;
-  return applyItemCooldown(user, kind, baseCooldownFor(user, kind, now), now);
+  // o piso vale com tudo junto (VIP + níveis da trilha + itens da loja); na Trilha o piso é o da tabela das regras
+  const floor = kind === 'TRAIL' ? TRAIL_MIN[isVip(user, now) ? 'vip' : 'normal'] : COOLDOWN_MIN;
+  return Math.max(floor, applyItemCooldown(user, kind, baseCooldownFor(user, kind, now), now));
 }
 
 /** Recarga sem itens da loja (VIP + níveis da trilha). */
@@ -486,7 +525,7 @@ export const LOGIN_PASS = {
     { xp: 40, item: { key: 'ENERGY', level: 1 } },
     { xp: 50, money: 2000 },
     { xp: 60, item: { key: 'BOOST_AUTO' } },
-    { xp: 70, dexterity: 1 }, // já com destreza no máximo: vira R$ 1.000
+    { xp: 70, money: 1000 }, // era +1 destreza (a destreza acabou em 16/09/2026)
     { xp: 90, item: { key: 'ENERGY', level: 2 } },
     { xp: 150, money: 5000, vip: 1 },
   ],

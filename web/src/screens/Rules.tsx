@@ -39,10 +39,16 @@ export function RulesScreen() {
           <tbody className="text-navy-ink">
             {meta && (['AUTO', 'PENALTY', 'FOUL', 'TRAIL'] as const).map((k) => <tr key={k} className="border-t border-sky/20"><td className="py-1">{{ AUTO: 'Chute direto', PENALTY: 'Pênalti', FOUL: 'Falta', TRAIL: 'Trilha' }[k]}</td><td className="text-center">{min(meta.cooldowns[k].normal)}{k === 'TRAIL' && ' → 5'}</td><td className="text-center text-sky-deep">{min(meta.cooldowns[k].vip)}{k === 'TRAIL' && ' → 2:30'}</td></tr>)}
           </tbody></table>
-        <p className="mt-2 text-[12px] font-bold text-muted">Os níveis descontam segundos da Trilha. A artilharia da hora fecha em toda hora cheia; a rodada, às 19:00.</p>
+        <p className="mt-2 text-[12px] font-bold text-muted">Nenhum chute recarrega em menos de 4:30, nem com VIP e Energia juntos. Os níveis descontam segundos da Trilha. A artilharia da hora fecha em toda hora cheia; a rodada, às 19:00.</p>
       </Panel>
-      <Panel title="DINHEIRO, DESTREZA E NERF" ribbon="green">
-        <p className="text-[13px] font-bold text-navy-ink">Cada ponto de <b>destreza</b> ({fmt(meta?.money.DEXTERITY_PRICE ?? 1000)}) soma +1% de acerto em pênaltis e faltas, até {meta?.dexterityMax ?? 30}. A partir do nível {meta?.nerfMinLevel ?? 14} você pode <b>nerfar</b> a destreza de outro jogador por {fmt(meta?.money.NERF_PRICE ?? 1000)} — e também pode ser nerfado.</p>
+      <Panel title="HABILIDADES" ribbon="green">
+        <p className="text-[13px] font-bold text-navy-ink">O acerto do pênalti começa em {Math.round((meta?.chances.penalty ?? 0.45) * 100)}% e o da falta em {Math.round((meta?.chances.foul ?? 0.35) * 100)}%. Quem sobe isso são as habilidades da Loja:</p>
+        <ul className="mt-1 text-[13px] font-bold text-navy-ink">
+          {(meta?.skills ?? []).map((s) => (
+            <li key={s.key}><b>{s.name}</b>: {s.desc} {s.max} níveis, até {Math.round((s.base + s.max * s.perLevel) * 100)}% — com chuteira o teto é {Math.round(s.cap * 100)}%.</li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[12px] font-bold text-muted">Cada nível custa 1 ponto de nível, {fmt(meta?.skillCost.money ?? 25000)} ou {meta?.skillCost.vip ?? 1} VIP guardado. Cada nível seu dá 1 ponto.</p>
       </Panel>
       <Panel title="PREMIAÇÕES" ribbon="yellow">
         <ul className="text-[13px] font-bold text-navy-ink">

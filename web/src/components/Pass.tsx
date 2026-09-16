@@ -35,7 +35,6 @@ const brl = (v: number) => `R$ ${v.toLocaleString('pt-BR')}`;
 function extraOf(d: PassReward): { icon: string; text: string } | null {
   if (d.vip) return { icon: '/ui/ico-crown_silver.png', text: `${d.vip} VIP` };
   if (d.item) return { icon: `/ui/${d.item.icon}.png`, text: d.item.key === 'ENERGY' ? `Energia nv ${d.item.level}` : d.item.name };
-  if (d.dexterity) return { icon: '/ui/ico-badge_best.png', text: `+${d.dexterity} destreza` };
   if (d.money) return { icon: '/ui/ico-coin01_s.png', text: brl(d.money) };
   return null;
 }
@@ -158,7 +157,6 @@ function PassSheet() {
                 <ul className="mt-1 text-[13px] font-extrabold text-white">
                   {got.money > 0 && <li>{brl(got.money)} na conta</li>}
                   {got.item && <li>{got.item.key === 'ENERGY' ? `Energia do chute nível ${got.item.level} ativa` : `${got.item.name} ativo`} por {got.item.hours} h</li>}
-                  {got.dexterity > 0 && <li>{got.dexterityAsMoney ? `Destreza já no máximo: ${brl(got.dexterityAsMoney)}` : `+${got.dexterity} ponto de destreza`}</li>}
                   {got.vip > 0 && <li className="t-gold">VIP ativo por {got.vip * 24} h!</li>}
                 </ul>
                 <p className="mt-2 text-[12px] font-bold text-white/80">Próximo prêmio em <Countdown readyAt={st.nextAt} className="t-gold" /></p>

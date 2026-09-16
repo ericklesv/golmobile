@@ -5,7 +5,7 @@ import { handle, GameError, notFound, badRequest } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { meView, publicView, teamView } from '../services/view.js';
 import { liveMatchForTeam } from '../services/league.js';
-import { MONEY, DEXTERITY_MAX, NERF_MIN_LEVEL, levelOf, isVip } from '../lib/rules.js';
+import { MONEY, isVip } from '../lib/rules.js';
 import { meInclude, parseNickFade } from '../lib/items.js';
 import { captchaRequired } from '../lib/captcha.js';
 import { clientIp } from '../lib/ip.js';
@@ -62,38 +62,16 @@ me.put('/bio', handle(async (req) => {
   return meView(u);
 }));
 
-// Destreza: R$1.000 a unidade, 0..30 — aumenta a chance em pênaltis e faltas
-me.post('/buy-dexterity', handle(async (req) => {
-  const qty = Math.max(1, Math.min(DEXTERITY_MAX, Number(req.body?.qty || 1)));
-  const cost = qty * MONEY.DEXTERITY_PRICE;
-  const res = await prisma.user.updateMany({
-    where: { id: req.user.id, money: { gte: cost }, dexterity: { lte: DEXTERITY_MAX - qty } },
-    data: { money: { decrement: cost }, dexterity: { increment: qty } },
-  });
-  if (res.count === 0) {
-    if (req.user.dexterity + qty > DEXTERITY_MAX) throw badRequest(`Destreza máxima é ${DEXTERITY_MAX}.`);
-    throw new GameError(402, 'no-money', `Você precisa de R$ ${cost.toLocaleString('pt-BR')}.`);
-  }
-  return meView(await fresh(req.user.id));
+// A DESTREZA ACABOU em 16/09/2026 (virou habilidade — services/skills.js; o dinheiro de quem tinha foi devolvido).
+// O endereço continua respondendo para o site antigo em cache não quebrar feio.
+me.post('/buy-dexterity', handle(async () => {
+  throw new GameError(410, 'destreza-off', 'A destreza acabou: agora o acerto sobe pelas habilidades Pontaria e Chute, na Loja. O dinheiro que você gastou em destreza já voltou para a sua conta.');
 }));
 
-// Nerfar destreza de outro jogador (lvl 14+, R$1.000): tira 1 ponto da vítima
-me.post('/nerf/:nick', handle(async (req) => {
-  const lvl = levelOf(req.user).lvl;
-  if (lvl < NERF_MIN_LEVEL) throw new GameError(403, 'locked', `Nerfar libera no nível ${NERF_MIN_LEVEL} (Campeão).`);
-  const victim = await prisma.user.findUnique({ where: { nickLower: String(req.params.nick).toLowerCase() } });
-  if (!victim) throw notFound('Jogador não encontrado.');
-  if (victim.id === req.user.id) throw badRequest('Você não pode nerfar a si mesmo.');
-  if (levelOf(victim).lvl < NERF_MIN_LEVEL) throw badRequest('Só jogadores nível 14+ podem receber nerf.');
-  if (victim.dexterity <= 0) throw badRequest('Esse jogador não tem destreza para perder.');
-  await prisma.$transaction(async (tx) => {
-    const paid = await tx.user.updateMany({ where: { id: req.user.id, money: { gte: MONEY.NERF_PRICE } }, data: { money: { decrement: MONEY.NERF_PRICE } } });
-    if (paid.count === 0) throw new GameError(402, 'no-money', `Você precisa de R$ ${MONEY.NERF_PRICE.toLocaleString('pt-BR')}.`);
-    await tx.user.updateMany({ where: { id: victim.id, dexterity: { gt: 0 } }, data: { dexterity: { decrement: 1 } } });
-    await tx.nerf.create({ data: { fromUserId: req.user.id, toUserId: victim.id } });
-    await tx.activity.create({ data: { userId: req.user.id, teamId: req.user.teamId, kind: 'AUTO', goal: false, text: `${req.user.nick} nerfou a destreza de ${victim.nick}!` } });
-  });
-  return { ok: true, me: meView(await fresh(req.user.id)), victim: publicView(await prisma.user.findUnique({ where: { id: victim.id }, include: { team: true } })) };
+// NERF DESLIGADO em 16/09/2026 (dono): ele tirava destreza, que acabou. O que vem no lugar (nerf temporário ou
+// o "Secar" do BRGOL) o dono decide depois.
+me.post('/nerf/:nick', handle(async () => {
+  throw new GameError(410, 'nerf-off', 'O nerf está desligado por enquanto: ele tirava destreza, que acabou.');
 }));
 
 // Nick em degradê (benefício do VIP): {from, to} = chaves de NICK_FADE_COLORS; {from: null} tira.

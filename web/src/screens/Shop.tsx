@@ -8,7 +8,8 @@ import { toast } from '../components/Toast';
 import { money as fmt, timeLeft as remaining, untilLabel } from '../lib/format';
 import { VipBar, useVipLeft } from '../components/VipBar';
 import { Shield } from '../components/Shield';
-import type { Me, ShopItemDef, ShopView, UserItemView } from '../lib/types';
+import { SkillPips } from '../components/Skills';
+import type { Me, ShopItemDef, ShopView, SkillDef, UserItemView } from '../lib/types';
 
 const NICK_RULE = /^[a-zA-Z0-9_.\-]{3,14}$/;
 const CATEGORY: Record<ShopItemDef['category'], { title: string; ribbon: 'blue' | 'orange' | 'green' | 'yellow' }> = {
@@ -55,10 +56,10 @@ export function ShopScreen() {
   const [teamSlug, setTeamSlug] = useState(''); // Troca de time: o clube escolhido
   const [, tick] = useState(0);
   const vipLeft = useVipLeft();
-  const dexPrice = meta?.money.DEXTERITY_PRICE ?? 1000;
   const vipToMoney = meta?.money?.VIP_TO_MONEY ?? 100000; // Loja: 1 VIP guardado vira saldo (rules.js MONEY.VIP_TO_MONEY)
-  const dexMax = meta?.dexterityMax ?? 30;
   const catalog = shop?.catalog ?? meta?.items ?? [];
+  const skills = meta?.skills ?? []; // habilidades (rules.js SKILLS)
+  const skillCost = meta?.skillCost ?? { point: 1, money: 25000, vip: 1 };
 
   const loadShop = useCallback(() => { api.shop().then(setShop).catch(() => {}); }, []);
   useEffect(() => { loadShop(); }, [loadShop]);
@@ -194,6 +195,51 @@ export function ShopScreen() {
     );
   };
 
+  /**
+   * Habilidade: a trilha de 10 níveis, o acerto de hoje, o que o próximo nível dá e as três formas de
+   * pagar (ponto de nível, dinheiro ou VIP). O acerto vem pronto do servidor (me.chance), já com chuteira.
+   */
+  const skillRow = (def: SkillDef) => {
+    const level = me.skills[def.key];
+    const chance = me.chance[def.kind];
+    const max = level >= def.max;
+    const next = Math.min(def.cap, chance + def.perLevel);
+    const pay = (currency: 'point' | 'money' | 'vip', label: string, cls: string, can: boolean) => (
+      <button key={currency} onClick={() => run(`skill:${def.key}:${currency}`, async () => {
+        const r = await api.shopSkill(def.key, currency);
+        toast(`${def.name} no nível ${level + 1}: ${Math.round(next * 100)}% de acerto.`, 'success');
+        return r.me;
+      })} disabled={busy !== null || !can} className={`btn btn-sm flex-1 ${cls}`}>
+        {busy === `skill:${def.key}:${currency}` ? '…' : label}
+      </button>
+    );
+    return (
+      <div key={def.key} className="rounded-xl bg-sky/10 p-2">
+        <div className="flex items-center gap-3">
+          <img src={`/ui/${def.icon}.png`} className="h-10 w-10 shrink-0 object-contain" alt="" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="t-display text-[14px] text-navy-ink">{def.name}</span>
+              <span className="text-[11px] font-extrabold text-muted">nível {level} de {def.max}</span>
+            </div>
+            <SkillPips level={level} max={def.max} />
+            <div className="text-[11px] font-bold leading-snug text-muted">
+              {def.desc} Hoje: <b className="text-grass-deep">{Math.round(chance * 100)}%</b>
+              {max ? ' — no máximo.' : <> · nível {level + 1}: <b className="text-grass-deep">{Math.round(next * 100)}%</b></>}
+            </div>
+          </div>
+        </div>
+        {!max && (
+          <div className="mt-2 flex gap-2">
+            {pay('point', `${skillCost.point} ponto`, 'btn-green', me.skills.points >= skillCost.point)}
+            {pay('money', fmt(skillCost.money), 'btn-yellow', me.money >= skillCost.money)}
+            {pay('vip', `${skillCost.vip} VIP`, 'btn-sky', me.vipDays >= skillCost.vip)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const render = (def: ShopItemDef) => {
     if (def.key === 'ENERGY') return energyRow(def);
     if (def.key === 'NICK_CHANGE') return nickRow(def);
@@ -211,11 +257,17 @@ export function ShopScreen() {
         <VipBar iconClass="h-8 w-8" />
       </div>
 
+      {skills.length > 0 && (
+        <Panel title="HABILIDADES" ribbon="green">
+          <p className="mb-2 text-[12px] font-bold text-muted">
+            Cada nível custa 1 ponto de nível, {fmt(skillCost.money)} ou {skillCost.vip} VIP guardado — você escolhe. Cada nível seu dá 1 ponto: você tem <b className="text-navy-ink">{me.skills.points}</b>.
+          </p>
+          <div className="flex flex-col gap-2">{skills.map(skillRow)}</div>
+        </Panel>
+      )}
+
       <Panel title="JOGADOR" ribbon="blue">
         <div className="flex flex-col gap-2">
-          <Row icon="ico-badge" title="Destreza" desc={`+1% de acerto em pênaltis e faltas por ponto (você tem ${me.dexterity}/${dexMax}).`} busy={busy}
-            price={fmt(dexPrice)} cta="+1" busyKey="dex" disabled={me.dexterity >= dexMax || me.money < dexPrice}
-            onClick={() => run('dex', async () => { const r = await api.buyDexterity(1); toast('+1 destreza!', 'success'); return r; })} />
           <Row icon="ico-crown_silver" title="Ativar VIP (1 dia)" desc={`Recargas pela metade e nick azul. Você tem ${me.vipDays} ${me.vipDays === 1 ? 'VIP guardado' : 'VIPs guardados'}.`} busy={busy} active={vipLeft > 0}
             sub={vipLeft > 0 && me.vipUntil ? (
               <motion.span key={me.vipUntil} initial={{ scale: 1.12 }} animate={{ scale: 1 }} className="inline-block origin-left">

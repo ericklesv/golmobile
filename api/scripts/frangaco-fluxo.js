@@ -87,7 +87,7 @@ const apiIncoming = (row) => request(row, () => {
 
 const apiKick = (row, body) => request(row, () => {
   const aim = parseKick(body);
-  const { r, fim } = stepKick(rand, row.state, { ...aim, dexterity: 0 }, !!row.finishedAt);
+  const { r, fim } = stepKick(rand, row.state, { ...aim, pontaria: 0 }, !!row.finishedAt);
   aplicarFim(row, fim);
   return { resultado: r, fim };
 }, 'kick');

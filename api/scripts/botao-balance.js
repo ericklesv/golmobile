@@ -3,11 +3,12 @@
  * - a mesma jogada dá sempre o mesmo resultado; toda jogada termina;
  * - botão de linha nunca entra em área; goleiro nunca sai da área; nada sai do campo (só a bola, no gol);
  * - saída do meio: quantos petelecos da 1ª jogada entram direto no gol;
- * - partidas bot x bot: como terminam (3 gols, tempo, pênaltis, empate), quantos turnos e petelecos.
+ * - partidas bot x bot: como terminam (gol, tempo, death match), quantos turnos e petelecos, e quantas
+ *   chegam ao DEATH MATCH (e com quantos botões em campo elas acabam).
  *
  * Uso (na pasta api/):  node scripts/botao-balance.js   → tem de terminar em "TUDO OK".
  */
-import { BOTAO_FIELD as F, kickoffLayout, penaltyLayout, simulateSnap, botaoScorer } from '../src/lib/botao.js';
+import { BOTAO_FIELD as F, kickoffLayout, simulateSnap, botaoScorer } from '../src/lib/botao.js';
 import { newBotaoMatch, applySnap, skipSnap, botaoBotMove, movablePieces } from '../src/lib/botaoMatch.js';
 import { BOTAO } from '../src/lib/rules.js';
 
@@ -55,20 +56,9 @@ for (const idx of [1, 2, 3, 4, 5, 6]) for (let i = 0; i < 360; i++) for (const p
 }
 console.log(`     saída: ${koGoals} de ${koN} petelecos da 1ª jogada viram gol (${((100 * koGoals) / koN).toFixed(2)}%)`);
 
-// pênalti: o bot cobrando contra o goleiro parado num lugar sorteado
-let penGoals = 0;
-for (let i = 0; i < 300; i++) {
-  const lay = penaltyLayout(0, Math.round((rnd() * 2 - 1) * 16));
-  const s = { phase: 'penalties', pieces: lay.pieces, ball: lay.ball, turn: 0, over: null };
-  const mv = botaoBotMove(s, 0, rnd, 0.55);
-  if (botaoScorer(simulateSnap(s, mv.idx, mv.dx, mv.dy, mv.power).goal) === 0) penGoals++;
-}
-console.log(`     pênalti (bot): ${((100 * penGoals) / 300).toFixed(0)}% de gols`);
-check(penGoals > 30 && penGoals < 290, 'pênalti não é certo nem impossível');
-
 // partidas bot x bot
-const ends = { gols: 0, tempo: 0, penaltis: 0, empate: 0 }; // gols = acabou no gol (o 1º gol acaba)
-let turnsSum = 0, snapsSum = 0, goalsSum = 0;
+const ends = { gols: 0, tempo: 0, empate: 0 }; // gols = acabou no gol (o 1º gol acaba)
+let turnsSum = 0, snapsSum = 0, goalsSum = 0, mortes = 0, golsNaMorte = 0, botoesNoFim = 0;
 const N = 150;
 for (let g = 0; g < N; g++) {
   const s = newBotaoMatch(g % 2);
@@ -83,9 +73,16 @@ for (let g = 0; g < N; g++) {
   }
   ends[s.over?.reason ?? 'empate']++;
   turnsSum += s.turnNo; snapsSum += snaps; goalsSum += s.score[0] + s.score[1];
+  if (s.phase === 'death') {
+    mortes++;
+    botoesNoFim += s.pieces.length;
+    if (s.over?.reason === 'gols') golsNaMorte++;
+  }
 }
-console.log(`     ${N} partidas bot x bot: ${ends.gols} no gol, ${ends.tempo} no tempo, ${ends.penaltis} nos pênaltis, ${ends.empate} empate | média ${(turnsSum / N).toFixed(1)} turnos, ${(snapsSum / N).toFixed(0)} petelecos, ${(goalsSum / N).toFixed(1)} gols`);
-check(ends.gols + ends.tempo + ends.penaltis >= N - 2, 'quase toda partida tem vencedor');
+console.log(`     ${N} partidas bot x bot: ${ends.gols} no gol, ${ends.tempo} no tempo, ${ends.empate} empate | média ${(turnsSum / N).toFixed(1)} turnos, ${(snapsSum / N).toFixed(0)} petelecos, ${(goalsSum / N).toFixed(1)} gols`);
+console.log(`     death match: ${mortes} de ${N} partidas (${((100 * mortes) / N).toFixed(0)}%) — ${golsNaMorte} decididas no gol, ${mortes - golsNaMorte} no empate; ${mortes ? (botoesNoFim / mortes).toFixed(1) : 0} botões em campo no fim`);
+check(ends.gols + ends.tempo >= N - Math.max(3, Math.round(N * 0.2)), 'quase toda partida tem vencedor');
+check(mortes === 0 || golsNaMorte > 0, 'quando vai para o death match, dá para decidir no gol');
 
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');
 process.exit(fails ? 1 : 0);

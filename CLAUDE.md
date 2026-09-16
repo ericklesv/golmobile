@@ -208,7 +208,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   meio-tempo leva o gol/o resultado, não a desistência); bot de treino depois de 1 min (não vale nada). Botão (`BOTAO` em rules.js): 7 botões por
   time (goleiro preso na área; os de linha não entram em área), 2 petelecos por vez num botão seu (quem começa dá 1 na
   1ª vez — medido: assim quem começa vence ~45%), 15 s cada; **o 1º gol acaba** (dono: "4 minutos é muito tempo");
-  sem gol em 9 vezes (somando os dois) = pênaltis (3 de cada, depois alternadas). Partidas na tabela `FutPregoMatch`
+  sem gol em 9 vezes (somando os dois) = **DEATH MATCH** (dono, 16/09/2026, no lugar dos pênaltis; `BOTAO.death` em
+  rules.js, `startDeathMatch`/`dropPiece` em lib/botaoMatch.js): os botões ficam onde estão, os DOIS GOLEIROS saem na
+  hora, 1 peteleco por vez e **sempre na força máxima** (o servidor ignora a força pedida — a tela também manda 1), o
+  botão que o jogador usou SAI do campo depois da jogada até sobrar 1x1 (o último nunca sai), perder o tempo custa o
+  botão mais longe da bola (senão dava para enrolar), bola que PARA dentro de uma área volta para o meio (sem goleiro
+  ninguém a alcança) e 5 rodadas de 1x1 sem gol = empate. Eventos novos no WebSocket: `deathStart` (em `bturn`),
+  `out` e `ballReset` (em `snap`). **Mexeu no death match? Rode `node scripts/test-deathmatch.js`** (pasta api/, sem
+  banco). Partidas na tabela `FutPregoMatch`
   (modelo Prisma `X1Match`, migração 0028: `game`, `seasonId`, `scoreA/B`). **Perfil**: `x1` em
   `GET /api/players/:nick` (`x1Record` em `services/x1.js`: total com pontos e sequência sem perder, cada jogo e a
   temporada no Ranking X1 com a posição) → `components/X1Record.tsx`. Teste no PC: `X1_JOGO=BOTAO` ou `FUTPREGO`
@@ -257,7 +264,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   desliga a trajetória exata da mira (traço branco; dourado + "GOL" quando entra; no Botão também o caminho do botão
   em azul). Enquanto arrasta, a tela manda `{t:'preview', seq, dx, dy, power[, idx]}` (~12/s) e o servidor
   (`onPreview` em `realtime/x1.js`, `XRAY_NICKS` — e `XRAY_NICKS` em `X1.tsx`) simula com a MESMA física do peteleco
-  (`simulateFlick`/`simulateSnap` são determinísticos — o sorteio só entra no goleiro dos pênaltis) e devolve
+  (`simulateFlick`/`simulateSnap` são determinísticos) e devolve
   `{t:'preview', seq, path, piece, goal}`; outra conta é ignorada em silêncio. **Os dois precisam saber quando o
   outro está com o Raio-X ligado** (dono): a tela manda `{t:'xray', on}` ao ligar/desligar (e ao reconectar), o
   adversário — se for uma das duas contas — recebe `xray-opp` (selo vermelho "RAIO-X" na barra dele + toast) e a
@@ -297,7 +304,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Lances ao vivo** (pedido do dono, 15/09/2026): todo resultado que conta entra em `Activity` (kind = o jogo,
   `FUTPREGO` ou `BOTAO`) em `settle()` — vitória com gol (via `applyResult`, + linha do perdedor), vitória sem gol
   (limite de 10 por hora / revanche repetida, com o motivo), empate; `how` acrescenta "por W.O." / "(ele desistiu)" /
-  "(gol contra dele)" / "nos pênaltis".
+  "(gol contra dele)".
   **Amistoso (mesmo time) = uniforme reserva** (dono, 15/09/2026: os dois ficavam com peças iguais): na tela, o lado 1
   (quem aceitou) joga de reserva — `reservePaint` em `lib/paint.ts`: time de cor escura → reserva BRANCA com a cor do
   time no detalhe (a 3ª cor sai; só invertendo, o Santa Cruz tricolor ficava parecido demais); time de cor clara

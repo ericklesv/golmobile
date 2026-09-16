@@ -409,9 +409,16 @@ export const x1GameOf = (day) => X1.games[((day % X1.games.length) + X1.games.le
 // área + 6 na linha, que não entram nas áreas). Cada vez = 2 petelecos do mesmo jogador (15 s cada); quem
 // começa só dá 1 na primeira vez (medido: assim quem começa vence ~45%, e não 68% com 3). O 1º GOL ACABA
 // a partida (dono, 15/09/2026: "4 minutos é muito tempo, é melhor então 1 gol acaba" — ~1 min em média);
-// 9 vezes sem gol = pênaltis, 3 de cada e depois alternados. Física em lib/botao.js; regras em
-// lib/botaoMatch.js; equilíbrio em scripts/botao-balance.js.
-export const BOTAO = { snapsPerTurn: 2, firstTurnSnaps: 1, snapSec: 15, goalsToWin: 1, maxTurns: 9, penalties: 3, suddenDeath: 7 };
+// 9 vezes sem gol = DEATH MATCH (dono, 16/09/2026; ver BOTAO logo abaixo). Física em lib/botao.js; regras em
+// lib/botaoMatch.js; equilíbrio em scripts/botao-balance.js; death match em scripts/test-deathmatch.js.
+// Futebol de Botão. Acabaram os `maxTurns` turnos empatado, NÃO tem mais pênalti: entra o DEATH MATCH
+// (dono, 16/09/2026) — 1 peteleco por vez, sempre na força máxima, e o botão que jogou SAI do campo até
+// sobrar 1x1 (os goleiros são os primeiros a sair, assim que o death match começa). Bola que para dentro
+// de uma área volta para o meio (sem goleiro, ali ninguém alcança). 5 rodadas no 1x1 sem gol = empate.
+export const BOTAO = {
+  snapsPerTurn: 2, firstTurnSnaps: 1, snapSec: 15, goalsToWin: 1, maxTurns: 9,
+  death: { snapsPerTurn: 1, drawAfter1v1: 5 },
+};
 KIND_LABEL.BOTAO = 'Futebol de Botão';
 
 // Provocar — caretas e frases prontas durante a partida do X1, estilo Clash Royale (pedido do dono, 15/09/2026;

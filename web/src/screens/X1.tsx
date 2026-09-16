@@ -21,7 +21,7 @@ import { paintOf, reservePaint } from '../lib/paint';
 /**
  * X1 — jogos 1x1 ao vivo, um por dia (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar
  * enjoativo"): FutPrego (futebol de prego, uma vez de cada) e Futebol de Botão (2 petelecos num botão seu
- * por vez; o 1º gol acaba; empate vai para os pênaltis). Tudo passa pelo WebSocket /api/ws/x1?mode=game
+ * por vez; o 1º gol acaba; empate no fim vira DEATH MATCH). Tudo passa pelo WebSocket /api/ws/x1?mode=game
  * (realtime/x1.js na API): desafiar, aceitar, petelecos e o fim. O servidor calcula tudo; esta tela só mostra
  * os quadros e manda direção + força. Quem joga do lado de cima vê o campo girado: sempre ataca para cima.
  * Estilingue: puxa para trás e solta (a bola / o botão vai para a frente).
@@ -34,7 +34,7 @@ interface ProvocarItem { key: string; icon?: string; text?: string; label?: stri
 interface Provocar { gapMs: number; burst: number; burstMs: number; punishMs: number; showMs: number; list: ProvocarItem[] }
 interface Rules {
   bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number;
-  botao?: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; penalties: number };
+  botao?: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; death: { snapsPerTurn: number; drawAfter1v1: number } };
   provocar?: Provocar;
 }
 interface Bubble { item: ProvocarItem; id: number }
@@ -47,16 +47,17 @@ interface PregoMatch extends MatchBase {
   turn: Side; turns: [number, number]; maxTurns: number; turnSec: number;
 }
 interface BotaoView {
-  phase: 'play' | 'penalties'; pieces: BotaoPiece[]; ball: { x: number; y: number }; score: [number, number];
+  phase: 'play' | 'death'; pieces: BotaoPiece[]; ball: { x: number; y: number }; score: [number, number];
   turn: Side; turnNo: number; maxTurns: number; snapsLeft: number; snapsPerTurn: number; goalsToWin: number;
-  pen: { kicks: [boolean[], boolean[]]; kicker: Side; round: number; of: number } | null;
+  /** DEATH MATCH: botões que sobraram de cada lado, rodadas já jogadas no 1x1 e em quantas dá empate. */
+  death: { left: [number, number]; rounds1v1: number; drawAfter: number } | null;
 }
 interface BotaoMatch extends MatchBase { game: 'BOTAO'; field: BotaoFieldData; bv: BotaoView; snapSec: number }
 type Match = PregoMatch | BotaoMatch;
 interface Over {
   game?: X1Game; winner: Side | null; reason: string; you: Side; training: boolean; money: number; pot?: number; goal?: boolean; why?: string | null;
   goalText?: string | null; lost?: boolean; lostTeam?: string | null; refund?: boolean; players?: Player[]; text?: string; late?: boolean;
-  score?: [number, number] | null; pen?: [boolean[], boolean[]] | null; lossLimit?: boolean;
+  score?: [number, number] | null; lossLimit?: boolean;
   /** Quem não é VIP: até quando espera para desafiar de novo (null = pode já; ausente no treino). */
   cooldownUntil?: number | null;
   /** Retrospecto já com esta partida e a frase de provocação (só partida que entrou no retrospecto). */
@@ -75,8 +76,8 @@ const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebo
 // paintOf / reservePaint (uniforme reserva do amistoso): lib/paint.ts
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
 
-/** Botões que `side` pode tocar agora (no pênalti, só o cobrador). */
-const canMove = (bv: BotaoView, side: Side, p: BotaoPiece) => bv.turn === side && p.side === side && (bv.phase === 'play' || !p.gk);
+/** Botões que `side` pode tocar agora (no death match os goleiros já saíram). */
+const canMove = (bv: BotaoView, side: Side, p: BotaoPiece) => bv.turn === side && p.side === side;
 /** O botão seu mais perto da bola: já vem escolhido quando chega a sua vez. */
 function nearestPiece(bv: BotaoView, side: Side): number | null {
   let best: number | null = null, bd = Infinity;
@@ -307,10 +308,9 @@ export function X1Screen() {
           if (before) setShown({ ball: { x: last[0][0], y: last[0][1] }, pieces: before.pieces.map((p, j) => ({ ...p, x: last[j + 1]?.[0] ?? p.x, y: last[j + 1]?.[1] ?? p.y })) });
           setMatch((x) => (x && x.game === 'BOTAO' ? { ...x, bv: m.botao } : x));
           if (m.goal) { setGoalFlash(m.goal.side === 0 ? 'top' : 'bottom'); setBigText(m.goal.own ? 'GOL CONTRA!' : 'GOL!'); }
-          else if (m.penalty) {
-            if (m.penalty.scored) setGoalFlash(m.penalty.kicker === 0 ? 'top' : 'bottom');
-            setBigText(m.penalty.scored ? 'GOL!' : 'NÃO ENTROU!');
-          }
+          // death match: o botão que jogou sai do campo e bola parada na área volta ao meio — o servidor manda a cena certa
+          if (m.out || m.ballReset) setShown(shownOf(m.botao));
+          if (m.ballReset) flashNotice('A bola parou na área: volta para o meio.');
         });
         break;
       }
@@ -322,17 +322,17 @@ export function X1Screen() {
         setShown(shownOf(bv)); lastPos.current = { ...bv.ball }; ballRef.current?.setAttribute('transform', `translate(${bv.ball.x} ${bv.ball.y})`);
         setGoalFlash(null); setBigText(null); setAim(null); setSent(false); setTurnOpen(true);
         setSel(nearestPiece(bv, x.you));
-        if (m.penaltiesStart) flashNotice('Sem gol: agora é nos pênaltis!');
+        if (m.deathStart) { setBigText('DEATH MATCH!'); flashNotice('Sem gol: os goleiros saem, força máxima e cada jogada custa um botão.'); }
         if (bv.turn === x.you) sound.play('pop');
         break;
       }
       case 'bskip': {
         const x = matchRef.current;
         if (!x || x.game !== 'BOTAO') break;
-        const wasPen = x.bv.phase === 'penalties';
+        const morte = x.bv.phase === 'death';
         setMatch({ ...x, bv: m.botao }); setShown(shownOf(m.botao)); setTurnOpen(false); setAim(null);
         const who = m.side === x.you ? 'Você' : x.players[m.side].nick;
-        flashNotice(wasPen ? `${who} perdeu a cobrança (tempo).` : `${who} perdeu o peteleco (tempo).`);
+        flashNotice(morte ? `${who} perdeu o peteleco (tempo) e perdeu um botão.` : `${who} perdeu o peteleco (tempo).`);
         break;
       }
       case 'opp-dropped': setOppDropped(true); break;
@@ -474,7 +474,8 @@ export function X1Screen() {
     if (!a || !myTurn || !match || a.power < 0.06) { setAim(null); return; }
     if (match.game === 'BOTAO') {
       if (sel === null) { setAim(null); return; }
-      send({ t: 'snap', idx: sel, dx: a.sx, dy: a.sy, power: a.power });
+      const forca = match.bv.phase === 'death' ? 1 : a.power; // death match: sempre força máxima
+      send({ t: 'snap', idx: sel, dx: a.sx, dy: a.sy, power: forca });
     } else send({ t: 'flick', dx: a.sx, dy: a.sy, power: a.power });
     setSent(true);
     window.setTimeout(() => setSent(false), 3000);
@@ -554,17 +555,17 @@ export function X1Screen() {
       );
     } else {
       const { bv, field: F } = match;
-      const pen = bv.phase === 'penalties';
+      const morte = bv.phase === 'death';
       left = Math.max(0, Math.min(match.snapSec, Math.ceil((match.turnEndsAt - now()) / 1000))); total = match.snapSec;
       oppActive = bv.turn === opp && turnOpen && !animating; meActive = myTurn;
-      oppLabel = oppDropped ? 'caiu, esperando voltar' : oppActive ? (pen ? 'vai cobrar' : 'vez dele') : null;
+      oppLabel = oppDropped ? 'caiu, esperando voltar' : oppActive ? 'vez dele' : null;
       meLabel = myTurn
-        ? (aim ? `força ${Math.round(aim.power * 100)}%` : pen ? 'cobre o pênalti: puxe e solte' : 'toque num botão seu e puxe')
-        : bv.turn === you && !pen && bv.snapsLeft > 0 && !busyFx ? 'sua vez' : null;
-      extraH = 30; foot = 'Futebol de Botão';
+        ? (aim ? (morte ? 'força máxima' : `força ${Math.round(aim.power * 100)}%`) : morte ? 'só mire: a força é máxima' : 'toque num botão seu e puxe')
+        : bv.turn === you && bv.snapsLeft > 0 && !busyFx ? 'sua vez' : null;
+      extraH = 30; foot = morte ? 'Futebol de Botão · DEATH MATCH' : 'Futebol de Botão';
       const s = shown ?? shownOf(bv);
       const selP = sel !== null ? s.pieces[sel] : null;
-      const L = aim ? 30 + aim.power * 120 : 0;
+      const L = aim ? (morte ? 150 : 30 + aim.power * 120) : 0; // no death match a mira já mostra a força cheia
       const overlay = aim && myTurn && selP ? (
         <g pointerEvents="none">
           {xray && preview && <XrayPath path={preview.path} piece={preview.piece} goal={preview.goal} r={F.ball} />}
@@ -654,7 +655,7 @@ function Msg({ title, text, onBack }: { title: string; text: string; onBack: () 
 function rulesText(game: X1Game, r: Rules) {
   const b = r.botao;
   const main = game === 'BOTAO'
-    ? `Futebol de botão 1x1. Na sua vez, dê ${b?.snapsPerTurn ?? 2} petelecos num botão seu (quem começa dá ${b?.firstTurnSnaps ?? 1}). O primeiro gol acaba a partida; sem gol em ${b?.maxTurns ?? 9} vezes, vai para os pênaltis.`
+    ? `Futebol de botão 1x1. Na sua vez, dê ${b?.snapsPerTurn ?? 2} petelecos num botão seu (quem começa dá ${b?.firstTurnSnaps ?? 1}). O primeiro gol acaba a partida. Sem gol em ${b?.maxTurns ?? 9} vezes, entra o DEATH MATCH: os goleiros saem, só vale força máxima, 1 peteleco por vez e o botão que você jogar sai do campo — até ficar 1x1. Bola parada na área volta para o meio; ${b?.death?.drawAfter1v1 ?? 5} rodadas de 1x1 sem gol dão empate.`
     : `Futebol de prego 1x1, uma vez de cada. Quem fizer o primeiro gol vence; sem gol em ${r.maxTurns} jogadas de cada, o dinheiro volta.`;
   return { main, stakes: `Cada um põe ${fmt(r.bet)}. Quem vencer leva ${fmt(r.bet * 2)} e 1 gol para o time, e o time do outro perde 1 gol na rodada.` };
 }
@@ -900,29 +901,26 @@ function ProvocarTray({ items, vip, oppNick, muted, onPick, onMute, onUnmute, on
 }
 
 /**
- * Futebol de Botão: a vez (N de 9) e os petelecos que faltam nesta vez; nos pênaltis, as cobranças de cada um
- * (verde = gol, vermelho = não entrou, vazio = falta cobrar).
+ * Futebol de Botão: a vez (N de 9) e os petelecos que faltam nesta vez. No DEATH MATCH, os botões que cada
+ * um ainda tem em campo (cada jogada gasta um) e, no 1x1, quantas rodadas faltam para dar empate.
  */
 function BotaoStrip({ bv, you, oppNick, firstSnaps }: { bv: BotaoView; you: Side; oppNick: string; firstSnaps: number }) {
-  if (bv.phase === 'penalties' && bv.pen) {
-    const pen = bv.pen;
-    const row = (s: Side) => {
-      const k = pen.kicks[s];
-      const slots = Math.max(pen.of, k.length + (pen.kicker === s ? 1 : 0));
-      return (
-        <span className="flex gap-1" aria-label={`${k.filter(Boolean).length} gols em ${k.length} cobranças`}>
-          {Array.from({ length: slots }, (_, i) => (
-            <span key={i} className={`h-3.5 w-3.5 rounded-full border-2 ${i < k.length ? (k[i] ? 'border-[#1E7A2A] bg-[#46C24F]' : 'border-[#9B2A22] bg-[#E5484D]') : pen.kicker === s && i === k.length ? 'border-gold bg-gold/30' : 'border-white/50'}`} />
-          ))}
-        </span>
-      );
-    };
-    const goals = (s: Side) => pen.kicks[s].filter(Boolean).length;
+  if (bv.phase === 'death' && bv.death) {
+    const d = bv.death;
+    // número (não bolinhas): com 6 botões de cada lado, a fileira não cabe ao lado do aviso em tela estreita
+    const conta = (s: Side) => (
+      <b className={`t-display text-[16px] tabular-nums ${s === you ? 'text-gold' : 'text-white'}`} aria-label={`${d.left[s]} botões em campo`}>{d.left[s]}</b>
+    );
+    const umXum = d.left[0] === 1 && d.left[1] === 1;
+    const faltam = Math.max(0, Math.ceil(d.drawAfter - d.rounds1v1));
     return (
-      <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 rounded-xl bg-navy-deep/60 px-2 py-1">
-        <span className="flex min-w-0 items-center gap-1.5"><span className="text-[11px] font-extrabold text-white">Você</span>{row(you)}</span>
-        <span className="t-display t-gold shrink-0 text-[15px] tabular-nums">{goals(you)} x {goals((1 - you) as Side)}</span>
-        <span className="flex min-w-0 items-center gap-1.5">{row((1 - you) as Side)}<span className="truncate text-[11px] font-extrabold text-white">{oppNick}</span></span>
+      <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 rounded-xl bg-[#7A1620]/80 px-2 py-1">
+        <span className="flex min-w-0 items-center gap-1"><span className="text-[11px] font-extrabold text-white">Você</span>{conta(you)}</span>
+        <span className="t-display shrink-0 text-[12px] leading-tight text-gold">
+          {umXum ? `1x1 · ${faltam} p/ empate` : 'DEATH MATCH'}
+          <span className="block text-center text-[9px] font-extrabold text-white/70">botões em campo</span>
+        </span>
+        <span className="flex min-w-0 items-center gap-1">{conta((1 - you) as Side)}<span className="truncate text-[11px] font-extrabold text-white">{oppNick}</span></span>
       </div>
     );
   }
@@ -973,28 +971,25 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   const won = over.winner === over.you;
   const opp = over.players?.[1 - over.you]?.nick ?? 'o adversário';
   const botao = over.game === 'BOTAO';
-  // placar dos pênaltis com o do vencedor primeiro ("venceu por 3 x 2")
-  const pm = over.pen ? over.pen[over.you].filter(Boolean).length : 0, po = over.pen ? over.pen[1 - over.you].filter(Boolean).length : 0;
-  const penScore = won ? `${pm} x ${po}` : `${po} x ${pm}`;
   let title = 'PERDEU', text = '', goal = false, money = 0;
   if (over.canceled) { title = 'PARTIDA CANCELADA'; text = over.text ?? 'O JogaGol está sendo atualizado. A aposta voltou e nada contou.'; }
   else if (over.training) { title = won ? 'VENCEU O TREINO' : 'FIM DO TREINO'; text = 'Treino contra bot não vale gol nem dinheiro. Desafie alguém de verdade!'; goal = won; }
   else if (over.refund) {
     title = 'EMPATE';
-    text = botao ? `Empate até nos pênaltis: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;
+    text = botao ? `Nem o death match desempatou: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;
   } else if (won) {
     goal = true; money = over.money;
     title = over.goal ? 'GOOOL!!!' : 'VENCEU!';
     const why = over.why === 'limite' ? ` O gol não valeu: você já jogou as ${limit} partidas desta hora que valem gol.` : over.why === 'repetido' ? ` O gol não valeu: você ganhou de ${opp} duas vezes seguidas.`
       : over.why === 'mesmo-time' ? ' Amistoso do seu time: não vale gol.' : '';
-    const how = over.reason === 'penaltis' ? ` nos pênaltis (${penScore})` : '';
+    const how = '';
     const narr = over.goalText ?? `Você venceu ${opp}${how}!`;
     // o time do outro pode perder gol mesmo quando o seu não valeu: cada um conta as 10 partidas dele na hora
     const lostTxt = over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : '';
     text = over.goal ? `${narr}${/[.!?]$/.test(narr) ? '' : '.'}${lostTxt}` : `Você venceu ${opp}${how} e levou ${fmt(over.money)}.${why}${lostTxt}`;
   } else {
     text = over.reason === 'wo' ? `Você ficou fora e perdeu por W.O. para ${opp}.` : over.reason === 'desistiu' ? 'Você desistiu da partida.'
-      : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : over.reason === 'penaltis' ? `${opp} venceu nos pênaltis (${penScore}).` : `${opp} marcou primeiro.`;
+      : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : `${opp} marcou primeiro.`;
     text += over.why === 'mesmo-time' ? ' Amistoso do seu time: não vale gol.'
       : over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: você já jogou as ${limit} partidas desta hora que valem gol.` : ' Seu time não perdeu gol.';
   }

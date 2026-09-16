@@ -2,7 +2,7 @@
  * Futebol de Botão (X1) ponta a ponta contra a API LOCAL rodando (FP_API, padrão http://localhost:4320) com
  * X1_JOGO=BOTAO no .env dela, com jogadores de teste conectados por WebSocket como se fossem celulares (IPs
  * diferentes via X-Real-IP): convite com o nome do jogo, aceite e cobrança, peteleco fora da vez e em botão
- * do outro (ignorados), a partida até o gol que acaba (ou pênaltis), pote e gol para o vencedor, −1 do time
+ * do outro (ignorados), a partida até o gol que acaba (ou o DEATH MATCH), pote e gol para o vencedor, −1 do time
  * do perdedor, partida gravada (jogo, placar, temporada), Ranking do X1 e perfil; W.O. cedo; treino com bot.
  * Cria jogadores bt… direto no banco (a trava de cadastro por internet barra cadastro em série).
  *
@@ -71,8 +71,8 @@ async function play(pa, pb) {
   const ma = await pa.wait('match'), mb = await pb.wait('match');
   if (!ma || !mb) return null;
   const phones = { [ma.you]: pa, [mb.you]: pb };
-  let view = ma.botao, snaps = 0, goals = 0, penalties = 0;
-  while (!view.over && snaps < 80) {
+  let view = ma.botao, snaps = 0, goals = 0, saidas = 0, morte = false;
+  while (!view.over && snaps < 120) {
     const side = view.turn;
     const mv = botaoBotMove({ phase: view.phase, pieces: view.pieces, ball: view.ball, turn: side, over: null }, side, rnd, 1);
     phones[side].send({ t: 'snap', idx: mv.idx, dx: mv.dx, dy: mv.dy, power: mv.power });
@@ -81,15 +81,16 @@ async function play(pa, pb) {
     if (!snap) break;
     snaps++;
     if (snap.goal) goals++;
-    if (snap.penalty) penalties++;
+    if (snap.out) saidas++;
+    if (snap.botao?.phase === 'death') morte = true;
     view = snap.botao;
-    await sleep((snap.frames.length * 1000) / 30 + (snap.goal || snap.penalty ? 1200 : 450));
+    await sleep((snap.frames.length * 1000) / 30 + (snap.goal ? 1200 : 450));
     pa.box.splice(0).filter((m) => m.t !== 'bturn').forEach((m) => pa.box.push(m));
     pb.box.splice(0).filter((m) => m.t !== 'bturn').forEach((m) => pb.box.push(m));
     if (view.over) break;
   }
   const oa = await pa.wait('over', 12000), ob = await pb.wait('over', 12000);
-  return { oa, ob, youA: ma.you, snaps, goals, penalties, view };
+  return { oa, ob, youA: ma.you, snaps, goals, saidas, morte, view };
 }
 
 // ── A (Náutico) desafia; B (Bahia) está nas telas com abas e recebe o convite
@@ -145,14 +146,14 @@ gA.clear(); gB.clear();
 gA.box.unshift(ma0); gB.box.unshift(mb0);
 
 const r = await play(gA, gB);
-check(!!r?.oa && !!r?.ob, `partida terminou: ${r?.snaps} petelecos, ${r?.goals} gol(s), ${r?.penalties} pênalti(s) — "${r?.oa?.reason}"`);
+check(!!r?.oa && !!r?.ob, `partida terminou: ${r?.snaps} petelecos, ${r?.goals} gol(s)${r?.morte ? `, death match com ${r.saidas} botão(ões) fora` : ''} — "${r?.oa?.reason}"`);
 const wSide = r.oa.winner, w = wSide === r.youA ? A : B, l = w === A ? B : A;
 const ow = w === A ? r.oa : r.ob, ol = w === A ? r.ob : r.oa;
-check(['gol', 'gol-contra', 'penaltis'].includes(r.oa.reason), 'acabou no 1º gol ou nos pênaltis');
+check(['gol', 'gol-contra', 'empate'].includes(r.oa.reason), 'acabou no 1º gol ou empatou no death match');
 check((await money(w)) === 1200 && (await money(l)) === 800, `dinheiro: ${w.nick} levou R$ ${F.bet * 2}, ${l.nick} perdeu R$ ${F.bet}`);
 check(ow.goal === true && /Futebol de Botão/.test(ow.goalText || ''), `gol do vencedor valeu ("${(ow.goalText || '').slice(0, 70)}…")`);
 const row = await prisma.x1Match.findFirst({ where: { aId: A.id }, orderBy: { id: 'desc' } });
-check(row.game === 'BOTAO' && !!row.seasonId && row.status === 'FINISHED' && row.goalAwarded && row.winnerId === w.id && (row.scoreA + row.scoreB >= (r.oa.reason === 'penaltis' ? 0 : 1)), `gravada: jogo BOTAO, temporada, placar ${row.scoreA} x ${row.scoreB}`);
+check(row.game === 'BOTAO' && !!row.seasonId && row.status === 'FINISHED' && row.goalAwarded && row.winnerId === w.id && (row.scoreA + row.scoreB >= (r.oa.reason === 'empate' ? 0 : 1)), `gravada: jogo BOTAO, temporada, placar ${row.scoreA} x ${row.scoreB}`);
 check((await prisma.goal.count({ where: { userId: w.id, kind: 'BOTAO' } })) === 1, 'gol gravado como BOTAO');
 check(ol.lost === true, `o time do perdedor (${ol.lostTeam}) perdeu 1 gol na rodada`);
 

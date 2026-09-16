@@ -134,7 +134,7 @@ async function authenticate(req) {
 const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user.avatarUrl ?? null, team: teamView(c.user.team), bot: !!c.bot });
 const rulesView = () => ({
   bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalsPerHour: F.maxGoalsPerHour, challengeCooldownSec: F.challengeCooldownSec,
-  botao: { snapsPerTurn: BOTAO.snapsPerTurn, firstTurnSnaps: BOTAO.firstTurnSnaps, snapSec: BOTAO.snapSec, goalsToWin: BOTAO.goalsToWin, maxTurns: BOTAO.maxTurns, penalties: BOTAO.penalties },
+  botao: { snapsPerTurn: BOTAO.snapsPerTurn, firstTurnSnaps: BOTAO.firstTurnSnaps, snapSec: BOTAO.snapSec, goalsToWin: BOTAO.goalsToWin, maxTurns: BOTAO.maxTurns, death: BOTAO.death },
   provocar: PROVOCAR, // caretas e frases prontas (a tela não duplica o catálogo)
 });
 /** Jogador ocupado: numa partida ou com desafio aberto (em qualquer conexão). */
@@ -504,29 +504,30 @@ function playSnap(m, side, idx, dx, dy, power) {
   const animMs = Math.round((res.sim.frames.length * 1000) / 30);
   m.busyUntil = Date.now() + animMs;
   const goal = res.events.find((e) => e.t === 'goal');
-  const pen = res.events.find((e) => e.t === 'penalty');
+  const fora = res.events.find((e) => e.t === 'out'); // death match: o botão que jogou saiu do campo
+  const bolaMeio = res.events.find((e) => e.t === 'ball-reset');
   const over = res.events.find((e) => e.t === 'over');
-  for (const c of m.conns) send(c.ws, { t: 'snap', side, idx, frames: res.sim.frames, goal: goal ?? null, penalty: pen ?? null, botao: botaoView(m.bs) });
+  for (const c of m.conns) send(c.ws, { t: 'snap', side, idx, frames: res.sim.frames, goal: goal ?? null, out: fora ?? null, ballReset: bolaMeio?.ball ?? null, botao: botaoView(m.bs) });
   if (over) {
-    // resultado decidido (gol, pênaltis…): fica pendente até a animação acabar — desistir/cair agora não escapa dele
+    // resultado decidido (gol, empate no death match…): fica pendente até a animação acabar — desistir/cair agora não escapa dele
     m.pending = { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason === 'gols' ? (goal?.own ? 'gol-contra' : 'gol') : over.reason };
     m.turnTimer = setTimeout(() => finish(m, m.pending), animMs + 900);
     return;
   }
-  const started = res.events.find((e) => e.t === 'penalties');
-  scheduleSnap(m, animMs + (goal || pen ? 1100 : 350), true, started ? { penaltiesStart: true } : {});
+  const morte = res.events.find((e) => e.t === 'deathmatch'); // acabou o tempo normal empatado
+  scheduleSnap(m, animMs + (goal ? 1100 : morte ? 1400 : 350), true, morte ? { deathStart: true } : {});
 }
 
 function timeoutSnap(m) {
   if (m.done) return;
   const side = m.bs.turn;
-  const events = skipSnap(m.bs, rnd01);
+  const events = skipSnap(m.bs);
   m.timeouts[side]++;
   for (const c of m.conns) send(c.ws, { t: 'bskip', side, botao: botaoView(m.bs) });
   if (m.timeouts[side] >= MAX_TIMEOUTS && m.bs.phase === 'play') return finish(m, { winner: 1 - side, reason: 'wo' });
   const over = events.find((e) => e.t === 'over');
   if (over) return finish(m, { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason });
-  scheduleSnap(m, 300, true, events.some((e) => e.t === 'penalties') ? { penaltiesStart: true } : {});
+  scheduleSnap(m, 300, true, events.some((e) => e.t === 'deathmatch') ? { deathStart: true } : {});
 }
 
 function botSnap(m) {
@@ -565,7 +566,7 @@ function onDisconnect(conn) {
 // ─── Raio-X (brincadeira do dono, 15/09/2026) ───────────────────────────────
 
 // Só para estas contas (dono e colaborador): a tecla R na tela do X1 mostra a trajetória exata da mira antes de
-// soltar. A física dos dois jogos é determinística (o sorteio só entra no goleiro dos pênaltis), então o servidor
+// soltar. A física dos dois jogos é determinística, então o servidor
 // simula a MESMA jogada que o peteleco de verdade faria e devolve o caminho da bola. Ninguém mais recebe nada
 // (mensagem ignorada). **Os dois precisam saber quando o outro está com o Raio-X ligado** (dono, 15/09/2026): a tela
 // avisa o servidor ao ligar/desligar (`xray`), o adversário — se for uma destas contas — vê o selo "RAIO-X" na barra
@@ -670,7 +671,7 @@ async function cancelMatch(m, reason) {
   for (const c of m.conns) {
     if (c.bot) continue;
     const msg = {
-      t: 'over', game: m.game, winner: null, reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null, pen: null,
+      t: 'over', game: m.game, winner: null, reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null,
       money: m.bot ? 0 : F.bet, refund: !m.bot, canceled: true, why: reason,
       text: m.bot ? 'Treino interrompido: o JogaGol está sendo atualizado.' : `Partida cancelada: o JogaGol está sendo atualizado. Os ${F.bet} da aposta voltaram e nada contou.`,
     };
@@ -697,7 +698,7 @@ async function finish(m, result) {
     const cd = !m.bot && info && !info.error ? { cooldownUntil: isVip(c.user) ? null : Date.now() + F.challengeCooldownSec * 1000 } : {};
     const msg = {
       t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView),
-      score: m.bs?.score ?? null, pen: m.bs?.pen?.kicks ?? null, ...personal(info, m, c.side, result), ...rivalry(h2h, m, c), ...cd,
+      score: m.bs?.score ?? null, ...personal(info, m, c.side, result), ...rivalry(h2h, m, c), ...cd,
     };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
     c.match = null; c.side = -1;
@@ -764,7 +765,7 @@ async function settle(m, result) {
     }
     const w = m.conns[result.winner], l = m.conns[1 - result.winner];
     const pot = F.bet * 2;
-    const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)', penaltis: ' nos pênaltis' }[result.reason] ?? '';
+    const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)' }[result.reason] ?? '';
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
     await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
     if (m.sameTeam) {

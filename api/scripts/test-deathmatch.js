@@ -3,7 +3,8 @@
  * Confere o que o dono pediu em 16/09/2026: acabaram as 9 rodadas empatado, entra o death match com os
  * botões onde estão e os DOIS GOLEIROS fora; 1 peteleco por vez, sempre na força máxima; o botão que jogou
  * sai do campo até sobrar 1x1 (o último nunca sai); perder o tempo também custa um botão (o mais longe da
- * bola); bola parada dentro da área volta para o meio; 5 rodadas de 1x1 sem gol = empate.
+ * bola); as ÁREAS ficam liberadas e a bola rola mais (conserto de 16/09 — a bola parada na área voltava ao meio
+ * e isso matava o ataque); 5 rodadas de 1x1 sem gol = empate.
  *
  * Uso (na pasta api/):  node scripts/test-deathmatch.js   → tem de terminar em "TUDO OK".
  */
@@ -76,15 +77,48 @@ if (!s.over) {
   check(vivos(s).join('x') === antes1v1.join('x') || s.over, 'no 1x1 o último botão NÃO sai');
 }
 
-// ── bola parada na área volta para o meio
+// ── a bola PODE ficar na área e os botões alcançam ela (conserto de 16/09)
 const t = newBotaoMatch(0);
 t.phase = 'death'; t.dm = { rounds1v1: 0 }; t.pieces = t.pieces.filter((p) => !p.gk); t.snapsLeft = 1;
 const box = BOTAO_FIELD.boxes[1];
 t.ball = { x: (box.x0 + box.x1) / 2, y: (box.y0 + box.y1) / 2 };
 check(naArea(t.ball), 'bola posta dentro da área para o teste');
 const lado = t.turn, iAtras = movablePieces(t, lado).at(-1);
-const r2 = applySnap(t, lado, iAtras, 0, lado === 0 ? 1 : -1, 1, rnd); // joga longe da bola, ela não se mexe
-check(!naArea(t.ball) && !!r2.events.find((e) => e.t === 'ball-reset'), `a bola voltou para o meio (${Math.round(t.ball.x)}, ${Math.round(t.ball.y)})`);
+const r2 = applySnap(t, lado, iAtras, 0, lado === 0 ? 1 : -1, 1, rnd); // joga para longe: a bola não se mexe
+check(naArea(t.ball) && !r2.events.find((e) => e.t === 'ball-reset'), 'a bola fica onde parou, mesmo dentro da área');
+// um botão consegue entrar na área atrás da bola
+const t2 = newBotaoMatch(0);
+t2.phase = 'death'; t2.dm = { rounds1v1: 0 }; t2.pieces = t2.pieces.filter((p) => !p.gk); t2.snapsLeft = 1;
+t2.ball = { x: 260, y: 260 }; // bola fora do caminho
+const dentro = movablePieces(t2, 0)[0];
+applySnap(t2, 0, dentro, 0, -1, 1, rnd); // toca o botão reto na direção do gol de cima
+check(t2.pieces.length > 0, 'jogada feita para conferir a área liberada');
+const algumNaArea = [t2.pieces, r2.sim.pieces].some((lista) => lista.some((p) => naArea(p)));
+check(algumNaArea, 'no death match um botão pode entrar na área (sem goleiro, ninguém é barrado ali)');
+
+// ── a bola rola mais no death match do que no tempo normal (mesma jogada)
+// campo limpo: botão atrás da bola batendo PARA O LADO (sem gol no caminho), medindo o caminho todo da bola
+const soloBase = () => {
+  const e = newBotaoMatch(0);
+  e.pieces = [{ side: 0, gk: false, x: 40, y: 230 }, { side: 1, gk: false, x: 150, y: 60 }];
+  e.ball = { x: 40 + BOTAO_FIELD.piece + BOTAO_FIELD.ball + 1, y: 230 };
+  e.turn = 0; e.snapsLeft = 1;
+  return e;
+};
+const corrida1 = soloBase();
+const corrida2 = soloBase();
+corrida2.phase = 'death'; corrida2.dm = { rounds1v1: 0 };
+const anda = (est) => {
+  const r = applySnap(est, 0, 0, 1, 0, 1, rnd);
+  let total = 0;
+  for (let i = 1; i < r.sim.frames.length; i++) {
+    const a = r.sim.frames[i - 1][0], b = r.sim.frames[i][0];
+    total += Math.hypot(b[0] - a[0], b[1] - a[1]);
+  }
+  return total;
+};
+const dNormal = anda(corrida1), dMorte = anda(corrida2);
+check(dMorte > dNormal * 1.1, `a bola roda mais no death match: ${Math.round(dMorte)} de caminho contra ${Math.round(dNormal)} no tempo normal (+${Math.round((100 * dMorte) / dNormal - 100)}%)`);
 
 // ── 5 rodadas de 1x1 sem gol = empate
 const d = newBotaoMatch(0);

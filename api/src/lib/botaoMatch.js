@@ -9,8 +9,10 @@
  *   os botões ficam onde estão, os DOIS GOLEIROS saem na hora e o jogo segue com 1 peteleco por vez, sempre
  *   na força máxima. O botão que o jogador usou sai do campo depois da jogada, até sobrar 1x1 (o último
  *   nunca sai). Perdeu o tempo sem jogar: sai o botão mais longe da bola (senão dava para enrolar e ficar
- *   com o campo cheio). Bola que PARA dentro de uma área volta para o meio — sem goleiro, ali ninguém
- *   alcança. Passadas BOTAO.death.drawAfter1v1 rodadas de 1x1 sem gol, é empate de verdade.
+ *   com o campo cheio). **As ÁREAS ficam liberadas** e a bola rola mais longe (BOTAO_PHYS.deathBallFriction):
+ *   sem goleiro não há por que barrar ninguém ali, e devolver ao meio a bola parada na área (a 1ª regra, de
+ *   16/09/2026) matava justamente o melhor lance do ataque — relato do djownamed no mesmo dia.
+ *   Passadas BOTAO.death.drawAfter1v1 rodadas de 1x1 sem gol, é empate de verdade.
  */
 import { BOTAO } from './rules.js';
 import { BOTAO_FIELD, kickoffLayout, simulateSnap, botaoScorer } from './botao.js';
@@ -52,26 +54,6 @@ function startDeathMatch(s) {
   s.pieces = s.pieces.filter((p) => !p.gk);
   s.dm = { rounds1v1: 0 };
   s.snapsLeft = BOTAO.death.snapsPerTurn;
-  if (ballInBox(s.ball)) ballToCenter(s); // a bola já podia estar parada numa área
-}
-
-/** A bola parou dentro de uma das áreas? (sem goleiro, ali nenhum botão alcança) */
-function ballInBox(ball) {
-  return BOTAO_FIELD.boxes.some((b) => ball.x >= b.x0 && ball.x <= b.x1 && ball.y >= b.y0 && ball.y <= b.y1);
-}
-
-/** Devolve a bola ao meio do campo, desviando um pouco se tiver botão em cima. */
-function ballToCenter(s) {
-  const F = BOTAO_FIELD;
-  const livre = (x, y) => s.pieces.every((p) => Math.hypot(p.x - x, p.y - y) > F.piece + F.ball + 1);
-  if (livre(F.center.x, F.center.y)) { s.ball = { ...F.center }; return; }
-  for (let r = 14; r <= 70; r += 14) {
-    for (let a = 0; a < 8; a++) {
-      const x = F.center.x + Math.cos((a * Math.PI) / 4) * r, y = F.center.y + Math.sin((a * Math.PI) / 4) * r;
-      if (x > F.ball && x < F.W - F.ball && y > F.ball && y < F.H - F.ball && livre(x, y)) { s.ball = { x, y }; return; }
-    }
-  }
-  s.ball = { ...F.center };
 }
 
 /** Tira um botão de `side` (o que ele jogou; sem índice, o mais longe da bola). O último NUNCA sai. */
@@ -114,7 +96,7 @@ function endTurn(s, nextSide) {
 /**
  * Um peteleco de `side` no botão `idx`. Devolve { sim, events } e já atualiza o estado `s`.
  * events: 'goal' {side, own}, 'turn' {side}, 'deathmatch' (começou), 'out' {side, x, y} (botão saiu),
- * 'ball-reset' {ball} (bola parada na área voltou ao meio), 'skip', 'over'.
+ * 'skip', 'over'.
  */
 export function applySnap(s, side, idx, dx, dy, power, rnd) {
   if (s.over || s.turn !== side || !movablePieces(s, side).includes(idx)) return null;
@@ -136,10 +118,9 @@ export function applySnap(s, side, idx, dx, dy, power, rnd) {
     return { sim, events };
   }
   if (morte) {
-    // o botão que jogou sai do campo (o último de cada lado fica) e bola parada na área volta ao meio
+    // o botão que jogou sai do campo (o último de cada lado fica)
     const fora = dropPiece(s, side, idx);
     if (fora) events.push({ t: 'out', ...fora });
-    if (ballInBox(s.ball)) { ballToCenter(s); events.push({ t: 'ball-reset', ball: { ...s.ball } }); }
   }
   s.snapsLeft -= 1;
   if (s.snapsLeft <= 0) {

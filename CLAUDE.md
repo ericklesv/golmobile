@@ -212,9 +212,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   rules.js, `startDeathMatch`/`dropPiece` em lib/botaoMatch.js): os botões ficam onde estão, os DOIS GOLEIROS saem na
   hora, 1 peteleco por vez e **sempre na força máxima** (o servidor ignora a força pedida — a tela também manda 1), o
   botão que o jogador usou SAI do campo depois da jogada até sobrar 1x1 (o último nunca sai), perder o tempo custa o
-  botão mais longe da bola (senão dava para enrolar), bola que PARA dentro de uma área volta para o meio (sem goleiro
-  ninguém a alcança) e 5 rodadas de 1x1 sem gol = empate. Eventos novos no WebSocket: `deathStart` (em `bturn`),
-  `out` e `ballReset` (em `snap`). **Mexeu no death match? Rode `node scripts/test-deathmatch.js`** (pasta api/, sem
+  botão mais longe da bola (senão dava para enrolar), **as ÁREAS ficam liberadas** (sem goleiro, barrar ali matava o
+  melhor lance do ataque — relato de jogador em 16/09) e **a bola rola 30% mais** (`BOTAO_PHYS.deathBallFriction`),
+  e 5 rodadas de 1x1 sem gol = empate. Eventos novos no WebSocket: `deathStart` (em `bturn`) e `out` (em `snap`). **Mexeu no death match? Rode `node scripts/test-deathmatch.js`** (pasta api/, sem
   banco). Partidas na tabela `FutPregoMatch`
   (modelo Prisma `X1Match`, migração 0028: `game`, `seasonId`, `scoreA/B`). **Perfil**: `x1` em
   `GET /api/players/:nick` (`x1Record` em `services/x1.js`: total com pontos e sequência sem perder, cada jogo e a

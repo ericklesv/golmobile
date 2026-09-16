@@ -308,9 +308,8 @@ export function X1Screen() {
           if (before) setShown({ ball: { x: last[0][0], y: last[0][1] }, pieces: before.pieces.map((p, j) => ({ ...p, x: last[j + 1]?.[0] ?? p.x, y: last[j + 1]?.[1] ?? p.y })) });
           setMatch((x) => (x && x.game === 'BOTAO' ? { ...x, bv: m.botao } : x));
           if (m.goal) { setGoalFlash(m.goal.side === 0 ? 'top' : 'bottom'); setBigText(m.goal.own ? 'GOL CONTRA!' : 'GOL!'); }
-          // death match: o botão que jogou sai do campo e bola parada na área volta ao meio — o servidor manda a cena certa
-          if (m.out || m.ballReset) setShown(shownOf(m.botao));
-          if (m.ballReset) flashNotice('A bola parou na área: volta para o meio.');
+          // death match: o botão que jogou sai do campo — o servidor manda a cena já sem ele
+          if (m.out) setShown(shownOf(m.botao));
         });
         break;
       }
@@ -655,7 +654,7 @@ function Msg({ title, text, onBack }: { title: string; text: string; onBack: () 
 function rulesText(game: X1Game, r: Rules) {
   const b = r.botao;
   const main = game === 'BOTAO'
-    ? `Futebol de botão 1x1. Na sua vez, dê ${b?.snapsPerTurn ?? 2} petelecos num botão seu (quem começa dá ${b?.firstTurnSnaps ?? 1}). O primeiro gol acaba a partida. Sem gol em ${b?.maxTurns ?? 9} vezes, entra o DEATH MATCH: os goleiros saem, só vale força máxima, 1 peteleco por vez e o botão que você jogar sai do campo — até ficar 1x1. Bola parada na área volta para o meio; ${b?.death?.drawAfter1v1 ?? 5} rodadas de 1x1 sem gol dão empate.`
+    ? `Futebol de botão 1x1. Na sua vez, dê ${b?.snapsPerTurn ?? 2} petelecos num botão seu (quem começa dá ${b?.firstTurnSnaps ?? 1}). O primeiro gol acaba a partida. Sem gol em ${b?.maxTurns ?? 9} vezes, entra o DEATH MATCH: os goleiros saem, só vale força máxima, 1 peteleco por vez e o botão que você jogar sai do campo — até ficar 1x1. As áreas ficam liberadas (sem goleiro) e a bola rola mais; ${b?.death?.drawAfter1v1 ?? 5} rodadas de 1x1 sem gol dão empate.`
     : `Futebol de prego 1x1, uma vez de cada. Quem fizer o primeiro gol vence; sem gol em ${r.maxTurns} jogadas de cada, o dinheiro volta.`;
   return { main, stakes: `Cada um põe ${fmt(r.bet)}. Quem vencer leva ${fmt(r.bet * 2)} e 1 gol para o time, e o time do outro perde 1 gol na rodada.` };
 }

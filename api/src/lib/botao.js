@@ -31,6 +31,12 @@ export const BOTAO_PHYS = {
   ballDamp: 0.95, ballRoll: 55,   // bola rola mais
   eBallPiece: 0.88, ePiecePiece: 0.55, eWallBall: 0.72, eWallPiece: 0.5,
   stop: 7,
+  // Só no DEATH MATCH (dono, 16/09/2026, depois do relato do djownamed "não dá para fazer o gol atacando"):
+  // a bola rola 30% mais longe (atrito × isto) e as ÁREAS deixam de ser proibidas — sem goleiro não há por que
+  // barrar ninguém ali, e era isso que transformava o melhor lance do ataque em bola de volta ao meio.
+  // Medido em 400 death matches: quem começa passou de 44% para 49% de vitórias e o chute do meio virou
+  // ameaça de verdade (0% → 4% de gol), com a partida ainda acabando em ~4 jogadas.
+  deathBallFriction: 0.7,
 };
 
 // Formação clássica 2-3-1 + goleiro, do lado 0 (de baixo), com y contado a partir do próprio gol.
@@ -66,6 +72,7 @@ const r1 = (v) => Math.round(v * 2) / 2;
 export function simulateSnap(state, idx, dx, dy, power) {
   const F = BOTAO_FIELD, P = BOTAO_PHYS;
   const len = Math.hypot(dx, dy) || 1;
+  const morte = state.phase === 'death'; // death match: bola mais solta e áreas liberadas
   const speed = P.vMin + Math.max(0, Math.min(1, power)) * (P.vMax - P.vMin);
   const bodies = [
     { x: state.ball.x, y: state.ball.y, vx: 0, vy: 0, r: F.ball, m: P.mBall, ball: true },
@@ -111,14 +118,15 @@ export function simulateSnap(state, idx, dx, dy, power) {
         continue;
       }
       if (b.gk) confineGoalie(b, F.boxes[b.side], eW);
-      else for (const box of F.boxes) keepOutOfBox(b, box, eW);
+      else if (!morte) for (const box of F.boxes) keepOutOfBox(b, box, eW);
     }
     // atrito
     let moving = false;
     for (const b of bodies) {
       const sp = Math.hypot(b.vx, b.vy);
       if (sp === 0) continue;
-      const damp = b.ball ? P.ballDamp : P.pieceDamp, roll = b.ball ? P.ballRoll : P.pieceRoll;
+      const atrito = b.ball && morte ? P.deathBallFriction : 1;
+      const damp = (b.ball ? P.ballDamp : P.pieceDamp) * atrito, roll = (b.ball ? P.ballRoll : P.pieceRoll) * atrito;
       const nsp = Math.max(0, sp - (roll + damp * sp) * P.dt);
       if (nsp < P.stop) { b.vx = 0; b.vy = 0; } else { b.vx *= nsp / sp; b.vy *= nsp / sp; moving = true; }
     }

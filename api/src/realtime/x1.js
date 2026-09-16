@@ -505,9 +505,8 @@ function playSnap(m, side, idx, dx, dy, power) {
   m.busyUntil = Date.now() + animMs;
   const goal = res.events.find((e) => e.t === 'goal');
   const fora = res.events.find((e) => e.t === 'out'); // death match: o botão que jogou saiu do campo
-  const bolaMeio = res.events.find((e) => e.t === 'ball-reset');
   const over = res.events.find((e) => e.t === 'over');
-  for (const c of m.conns) send(c.ws, { t: 'snap', side, idx, frames: res.sim.frames, goal: goal ?? null, out: fora ?? null, ballReset: bolaMeio?.ball ?? null, botao: botaoView(m.bs) });
+  for (const c of m.conns) send(c.ws, { t: 'snap', side, idx, frames: res.sim.frames, goal: goal ?? null, out: fora ?? null, botao: botaoView(m.bs) });
   if (over) {
     // resultado decidido (gol, empate no death match…): fica pendente até a animação acabar — desistir/cair agora não escapa dele
     m.pending = { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason === 'gols' ? (goal?.own ? 'gol-contra' : 'gol') : over.reason };

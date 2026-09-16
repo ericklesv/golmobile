@@ -112,6 +112,8 @@ export function X1Screen() {
   const [oppDropped, setOppDropped] = useState(false);
   const [goalFlash, setGoalFlash] = useState<'top' | 'bottom' | null>(null);
   const [bigText, setBigText] = useState<string | null>(null); // "GOL!" / "NÃO ENTROU!" no meio do campo
+  // Aviso do DEATH MATCH: some sozinho e NÃO entra no busyFx — senão trava a vez de quem ia jogar (bug de 16/09)
+  const [deathFlash, setDeathFlash] = useState(false);
   const [over, setOver] = useState<Over | null>(null);
   const [lastResult, setLastResult] = useState<Over | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -321,7 +323,11 @@ export function X1Screen() {
         setShown(shownOf(bv)); lastPos.current = { ...bv.ball }; ballRef.current?.setAttribute('transform', `translate(${bv.ball.x} ${bv.ball.y})`);
         setGoalFlash(null); setBigText(null); setAim(null); setSent(false); setTurnOpen(true);
         setSel(nearestPiece(bv, x.you));
-        if (m.deathStart) { setBigText('DEATH MATCH!'); flashNotice('Sem gol: os goleiros saem, força máxima e cada jogada custa um botão.'); }
+        if (m.deathStart) {
+          setDeathFlash(true);
+          window.setTimeout(() => setDeathFlash(false), 1800);
+          flashNotice('Sem gol: os goleiros saem, força máxima e cada jogada custa um botão.');
+        }
         if (bv.turn === x.you) sound.play('pop');
         break;
       }
@@ -512,6 +518,11 @@ export function X1Screen() {
         {notice && (
           <motion.div key={notice} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="pointer-events-none absolute inset-x-0 top-[38%] flex justify-center px-4">
             <span className="rounded-xl bg-navy-deep/85 px-3 py-1.5 text-center text-[13px] font-extrabold text-white">{notice}</span>
+          </motion.div>
+        )}
+        {deathFlash && !bigText && (
+          <motion.div key="dm" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 14 }} className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center">
+            <span className="t-display t-gold text-[46px] leading-none">DEATH MATCH!</span>
           </motion.div>
         )}
         {bigText && (

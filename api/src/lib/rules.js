@@ -416,7 +416,9 @@ export const x1GameOf = (day) => X1.games[((day % X1.games.length) + X1.games.le
 // sobrar 1x1 (os goleiros são os primeiros a sair, assim que o death match começa). Bola que para dentro
 // de uma área volta para o meio (sem goleiro, ali ninguém alcança). 5 rodadas no 1x1 sem gol = empate.
 export const BOTAO = {
-  snapsPerTurn: 2, firstTurnSnaps: 1, snapSec: 15, goalsToWin: 1, maxTurns: 9,
+  // BOTAO_TURNOS encurta a partida para testar o death match (só no PC; ignorado com NODE_ENV=production)
+  snapsPerTurn: 2, firstTurnSnaps: 1, snapSec: 15, goalsToWin: 1,
+  maxTurns: (process.env.NODE_ENV !== 'production' && Number(process.env.BOTAO_TURNOS)) || 9,
   death: { snapsPerTurn: 1, drawAfter1v1: 5 },
 };
 KIND_LABEL.BOTAO = 'Futebol de Botão';

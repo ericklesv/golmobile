@@ -32,17 +32,23 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Chutes (direto, pênalti, falta, trilha) liberados para todos desde o nível 0** (decisão do
   dono, 13/09/2026: travar desanimava); **só os minigames travam por nível** (`MINIGAMES.unlock`).
   O front lê tudo via `GET /api/meta` — **não duplicar constantes no `web/`**.
-- **Habilidades = a evolução do jogador** (`SKILLS` em rules.js, `services/skills.js`, painel na Loja;
-  reforma do dono em 17/09/2026). Quatro, e a ordem da lista é a ordem de gastar ponto: **Recarga** (11
-  níveis, −30 s no chute direto/pênalti/falta até o piso de `COOLDOWN_MIN` = 4:30; a trilha tem a redução
-  dos níveis, não esta), **Pontaria** (9 níveis, +5 p.p. no pênalti até 90%), **Chute** (9 níveis, +5 p.p.
-  na falta até 80%) e **Sorte** (7 níveis, +1 p.p. na chance de chute especial, de 3% a 10%).
-  **Cada nível custa 1 PONTO DE NÍVEL e nada mais** — dinheiro e VIP saíram ("temos que dar mais valor a
-  upada de nível… tira a magia que é passar de nível"); quem já tinha comprado nível com dinheiro/VIP ficou
-  com ele. A árvore inteira custa **36 pontos = nível 36 = 300 mil pontos de nível**, o "full" do BRGOL
-  (níveis 33–36 criados na mesma reforma; no ritmo medido dos mais fortes, 387 pontos/dia, são ~26 meses).
-  **VIP encurta o caminho, não o piso**: com base de 5:00 ele chega aos 4:30 com 1 nível de Recarga — a tela
-  avisa e não deixa gastar ponto à toa.
+- **Habilidades = a evolução do jogador** (`SKILLS`/`SKILL_STEPS` em rules.js, `services/skills.js`, painel
+  na Loja; reforma do dono em 17/09/2026, ajustada no mesmo dia). **Quatro habilidades de 18 degraus cada**,
+  na ordem de gastar ponto: **Recarga** (−5 s por degrau no chute direto/pênalti/falta; a trilha tem a
+  redução dos níveis, não esta), **Pontaria** (+2,5 p.p. no pênalti, até 90%), **Chute** (+2,5 p.p. na falta,
+  até 80%) e **Sorte** (+0,39 p.p. na chance de chute especial, de 3% a 10%).
+  **Cada degrau custa 1 PONTO DE NÍVEL e nada mais** — dinheiro e VIP saíram ("temos que dar mais valor a
+  upada de nível… tira a magia que é passar de nível"); o que foi pago com dinheiro/VIP foi devolvido EM
+  DOBRO (`scripts/devolver-habilidades.js`, com trava no AdminAction para não pagar duas vezes).
+  A árvore inteira custa **72 pontos = nível 72 = 300 mil pontos de nível**, o "full" do BRGOL — os níveis
+  33 a 72 (Lendário 4–10, Ídolo, Mito, Imortal) foram criados para isso, subindo ~4,3% por nível.
+  **Por que 18 degraus e não 9:** com 9, o acerto máximo dos dois chutes custava 18 pontos e o dono chegou lá
+  em 4 dias ("nível 18 e já tô full praticamente") — os 28 primeiros pontos saem em 2 semanas, e só do 29 em
+  diante a curva trava. Com 18, os dois acertos custam 36 pontos. Mexeu nos degraus? **Tem de zerar as
+  habilidades e devolver os pontos** (migração 0040 fez isso), senão o degrau antigo vira outra coisa.
+  **O piso de 4:30 é do VIP** (dono: "ele só deve chegar nos 4:30 se for vip"): o jogador comum sai de 10:00
+  e para em 8:30 com a Recarga cheia; o VIP parte de 5:00 e bate no piso no 6º degrau — a tela avisa quem
+  está no piso para não gastar ponto à toa.
 - **Chute de prata e de ouro** (`BALL`/`rollBall` em rules.js, `lib/bola.js`, colunas `User.ballNext` e
   `User.ballLeft`, `Goal.ball`): 3% dos pênaltis, faltas e trilhas vêm especiais desde o nível 0 (2% prata +
   1% ouro), até 10% com a Sorte — as duas somadas, o ouro sempre metade da prata. **Prata bate 2x e ouro

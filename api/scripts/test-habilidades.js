@@ -31,25 +31,28 @@ const U = (id) => prisma.user.findUnique({ where: { id }, include: { items: true
 // ── a árvore
 const custo = R.SKILLS.reduce((s, x) => s + x.max, 0);
 check(R.SKILLS.map((s) => s.key).join(',') === 'CD,AIM,SHOT,LUCK', `as 4 habilidades, na ordem do dono: ${R.SKILLS.map((s) => s.name).join(' → ')}`);
-check(custo === 36 && R.LEVELS.at(-1).lvl === 36, `a árvore inteira custa ${custo} pontos e o nível máximo é ${R.LEVELS.at(-1).lvl} (${R.LEVELS.at(-1).goals.toLocaleString('pt-BR')} pontos de nível)`);
+check(custo === 72 && R.LEVELS.at(-1).lvl === 72, `a árvore inteira custa ${custo} pontos (4 habilidades de ${R.SKILL_STEPS} degraus) e o nível máximo é ${R.LEVELS.at(-1).lvl} (${R.LEVELS.at(-1).goals.toLocaleString('pt-BR')} pontos de nível)`);
+check(R.SKILLS.every((x) => x.max === R.SKILL_STEPS), `todas as habilidades têm ${R.SKILL_STEPS} degraus (dono: "coloque 18 níveis")`);
 check(Object.keys(R.SKILL_COST).join(',') === 'point', 'habilidade paga só com ponto de nível (dinheiro e VIP saíram)');
 check(R.CHANCE_CAP.PENALTY === 0.90 && R.CHANCE_CAP.FOUL === 0.80, `tetos: pênalti ${pct(R.CHANCE_CAP.PENALTY)}, falta ${pct(R.CHANCE_CAP.FOUL)}`);
 
 // ── um jogador full: cada habilidade no máximo entrega o que o dono pediu
-const full = { skillCd: 11, skillAim: 9, skillShot: 9, skillLuck: 7, goalsTotal: 300000, levelBonus: 0 };
-check(R.levelOf(full).lvl === 36, `com 300 mil pontos o jogador chega ao nível ${R.levelOf(full).lvl} — e aí tem os 36 pontos da árvore`);
+const full = { skillCd: 18, skillAim: 18, skillShot: 18, skillLuck: 18, goalsTotal: 300000, levelBonus: 0 };
+check(R.levelOf(full).lvl === 72, `com 300 mil pontos o jogador chega ao nível ${R.levelOf(full).lvl} — e aí tem os ${custo} pontos da árvore inteira`);
 check(R.shotChance(full, 'PENALTY') === 0.90, `pênalti no full: ${pct(R.shotChance(full, 'PENALTY'))}`);
 check(Math.abs(R.shotChance(full, 'FOUL') - 0.80) < 1e-9, `falta no full: ${pct(R.shotChance(full, 'FOUL'))}`);
 check(Math.abs(R.ballChance(full).total - 0.10) < 1e-9, `chance de chute especial no full: ${pct(R.ballChance(full).total)} (prata ${(R.ballChance(full).silver * 100).toFixed(1)}% + ouro ${(R.ballChance(full).gold * 100).toFixed(1)}%)`);
 check(Math.abs(R.ballChance({}).total - 0.03) < 1e-9, `e no nível 0, sem gastar ponto: ${pct(R.ballChance({}).total)} (2% prata + 1% ouro), como o dono pediu`);
+// Recarga: 5 s por degrau e SÓ O VIP chega aos 4:30 (dono, 17/09/2026: "ele só deve chegar nos 4:30 se for vip")
+const comVip = (o) => ({ ...o, vipUntil: new Date(Date.now() + 86400e3) });
 for (const kind of ['AUTO', 'PENALTY', 'FOUL']) {
-  check(R.cooldownFor(full, kind) === R.COOLDOWN_MIN, `${kind}: recarga no full = ${mmss(R.cooldownFor(full, kind))}`);
+  check(R.cooldownFor(full, kind) === 8.5 * 60_000, `${kind}: jogador comum com a Recarga cheia = ${mmss(R.cooldownFor(full, kind))} (nunca 4:30)`);
+  check(R.cooldownFor(comVip(full), kind) === R.COOLDOWN_MIN, `${kind}: o mesmo jogador com VIP = ${mmss(R.cooldownFor(comVip(full), kind))}`);
 }
 check(R.cooldownFor({ ...full, skillCd: 0 }, 'PENALTY') === 10 * 60_000, 'sem a habilidade Recarga, o pênalti continua 10:00');
-check(R.cooldownFor({ ...full, skillCd: 5 }, 'PENALTY') === 7.5 * 60_000, 'no nível 5 da Recarga: 7:30 (30 s por nível)');
-// VIP chega ao piso mais cedo, e o piso é o mesmo para todo mundo
-const vip = { ...full, skillCd: 1, vipUntil: new Date(Date.now() + 86400e3) };
-check(R.cooldownFor(vip, 'PENALTY') === R.COOLDOWN_MIN, 'VIP com 1 nível de Recarga já bate no piso de 4:30');
+check(R.cooldownFor({ ...full, skillCd: 6 }, 'PENALTY') === 9.5 * 60_000, 'no 6º degrau da Recarga o comum está em 9:30 (5 s por degrau)');
+check(R.cooldownFor(comVip({ ...full, skillCd: 5 }), 'PENALTY') === 4 * 60_000 + 35_000, 'VIP no 5º degrau: 4:35 — ainda não é o piso');
+check(R.cooldownFor(comVip({ ...full, skillCd: 6 }), 'PENALTY') === R.COOLDOWN_MIN, 'VIP no 6º degrau: bate nos 4:30 e não desce mais');
 
 // ── Boost Auto: -30 s e nunca abaixo de 4 min
 const I = await import('../src/lib/items.js');
@@ -67,16 +70,18 @@ let me = await U(u.id);
 check(me.skillCd === 5 && me.money === 10_000_000 && me.vipDays === 50, '5 níveis de Recarga comprados: não tirou dinheiro nem VIP');
 const eSem = await err(buySkill(u.id, 'AIM', 'point'));
 check(eSem?.code === 'no-points', `acabaram os pontos: "${eSem?.message}"`);
-check(R.cooldownFor(me, 'PENALTY') === 7.5 * 60_000, `a recarga do pênalti dele caiu para ${mmss(R.cooldownFor(me, 'PENALTY'))}`);
+check(R.cooldownFor(me, 'PENALTY') === 10 * 60_000 - 25_000, `a recarga do pênalti dele caiu para ${mmss(R.cooldownFor(me, 'PENALTY'))} (5 degraus × 5 s)`);
 
 // ── teto de cada habilidade
 const alto = await mk({ goalsTotal: 300000 });
-for (let i = 0; i < 9; i++) await buySkill(alto.id, 'AIM', 'point');
+for (let i = 0; i < R.SKILL_STEPS; i++) await buySkill(alto.id, 'AIM', 'point');
 const eTeto = await err(buySkill(alto.id, 'AIM', 'point'));
-check(eTeto?.status === 400 && (await U(alto.id)).skillAim === 9, `Pontaria trava no nível 9: "${eTeto?.message}"`);
+check(eTeto?.status === 400 && (await U(alto.id)).skillAim === R.SKILL_STEPS, `Pontaria trava no degrau ${R.SKILL_STEPS}: "${eTeto?.message}"`);
+check(R.shotChance(await U(alto.id), 'PENALTY') === R.CHANCE_CAP.PENALTY, `e no último degrau ela entrega exatamente ${pct(R.CHANCE_CAP.PENALTY)}`);
+check(R.SKILL_BY_KEY.AIM.max + R.SKILL_BY_KEY.SHOT.max === 36, 'os dois acertos no máximo custam 36 pontos (antes eram 18 — o dono chegou lá em 4 dias)');
 
 // ── chute de prata e de ouro: a recarga rende 2 e 3 batidas
-const sortudo = await mk({ goalsTotal: 5000, skillLuck: 7 });
+const sortudo = await mk({ goalsTotal: 5000, skillLuck: R.SKILL_STEPS });
 // força a bola da próxima recarga para conferir o fluxo sem depender do sorteio
 const forca = (id, kind, bola) => prisma.$executeRawUnsafe('UPDATE "User" SET "ballNext" = jsonb_set(COALESCE("ballNext", \'{}\'::jsonb), ARRAY[$2], $3::jsonb) WHERE id = $1', id, kind, JSON.stringify(bola));
 for (const [bola, batidas] of [['PRATA', 2], ['OURO', 3]]) {
@@ -104,11 +109,11 @@ check('FOUL' in (depois.ballNext ?? {}), 'ao bater, o servidor já sorteia a bol
 // ── o sorteio bate com a chance da Sorte
 const sorteios = { PRATA: 0, OURO: 0, normal: 0 };
 const N = 20000;
-for (let i = 0; i < N; i++) { const b = R.rollBall({ skillLuck: 7 }, 'PENALTY'); sorteios[b ?? 'normal']++; }
-const esperado = R.ballChance({ skillLuck: 7 });
+for (let i = 0; i < N; i++) { const b = R.rollBall({ skillLuck: R.SKILL_STEPS }, 'PENALTY'); sorteios[b ?? 'normal']++; }
+const esperado = R.ballChance({ skillLuck: R.SKILL_STEPS });
 check(Math.abs(sorteios.OURO / N - esperado.gold) < 0.005 && Math.abs(sorteios.PRATA / N - esperado.silver) < 0.008,
   `${N} sorteios no full: ${(sorteios.PRATA / N * 100).toFixed(1)}% prata e ${(sorteios.OURO / N * 100).toFixed(1)}% ouro (previsto ${(esperado.silver * 100).toFixed(1)}% e ${(esperado.gold * 100).toFixed(1)}%)`);
-check(R.rollBall({ skillLuck: 7 }, 'AUTO') === null, 'chute direto nunca é de prata nem de ouro (decisão do dono)');
+check(R.rollBall({ skillLuck: R.SKILL_STEPS }, 'AUTO') === null, 'chute direto nunca é de prata nem de ouro (decisão do dono)');
 
 // ── Atacante extra (loja): a última linha da trilha vira 2 casas livres de 3
 const { trailPick } = await import('../src/services/play.js');

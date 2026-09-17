@@ -37,6 +37,10 @@ for (const l of logs) {
 }
 
 const admin = await prisma.user.findFirst({ where: { isAdmin: true }, orderBy: { id: 'asc' } }); // o recibo precisa de um autor
+// já devolvido antes? o recibo no AdminAction é a trava — rodar duas vezes não paga duas vezes
+const jaPagos = new Set((await prisma.adminAction.findMany({ where: { action: 'devolucao-habilidades' }, select: { targetId: true } })).map((a) => a.targetId));
+for (const id of jaPagos) if (porJogador.delete(id)) console.log(`(jogador #${id} já recebeu a devolução antes — pulando)`);
+if (!porJogador.size) { console.log('Todo mundo já recebeu. Nada a fazer.'); await prisma.$disconnect(); process.exit(0); }
 const users = await prisma.user.findMany({ where: { id: { in: [...porJogador.keys()] } } });
 console.log(`${users.length} jogador(es) compraram nível de habilidade com dinheiro ou VIP.\n`);
 let totalMoney = 0, totalVip = 0;

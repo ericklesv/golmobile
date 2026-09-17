@@ -213,9 +213,11 @@ export function ShopScreen() {
       // quem é VIP já chega ao piso de 4:30 com pouca (ou nenhuma) Recarga: não deixar gastar ponto à toa
       noPiso = hoje <= def.cap;
     } else if (def.unit === 'sorte') {
+      // a Sorte sobe de 0,4 em 0,4 ponto: sem a casa decimal a tela mostraria "3% → 3%"
+      const uma = (v: number) => `${(v * 100).toFixed(1).replace('.', ',')}%`;
       const hoje = me.chance.BALL?.total ?? def.base + level * def.perLevel;
-      agora = `${Math.round(hoje * 100)}% de chance`;
-      proximo = `${Math.round(Math.min(def.cap, hoje + def.perLevel) * 100)}%`;
+      agora = `${uma(hoje)} de chance`;
+      proximo = uma(Math.min(def.cap, hoje + def.perLevel));
     } else {
       const hoje = me.chance[def.kind!];
       agora = `${Math.round(hoje * 100)}% de acerto`;

@@ -78,14 +78,22 @@ export const MINIGAME_MONEY = {
 //
 // REFORMA DE 17/09/2026 (dono): habilidade **só com ponto de nível** — "temos que dar mais valor a upada de
 // nível… achei tosco poder passar de nível comprando com vip ou ouro". Dinheiro e VIP saíram de SKILL_COST.
-// A ordem que o dono desenhou é a ordem da árvore: **1) recarga** (até o piso de 4:30), **2) acerto**
-// (pênalti 90%, falta 80%), **3) sorte** (chance de vir chute de prata/ouro, no máximo 10% somando as duas).
-// A árvore inteira custa 36 pontos = nível 36 = 300 mil gols, o "full" do BRGOL que o dono lembrou.
+// A ordem que o dono desenhou é a ordem da árvore: **1) recarga**, **2) acerto** (pênalti 90%, falta 80%),
+// **3) sorte** (chance de vir chute de prata/ouro, no máximo 10% somando as duas).
+//
+// SEGUNDA PASSADA, no mesmo dia: o dono chegou ao nível 18 em 4 dias e já estava quase full ("nível 18 e já
+// tô full praticamente") — porque o acerto máximo custava 18 pontos e os 18 primeiros pontos chegam rápido
+// (o nível 28 sai em 2 semanas; só do 29 em diante a curva trava). Então cada habilidade passou de 9/11/7
+// para **18 degraus pequenos** ("coloque 18 níveis"): o teto é o mesmo, mas custa o dobro ou mais de pontos.
+// Com 4 × 18 = **72 pontos**, a árvore inteira é o nível 72, que fica nos 300 mil pontos — o "full" do BRGOL.
+// A Recarga tira **5 s por degrau** (era 30 s): o não-VIP sai de 10:00 e chega a 8:30, e **só o VIP chega ao
+// piso de 4:30** (decisão do dono: "ele só deve chegar nos 4:30 se for vip"), o que acontece no 6º degrau.
+export const SKILL_STEPS = 18; // degraus de cada habilidade (dono, 17/09/2026: "coloque 18 níveis")
 export const SKILLS = [
-  { key: 'CD', name: 'Recarga', unit: 'tempo', icon: 'ico-energy', desc: 'Tira 30 s da recarga do chute direto, do pênalti e da falta (a trilha tem a dela, que cai com os níveis).', max: 11, perLevel: 30_000 },
-  { key: 'AIM', name: 'Pontaria', unit: 'acerto', kind: 'PENALTY', icon: 'ico-target', desc: 'Aumenta o acerto do pênalti.', max: 9, perLevel: 0.05 },
-  { key: 'SHOT', name: 'Chute', unit: 'acerto', kind: 'FOUL', icon: 'ico-ball', desc: 'Aumenta o acerto da falta.', max: 9, perLevel: 0.05 },
-  { key: 'LUCK', name: 'Sorte', unit: 'sorte', icon: 'ico-star01_s', desc: 'Aumenta a chance de vir pênalti, falta ou trilha de prata (bate 2x) ou de ouro (bate 3x).', max: 7, perLevel: 0.01 },
+  { key: 'CD', name: 'Recarga', unit: 'tempo', icon: 'ico-energy', desc: 'Tira 5 s da recarga do chute direto, do pênalti e da falta (a trilha tem a dela, que cai com os níveis).', max: SKILL_STEPS, perLevel: 5_000 },
+  { key: 'AIM', name: 'Pontaria', unit: 'acerto', kind: 'PENALTY', icon: 'ico-target', desc: 'Aumenta o acerto do pênalti.', max: SKILL_STEPS, perLevel: 0.025 },
+  { key: 'SHOT', name: 'Chute', unit: 'acerto', kind: 'FOUL', icon: 'ico-ball', desc: 'Aumenta o acerto da falta.', max: SKILL_STEPS, perLevel: 0.025 },
+  { key: 'LUCK', name: 'Sorte', unit: 'sorte', icon: 'ico-star01_s', desc: 'Aumenta a chance de vir pênalti, falta ou trilha de prata (bate 2x) ou de ouro (bate 3x).', max: SKILL_STEPS, perLevel: 0.0039 },
 ];
 export const SKILL_BY_KEY = Object.fromEntries(SKILLS.map((s) => [s.key, s]));
 export const SKILL_FIELD = { CD: 'skillCd', AIM: 'skillAim', SHOT: 'skillShot', LUCK: 'skillLuck' };
@@ -221,14 +229,51 @@ export const LEVELS = [
   { lvl: 30, name: 'Lendário nível 1', goals: 20000, skill: 'Todos os rebotes em nível 6', rebound: 'ALL' },
   { lvl: 31, name: 'Lendário nível 2', goals: 35000, skill: 'Todos os rebotes em nível 7', rebound: 'ALL' },
   { lvl: 32, name: 'Lendário nível 3', goals: 55000, skill: 'Todos os rebotes em nível 8', rebound: 'ALL' },
-  // Níveis 33 a 36 (dono, 17/09/2026): a árvore de habilidades inteira custa 36 pontos, e ponto só vem de
-  // nível — então o FULL mora no nível 36, em 300 mil pontos, como o BRGOL que o dono lembrou ("precisava de
-  // 300k de gols para ficar full"). No ritmo medido dos jogadores mais fortes (387 pontos/dia) são ~26 meses.
-  // Rebote não sobe mais aqui: REBOUND_CHANCE acaba no nível 8, que o nível 32 já entrega.
-  { lvl: 33, name: 'Lendário nível 4', goals: 85000, skill: null },
-  { lvl: 34, name: 'Lendário nível 5', goals: 130000, skill: null },
-  { lvl: 35, name: 'Lendário nível 6', goals: 200000, skill: null },
-  { lvl: 36, name: 'Lendário nível 7', goals: 300000, skill: null },
+  // Níveis 33 a 72 (dono, 17/09/2026): a árvore de habilidades custa 4 × 18 = 72 pontos, e ponto só vem de
+  // nível — então o FULL mora no nível 72, nos 300 mil pontos, como o BRGOL que o dono lembrou ("precisava de
+  // 300k de gols para ficar full"; no ritmo do jogador mais forte medido, 537 pontos/dia, dá ~18 meses).
+  // Daqui para cima cada nível sobe ~4,3%: é uma escada regular, para o jogador nunca ficar meses sem ponto
+  // novo. Rebote não sobe mais aqui: REBOUND_CHANCE acaba no nível 8, que o nível 32 já entrega.
+  { lvl: 33, name: 'Lendário nível 4', goals: 57000, skill: null },
+  { lvl: 34, name: 'Lendário nível 5', goals: 60000, skill: null },
+  { lvl: 35, name: 'Lendário nível 6', goals: 62000, skill: null },
+  { lvl: 36, name: 'Lendário nível 7', goals: 65000, skill: null },
+  { lvl: 37, name: 'Lendário nível 8', goals: 68000, skill: null },
+  { lvl: 38, name: 'Lendário nível 9', goals: 71000, skill: null },
+  { lvl: 39, name: 'Lendário nível 10', goals: 74000, skill: null },
+  { lvl: 40, name: 'Ídolo nível 1', goals: 77000, skill: null },
+  { lvl: 41, name: 'Ídolo nível 2', goals: 81000, skill: null },
+  { lvl: 42, name: 'Ídolo nível 3', goals: 84000, skill: null },
+  { lvl: 43, name: 'Ídolo nível 4', goals: 88000, skill: null },
+  { lvl: 44, name: 'Ídolo nível 5', goals: 91000, skill: null },
+  { lvl: 45, name: 'Ídolo nível 6', goals: 95000, skill: null },
+  { lvl: 46, name: 'Ídolo nível 7', goals: 100000, skill: null },
+  { lvl: 47, name: 'Ídolo nível 8', goals: 105000, skill: null },
+  { lvl: 48, name: 'Ídolo nível 9', goals: 110000, skill: null },
+  { lvl: 49, name: 'Ídolo nível 10', goals: 115000, skill: null },
+  { lvl: 50, name: 'Mito nível 1', goals: 120000, skill: null },
+  { lvl: 51, name: 'Mito nível 2', goals: 125000, skill: null },
+  { lvl: 52, name: 'Mito nível 3', goals: 130000, skill: null },
+  { lvl: 53, name: 'Mito nível 4', goals: 135000, skill: null },
+  { lvl: 54, name: 'Mito nível 5', goals: 140000, skill: null },
+  { lvl: 55, name: 'Mito nível 6', goals: 145000, skill: null },
+  { lvl: 56, name: 'Mito nível 7', goals: 150000, skill: null },
+  { lvl: 57, name: 'Mito nível 8', goals: 160000, skill: null },
+  { lvl: 58, name: 'Mito nível 9', goals: 165000, skill: null },
+  { lvl: 59, name: 'Mito nível 10', goals: 175000, skill: null },
+  { lvl: 60, name: 'Imortal nível 1', goals: 180000, skill: null },
+  { lvl: 61, name: 'Imortal nível 2', goals: 190000, skill: null },
+  { lvl: 62, name: 'Imortal nível 3', goals: 195000, skill: null },
+  { lvl: 63, name: 'Imortal nível 4', goals: 205000, skill: null },
+  { lvl: 64, name: 'Imortal nível 5', goals: 215000, skill: null },
+  { lvl: 65, name: 'Imortal nível 6', goals: 225000, skill: null },
+  { lvl: 66, name: 'Imortal nível 7', goals: 235000, skill: null },
+  { lvl: 67, name: 'Imortal nível 8', goals: 245000, skill: null },
+  { lvl: 68, name: 'Imortal nível 9', goals: 255000, skill: null },
+  { lvl: 69, name: 'Imortal nível 10', goals: 265000, skill: null },
+  { lvl: 70, name: 'Imortal nível 11', goals: 275000, skill: null },
+  { lvl: 71, name: 'Imortal nível 12', goals: 290000, skill: null },
+  { lvl: 72, name: 'Imortal nível 13', goals: 300000, skill: null },
 ];
 
 export function levelFor(goals) {

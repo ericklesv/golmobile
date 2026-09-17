@@ -35,9 +35,9 @@ export function SkillTracks({ skills, chance }: { skills: SkillLevels; chance?: 
 /** Os degraus da habilidade: cheios até o nível atual. */
 export function SkillPips({ level, max }: { level: number; max: number }) {
   return (
-    <div className="my-1 flex gap-[3px]" aria-hidden>
+    <div className={`my-1 flex ${max > 12 ? 'gap-[2px]' : 'gap-[3px]'}`} aria-hidden>
       {Array.from({ length: max }, (_, i) => (
-        <i key={i} className={`h-2.5 flex-1 rounded-[3px] ${i < level ? 'bg-grass shadow-[inset_0_-2px_0_rgba(0,0,0,.18)]' : 'bg-navy-ink/15'}`} />
+        <i key={i} className={`${max > 12 ? 'h-2' : 'h-2.5'} flex-1 rounded-[2px] ${i < level ? 'bg-grass shadow-[inset_0_-2px_0_rgba(0,0,0,.18)]' : 'bg-navy-ink/15'}`} />
       ))}
     </div>
   );

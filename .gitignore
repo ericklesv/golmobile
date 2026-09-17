@@ -12,3 +12,6 @@ Thumbs.db
 legacy-expo/node_modules/
 api/uploads/
 .claude/
+
+# config temporária de teste no PC (porta 5176 → API 4320); não vai para produção
+web/vite.config.hab.ts

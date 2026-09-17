@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../prisma.js';
 import { handle, GameError, notFound, badRequest, inteiro } from '../lib/errors.js';
+import { pareceCodigo, RECADO_CODIGO } from '../lib/codigo.js';
 import { requireAuth } from '../lib/auth.js';
 import { meView, publicView, teamView } from '../services/view.js';
 import { liveMatchForTeam } from '../services/league.js';
@@ -58,6 +59,7 @@ me.post('/heartbeat', handle(async (req) => {
 
 me.put('/bio', handle(async (req) => {
   const bio = z.string().max(400, 'Máximo de 400 caracteres.').parse(req.body?.bio ?? '');
+  if (pareceCodigo(bio)) throw badRequest(RECADO_CODIGO); // mesmo filtro do chat (lib/codigo.js)
   const u = await prisma.user.update({ where: { id: req.user.id }, data: { bio }, include: meInclude() });
   return meView(u);
 }));

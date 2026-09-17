@@ -13,6 +13,8 @@ import { levelOf, isVip } from '../lib/rules.js';
 import { teamView, nickFadeOf } from '../services/view.js';
 import { badgeLookup } from '../services/badges.js';
 import { maskTermo } from '../lib/termo/spoiler.js';
+import { pareceCodigo, RECADO_CODIGO } from '../lib/codigo.js';
+import { tg } from '../lib/telegram.js';
 
 export const chat = Router();
 chat.use(requireAuth);
@@ -103,6 +105,13 @@ chat.post('/:room', handle(async (req) => {
   if (now - (lastSent.get(user.id) ?? 0) < MIN_INTERVAL_MS) throw new GameError(429, 'slow-down', 'Calma, craque! Espere 3 segundos entre mensagens.');
   const text = body.text.replace(/\s+/g, ' ');
   if (/(https?:\/\/|www\.)/i.test(text)) throw badRequest('Links não são permitidos no chat.');
+  // "isso é código, não é conversa" (dono, 17/09/2026): tag de HTML, evento de JavaScript ou comando de SQL
+  // não entram no chat. Nada disso fazia efeito no jogo, mas aparecia para todo mundo — ver lib/codigo.js.
+  const codigo = pareceCodigo(text);
+  if (codigo) {
+    tg.warn(`🧪 Chat: mensagem de código barrada (${tg.esc(codigo)}) — <b>${tg.esc(user.nick)}</b>: <code>${tg.esc(text.slice(0, 120))}</code>`, { key: `codigo:${user.id}`, every: 10 * 60_000 });
+    throw badRequest(RECADO_CODIGO);
+  }
   let color = null;
   if (body.color) {
     if (levelOf(user).lvl < CHAT_COLOR_LEVEL) throw new GameError(403, 'locked', `Mensagem com cores libera no nível ${CHAT_COLOR_LEVEL} (Titular).`);

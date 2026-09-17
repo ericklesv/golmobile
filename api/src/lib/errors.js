@@ -15,6 +15,18 @@ export const unauthorized = (msg = 'Faça login para jogar.') => new GameError(4
  * 400 "valor inválido" em vez de quebrar a consulta lá na frente (17/09/2026: um jogador mandou `qtd` de
  * mentira em /api/me/vip-to-money e o Prisma devolveu erro 500 com a consulta inteira no aviso do Telegram).
  */
+/** Maior id que cabe numa coluna `Int` do Postgres (INT4). Acima disso a consulta nem chega a rodar. */
+export const MAX_ID = 2_147_483_647;
+/**
+ * Id vindo da rota (/api/matches/:id). Número de mentira ou fora do alcance vira 404 "não encontrado" —
+ * que é a verdade — em vez do erro 500 que o Postgres devolvia com 999999999999999 (17/09/2026).
+ */
+export function idDeRota(valor, msg = 'Não encontrado.') {
+  const n = Number(valor);
+  if (!Number.isInteger(n) || n < 1 || n > MAX_ID) throw notFound(msg);
+  return n;
+}
+
 export function inteiro(valor, { min = 1, max = 1000, campo = 'valor' } = {}) {
   if (valor === undefined || valor === null || valor === '') return min;
   const n = Math.floor(Number(valor));

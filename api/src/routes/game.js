@@ -1,7 +1,7 @@
 /** Leitura: home, rankings, liga, times, jogadores, meta. Rotas públicas (sem token). */
 import { Router } from 'express';
 import { prisma } from '../prisma.js';
-import { handle, notFound, badRequest } from '../lib/errors.js';
+import { handle, notFound, badRequest, idDeRota } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
@@ -143,7 +143,7 @@ game.get('/league', cached(5000), handle(async () => {
 }));
 
 game.get('/league/rounds/:number', cached(5000), handle(async (req) => {
-  const number = Number(req.params.number);
+  const number = idDeRota(req.params.number, 'Rodada não encontrada.');
   const season = await prisma.season.findFirst({ where: { status: 'ACTIVE' } });
   if (!season) throw notFound();
   const round = await prisma.round.findUnique({ where: { seasonId_number: { seasonId: season.id, number } }, include: { matches: { include: { homeTeam: true, awayTeam: true }, orderBy: [{ serie: 'asc' }, { id: 'asc' }] } } });
@@ -160,7 +160,7 @@ game.get('/league/titles', cached(10000), handle(async () => {
 }));
 
 // ─── Partida (página /partida/:id) ──────────────────────────────────────────
-game.get('/matches/:id', handle((req) => matchPage(Number(req.params.id))));
+game.get('/matches/:id', handle((req) => matchPage(idDeRota(req.params.id, 'Partida não encontrada.'))));
 
 // ─── Times ──────────────────────────────────────────────────────────────────
 game.get('/teams', cached(30000), handle(async () => (await prisma.team.findMany({ orderBy: [{ serie: 'asc' }, { name: 'asc' }] })).map(teamView)));

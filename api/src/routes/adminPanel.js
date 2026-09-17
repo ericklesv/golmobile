@@ -8,7 +8,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../prisma.js';
-import { handle, badRequest, notFound, GameError } from '../lib/errors.js';
+import { handle, badRequest, notFound, GameError, MAX_ID } from '../lib/errors.js';
 import { requireAdmin } from '../lib/auth.js';
 import { levelOf, levelPoints, isVip, MONEY, SKILL_BY_KEY } from '../lib/rules.js';
 import { NICK_RULE, NICK_COLORS } from '../lib/items.js';
@@ -51,7 +51,7 @@ function detailView(u, geo, now = Date.now()) {
 }
 
 async function fullUser(id) {
-  if (!Number.isInteger(id) || id < 1) throw badRequest('Id inválido.');
+  if (!Number.isInteger(id) || id < 1 || id > MAX_ID) throw badRequest('Id inválido.');
   const u = await prisma.user.findUnique({ where: { id }, include: { team: true } });
   if (!u) throw notFound('Jogador não encontrado.');
   return u;

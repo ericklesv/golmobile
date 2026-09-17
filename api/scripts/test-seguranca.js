@@ -120,6 +120,16 @@ console.log('corpo que não é JSON (17/09/2026: multipart numa rota JSON derrub
   ok(certo.status === 401, 'o login de verdade continua respondendo normalmente (401)');
 }
 
+console.log('id gigante na rota (17/09/2026: /api/matches/9999999999999999 derrubava com erro 500)')
+{
+  for (const rota of ['/api/matches/9999999999999999', '/api/league/rounds/9999999999999999', '/api/matches/abc', '/api/matches/-3']) {
+    const r = await call('GET', rota);
+    ok(r.status === 404, `${rota}: ${r.status} (tem de ser 404, nunca 500)`);
+  }
+  const boa = await call('GET', '/api/matches/1');
+  ok(boa.status === 200 || boa.status === 404, `partida de verdade continua respondendo (${boa.status})`);
+}
+
 console.log('cabeçalhos');
 const h = await fetch(API + '/api/health');
 ok(h.headers.get('x-content-type-options') === 'nosniff' && !!h.headers.get('x-frame-options'), 'helmet: nosniff + x-frame-options');

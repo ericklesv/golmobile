@@ -8,7 +8,7 @@ import { prisma } from '../prisma.js';
 import { GameError, badRequest } from '../lib/errors.js';
 import { dayNumber, nextMidnight, quizDayNumber, nextNoon, statsDayNumber, nextStatsReset, dayNumberAt, nextResetAt } from '../lib/time.js';
 import { statsReady } from '../lib/stats/data.js';
-import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, ALVO, RESET_HOUR, resetLabel, levelOf } from '../lib/rules.js';
+import { TERMO, QUIZ, DAILY_GAMES, MINIGAMES, MEMORIA, QUALTIME, ALVO, RESET_HOUR, resetLabel, levelOf, PARTY_SPINS, isVip } from '../lib/rules.js';
 import { layoutFor, applyShot, summarize, rewardFor } from '../lib/alvo.js';
 import { questionsOfDay as qualtimeQuestions } from '../lib/qualtime/bank.js';
 import { teamView } from './view.js';
@@ -266,9 +266,20 @@ export async function minigamesHub(userId, now = new Date()) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   const lvl = levelOf(user).lvl;
   const status = await dailyStatus(userId, now);
+  /**
+   * O Party GoL não tem linha em DailyGame: o limite dele é por GIRO (uma Activity PARTY por giro).
+   * Usados os giros do dia, o cartão vira "JOGADO · volta em …" como os outros e sai da frente
+   * (dono, 17/09/2026: "quando o jogador fizer seus 10 giros tem que sumir o party gol de lá").
+   */
+  const partyReset = nextMidnight(now).getTime();
+  const partyMax = isVip(user) ? PARTY_SPINS.vip : PARTY_SPINS.free;
+  const partySpins = await prisma.activity.count({ where: { userId, kind: 'PARTY', createdAt: { gte: new Date(partyReset - 24 * 3600_000) } } });
+  const partyLeft = Math.max(0, partyMax - partySpins);
   // Só o que já está no jogo (decisão do dono, 14/09/2026): minigame "em breve" (soon) não aparece no slider.
   const games = MINIGAMES.filter((g) => !g.soon).map((g) => {
-    const d = status.games.find((x) => x.id === g.id);
+    const d = g.id === 'PARTY'
+      ? { available: partyLeft > 0, started: false, finished: partyLeft === 0, won: false, nextAt: partyReset }
+      : status.games.find((x) => x.id === g.id);
     const unlocked = lvl >= g.unlock;
     return {
       id: g.id, name: g.name, desc: g.desc, icon: g.icon, route: g.route, rewardLabel: g.reward, daily: g.daily,

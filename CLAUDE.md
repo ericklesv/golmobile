@@ -106,14 +106,27 @@ depois que o novo estiver estável. Não instalar nada dele.
   1 gol a cada 4 camisas certas e segue até errar; no Hat Trick cada gol é gol do time até perder as
   3 vidas — vários gols no dia; não "corrigir" para 1 gol.
   o slider vem ordenado do servidor: disponíveis primeiro (começado na frente), depois os já
-  jogados pelo que volta antes, depois bloqueados por nível, por fim "em breve". Party GoL:
-  aposta R$ 500 e paga R$ 1.500 (dono, 15/09/2026; antes 50/150), **5 giros por dia, VIP ativo 10** (`PARTY_SPINS`;
-  conta as Activity PARTY do dia; `GET /api/play/party` = giros usados/limite) e o gol só na primeira vitória do dia
-  (senão dinheiro compraria gols). **Saldo nos minigames** (dono, 15/09/2026): `applyResult` dá `MONEY.MINIGAME_WIN`
-  (R$ 500) por gol quando o serviço manda `money: 0` e o kind está em `MINIGAME_MONEY_KINDS` (Termo, Quiz, Stats,
+  jogados pelo que volta antes, depois bloqueados por nível, por fim "em breve".
+  **Party GoL** (números do dono, 17/09/2026): giro de **R$ 100** e **10 giros por dia para todo mundo**
+  (`PARTY_SPINS`; conta as Activity PARTY do dia; `GET /api/play/party` = giros usados/limite). A roda tem 8
+  casas e **três pagam, cada uma o seu valor: R$ 300, R$ 800 e R$ 1.500** (`PARTY_PRIZES` em rules.js, na ordem
+  das fatias da tela; o `/api/meta` manda `partyPrizes`). O sorteio tira UMA CASA em 8 (nunca decide
+  "ganhou/perdeu" antes de escolher a casa, senão os três prêmios deixariam de ser 1/8 cada). Isso dá
+  **+R$ 225 por giro em média** — de propósito (dono: "não é ganhou levou 1.500… ele tem chance de estourar.
+  Como a economia tá difícil temos que dar chance do jogador fazer dinheiro"): 93% dos dias fecham no lucro,
+  0,9% perdem os R$ 1.000. O gol vale só na **primeira vitória do dia** (senão dinheiro compraria gols).
+  **Acabaram os giros, o cartão SAI da frente no slider** (`minigamesHub` conta as Activity PARTY — o Party
+  GoL não tem linha em `DailyGame` — e devolve `finished` + `nextAt` = meia-noite). Mexeu na roleta?
+  **`node scripts/test-party.js`** (pasta api/, só banco LOCAL).
+  **Dinheiro dos chutes e dos minigames** (dono, 17/09/2026, depois de medir 3 dias de produção: metade dos
+  jogadores com R$ 1.080 no bolso e 89% dos gols vindos dos chutes): chute direto R$ 10, pênalti 40, falta 90,
+  trilha 160 (`MONEY`) — quanto mais difícil, mais paga; e cada minigame paga pela dificuldade MEDIDA, em
+  `MINIGAME_MONEY` (Alvo 3.000, Estatísticas 2.500 … Termo/Quiz 700, Memória 500). `applyResult` usa essa
+  tabela por gol quando o serviço manda `money: 0` e o kind está em `MINIGAME_MONEY_KINDS` (Termo, Quiz, Stats,
   Memória, Qualtime, Camisas, Alvo, Hat Trick, Falta PRO, Ganha ou Perde, Cabeção — fora chutes, PARTY, X1 e
-  Frangaço, que têm o próprio valor); o texto do gol ganha "E leva R$ 500 no bolso!". Fora de produção,
-  `TERMO_DAY=<n>` / `QUIZ_DAY=<n>` forçam o dia (teste da virada).
+  Frangaço, que têm o próprio valor); quem não está na tabela cai em `MONEY.MINIGAME_WIN`. O card do minigame
+  mostra o valor lido da própria tabela (`premio()` em rules.js) — **não escrever o número à mão** no texto.
+  Fora de produção, `TERMO_DAY=<n>` / `QUIZ_DAY=<n>` forçam o dia (teste da virada).
 - **Quiz do dia** (`lib/quiz/`): 5 perguntas de 4 alternativas, 20 s cada. O relógio é do
   servidor (começa no `POST next`; estourou + 2,5 s de tolerância = erro); alternativas
   embaralhadas por jogador; a certa só vai ao cliente depois da resposta. Cada acerto +6 de

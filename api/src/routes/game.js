@@ -5,7 +5,7 @@ import { handle, notFound, badRequest, idDeRota } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP, PARTY_PRIZES } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
@@ -47,6 +47,7 @@ game.get('/meta', cached(10000), handle(async () => {
     skillCost: SKILL_COST, // 1 ponto de nível, R$ 25 mil ou 1 VIP
     cooldownMin: COOLDOWN_MIN, // piso de 4:30 em todos os chutes
     partySegments: PARTY_SEGMENTS,
+    partyPrizes: PARTY_PRIZES, // quanto paga cada casa da roleta (0 = ERROU)
     termo: TERMO,
     quiz: { questions: QUIZ.questions, seconds: QUIZ.seconds, pointsPerHit: QUIZ.pointsPerHit, goalAt: QUIZ.goalAt },
     stats: STATS,

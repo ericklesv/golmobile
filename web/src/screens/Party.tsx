@@ -8,17 +8,22 @@ import { GoalOverlay } from '../components/GoalOverlay';
 import { toast } from '../components/Toast';
 import { money as fmt } from '../lib/format';
 
-const SEGS_DEFAULT = ['GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'GOL', 'ERROU', 'ERROU'];
+const PREMIOS_DEFAULT = [300, 0, 0, 800, 0, 1500, 0, 0];
 
-/** Roleta do Party GoL: aro/roda do pack (8 fatias) com rótulos GOL/ERROU por cima. */
+/**
+ * Roleta do Party GoL: aro/roda do pack (8 fatias) com o valor de cada casa por cima.
+ * As três casas que pagam valem DIFERENTE (PARTY_PRIZES em api/src/lib/rules.js; dono, 17/09/2026:
+ * "não é ganhou levou 1.500 — ele tem chance de estourar"), então a fatia mostra quanto ela paga.
+ */
 export function PartyScreen() {
   const me = useAuth((s) => s.me)!;
   const meta = useAuth((s) => s.meta);
   const refresh = useAuth((s) => s.refresh);
   const nav = useNavigate();
-  const segs = meta?.partySegments ?? SEGS_DEFAULT;
-  const bet = meta?.money.PARTY_BET ?? 50;
-  const prize = meta?.money.PARTY_PRIZE ?? 150;
+  const premios = meta?.partyPrizes ?? PREMIOS_DEFAULT;
+  const bet = meta?.money.PARTY_BET ?? 100;
+  const maior = Math.max(...premios);
+  const pagam = premios.filter((p) => p > 0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<{ win: boolean; goal: boolean; prize: number } | null>(null);
   const [overlay, setOverlay] = useState(false);
@@ -26,12 +31,12 @@ export function PartyScreen() {
   const [st, setSt] = useState<PartyStatus | null>(null); // giros de hoje (5 comum, 10 VIP)
   useEffect(() => { api.partyStatus().then(setSt).catch(() => {}); }, []);
   const ctrl = useAnimation();
-  const n = segs.length;
+  const n = premios.length;
   const step = 360 / n;
 
   async function spin() {
     if (spinning) return;
-    if (st && st.left <= 0) { toast(st.vip ? `Você já usou os ${st.max} giros de hoje.` : `Você já usou os ${st.max} giros de hoje. VIP tem ${st.vipMax} por dia.`, 'error'); return; }
+    if (st && st.left <= 0) { toast(st.vipMax > st.max ? `Você já usou os ${st.max} giros de hoje. VIP tem ${st.vipMax} por dia.` : `Você já usou os ${st.max} giros de hoje. A roleta volta à meia-noite.`, 'error'); return; }
     if (me.money < bet) { toast(`Você precisa de ${fmt(bet)} para apostar.`, 'error'); return; }
     setSpinning(true);
     setResult(null);
@@ -56,17 +61,17 @@ export function PartyScreen() {
   return (
     <div className="app-frame relative flex min-h-full flex-col">
       <div className="stadium-bg" />
-      <GoalOverlay open={overlay} goal={!!result?.win} title={result?.win ? (result.goal ? 'GOOOL!!' : 'ACERTOU!') : 'ERROU!'} text={result?.win ? (result.goal ? `Você acertou no Party GoL, faturou ${fmt(prize)} e ainda marcou 1 gol pro ${me.team.name}!` : `Você acertou no Party GoL e faturou ${fmt(prize)}! (o gol da roleta é só na primeira vitória do dia)`) : `Perdeu a aposta de ${fmt(bet)}. Tenta de novo?`} money={result?.prize ?? 0} team={me.team} onClose={() => setOverlay(false)} autoClose={3000} />
+      <GoalOverlay open={overlay} goal={!!result?.win} title={result?.win ? (result.goal ? 'GOOOL!!' : result.prize === maior ? 'ESTOUROU!' : 'ACERTOU!') : 'ERROU!'} text={result?.win ? (result.goal ? `Você caiu na casa de ${fmt(result.prize)} e ainda marcou 1 gol pro ${me.team.name}!` : `Você caiu na casa de ${fmt(result.prize)}! (o gol da roleta é só na primeira vitória do dia)`) : `Perdeu a aposta de ${fmt(bet)}. Tenta de novo?`} money={result?.prize ?? 0} team={me.team} onClose={() => setOverlay(false)} autoClose={3000} />
       <div className="relative flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
         <div className="ribbon ribbon-yellow">PARTY GOL</div>
         <div className="resbar"><img src="/ui/ico-coin01_s.png" className="ico -ml-3 h-8 w-8" alt="" />{fmt(me.money)}</div>
       </div>
-      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">A roleta do JogaGol: aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire. Parou em <span className="t-gold t-display">GOL</span> ({segs.filter((s) => s === 'GOL').length} de {n} casas), você recebe <span className="t-green t-display">{fmt(prize)}</span>; em ERROU, perde a aposta. A primeira vitória do dia ainda vale <span className="t-gold t-display">1 gol</span>. Só dinheiro virtual!</p>
+      <p className="relative px-6 text-center text-[13px] font-extrabold text-white">Aposte <span className="t-gold t-display">{fmt(bet)}</span> e gire: {pagam.length} das {n} casas pagam, cada uma o seu valor — <span className="t-green t-display">{pagam.map((p) => fmt(p)).join(' · ')}</span>. Nas outras, perde a aposta. A 1ª vitória do dia ainda vale <span className="t-gold t-display">1 gol</span>. Só dinheiro virtual!</p>
       {st && (
         <p className="relative mt-1 text-center text-[13px] font-extrabold text-white">
           Giros hoje: <span className={`t-display ${st.left > 0 ? 't-gold' : 't-red'}`}>{st.spins}/{st.max}</span>
-          {!st.vip && <span className="text-white/80"> · VIP tem {st.vipMax} por dia</span>}
+          {st.vipMax > st.max && <span className="text-white/80"> · VIP tem {st.vipMax} por dia</span>}
         </p>
       )}
 
@@ -75,14 +80,11 @@ export function PartyScreen() {
         <div className="relative m-[7%]">
           <motion.div animate={ctrl} initial={{ rotate: 0 }} className="relative">
             <img src="/ui/roulette-wheel.png" alt="" className="h-full w-full" />
-            {segs.map((s, i) => {
-              const a = i * step;
-              return (
-                <div key={i} className="absolute left-1/2 top-1/2 flex justify-center" style={{ width: 0, height: 0, transform: `rotate(${a}deg)` }}>
-                  <span className={`t-display absolute -translate-x-1/2 whitespace-nowrap text-[17px] ${s === 'GOL' ? 't-gold' : 't-out'}`} style={{ top: '-42%', left: '50%', transform: 'translate(-50%, -110px)' }}>{s === 'GOL' ? 'GOL' : 'ERROU'}</span>
-                </div>
-              );
-            })}
+            {premios.map((p, i) => (
+              <div key={i} className="absolute left-1/2 top-1/2 flex justify-center" style={{ width: 0, height: 0, transform: `rotate(${i * step}deg)` }}>
+                <span className={`t-display absolute -translate-x-1/2 whitespace-nowrap ${p > 0 ? `t-gold ${p === maior ? 'text-[17px]' : 'text-[15px]'}` : 't-out text-[15px]'}`} style={{ top: '-42%', left: '50%', transform: 'translate(-50%, -110px)' }}>{p > 0 ? fmt(p) : 'ERROU'}</span>
+              </div>
+            ))}
           </motion.div>
         </div>
         <img src="/ui/roulette-arrow.png" alt="" className="absolute left-1/2 top-[3%] h-12 -translate-x-1/2" />

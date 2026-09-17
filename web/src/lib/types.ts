@@ -102,9 +102,9 @@ export interface TrailResult {
   lineMines: boolean[] | null; money: number; text: string | null; cooldownMs: number; kickedAt: number;
 }
 
-export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; money: number; prize: number; bet: number; spins: number; max: number; left: number }
+export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; prizes?: number[]; money: number; prize: number; bet: number; spins: number; max: number; left: number }
 /** Giros da roleta hoje (GET /api/play/party): usados, limite (VIP tem mais) e quantos faltam. */
-export interface PartyStatus { bet: number; prize: number; spins: number; max: number; left: number; vip: boolean; freeMax: number; vipMax: number }
+export interface PartyStatus { bet: number; prize: number; prizes?: number[]; spins: number; max: number; left: number; vip: boolean; freeMax: number; vipMax: number }
 
 export interface Meta {
   /** Troca automática na Série A (SERIE_A_SWAP em rules.js): mínimo de gols na rodada para subir no lugar de um time da A sem gol. */
@@ -132,6 +132,8 @@ export interface Meta {
   unlock: Record<Kind, number>;
   chances: { penalty: number; foul: number; cap: { PENALTY: number; FOUL: number }; rebound: number[] };
   partySegments: string[];
+  /** Quanto paga cada casa da roleta, na ordem da roda (0 = ERROU). */
+  partyPrizes?: number[];
   termo: { letters: number; tries: number; levelPoints: number[] };
   quiz: { questions: number; seconds: number; pointsPerHit: number; goalAt: number };
   stats: { pointsPerHit: number; maxPoints: number; goalAt: number; season: string };

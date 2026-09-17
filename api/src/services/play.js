@@ -7,7 +7,7 @@ import { GameError, badRequest, cooldown as cooldownError } from '../lib/errors.
 import { hourKey, nextMidnight } from '../lib/time.js';
 import {
   COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE,
-  CHANCE_CAP, skillBonus, PARTY_WIN_CHANCE, REBOUND_CHANCE, KIND_LABEL,
+  CHANCE_CAP, skillBonus, PARTY_PRIZES, REBOUND_CHANCE, KIND_LABEL,
   cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip } from '../lib/rules.js';
 import { liveMatchForTeam } from './league.js';
 import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines } from '../lib/items.js';
@@ -293,27 +293,34 @@ export async function trailPick(userId, pickIndex) {
 }
 
 // ─── Party GoL (roleta) ─────────────────────────────────────────────────────
-export const PARTY_SEGMENTS = ['GOL', 'ERROU', 'ERROU', 'GOL', 'ERROU', 'GOL', 'ERROU', 'ERROU'];
+/**
+ * Rótulos das 8 casas, na ordem em que a roda desenha. Os valores vêm de PARTY_PRIZES (rules.js):
+ * três casas pagam, e pagam DIFERENTE. Mantido como 'GOL'/'ERROU' porque telas antigas (o app só
+ * troca de versão quando o jogador toca em "Atualizar") leem daqui; o valor de cada casa vai em
+ * `partyPrizes` no /api/meta.
+ */
+export const PARTY_SEGMENTS = PARTY_PRIZES.map((p) => (p > 0 ? 'GOL' : 'ERROU'));
 export async function partySpin(userId) {
   return prisma.$transaction(async (tx) => {
-    // giros por dia (dono, 15/09/2026): 5 para quem não é VIP, 10 para VIP ativo — cada giro deixa uma Activity PARTY
+    // giros por dia (PARTY_SPINS em rules.js; desde 17/09/2026 são 10 para todo mundo) — cada giro deixa uma Activity PARTY
     const me0 = await tx.user.findUnique({ where: { id: userId }, select: { vipUntil: true } });
     const max = isVip(me0) ? PARTY_SPINS.vip : PARTY_SPINS.free;
     const dayStart0 = new Date(nextMidnight(new Date()).getTime() - 24 * 3600_000);
     const spins = await tx.activity.count({ where: { userId, kind: 'PARTY', createdAt: { gte: dayStart0 } } });
-    if (spins >= max) throw new GameError(429, 'party-limit', isVip(me0) ? `Você já usou os ${max} giros de hoje. A roleta volta à meia-noite.` : `Você já usou os ${max} giros de hoje. VIP tem ${PARTY_SPINS.vip} por dia — ou volte à meia-noite.`, { spins, max });
+    if (spins >= max) throw new GameError(429, 'party-limit', PARTY_SPINS.vip > max ? `Você já usou os ${max} giros de hoje. VIP tem ${PARTY_SPINS.vip} por dia — ou volte à meia-noite.` : `Você já usou os ${max} giros de hoje. A roleta volta à meia-noite.`, { spins, max });
     const res = await tx.user.updateMany({
       where: { id: userId, money: { gte: MONEY.PARTY_BET } },
       data: { money: { decrement: MONEY.PARTY_BET }, partyTries: { increment: 1 } },
     });
     if (res.count === 0) throw new GameError(402, 'no-money', `Você precisa de R$ ${MONEY.PARTY_BET} para apostar.`);
-    const win = rnd() < PARTY_WIN_CHANCE;
-    const candidates = PARTY_SEGMENTS.map((s, i) => ({ s, i })).filter((x) => (x.s === 'GOL') === win);
-    const segment = pick(candidates).i;
+    // Cada casa tem a mesma chance (1 em 8): 3 pagam (300, 800 e 1.500) e 5 não pagam nada.
+    const segment = Math.floor(rnd() * PARTY_PRIZES.length);
+    const prize = PARTY_PRIZES[segment];
+    const win = prize > 0;
     const now = new Date();
     const user = await tx.user.update({
       where: { id: userId },
-      data: win ? { money: { increment: MONEY.PARTY_PRIZE }, partyWins: { increment: 1 } } : {},
+      data: win ? { money: { increment: prize }, partyWins: { increment: 1 } } : {},
       include: { team: true },
     });
     // Regra do dono (13/09/2026): todo minigame vencido dá 1 gol + o bônus dele. Na roleta o gol
@@ -326,12 +333,12 @@ export async function partySpin(userId) {
     }
     if (goal) {
       const match = await liveMatchForTeam(user.teamId, tx);
-      ({ text } = await applyResult(tx, user, { kind: 'PARTY', goal: true, now, match, money: 0, phrase: `acertou no Party GoL, faturou R$ ${MONEY.PARTY_PRIZE} e ainda marcou` }));
+      ({ text } = await applyResult(tx, user, { kind: 'PARTY', goal: true, now, match, money: 0, phrase: `acertou no Party GoL, faturou R$ ${prize.toLocaleString('pt-BR')} e ainda marcou` }));
     } else {
-      text = win ? `${user.nick} acertou no Party GoL e faturou R$ ${MONEY.PARTY_PRIZE}!` : `${user.nick} errou no Party GoL.`;
+      text = win ? `${user.nick} acertou no Party GoL e faturou R$ ${prize.toLocaleString('pt-BR')}!` : `${user.nick} errou no Party GoL.`;
       await tx.activity.create({ data: { userId, teamId: user.teamId, kind: 'PARTY', goal: false, text } });
     }
-    return { win, goal, text, segment, segments: PARTY_SEGMENTS, money: user.money, prize: win ? MONEY.PARTY_PRIZE : 0, bet: MONEY.PARTY_BET, spins: spins + 1, max, left: max - spins - 1 };
+    return { win, goal, text, segment, segments: PARTY_SEGMENTS, prizes: PARTY_PRIZES, money: user.money, prize, bet: MONEY.PARTY_BET, spins: spins + 1, max, left: max - spins - 1 };
   });
 }
 
@@ -341,5 +348,5 @@ export async function partyStatus(userId) {
   const max = isVip(u) ? PARTY_SPINS.vip : PARTY_SPINS.free;
   const dayStart = new Date(nextMidnight(new Date()).getTime() - 24 * 3600_000);
   const spins = await prisma.activity.count({ where: { userId, kind: 'PARTY', createdAt: { gte: dayStart } } });
-  return { bet: MONEY.PARTY_BET, prize: MONEY.PARTY_PRIZE, spins, max, left: Math.max(0, max - spins), vip: isVip(u), freeMax: PARTY_SPINS.free, vipMax: PARTY_SPINS.vip };
+  return { bet: MONEY.PARTY_BET, prize: MONEY.PARTY_PRIZE, prizes: PARTY_PRIZES, spins, max, left: Math.max(0, max - spins), vip: isVip(u), freeMax: PARTY_SPINS.free, vipMax: PARTY_SPINS.vip };
 }

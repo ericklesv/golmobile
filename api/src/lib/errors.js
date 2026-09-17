@@ -10,6 +10,17 @@ export class GameError extends Error {
 
 export const badRequest = (msg, code = 'bad-request') => new GameError(400, code, msg);
 export const unauthorized = (msg = 'Faça login para jogar.') => new GameError(401, 'unauthenticated', msg);
+/**
+ * Número inteiro do corpo do pedido, entre `min` e `max` (sem valor = `min`). Texto, objeto ou NaN viram
+ * 400 "valor inválido" em vez de quebrar a consulta lá na frente (17/09/2026: um jogador mandou `qtd` de
+ * mentira em /api/me/vip-to-money e o Prisma devolveu erro 500 com a consulta inteira no aviso do Telegram).
+ */
+export function inteiro(valor, { min = 1, max = 1000, campo = 'valor' } = {}) {
+  if (valor === undefined || valor === null || valor === '') return min;
+  const n = Math.floor(Number(valor));
+  if (!Number.isFinite(n)) throw badRequest(`O ${campo} precisa ser um número.`);
+  return Math.max(min, Math.min(max, n));
+}
 export const forbidden = (msg = 'Acesso negado.') => new GameError(403, 'forbidden', msg);
 export const notFound = (msg = 'Não encontrado.') => new GameError(404, 'not-found', msg);
 export const cooldown = (remainingMs) =>

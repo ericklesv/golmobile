@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../prisma.js';
-import { handle, GameError, notFound, badRequest } from '../lib/errors.js';
+import { handle, GameError, notFound, badRequest, inteiro } from '../lib/errors.js';
 import { requireAuth } from '../lib/auth.js';
 import { meView, publicView, teamView } from '../services/view.js';
 import { liveMatchForTeam } from '../services/league.js';
@@ -28,7 +28,7 @@ me.get('/', handle(async (req) => {
 
 // Troca VIP guardado por saldo (pedido do dono/erickles, 15/09/2026: "1 VIP por 100k"): MONEY.VIP_TO_MONEY por VIP.
 me.post('/vip-to-money', handle(async (req) => {
-  const qtd = Math.max(1, Math.min(1000, Math.floor(Number(req.body?.qtd || 1))));
+  const qtd = inteiro(req.body?.qtd, { min: 1, max: 1000, campo: 'número de VIPs' });
   const u = await prisma.$transaction(async (tx) => {
     const res = await tx.user.updateMany({ where: { id: req.user.id, vipDays: { gte: qtd } }, data: { vipDays: { decrement: qtd }, money: { increment: qtd * MONEY.VIP_TO_MONEY } } });
     if (res.count === 0) throw badRequest('Você não tem VIP guardado suficiente.');
@@ -89,7 +89,7 @@ me.post('/nick-fade', handle(async (req) => {
 
 // Ativar dias de VIP do banco (unidades ganhas em prêmios)
 me.post('/activate-vip', handle(async (req) => {
-  const days = Math.max(1, Math.floor(Number(req.body?.days || 1)));
+  const days = inteiro(req.body?.days, { min: 1, max: 100_000, campo: 'número de dias' });
   const u = await prisma.$transaction(async (tx) => {
     const res = await tx.user.updateMany({ where: { id: req.user.id, vipDays: { gte: days } }, data: { vipDays: { decrement: days } } });
     if (res.count === 0) throw badRequest('Você não tem unidades de VIP suficientes.');

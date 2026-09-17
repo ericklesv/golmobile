@@ -1,6 +1,7 @@
 /**
  * Segurança (lib/security.js) direto no banco LOCAL: teto de contas por IP, e-mail descartável,
- * tempo mínimo do formulário, trava de login por conta, cache das rotas públicas, limite de busca.
+ * tempo mínimo do formulário, trava de login por conta, cache das rotas públicas, limite de busca e
+ * número de mentira no corpo do pedido (um jogador tentou isso em 17/09/2026 e derrubou a rota com erro 500).
  * Sobe a API na porta 4398 e bate nela por HTTP; o IP é simulado por X-Forwarded-For (trust proxy 1 —
  * o pedido vem de 127.0.0.1, que é o "proxy"). Cria jogadores de teste, por isso só roda em localhost.
  * Uso (na pasta api/):  node scripts/test-seguranca.js   → tem de terminar em "TUDO OK".
@@ -86,6 +87,23 @@ console.log('limites por rota');
 let hit429 = false;
 for (let i = 0; i < 70; i++) { const s = await call('GET', '/api/players/search?q=a', null, { ip: '203.0.113.77' }); if (s.status === 429) { hit429 = true; break; } }
 ok(hit429, 'busca de jogadores: 429 depois de 60/min');
+
+console.log('número de mentira no corpo (jogador ivictor, 17/09/2026: erro 500 em /api/me/vip-to-money)');
+{
+  const tk = r.data.token;
+  for (const [rota, corpo] of [
+    ['/api/me/vip-to-money', { qtd: 'abc' }],
+    ['/api/me/vip-to-money', { qtd: {} }],
+    ['/api/me/vip-to-money', { qtd: [1, 2] }],
+    ['/api/me/activate-vip', { days: 'x' }],
+  ]) {
+    const res = await call('POST', rota, corpo, { token: tk });
+    ok(res.status === 400 && /número/i.test(res.data?.message ?? ''), `${rota} com ${JSON.stringify(corpo)}: 400 "${res.data?.message ?? ''}" (não 500)`);
+  }
+  // e o caminho normal continua: sem VIP guardado, o erro é o de sempre (400 "não tem VIP suficiente")
+  const normal = await call('POST', '/api/me/vip-to-money', { qtd: 2 }, { token: tk });
+  ok(normal.status === 400 && /VIP/i.test(normal.data?.message ?? ''), `pedido certo sem VIP no banco: "${normal.data?.message ?? ''}"`);
+}
 
 console.log('cabeçalhos');
 const h = await fetch(API + '/api/health');

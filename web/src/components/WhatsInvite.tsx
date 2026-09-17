@@ -4,6 +4,7 @@ import { useAuth } from '../store/auth';
 import { passSettled } from './Pass';
 import { seriesNoticeSettled } from './SeriesNotice';
 import { x1SwitchSettled } from './X1GameSwitch';
+import { instaSettled } from './InstaInvite';
 
 /**
  * Convite para o grupo do WhatsApp dos jogadores (COMMUNITY em api/src/lib/rules.js; pedido do dono,
@@ -11,6 +12,10 @@ import { x1SwitchSettled } from './X1GameSwitch';
  * nunca no meio de um chute ou minigame) e depois que a Presença da Semana do dia já foi resolvida.
  * "Entrar no grupo" = não aparece mais; "Agora não" = volta em 100 h. Botão fixo no Perfil: WhatsButton.
  */
+
+let showing = false;
+/** A janela do WhatsApp já saiu da frente (a do Instagram espera por isto). */
+export const whatsSettled = () => !showing;
 
 type Saved = { next?: number; joined?: boolean };
 const KEY = (id: number) => `brgol.grupoWhats.${id}`;
@@ -30,17 +35,19 @@ export function WhatsInviteWatcher() {
     if (s.joined || (s.next && Date.now() < s.next)) return;
     // espera a Presença da Semana e o aviso da troca de séries saírem da frente, e mais uns segundos
     const iv = window.setInterval(() => {
-      if (!passSettled(id) || !seriesNoticeSettled() || !x1SwitchSettled()) return;
+      if (!passSettled(id) || !seriesNoticeSettled() || !x1SwitchSettled() || !instaSettled()) return;
       window.clearInterval(iv);
       window.setTimeout(() => {
+        if (!instaSettled()) return; // a do Instagram abriu nesses 3 s: esta fica para outro dia
         write(id, { ...read(id), next: Date.now() + hours * 3_600_000 }); // conta a partir de quando apareceu
+        showing = true;
         setOpen(true);
       }, 3000);
     }, 1000);
     return () => window.clearInterval(iv);
   }, [id, link, hours]);
 
-  const join = () => { if (id !== undefined) write(id, { ...read(id), joined: true }); setOpen(false); };
+  const join = () => { if (id !== undefined) write(id, { ...read(id), joined: true }); showing = false; setOpen(false); };
   return (
     <AnimatePresence>
       {open && link && (
@@ -54,7 +61,7 @@ export function WhatsInviteWatcher() {
                 <div className="t-display mt-1 text-[21px] leading-tight">A galera do JogaGol está no WhatsApp</div>
                 <p className="mt-1 text-[13px] font-bold leading-snug text-muted">Novidades antes de todo mundo, dicas dos minigames e resenha com os outros jogadores.</p>
                 <a href={link} target="_blank" rel="noopener noreferrer" onClick={join} className="btn btn-green btn-lg mt-4 w-full">Entrar no grupo</a>
-                <button onClick={() => setOpen(false)} className="btn btn-blue btn-sm mt-2 w-full">Agora não</button>
+                <button onClick={() => { showing = false; setOpen(false); }} className="btn btn-blue btn-sm mt-2 w-full">Agora não</button>
               </div>
             </div>
           </motion.div>

@@ -28,6 +28,8 @@ export interface Me {
   id: number; nick: string; email: string; gender: string; bio: string | null; avatarUrl: string | null; isAdmin: boolean; createdAt: string;
   team: Team;
   money: number; vipDays: number; vipUntil: string | null; vip: boolean;
+  /** Avisos de uma vez só que este jogador já viu (ex.: { instagram: '2026-09-17T…' }). */
+  avisos?: Record<string, string>;
   /** Habilidades (Loja): nível de cada uma e quantos pontos de nível ainda dá para gastar. */
   skills: SkillLevels & { points: number };
   /** Acerto de verdade de cada chute, já com habilidade, chuteira e teto. */
@@ -81,6 +83,8 @@ export interface Home {
   tops: { hour: TopRow[]; round: TopRow[]; season: TopRow[] };
   records: Partial<Record<'HOUR' | 'ROUND' | 'SEASON', { nick: string; goals: number; team: any; setAt: string }>>;
   lastHour: { hourKey: string; nick: string | null; goals: number; team: any } | null;
+  /** Pódio do REI DO X1 DA RODADA: os 3 primeiros do Ranking X1 desta rodada (`goals` = pontos). */
+  x1Round: TopRow[];
   feed: FeedItem[];
   online: number;
   active: number;
@@ -110,7 +114,7 @@ export interface Meta {
   /** Paleta do nick em degradê (VIP), NICK_FADE_COLORS em lib/items.js. */
   nickFades?: { key: string; name: string; hex: string }[];
   /** Grupo do WhatsApp dos jogadores (COMMUNITY em rules.js). */
-  community?: { whatsapp: string; everyHours: number };
+  community?: { whatsapp: string; everyHours: number; instagram?: { url: string; handle: string; vipFollow: number; vipRepost: number } };
   /** Diretoria e contratações (CLUB em rules.js). */
   club?: { directors: number; roleLossDays: number; offerMin: number; offerMax: number; offerHours: number; maxOpenOffers: number; messageMax: number; kitChangeHours?: number };
   cooldowns: Record<Kind, { normal: number; vip: number }>;

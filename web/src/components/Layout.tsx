@@ -10,6 +10,7 @@ import { api } from '../lib/api';
 import { SeriesNoticeWatcher } from './SeriesNotice';
 import { ChatFab } from './ChatFab';
 import { WhatsInviteWatcher } from './WhatsInvite';
+import { InstaInviteWatcher } from './InstaInvite';
 import { X1GameSwitchWatcher } from './X1GameSwitch';
 import { nickProps } from '../lib/nick';
 import { VipBar } from './VipBar';
@@ -107,6 +108,7 @@ export function Layout() {
       <SeriesNoticeWatcher />
       <ChatFab />
       <X1GameSwitchWatcher />
+      <InstaInviteWatcher />
       <WhatsInviteWatcher />
       <X1InviteWatcher />
 

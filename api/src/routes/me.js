@@ -39,6 +39,19 @@ me.post('/vip-to-money', handle(async (req) => {
   return { ...meView(u), money_added: qtd * MONEY.VIP_TO_MONEY };
 }));
 
+/**
+ * Marca um aviso de UMA VEZ SÓ como visto (dono, 17/09/2026: o convite do Instagram aparece uma vez e não
+ * volta). Fica no jogador, não no aparelho — quem viu no celular não vê de novo no PC.
+ */
+me.post('/aviso/:chave', handle(async (req) => {
+  const chave = String(req.params.chave || '').slice(0, 30);
+  if (!/^[a-z0-9_-]{2,30}$/.test(chave)) throw badRequest('Aviso inválido.');
+  const atual = await prisma.user.findUnique({ where: { id: req.user.id }, select: { avisosVistos: true } });
+  const avisos = { ...(atual?.avisosVistos ?? {}), [chave]: new Date().toISOString() };
+  const u = await prisma.user.update({ where: { id: req.user.id }, data: { avisosVistos: avisos }, include: meInclude() });
+  return meView(u);
+}));
+
 // Adversário da rodada atual (goleiro/barreira das cenas 3D vestem a camisa dele)
 me.get('/opponent', handle(async (req) => {
   const u = await prisma.user.findUnique({ where: { id: req.user.id }, select: { teamId: true } });

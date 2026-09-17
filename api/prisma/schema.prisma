@@ -130,6 +130,9 @@ model User {
   // Corrida da trilha em andamento (layout secreto + fase)
   trailState Json?
 
+  // Avisos de uma vez só que este jogador já viu (ex.: { "instagram": "2026-09-17T…" }) — dono, 17/09/2026
+  avisosVistos Json?
+
   // Contratado por proposta: não troca de time nem aceita outra proposta até aqui (1 dia por VIP)
   contractUntil DateTime?
 

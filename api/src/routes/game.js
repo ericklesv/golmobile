@@ -72,7 +72,7 @@ game.get('/home', cached(5000), handle(async (req) => {
   const round = await currentRound();
   const teamSlug = req.query.team ? String(req.query.team) : null;
   const team = teamSlug ? await prisma.team.findUnique({ where: { slug: teamSlug } }) : null;
-  const [hour, roundTop, seasonTop, feed, online, recs, hourResult, active] = await Promise.all([
+  const [hour, roundTop, seasonTop, feed, online, recs, hourResult, active, x1Round] = await Promise.all([
     topScorers({ hourKey: hourKey(now) }, 10),
     round ? topScorers({ roundId: round.id }, 10) : [],
     round ? topScorers({ seasonId: round.seasonId }, 10) : [],
@@ -81,6 +81,8 @@ game.get('/home', cached(5000), handle(async (req) => {
     round ? records(round.seasonId) : {},
     prisma.hourResult.findFirst({ orderBy: { closedAt: 'desc' }, include: { winner: { select: { nick: true, team: teamSel } } } }),
     prisma.user.count({ where: { lastSeenAt: { gt: new Date(now.getTime() - 24 * 3600_000) } } }),
+    // pódio do REI DO X1 DA RODADA (dono, 17/09/2026): os 3 primeiros do Ranking X1 desta rodada
+    round ? x1Ranking({ from: round.startsAt, table: FUTPREGO.prizes.round, take: 3 }) : [],
   ]);
   const myMatch = team ? await liveMatchForTeam(team.id) : null;
   return {
@@ -92,6 +94,7 @@ game.get('/home', cached(5000), handle(async (req) => {
     tops: { hour: await withBadges(hour), round: await withBadges(roundTop), season: await withBadges(seasonTop) },
     records: recs,
     lastHour: hourResult ? { hourKey: hourResult.hourKey, nick: hourResult.winner?.nick ?? null, goals: hourResult.winnerGoals, team: hourResult.winner?.team ?? null } : null,
+    x1Round, // REI DO X1 DA RODADA: pódio na tela inicial
     feed: feed.map((a) => ({ id: a.id, text: a.text, goal: a.goal, kind: a.kind, at: a.createdAt, team: teamView(a.team) })),
     online, active,
   };

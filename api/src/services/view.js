@@ -43,6 +43,7 @@ export function meView(user, now = Date.now()) {
     team: teamView(user.team),
     money: user.money, vipDays: user.vipDays, vipUntil: user.vipUntil, vip: isVip(user, now),
     dexterity: user.dexterity, // LEGADO (a destreza acabou em 16/09/2026)
+    avisos: user.avisosVistos ?? {}, // avisos de uma vez só que ele já viu (ex.: Instagram)
     skills: { AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, points: skillPointsLeft(user) }, // habilidades
     chance: { PENALTY: shotChance(user, 'PENALTY', now), FOUL: shotChance(user, 'FOUL', now) }, // acerto de verdade (habilidade + chuteira, com teto)
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),

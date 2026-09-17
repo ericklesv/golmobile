@@ -568,4 +568,7 @@ export const REFERRAL = {
 export const COMMUNITY = {
   whatsapp: 'https://chat.whatsapp.com/EGNPGEuZMUEBY5HLXl09M8',
   everyHours: 100,
+  // Instagram (dono, 17/09/2026): seguir vale 3 VIP e repostar a publicação vale 7. Quem entrega o VIP é o
+  // admin, pelo painel, quando o jogador se identifica na DM — o jogo só divulga (components/InstaInvite.tsx).
+  instagram: { url: 'https://www.instagram.com/jogagolbr/', handle: '@jogagolbr', vipFollow: 3, vipRepost: 7 }, // aparece UMA VEZ por jogador (User.avisosVistos)
 };

@@ -57,6 +57,8 @@ export const api = {
   setBio: (bio: string) => req<Me>('PUT', '/api/me/bio', { bio }),
   setNickFade: (from: string | null, to: string | null) => req<Me>('POST', '/api/me/nick-fade', { from, to }),
   activateVip: (days: number) => req<Me>('POST', '/api/me/activate-vip', { days }),
+  /** Marca um aviso de uma vez só (ex.: 'instagram') como visto por este jogador. */
+  avisoVisto: (chave: string) => req<Me>('POST', `/api/me/aviso/${chave}`),
   // play
   autoKick: () => req<KickResult>('POST', '/api/play/auto'),
   penalty: (direction: 'left' | 'center' | 'right', captcha?: CaptchaPayload | null) => req<KickResult>('POST', '/api/play/penalty', { direction, ...(captcha ?? {}) }),

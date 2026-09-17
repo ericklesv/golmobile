@@ -7,6 +7,7 @@ import type { DailyStatus, Home, Kind } from '../lib/types';
 import { Shield } from '../components/Shield';
 import { GoalOverlay } from '../components/GoalOverlay';
 import { MinigameSlider } from '../components/MinigameSlider';
+import { X1King } from '../components/X1King';
 import { Panel, TopList, ProgressRing, useCountdown, Countdown } from '../components/ui';
 import { countdown, hourLabel, timeAgo, pct } from '../lib/format';
 import { toast } from '../components/Toast';
@@ -148,6 +149,7 @@ export function HomeScreen() {
       </Panel>
       <Panel title="TOP RODADA" ribbon="blue"><TopList rows={home?.tops.round.slice(0, 5) ?? []} highlight={me.nick} empty="Sem gols na rodada." /></Panel>
       <Panel title="TOP TEMPORADA" ribbon="green"><TopList rows={home?.tops.season.slice(0, 5) ?? []} highlight={me.nick} empty="Sem gols na temporada." /></Panel>
+      <X1King rows={home?.x1Round ?? []} />
       <Link to="/rankings" className="btn btn-blue btn-md w-full"><img src="/ui/ico-ranking.png" className="h-6 w-6" alt="" /> Rankings completos</Link>
 
       {home?.lastHour?.nick && (

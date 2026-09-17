@@ -5,7 +5,7 @@ import { useSeo } from '../lib/seo';
 const slides = [
   { icon: '/ui/ico-energy.png', title: 'CHUTE A GOL', text: 'Chute direto a cada 10 minutos, pênaltis, faltas e a trilha. Cada gol é seu — e do seu time.' },
   { icon: '/ui/ico-clan.png', title: 'JOGUE PELO SEU TIME', text: 'Rodadas de 24 horas. Seu gol soma no placar do clube na Série A, B ou C.' },
-  { icon: '/ui/ico-trophy_m.png', title: 'SUBA NA ARTILHARIA', text: 'Rankings da hora, da rodada e da temporada. Prêmios em dinheiro e VIP.' },
+  { icon: '/ui/ico-trophy_m.png', title: 'SUBA NA ARTILHARIA', text: 'Rankings da hora, da rodada e da temporada. Prêmios em R$ do jogo (virtuais) e dias de VIP.' },
 ];
 
 /**
@@ -15,14 +15,17 @@ const slides = [
  * Gamegol — sem inventar nada sobre o jogo: conferir com as regras antes de mudar.
  */
 const about = [
-  { title: 'COMO FUNCIONA A DISPUTA DE GOLS', text: 'Você escolhe um clube brasileiro e cada gol seu soma no placar do time na rodada de 24 horas, que fecha todo dia às 19:00. Chute direto a cada 10 minutos, pênalti, falta e trilha — tudo decidido no servidor. Os clubes disputam as Séries A, B e C com acesso e rebaixamento; os melhores artilheiros da rodada e da temporada ganham dinheiro do jogo e dias de VIP.' },
+  { title: 'COMO FUNCIONA A DISPUTA DE GOLS', text: 'Você escolhe um clube brasileiro e cada gol seu soma no placar do time na rodada de 24 horas, que fecha todo dia às 19:00. Chute direto a cada 10 minutos, pênalti, falta e trilha — tudo decidido no servidor. Os clubes disputam as Séries A, B e C com acesso e rebaixamento; os melhores artilheiros da rodada e da temporada ganham R$ do jogo (moeda virtual, sem valor real) e dias de VIP.' },
   { title: 'PARA QUEM JOGAVA BRGOL', text: 'O JogaGol é o port fiel do BRGOL (BR GOL), o jogo de fazer gols de navegador que marcou época entre 2008 e 2013: as mesmas recargas, os mesmos rankings, a mesma artilharia por hora — agora feito para o celular, com pênalti e falta em 3D, diretoria e contratações entre times. Se você curte Brasfoot, Gamegol ou qualquer jogo de futebol online leve de jogar todo dia, é aqui.' },
-  { title: 'MINIGAMES TODO DIA', text: 'Termo do futebol, quiz, Party GoL, memória dos escudos, estatísticas do Brasileirão, "de que time é?", camisas, alvo no gol, Hat Trick e Falta PRO: cada minigame renova numa hora do dia e vale gol para o seu time. No FutPrego, o futebol de prego 1x1 em tempo real, você desafia outros jogadores valendo aposta, gol e o Ranking X1.' },
+  { title: 'MINIGAMES TODO DIA', text: 'Termo do futebol, quiz, Party GoL, memória dos escudos, estatísticas do Brasileirão, "de que time é?", camisas, alvo no gol, Hat Trick e Falta PRO: cada minigame renova numa hora do dia e vale gol para o seu time. No FutPrego, o futebol de prego 1x1 em tempo real, você desafia outros jogadores valendo gol e ponto no Ranking X1.' },
 ];
 const faq = [
   { q: 'O JogaGol é grátis?', a: 'Sim. Criar conta, escolher o clube, chutar e disputar a artilharia é grátis. O VIP é opcional e dá recargas mais rápidas e vantagens na diretoria do time.' },
   { q: 'Precisa baixar alguma coisa?', a: 'Não. Abre direto no navegador do celular ou do PC e pode ser instalado como aplicativo. A versão para Android na Google Play está a caminho.' },
   { q: 'Posso trocar de time?', a: 'Pode, comprando a Troca de time na Loja do jogo — salvo quando você aceita um contrato de contratação de outro clube, que prende por alguns dias.' },
+  // Pergunta obrigatória desde 17/09/2026: o anúncio do Instagram foi recusado pela política "Online Gambling
+  // and Games" do Meta, que olha ESTA página. O JogaGol não é jogo de azar e a página precisa dizer isso.
+  { q: 'O JogaGol é jogo de apostas?', a: 'Não. Não existe aposta com dinheiro de verdade, jogo de azar nem prêmio em dinheiro real. Os R$ do JogaGol são moeda virtual do jogo: servem só para itens e vantagens aqui dentro, não podem ser sacados, trocados nem transferidos, e não têm valor real. O VIP é uma compra opcional dentro do jogo, como em qualquer aplicativo.' },
 ];
 
 export function LandingScreen() {

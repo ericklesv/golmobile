@@ -75,17 +75,53 @@ export const MINIGAME_MONEY = {
 // R$ 1.000 o ponto (R$ 30 mil pelo teto) e o nível não dava acerto nenhum. Lá o acerto é habilidade de LONGO PRAZO:
 // base baixa (35% pênalti / 30% falta) e 10 níveis que levam a ~88%/~83%, cada nível pago com 1 ponto, dinheiro ou VIP.
 // Aqui: base 45%/35%, +4,3 p.p. por nível na Pontaria (pênalti) e +4,8 na Falta → 88% e 83% no nível 10.
-// Cada nível custa 1 PONTO DE NÍVEL (cada nível do jogador dá 1), R$ 25 mil OU 1 VIP do banco — o jogador escolhe.
-// A DESTREZA ACABOU: não soma mais nada e o dinheiro foi devolvido (scripts/devolver-destreza.js).
+//
+// REFORMA DE 17/09/2026 (dono): habilidade **só com ponto de nível** — "temos que dar mais valor a upada de
+// nível… achei tosco poder passar de nível comprando com vip ou ouro". Dinheiro e VIP saíram de SKILL_COST.
+// A ordem que o dono desenhou é a ordem da árvore: **1) recarga** (até o piso de 4:30), **2) acerto**
+// (pênalti 90%, falta 80%), **3) sorte** (chance de vir chute de prata/ouro, no máximo 10% somando as duas).
+// A árvore inteira custa 36 pontos = nível 36 = 300 mil gols, o "full" do BRGOL que o dono lembrou.
 export const SKILLS = [
-  { key: 'AIM', name: 'Pontaria', kind: 'PENALTY', icon: 'ico-target', desc: 'Aumenta o acerto do pênalti.', max: 10, perLevel: 0.043 },
-  { key: 'SHOT', name: 'Chute', kind: 'FOUL', icon: 'ico-ball', desc: 'Aumenta o acerto da falta.', max: 10, perLevel: 0.048 },
+  { key: 'CD', name: 'Recarga', unit: 'tempo', icon: 'ico-energy', desc: 'Tira 30 s da recarga do chute direto, do pênalti e da falta (a trilha tem a dela, que cai com os níveis).', max: 11, perLevel: 30_000 },
+  { key: 'AIM', name: 'Pontaria', unit: 'acerto', kind: 'PENALTY', icon: 'ico-target', desc: 'Aumenta o acerto do pênalti.', max: 9, perLevel: 0.05 },
+  { key: 'SHOT', name: 'Chute', unit: 'acerto', kind: 'FOUL', icon: 'ico-ball', desc: 'Aumenta o acerto da falta.', max: 9, perLevel: 0.05 },
+  { key: 'LUCK', name: 'Sorte', unit: 'sorte', icon: 'ico-star01_s', desc: 'Aumenta a chance de vir pênalti, falta ou trilha de prata (bate 2x) ou de ouro (bate 3x).', max: 7, perLevel: 0.01 },
 ];
 export const SKILL_BY_KEY = Object.fromEntries(SKILLS.map((s) => [s.key, s]));
-export const SKILL_FIELD = { AIM: 'skillAim', SHOT: 'skillShot' };
-export const SKILL_COST = { point: 1, money: 25000, vip: 1 };
-/** Teto do acerto, já com chuteira (ninguém chega a 100%). */
-export const CHANCE_CAP = { PENALTY: 0.95, FOUL: 0.90 };
+export const SKILL_FIELD = { CD: 'skillCd', AIM: 'skillAim', SHOT: 'skillShot', LUCK: 'skillLuck' };
+export const SKILL_COST = { point: 1 };
+/** Teto do acerto, já com chuteira (ninguém chega a 100%) — dono, 17/09/2026: pênalti 90%, falta 80%. */
+export const CHANCE_CAP = { PENALTY: 0.90, FOUL: 0.80 };
+
+// ─── Chute de prata e de ouro (dono, 17/09/2026, resgatando o BRGOL) ───────────────────────────────────────
+// "Todos os jogadores têm 2% de chance de vir um chute de prata, 1% de chance de vir um chute de ouro. Isso
+// desde o início do jogo. Pode upar para no máximo 10%, nunca mais que isso" — as duas SOMADAS chegam a 10%,
+// mantendo a prata com o dobro da chance do ouro. Prata = bate 2 vezes na mesma recarga; ouro = 3 vezes
+// (cada batida pode entrar ou não). Só no pênalti, na falta e na trilha — o chute direto fica de fora.
+export const BALL = {
+  kinds: ['PENALTY', 'FOUL', 'TRAIL'],
+  base: 0.03, // 2% prata + 1% ouro para todo mundo, desde o nível 0
+  max: 0.10, // teto com a Sorte no máximo
+  goldShare: 1 / 3, // um terço da chance é de ouro, dois terços de prata
+  kicks: { PRATA: 2, OURO: 3 },
+  label: { PRATA: 'de prata', OURO: 'de ouro' },
+};
+/** Chance de vir chute especial (prata + ouro) para este jogador. */
+export function ballChance(user) {
+  const s = SKILL_BY_KEY.LUCK;
+  const lvl = Math.min(s.max, user?.[SKILL_FIELD.LUCK] ?? 0);
+  const total = Math.min(BALL.max, BALL.base + lvl * s.perLevel);
+  return { total, gold: total * BALL.goldShare, silver: total * (1 - BALL.goldShare) };
+}
+/** Sorteia a bola da PRÓXIMA recarga deste modo: 'OURO', 'PRATA' ou null (normal). */
+export function rollBall(user, kind, rnd = Math.random) {
+  if (!BALL.kinds.includes(kind)) return null;
+  const { gold, silver } = ballChance(user);
+  const r = rnd();
+  if (r < gold) return 'OURO';
+  if (r < gold + silver) return 'PRATA';
+  return null;
+}
 
 /** Quanto a habilidade soma no acerto do chute (0 se não tem). */
 export function skillBonus(user, kind) {
@@ -185,6 +221,14 @@ export const LEVELS = [
   { lvl: 30, name: 'Lendário nível 1', goals: 20000, skill: 'Todos os rebotes em nível 6', rebound: 'ALL' },
   { lvl: 31, name: 'Lendário nível 2', goals: 35000, skill: 'Todos os rebotes em nível 7', rebound: 'ALL' },
   { lvl: 32, name: 'Lendário nível 3', goals: 55000, skill: 'Todos os rebotes em nível 8', rebound: 'ALL' },
+  // Níveis 33 a 36 (dono, 17/09/2026): a árvore de habilidades inteira custa 36 pontos, e ponto só vem de
+  // nível — então o FULL mora no nível 36, em 300 mil pontos, como o BRGOL que o dono lembrou ("precisava de
+  // 300k de gols para ficar full"). No ritmo medido dos jogadores mais fortes (387 pontos/dia) são ~26 meses.
+  // Rebote não sobe mais aqui: REBOUND_CHANCE acaba no nível 8, que o nível 32 já entrega.
+  { lvl: 33, name: 'Lendário nível 4', goals: 85000, skill: null },
+  { lvl: 34, name: 'Lendário nível 5', goals: 130000, skill: null },
+  { lvl: 35, name: 'Lendário nível 6', goals: 200000, skill: null },
+  { lvl: 36, name: 'Lendário nível 7', goals: 300000, skill: null },
 ];
 
 export function levelFor(goals) {
@@ -234,16 +278,24 @@ export const freeMode = () => process.env.NODE_ENV !== 'production' && process.e
 
 export function cooldownFor(user, kind, now = Date.now()) {
   if (freeMode()) return 0;
-  // o piso vale com tudo junto (VIP + níveis da trilha + itens da loja); na Trilha o piso é o da tabela das regras
+  // o piso vale com tudo junto (VIP + habilidade + níveis da trilha + itens da loja); na Trilha o piso é o da
+  // tabela das regras, e o chute direto com Boost Auto tem o dele (4 min — dono, 17/09/2026)
   const floor = kind === 'TRAIL' ? TRAIL_MIN[isVip(user, now) ? 'vip' : 'normal'] : COOLDOWN_MIN;
   return Math.max(floor, applyItemCooldown(user, kind, baseCooldownFor(user, kind, now), now));
+}
+
+/** Quanto a habilidade Recarga tira do tempo (ms). Não vale na trilha, que tem a redução dos níveis. */
+export function cooldownSkillMs(user, kind) {
+  if (kind === 'TRAIL') return 0;
+  const s = SKILL_BY_KEY.CD;
+  return Math.min(s.max, user?.[SKILL_FIELD.CD] ?? 0) * s.perLevel;
 }
 
 /** Recarga sem itens da loja (VIP + níveis da trilha). */
 export function baseCooldownFor(user, kind, now = Date.now()) {
   const vip = isVip(user, now);
-  const base = COOLDOWNS[kind][vip ? 'vip' : 'normal'];
-  if (kind !== 'TRAIL') return base;
+  const base = COOLDOWNS[kind][vip ? 'vip' : 'normal'] - cooldownSkillMs(user, kind);
+  if (kind !== 'TRAIL') return Math.max(COOLDOWN_MIN, base);
   const lvl = levelOf(user).lvl;
   const reduced = base - trailReductionSec(lvl) * 1000;
   return Math.max(TRAIL_MIN[vip ? 'vip' : 'normal'], reduced);

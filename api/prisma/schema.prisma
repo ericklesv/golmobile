@@ -89,12 +89,18 @@ model User {
   vipDays   Int       @default(0) // unidades de VIP no banco (1 unidade = 1 dia)
   vipUntil  DateTime?
   dexterity Int       @default(0) // LEGADO: a destreza acabou em 16/09/2026 (virou habilidade); fica 0, o dinheiro foi devolvido
-  // Habilidades (dono, 16/09/2026, no modelo do BRGOL 2.0): 10 níveis cada; cada nível custa 1 ponto de nível,
-  // R$ 25 mil ou 1 VIP (services/skills.js). `skillPoints` = quantos níveis foram pagos com PONTO (os pontos
-  // disponíveis são nível − skillPoints).
-  skillAim    Int     @default(0) // Pontaria: acerto do pênalti
-  skillShot   Int     @default(0) // Chute: acerto da falta
+  // Habilidades (services/skills.js; catálogo em SKILLS de rules.js). Desde 17/09/2026 cada nível custa
+  // 1 PONTO DE NÍVEL e nada mais (dinheiro e VIP saíram — decisão do dono). `skillPoints` = quantos níveis
+  // já foram pagos com ponto (os pontos disponíveis são nível − skillPoints).
+  skillAim    Int     @default(0) // Pontaria: acerto do pênalti (9 níveis, até 90%)
+  skillShot   Int     @default(0) // Chute: acerto da falta (9 níveis, até 80%)
+  skillCd     Int     @default(0) // Recarga: -30 s por nível no chute direto/pênalti/falta (11 níveis, até o piso de 4:30)
+  skillLuck   Int     @default(0) // Sorte: chance de vir chute de prata/ouro (7 níveis, de 3% a 10%)
   skillPoints Int     @default(0) // níveis pagos com ponto de nível
+  // Chute de prata (bate 2x) e de ouro (bate 3x): `ballNext` = a bola sorteada para a PRÓXIMA recarga de cada
+  // modo ({"PENALTY":"OURO"}), `ballLeft` = quantas batidas ainda faltam da recarga atual ({"PENALTY":2}).
+  ballNext    Json?
+  ballLeft    Json?
 
   // Contadores de gols (espelham a tabela Goal para leitura rápida)
   goalsTotal  Int     @default(0)
@@ -358,6 +364,7 @@ model Goal {
   hourKey   String
   kind      KickKind
   money     Int      @default(0)
+  ball      String?  // 'PRATA' ou 'OURO' quando o gol saiu de um chute especial (ranking Bolas Douradas)
   createdAt DateTime @default(now())
 
   @@index([hourKey, userId])

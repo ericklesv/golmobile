@@ -11,14 +11,23 @@ export interface Team {
   kitDesign?: string;
 }
 
-export interface Cooldown { cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean }
+export interface Cooldown {
+  cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean;
+  /** Chute de prata (bate 2x) e de ouro (bate 3x): a bola desta recarga, quantas batidas ainda dá e o total. */
+  ball?: 'PRATA' | 'OURO' | null; left?: number; kicks?: number;
+  /** true = ainda sobrou batida desta bola; pode bater na hora, sem esperar a recarga. */
+  free?: boolean;
+}
 
-/** Habilidades (rules.js SKILLS): Pontaria melhora o pênalti, Chute melhora a falta. 10 níveis cada. */
-export type SkillKey = 'AIM' | 'SHOT';
-export type SkillLevels = Record<SkillKey, number>;
+/** Habilidades (SKILLS em rules.js), na ordem da árvore: Recarga, Pontaria, Chute e Sorte. */
+export type SkillKey = 'CD' | 'AIM' | 'SHOT' | 'LUCK';
+export type SkillLevels = Partial<Record<SkillKey, number>>;
 export interface SkillDef {
-  key: SkillKey; name: string; kind: 'PENALTY' | 'FOUL'; icon: string; desc: string;
-  /** níveis (10), quanto cada nível soma no acerto, o acerto de quem está no nível 0 e o teto */
+  key: SkillKey; name: string; icon: string; desc: string;
+  /** o que a habilidade mexe: tempo de recarga, acerto do chute ou chance de chute de prata/ouro */
+  unit: 'tempo' | 'acerto' | 'sorte';
+  kind?: 'PENALTY' | 'FOUL';
+  /** níveis, quanto cada nível vale, o valor de quem está no nível 0 e o teto (na unidade do efeito) */
   max: number; perLevel: number; base: number; cap: number;
 }
 
@@ -32,8 +41,8 @@ export interface Me {
   avisos?: Record<string, string>;
   /** Habilidades (Loja): nível de cada uma e quantos pontos de nível ainda dá para gastar. */
   skills: SkillLevels & { points: number };
-  /** Acerto de verdade de cada chute, já com habilidade, chuteira e teto. */
-  chance: { PENALTY: number; FOUL: number };
+  /** Acerto de verdade de cada chute (com habilidade, chuteira e teto) e a chance de chute de prata/ouro. */
+  chance: { PENALTY: number; FOUL: number; BALL?: { total: number; gold: number; silver: number } };
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   hourKey: string | null; roundId: number | null; seasonId: number | null;
   /** Pontos de nível = gols + levelBonus (minigames diários). A barra de nível usa estes. */
@@ -122,7 +131,9 @@ export interface Meta {
   money: Record<string, number>;
   /** Habilidades: catálogo (nome, ícone, teto, quanto cada nível soma) e o preço de um nível. */
   skills: SkillDef[];
-  skillCost: { point: number; money: number; vip: number };
+  skillCost: { point: number };
+  /** Chute de prata/ouro: chance base, teto e quantas batidas cada bola dá. */
+  ball?: { kinds: string[]; base: number; max: number; goldShare: number; kicks: { PRATA: number; OURO: number }; label: Record<string, string> };
   /** Piso de recarga de todo chute (ms) e nerf desligado desde 16/09/2026. */
   cooldownMin: number; nerfOff: boolean;
   levels: { lvl: number; name: string; goals: number; skill: string | null }[];

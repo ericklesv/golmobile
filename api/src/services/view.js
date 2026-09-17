@@ -1,5 +1,6 @@
 /** Projeções de dados para o cliente (nunca expõe hash, e-mail alheio, layout da trilha). */
-import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel, skillPointsLeft, shotChance } from '../lib/rules.js';
+import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel, skillPointsLeft, shotChance, ballChance } from '../lib/rules.js';
+import { ballView } from '../lib/bola.js';
 import { itemsView, nickFadeOf } from '../lib/items.js';
 export { nickFadeOf };
 import { hourKey } from '../lib/time.js';
@@ -30,7 +31,8 @@ export function cooldownsView(user, now = Date.now()) {
     const cd = cooldownFor(user, kind, now);
     const last = user[LAST_FIELD[kind]] ? new Date(user[LAST_FIELD[kind]]).getTime() : 0;
     const remaining = Math.max(0, last + cd - now);
-    out[kind] = { cooldownMs: cd, remainingMs: remaining, readyAt: last + cd, unlocked: levelOf(user).lvl >= UNLOCK_LEVEL[kind] };
+    // `ball` deixa o card prateado/dourado (e diz quantas batidas a recarga vale)
+    out[kind] = { cooldownMs: cd, remainingMs: remaining, readyAt: last + cd, unlocked: levelOf(user).lvl >= UNLOCK_LEVEL[kind], ...ballView(user, kind) };
   }
   return out;
 }
@@ -44,8 +46,8 @@ export function meView(user, now = Date.now()) {
     money: user.money, vipDays: user.vipDays, vipUntil: user.vipUntil, vip: isVip(user, now),
     dexterity: user.dexterity, // LEGADO (a destreza acabou em 16/09/2026)
     avisos: user.avisosVistos ?? {}, // avisos de uma vez só que ele já viu (ex.: Instagram)
-    skills: { AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, points: skillPointsLeft(user) }, // habilidades
-    chance: { PENALTY: shotChance(user, 'PENALTY', now), FOUL: shotChance(user, 'FOUL', now) }, // acerto de verdade (habilidade + chuteira, com teto)
+    skills: { CD: user.skillCd ?? 0, AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, LUCK: user.skillLuck ?? 0, points: skillPointsLeft(user) }, // habilidades
+    chance: { PENALTY: shotChance(user, 'PENALTY', now), FOUL: shotChance(user, 'FOUL', now), BALL: ballChance(user) }, // acerto de verdade e chance de chute especial
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     levelBonus: user.levelBonus ?? 0, levelPoints: levelPoints(user),
@@ -73,7 +75,7 @@ export function publicView(user, now = Date.now()) {
   const level = levelOf(user);
   return {
     id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, avatarUrl: user.avatarUrl ?? null, createdAt: user.createdAt,
-    team: teamView(user.team), vip: isVip(user, now), skills: { AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0 }, nickColor: user.nickColor ?? null, nickFade: nickFadeOf(user, now),
+    team: teamView(user.team), vip: isVip(user, now), skills: { CD: user.skillCd ?? 0, AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, LUCK: user.skillLuck ?? 0 }, nickColor: user.nickColor ?? null, nickFade: nickFadeOf(user, now),
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     stats: {

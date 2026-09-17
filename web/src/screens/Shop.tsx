@@ -196,47 +196,64 @@ export function ShopScreen() {
   };
 
   /**
-   * Habilidade: a trilha de 10 níveis, o acerto de hoje, o que o próximo nível dá e as três formas de
-   * pagar (ponto de nível, dinheiro ou VIP). O acerto vem pronto do servidor (me.chance), já com chuteira.
+   * Habilidade: um degrau da árvore. A ordem da lista é a ordem que o dono desenhou (Recarga → Pontaria →
+   * Chute → Sorte) e o trilho da esquerda mostra isso — é caminho, não lista solta. Desde 17/09/2026 o único
+   * jeito de subir é PONTO DE NÍVEL. Os valores de hoje vêm prontos do servidor (recarga de verdade em
+   * me.cooldowns, acerto com chuteira em me.chance), então a tela nunca contradiz o jogo.
    */
-  const skillRow = (def: SkillDef) => {
-    const level = me.skills[def.key];
-    const chance = me.chance[def.kind];
+  const skillRow = (def: SkillDef, i: number) => {
+    const level = me.skills[def.key] ?? 0;
     const max = level >= def.max;
-    const next = Math.min(def.cap, chance + def.perLevel);
-    const pay = (currency: 'point' | 'money' | 'vip', label: string, cls: string, can: boolean) => (
-      <button key={currency} onClick={() => run(`skill:${def.key}:${currency}`, async () => {
-        const r = await api.shopSkill(def.key, currency);
-        toast(`${def.name} no nível ${level + 1}: ${Math.round(next * 100)}% de acerto.`, 'success');
-        return r.me;
-      })} disabled={busy !== null || !can} className={`btn btn-sm flex-1 ${cls}`}>
-        {busy === `skill:${def.key}:${currency}` ? '…' : label}
-      </button>
-    );
+    const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.round((ms % 60000) / 1000)).padStart(2, '0')}`;
+    let agora = '', proximo = '', noPiso = false;
+    if (def.unit === 'tempo') {
+      const hoje = me.cooldowns.PENALTY.cooldownMs;
+      agora = `${mmss(hoje)} de recarga`;
+      proximo = `${mmss(Math.max(def.cap, hoje - def.perLevel))}`;
+      // quem é VIP já chega ao piso de 4:30 com pouca (ou nenhuma) Recarga: não deixar gastar ponto à toa
+      noPiso = hoje <= def.cap;
+    } else if (def.unit === 'sorte') {
+      const hoje = me.chance.BALL?.total ?? def.base + level * def.perLevel;
+      agora = `${Math.round(hoje * 100)}% de chance`;
+      proximo = `${Math.round(Math.min(def.cap, hoje + def.perLevel) * 100)}%`;
+    } else {
+      const hoje = me.chance[def.kind!];
+      agora = `${Math.round(hoje * 100)}% de acerto`;
+      proximo = `${Math.round(Math.min(def.cap, hoje + def.perLevel) * 100)}%`;
+    }
+    const temPonto = me.skills.points >= skillCost.point;
     return (
-      <div key={def.key} className="rounded-xl bg-sky/10 p-2">
-        <div className="flex items-center gap-3">
-          <img src={`/ui/${def.icon}.png`} className="h-10 w-10 shrink-0 object-contain" alt="" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="t-display text-[14px] text-navy-ink">{def.name}</span>
-              <span className="text-[11px] font-extrabold text-muted">nível {level} de {def.max}</span>
-            </div>
-            <SkillPips level={level} max={def.max} />
-            <div className="text-[11px] font-bold leading-snug text-muted">
-              {def.desc} Hoje: <b className="text-grass-deep">{Math.round(chance * 100)}%</b>
-              {max ? ' — no máximo.' : <> · nível {level + 1}: <b className="text-grass-deep">{Math.round(next * 100)}%</b></>}
-            </div>
+      <li key={def.key} className="relative flex gap-3 pb-3 last:pb-0">
+        {i < skills.length - 1 && <i aria-hidden className="absolute bottom-0 left-[19px] top-11 w-[3px] rounded bg-navy-ink/10" />}
+        <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-[3px] ${max ? 'bg-grass ring-grass-deep' : 'bg-white ring-navy-ink/15'}`}>
+          <img src={`/ui/${def.icon}.png`} className="h-7 w-7 object-contain" alt="" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="t-display text-[15px] text-navy-ink">{def.name}</span>
+            <span className="text-[11px] font-extrabold text-muted">nível {level} de {def.max}</span>
+          </div>
+          <SkillPips level={level} max={def.max} />
+          <p className="text-[11px] font-bold leading-snug text-muted">{def.desc}</p>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <span className="min-w-0 text-[12px] font-extrabold leading-tight text-navy-ink">
+              {agora}
+              {max ? ' — no máximo' : noPiso
+                ? <span className="text-muted"> — já no piso{me.vip ? ' (o VIP te trouxe até aqui; a habilidade segura o tempo quando ele vencer)' : ''}</span>
+                : <span className="text-muted"> · nível {level + 1}: <b className="text-grass-deep">{proximo}</b></span>}
+            </span>
+            {!max && !noPiso && (
+              <button onClick={() => run(`skill:${def.key}`, async () => {
+                const r = await api.shopSkill(def.key, 'point');
+                toast(`${def.name} no nível ${level + 1}: ${proximo}.`, 'success');
+                return r.me;
+              })} disabled={busy !== null || !temPonto} className="btn btn-green btn-sm shrink-0">
+                {busy === `skill:${def.key}` ? '…' : temPonto ? 'Subir nível' : 'Sem pontos'}
+              </button>
+            )}
           </div>
         </div>
-        {!max && (
-          <div className="mt-2 flex gap-2">
-            {pay('point', `${skillCost.point} ponto`, 'btn-green', me.skills.points >= skillCost.point)}
-            {pay('money', fmt(skillCost.money), 'btn-yellow', me.money >= skillCost.money)}
-            {pay('vip', `${skillCost.vip} VIP`, 'btn-sky', me.vipDays >= skillCost.vip)}
-          </div>
-        )}
-      </div>
+      </li>
     );
   };
 
@@ -259,10 +276,14 @@ export function ShopScreen() {
 
       {skills.length > 0 && (
         <Panel title="HABILIDADES" ribbon="green">
-          <p className="mb-2 text-[12px] font-bold text-muted">
-            Cada nível custa 1 ponto de nível, {fmt(skillCost.money)} ou {skillCost.vip} VIP guardado — você escolhe. Cada nível seu dá 1 ponto: você tem <b className="text-navy-ink">{me.skills.points}</b>.
+          <p className="mb-1 text-[12px] font-bold leading-snug text-muted">
+            Cada nível seu dá 1 ponto, e ponto é a única moeda daqui — não dá para comprar com dinheiro nem com VIP.
+            Você tem <b className="t-display text-[15px] text-grass-deep">{me.skills.points}</b> {me.skills.points === 1 ? 'ponto' : 'pontos'}.
           </p>
-          <div className="flex flex-col gap-2">{skills.map(skillRow)}</div>
+          <p className="mb-3 text-[11px] font-bold leading-snug text-muted">
+            Na ordem: primeiro a Recarga, para chutar mais vezes; depois Pontaria e Chute, para errar menos; a Sorte por último, quando o resto estiver no máximo.
+          </p>
+          <ol className="flex flex-col">{skills.map(skillRow)}</ol>
         </Panel>
       )}
 

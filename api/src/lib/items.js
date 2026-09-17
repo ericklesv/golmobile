@@ -21,8 +21,10 @@ export const ENERGY_REDUCTION_PER_LEVEL = 0.10;
 export const ENERGY_PRICES = [0, 3000, 6000, 12000, 20000, 30000]; // índice = nível
 
 /** Boost Auto: −60 s no chute direto (nunca abaixo de 1 min). */
-export const BOOST_AUTO_MS = 60_000;
-export const BOOST_AUTO_MIN_MS = 60_000;
+// Boost Auto: tira 30 s do chute direto e o chute direto nunca fica abaixo de 4 min (dono, 17/09/2026 —
+// "a parada de item pode deixar o -30 s pro chute automático, no máximo de 4 em 4 min, não menos que isso").
+export const BOOST_AUTO_MS = 30_000;
+export const BOOST_AUTO_MIN_MS = 4 * 60_000;
 
 /** Caneleira: última linha da trilha → 50% 1 ladrão (2 livres), 5% nenhum (3 livres), 45% 2 ladrões (1 livre). */
 export const SHIN_GUARD_ROLLS = [
@@ -98,13 +100,13 @@ export function parseNickFade(value) {
 export const ITEMS = [
   {
     key: 'ENERGY', kind: 'boost', category: 'chutes', name: 'Energia do chute', icon: 'ico-energy',
-    desc: 'Cada nível tira mais 10% da recarga do pênalti, da falta e da trilha por 28 h. O nível seguinte só com o anterior ativo.',
+    desc: 'Cada nível tira mais 10% da recarga do pênalti, da falta e da trilha por 28 h, até o piso de 4:30. O nível seguinte só com o anterior ativo.',
     levels: ENERGY_PRICES.slice(1).map((price, i) => ({ level: i + 1, price, effect: `-${(i + 1) * 10}% de recarga` })),
     durationMs: BOOST_DURATION_MS,
   },
   {
     key: 'BOOST_AUTO', kind: 'boost', category: 'chutes', name: 'Boost Auto', icon: 'ico-clearstamp_l',
-    desc: 'Tira 60 s da recarga do chute direto por 28 h.',
+    desc: 'Tira 30 s da recarga do chute direto por 28 h. O chute direto nunca fica abaixo de 4 min.',
     price: 5000, durationMs: BOOST_DURATION_MS,
   },
   {

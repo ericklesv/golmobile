@@ -32,6 +32,25 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Chutes (direto, pênalti, falta, trilha) liberados para todos desde o nível 0** (decisão do
   dono, 13/09/2026: travar desanimava); **só os minigames travam por nível** (`MINIGAMES.unlock`).
   O front lê tudo via `GET /api/meta` — **não duplicar constantes no `web/`**.
+- **Habilidades = a evolução do jogador** (`SKILLS` em rules.js, `services/skills.js`, painel na Loja;
+  reforma do dono em 17/09/2026). Quatro, e a ordem da lista é a ordem de gastar ponto: **Recarga** (11
+  níveis, −30 s no chute direto/pênalti/falta até o piso de `COOLDOWN_MIN` = 4:30; a trilha tem a redução
+  dos níveis, não esta), **Pontaria** (9 níveis, +5 p.p. no pênalti até 90%), **Chute** (9 níveis, +5 p.p.
+  na falta até 80%) e **Sorte** (7 níveis, +1 p.p. na chance de chute especial, de 3% a 10%).
+  **Cada nível custa 1 PONTO DE NÍVEL e nada mais** — dinheiro e VIP saíram ("temos que dar mais valor a
+  upada de nível… tira a magia que é passar de nível"); quem já tinha comprado nível com dinheiro/VIP ficou
+  com ele. A árvore inteira custa **36 pontos = nível 36 = 300 mil pontos de nível**, o "full" do BRGOL
+  (níveis 33–36 criados na mesma reforma; no ritmo medido dos mais fortes, 387 pontos/dia, são ~26 meses).
+  **VIP encurta o caminho, não o piso**: com base de 5:00 ele chega aos 4:30 com 1 nível de Recarga — a tela
+  avisa e não deixa gastar ponto à toa.
+- **Chute de prata e de ouro** (`BALL`/`rollBall` em rules.js, `lib/bola.js`, colunas `User.ballNext` e
+  `User.ballLeft`, `Goal.ball`): 3% dos pênaltis, faltas e trilhas vêm especiais desde o nível 0 (2% prata +
+  1% ouro), até 10% com a Sorte — as duas somadas, o ouro sempre metade da prata. **Prata bate 2x e ouro
+  bate 3x na MESMA recarga** (cada batida entra ou não; não é gol em dobro — decisão do dono). O chute
+  direto fica de fora. A bola da PRÓXIMA recarga é sorteada quando o jogador gasta a atual, por isso o card
+  da Home já fica prateado/dourado enquanto o tempo corre. As batidas que sobram saem sem esperar
+  (`free` no `cooldownsView`) — quem gate a tela é esse campo, não só o `readyAt`.
+  **Mexeu em habilidade, recarga ou bola? Rode `node scripts/test-habilidades.js`** (pasta api/, banco LOCAL).
 - Liga: `api/src/services/league.js` — temporada, rodadas de 24h que fecham às **19:00
   (America/Sao_Paulo)**, round-robin determinístico por série, fechamento de hora/rodada
   com prêmios e recordes, acesso/rebaixamento (2 sobem/2 caem), nova temporada automática.

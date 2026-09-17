@@ -8,7 +8,8 @@ import { hourKey, nextMidnight } from '../lib/time.js';
 import {
   COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE,
   CHANCE_CAP, skillBonus, PARTY_PRIZES, REBOUND_CHANCE, KIND_LABEL,
-  cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip } from '../lib/rules.js';
+  cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip, rollBall, BALL } from '../lib/rules.js';
+import { ballNextOf, ballLeftOf, kicksOf, saveNextBall, saveBallLeft } from '../lib/bola.js';
 import { liveMatchForTeam } from './league.js';
 import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines } from '../lib/items.js';
 
@@ -51,6 +52,27 @@ async function claimCooldown(tx, user, kind, now) {
   return cd;
 }
 
+/**
+ * Reserva a batida: se a recarga que está rolando é de prata/ouro e ainda sobra batida, ela sai DE GRAÇA
+ * (a recarga já foi cobrada na primeira). Senão cobra a recarga normal, marca quantas batidas esta bola dá
+ * e sorteia a bola da PRÓXIMA recarga — é ela que deixa o card prateado/dourado enquanto o tempo corre.
+ */
+async function claimKick(tx, user, kind, now) {
+  const andando = ballLeftOf(user, kind);
+  if (andando) {
+    await saveBallLeft(tx, user.id, kind, andando.ball, andando.left - 1);
+    return { cd: cooldownFor(user, kind, now.getTime()), ball: andando.ball, left: andando.left - 1, extra: true };
+  }
+  const cd = await claimCooldown(tx, user, kind, now);
+  const ball = ballNextOf(user, kind);
+  const left = kicksOf(ball) - 1; // as batidas que sobram desta mesma recarga
+  if (BALL.kinds.includes(kind)) {
+    await saveBallLeft(tx, user.id, kind, ball, left);
+    await saveNextBall(tx, user.id, kind, rollBall(user, kind, rnd));
+  }
+  return { cd, ball, left, extra: false };
+}
+
 function requireUnlocked(user, kind) {
   const lvl = levelOf(user).lvl;
   if (lvl < UNLOCK_LEVEL[kind]) {
@@ -71,7 +93,7 @@ async function scoreOnLiveMatch(tx, teamId, match) {
 }
 
 /** Aplica gol/erro: contadores, Goal, Activity, placar da partida. (Os minigames diários também usam.) */
-export async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) {
+export async function applyResult(tx, user, { kind, goal, now, match, phrase, money, ball = null }) {
   const hk = hourKey(now);
   // saldo dos minigames: quem manda money 0 e é minigame ganha o valor do MINIGAME_MONEY (quanto mais
   // difícil o minigame, mais paga — dono, 17/09/2026); sem valor na tabela, o piso de MINIGAME_WIN
@@ -96,9 +118,10 @@ export async function applyResult(tx, user, { kind, goal, now, match, phrase, mo
     data.goalsSeason = seasonId && user.seasonId === seasonId ? { increment: 1 } : 1;
     data.seasonId = seasonId;
     await tx.goal.create({
-      data: { userId: user.id, teamId: user.teamId, matchId: match?.id ?? null, roundId, seasonId, hourKey: hk, kind, money },
+      data: { userId: user.id, teamId: user.teamId, matchId: match?.id ?? null, roundId, seasonId, hourKey: hk, kind, money, ball },
     });
     text = goalText(user, match, kind, phrase);
+    if (ball) text = `BOLA ${ball}! ${text}`; // chute de prata/ouro: a torcida vê de onde veio
     if (bonus) text += ` E leva R$ ${money.toLocaleString('pt-BR')} no bolso!`;
   } else {
     text = `${phrase} ${user.nick} (${user.team?.name ?? ''}) errou ${KIND_LABEL[kind] === 'falta' ? 'a falta' : KIND_LABEL[kind] === 'trilha' ? 'na trilha' : 'o pênalti'}.`;
@@ -164,7 +187,7 @@ export async function penalty(userId, direction) {
     const now = new Date();
     const user = await loadUser(tx, userId);
     requireUnlocked(user, 'PENALTY');
-    const cd = await claimCooldown(tx, user, 'PENALTY', now);
+    const { cd, ball, left } = await claimKick(tx, user, 'PENALTY', now);
     const match = await liveMatchForTeam(user.teamId, tx);
     const chance = Math.min(CHANCE_CAP.PENALTY, PENALTY_BASE_CHANCE + skillBonus(user, 'PENALTY') + bootBonus(user, now.getTime())); // base + Pontaria + chuteira
     const lvl = levelOf(user).lvl;
@@ -177,8 +200,8 @@ export async function penalty(userId, direction) {
     // Goleiro: se foi gol, pulou para outro canto; se defendeu, adivinhou.
     const keeperDir = goal ? pick(DIRS.filter((d) => d !== direction)) : direction;
     const phrase = goal ? pick(NARRATION.penaltyGoal) : pick(NARRATION.penaltySave);
-    const { text } = await applyResult(tx, user, { kind: 'PENALTY', goal, now, match, phrase, money: MONEY.PENALTY });
-    return { goal, rebound, keeperDir, direction, money: goal ? MONEY.PENALTY : 0, text, ...summary(user, match, 'PENALTY', cd, now) };
+    const { text } = await applyResult(tx, user, { kind: 'PENALTY', goal, now, match, phrase, money: MONEY.PENALTY, ball });
+    return { goal, rebound, keeperDir, direction, money: goal ? MONEY.PENALTY : 0, text, ball, ballLeft: left, ...summary(user, match, 'PENALTY', cd, now) };
   });
 }
 
@@ -190,7 +213,7 @@ export async function foul(userId, direction) {
     const now = new Date();
     const user = await loadUser(tx, userId);
     requireUnlocked(user, 'FOUL');
-    const cd = await claimCooldown(tx, user, 'FOUL', now);
+    const { cd, ball, left } = await claimKick(tx, user, 'FOUL', now);
     const match = await liveMatchForTeam(user.teamId, tx);
     const chance = Math.min(CHANCE_CAP.FOUL, FOUL_BASE_CHANCE + skillBonus(user, 'FOUL') + bootBonus(user, now.getTime())); // base + Chute + chuteira
     const lvl = levelOf(user).lvl;
@@ -202,8 +225,8 @@ export async function foul(userId, direction) {
     }
     const outcome = goal ? 'goal' : pick(direction === 'over' ? ['wall', 'keeper', 'out'] : ['keeper', 'out', 'keeper']);
     const phrase = goal ? pick(NARRATION.foulGoal) : pick(NARRATION.foulMiss);
-    const { text } = await applyResult(tx, user, { kind: 'FOUL', goal, now, match, phrase, money: MONEY.FOUL });
-    return { goal, rebound, outcome, direction, money: goal ? MONEY.FOUL : 0, text, ...summary(user, match, 'FOUL', cd, now) };
+    const { text } = await applyResult(tx, user, { kind: 'FOUL', goal, now, match, phrase, money: MONEY.FOUL, ball });
+    return { goal, rebound, outcome, direction, money: goal ? MONEY.FOUL : 0, text, ball, ballLeft: left, ...summary(user, match, 'FOUL', cd, now) };
   });
 }
 
@@ -231,8 +254,9 @@ export async function trailPick(userId, pickIndex) {
     let state = user.trailState?.active ? user.trailState : null;
     let cd = cooldownFor(user, 'TRAIL', now.getTime());
     if (!state) {
-      cd = await claimCooldown(tx, user, 'TRAIL', now);
-      state = { active: true, phase: 0, layout: TRAIL_LINES.map(shuffledLine), revealed: [], startedAt: now.getTime() };
+      const claim = await claimKick(tx, user, 'TRAIL', now);
+      cd = claim.cd;
+      state = { active: true, phase: 0, layout: TRAIL_LINES.map(shuffledLine), revealed: [], startedAt: now.getTime(), ball: claim.ball, ballLeft: claim.left };
       // Caneleira (loja): sorteia menos ladrões na última linha; é consumida quando esta trilha termina
       const guard = shinGuard(user, now.getTime());
       if (guard) {
@@ -264,7 +288,7 @@ export async function trailPick(userId, pickIndex) {
         state.revealed = [...(state.revealed || []), { phase: line, index: pickIndex }];
       } else {
         finished = true;
-        ({ text } = await applyResult(tx, user, { kind: 'TRAIL', goal: false, now, match: await liveMatchForTeam(user.teamId, tx), phrase: pick(NARRATION.trailMiss), money: 0 }));
+        ({ text } = await applyResult(tx, user, { kind: 'TRAIL', goal: false, now, match: await liveMatchForTeam(user.teamId, tx), phrase: pick(NARRATION.trailMiss), money: 0, ball: state.ball }));
       }
     } else {
       nextPhase = line + 1;
@@ -272,7 +296,7 @@ export async function trailPick(userId, pickIndex) {
       if (nextPhase >= TRAIL_LINES.length) {
         goal = true;
         finished = true;
-        ({ text } = await applyResult(tx, user, { kind: 'TRAIL', goal: true, now, match: await liveMatchForTeam(user.teamId, tx), phrase: pick(NARRATION.trailGoal), money: MONEY.TRAIL }));
+        ({ text } = await applyResult(tx, user, { kind: 'TRAIL', goal: true, now, match: await liveMatchForTeam(user.teamId, tx), phrase: pick(NARRATION.trailGoal), money: MONEY.TRAIL, ball: state.ball }));
       }
     }
 
@@ -286,6 +310,8 @@ export async function trailPick(userId, pickIndex) {
       lineMines: finished || !mine ? lineMines : null, // só revela a linha inteira ao concluir a linha
       money: goal ? MONEY.TRAIL : 0,
       text,
+      ball: state.ball ?? null,
+      ballLeft: state.ballLeft ?? 0,
       cooldownMs: cd,
       kickedAt: state.startedAt ?? now.getTime(),
     };

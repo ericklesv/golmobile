@@ -5,7 +5,7 @@ import { handle, notFound, badRequest, idDeRota } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP, PARTY_PRIZES } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP, PARTY_PRIZES, BALL } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
@@ -43,8 +43,15 @@ game.get('/meta', cached(10000), handle(async () => {
     serieASwap: SERIE_A_SWAP, // troca automática na Série A (time sem gol na rodada × quem mais marcou fora dela)
     chances: { penalty: PENALTY_BASE_CHANCE, foul: FOUL_BASE_CHANCE, cap: CHANCE_CAP, rebound: REBOUND_CHANCE },
     // Pontaria e Chute: a tela monta o resto com me.skills (nível) e me.chance (acerto de verdade)
-    skills: SKILLS.map(({ key, name, kind, icon, desc, max, perLevel }) => ({ key, name, kind, icon, desc, max, perLevel, base: kind === 'PENALTY' ? PENALTY_BASE_CHANCE : FOUL_BASE_CHANCE, cap: CHANCE_CAP[kind] })),
-    skillCost: SKILL_COST, // 1 ponto de nível, R$ 25 mil ou 1 VIP
+    // cada habilidade vai com o ponto de partida e o teto do PRÓPRIO efeito: tempo de recarga (ms),
+    // acerto do chute (0-1) ou chance de chute especial (0-1) — a tela só precisa do 'unit' para escrever
+    skills: SKILLS.map(({ key, name, unit, kind, icon, desc, max, perLevel }) => ({
+      key, name, unit, kind, icon, desc, max, perLevel,
+      base: unit === 'tempo' ? COOLDOWNS.PENALTY.normal : unit === 'sorte' ? BALL.base : kind === 'PENALTY' ? PENALTY_BASE_CHANCE : FOUL_BASE_CHANCE,
+      cap: unit === 'tempo' ? COOLDOWN_MIN : unit === 'sorte' ? BALL.max : CHANCE_CAP[kind],
+    })),
+    skillCost: SKILL_COST, // só ponto de nível (dono, 17/09/2026)
+    ball: BALL, // chute de prata (2 batidas) e de ouro (3 batidas)
     cooldownMin: COOLDOWN_MIN, // piso de 4:30 em todos os chutes
     partySegments: PARTY_SEGMENTS,
     partyPrizes: PARTY_PRIZES, // quanto paga cada casa da roleta (0 = ERROU)

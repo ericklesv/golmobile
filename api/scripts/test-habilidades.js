@@ -1,7 +1,8 @@
 /**
- * Habilidades (services/skills.js) no banco LOCAL: comprar nível com ponto de nível, dinheiro e VIP,
- * o acerto do pênalti/falta subindo junto (rules.js shotChance), o teto de 10 níveis, o teto do acerto
- * com chuteira e os dois toques ao mesmo tempo (ninguém sobe dois níveis pagando um). Cria jogadores th…
+ * Habilidades (services/skills.js) e chute de prata/ouro (lib/bola.js + services/play.js) no banco LOCAL:
+ * só ponto de nível paga, os tetos (recarga 4:30, pênalti 90%, falta 80%, sorte 10%), a árvore inteira
+ * custando 36 pontos = nível 36, e a recarga de prata/ouro rendendo 2 e 3 batidas sem cobrar recarga nova.
+ * Cria jogadores th…
  *
  * Uso (na pasta api/):  node scripts/test-habilidades.js   → tem de terminar em "TUDO OK".
  */
@@ -12,99 +13,114 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
 }
 const { prisma } = await import('../src/prisma.js');
 const { buySkill } = await import('../src/services/skills.js');
-const { SKILL_COST, SKILL_BY_KEY, CHANCE_CAP, PENALTY_BASE_CHANCE, FOUL_BASE_CHANCE, shotChance, skillPointsLeft, levelOf } = await import('../src/lib/rules.js');
+const { penalty, foul } = await import('../src/services/play.js');
+const R = await import('../src/lib/rules.js');
+const { ballView } = await import('../src/lib/bola.js');
+const { cooldownsView } = await import('../src/services/view.js');
 
 let fails = 0;
 const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`); if (!ok) fails++; };
 const err = async (p) => { try { await p; return null; } catch (e) { return e; } };
-const pct = (v) => `${(v * 100).toFixed(1)}%`;
+const mmss = (ms) => `${Math.floor(ms / 60000)}:${String(Math.round((ms % 60000) / 1000)).padStart(2, '0')}`;
+const pct = (v) => `${(v * 100).toFixed(0)}%`;
 const team = await prisma.team.findFirst({ where: { slug: 'nautico' } }) ?? await prisma.team.findFirst();
 let seq = 0;
 const mk = (extra = {}) => { const n = `th${Date.now() % 1e6}${seq++}`; return prisma.user.create({ data: { nick: n, nickLower: n, email: `${n}@local.test`, passwordHash: 'x', teamId: team.id, ...extra } }); };
 const U = (id) => prisma.user.findUnique({ where: { id }, include: { items: true } });
 
-// ── quem nunca gastou nada: base pura
-const novato = await mk();
-check(shotChance(novato, 'PENALTY') === PENALTY_BASE_CHANCE && shotChance(novato, 'FOUL') === FOUL_BASE_CHANCE,
-  `jogador novo: ${pct(PENALTY_BASE_CHANCE)} no pênalti e ${pct(FOUL_BASE_CHANCE)} na falta`);
-check(skillPointsLeft(novato) === levelOf(novato).lvl, `pontos de nível = nível do jogador (${levelOf(novato).lvl})`);
+// ── a árvore
+const custo = R.SKILLS.reduce((s, x) => s + x.max, 0);
+check(R.SKILLS.map((s) => s.key).join(',') === 'CD,AIM,SHOT,LUCK', `as 4 habilidades, na ordem do dono: ${R.SKILLS.map((s) => s.name).join(' → ')}`);
+check(custo === 36 && R.LEVELS.at(-1).lvl === 36, `a árvore inteira custa ${custo} pontos e o nível máximo é ${R.LEVELS.at(-1).lvl} (${R.LEVELS.at(-1).goals.toLocaleString('pt-BR')} pontos de nível)`);
+check(Object.keys(R.SKILL_COST).join(',') === 'point', 'habilidade paga só com ponto de nível (dinheiro e VIP saíram)');
+check(R.CHANCE_CAP.PENALTY === 0.90 && R.CHANCE_CAP.FOUL === 0.80, `tetos: pênalti ${pct(R.CHANCE_CAP.PENALTY)}, falta ${pct(R.CHANCE_CAP.FOUL)}`);
 
-// ── ponto de nível: quem não tem nível não sobe
-const e1 = await err(buySkill(novato.id, 'AIM', 'point'));
-check(e1?.status === 402 && e1.code === 'no-points', 'sem ponto de nível: recusado (402)');
-
-// ── dinheiro
-const rico = await mk({ money: SKILL_COST.money * 2 + 10 });
-await buySkill(rico.id, 'AIM', 'money');
-let x = await U(rico.id);
-const passo = SKILL_BY_KEY.AIM.perLevel;
-check(x.skillAim === 1 && x.money === SKILL_COST.money + 10, `pagou ${SKILL_COST.money} e subiu Pontaria para 1 (sobrou R$ ${x.money})`);
-check(Math.abs(shotChance(x, 'PENALTY') - (PENALTY_BASE_CHANCE + passo)) < 1e-9, `acerto do pênalti: ${pct(shotChance(x, 'PENALTY'))}`);
-check(x.skillPoints === 0, 'pagou com dinheiro: não gastou ponto de nível');
-await buySkill(rico.id, 'SHOT', 'money');
-x = await U(rico.id);
-check(x.skillShot === 1 && x.money === 10, 'segundo nível (Chute) pago com o resto do dinheiro');
-const e2 = await err(buySkill(rico.id, 'AIM', 'money'));
-check(e2?.status === 402 && e2.code === 'no-money', 'sem dinheiro: recusado (402)');
-
-// ── VIP guardado
-const vip = await mk({ vipDays: 1 });
-await buySkill(vip.id, 'SHOT', 'vip');
-x = await U(vip.id);
-check(x.skillShot === 1 && x.vipDays === 0, 'pagou 1 VIP guardado e subiu Chute para 1');
-const e3 = await err(buySkill(vip.id, 'SHOT', 'vip'));
-check(e3?.status === 402 && e3.code === 'no-vip', 'sem VIP guardado: recusado (402)');
-
-// ── ponto de nível: 1 por nível do jogador, e cada compra gasta um
-const forte = await mk({ levelBonus: 100_000 });
-x = await U(forte.id);
-const lvl = levelOf(x).lvl;
-check(lvl >= 3, `jogador de nível ${lvl} para gastar pontos`);
-await buySkill(forte.id, 'AIM', 'point');
-await buySkill(forte.id, 'SHOT', 'point');
-x = await U(forte.id);
-check(x.skillAim === 1 && x.skillShot === 1 && x.skillPoints === 2 && skillPointsLeft(x) === lvl - 2, `2 níveis por ponto: sobraram ${skillPointsLeft(x)} pontos`);
-check(x.money === 0 && x.vipDays === 0, 'pagou com ponto: não tirou dinheiro nem VIP');
-
-// ── teto: 10 níveis e o acerto que eles dão
-const max = await mk({ money: SKILL_COST.money * 20 });
-for (let i = 0; i < SKILL_BY_KEY.AIM.max; i++) await buySkill(max.id, 'AIM', 'money');
-x = await U(max.id);
-const topo = PENALTY_BASE_CHANCE + SKILL_BY_KEY.AIM.max * SKILL_BY_KEY.AIM.perLevel;
-check(x.skillAim === 10 && Math.abs(shotChance(x, 'PENALTY') - topo) < 1e-9, `Pontaria no 10: ${pct(shotChance(x, 'PENALTY'))} de acerto no pênalti`);
-const e4 = await err(buySkill(max.id, 'AIM', 'money'));
-check(e4?.status === 400 && /nível 10/.test(e4.message), 'no nível 10: recusado');
-
-// ── teto do acerto: chuteira de diamante em cima da habilidade no máximo não passa do limite
-await prisma.userItem.create({ data: { userId: max.id, itemKey: 'BOOT_DIAMOND', equipped: true, expiresAt: new Date(Date.now() + 86_400_000) } });
-x = await U(max.id);
-check(shotChance(x, 'PENALTY') === CHANCE_CAP.PENALTY, `com chuteira de diamante o acerto trava no teto: ${pct(CHANCE_CAP.PENALTY)}`);
-
-// ── dois toques ao mesmo tempo: paga um, sobe um
-const corrida = await mk({ money: SKILL_COST.money });
-const race = await Promise.allSettled([buySkill(corrida.id, 'AIM', 'money'), buySkill(corrida.id, 'AIM', 'money'), buySkill(corrida.id, 'AIM', 'money')]);
-x = await U(corrida.id);
-check(race.filter((p) => p.status === 'fulfilled').length === 1 && x.skillAim === 1 && x.money === 0, '3 toques ao mesmo tempo: sobe um nível só e cobra uma vez');
-
-// ── o mesmo com ponto de nível (a trava é o skillPoints)
-const corrida2 = await mk({ levelBonus: 0 });
-await prisma.user.update({ where: { id: corrida2.id }, data: { goalsTotal: 0 } });
-x = await U(corrida2.id);
-if (levelOf(x).lvl >= 1) {
-  const race2 = await Promise.allSettled([buySkill(corrida2.id, 'AIM', 'point'), buySkill(corrida2.id, 'SHOT', 'point')]);
-  x = await U(corrida2.id);
-  check(x.skillAim + x.skillShot === Math.min(2, levelOf(x).lvl + x.skillPoints) && x.skillPoints === x.skillAim + x.skillShot, 'pontos de nível: nunca gasta mais do que tem');
+// ── um jogador full: cada habilidade no máximo entrega o que o dono pediu
+const full = { skillCd: 11, skillAim: 9, skillShot: 9, skillLuck: 7, goalsTotal: 300000, levelBonus: 0 };
+check(R.levelOf(full).lvl === 36, `com 300 mil pontos o jogador chega ao nível ${R.levelOf(full).lvl} — e aí tem os 36 pontos da árvore`);
+check(R.shotChance(full, 'PENALTY') === 0.90, `pênalti no full: ${pct(R.shotChance(full, 'PENALTY'))}`);
+check(Math.abs(R.shotChance(full, 'FOUL') - 0.80) < 1e-9, `falta no full: ${pct(R.shotChance(full, 'FOUL'))}`);
+check(Math.abs(R.ballChance(full).total - 0.10) < 1e-9, `chance de chute especial no full: ${pct(R.ballChance(full).total)} (prata ${(R.ballChance(full).silver * 100).toFixed(1)}% + ouro ${(R.ballChance(full).gold * 100).toFixed(1)}%)`);
+check(Math.abs(R.ballChance({}).total - 0.03) < 1e-9, `e no nível 0, sem gastar ponto: ${pct(R.ballChance({}).total)} (2% prata + 1% ouro), como o dono pediu`);
+for (const kind of ['AUTO', 'PENALTY', 'FOUL']) {
+  check(R.cooldownFor(full, kind) === R.COOLDOWN_MIN, `${kind}: recarga no full = ${mmss(R.cooldownFor(full, kind))}`);
 }
+check(R.cooldownFor({ ...full, skillCd: 0 }, 'PENALTY') === 10 * 60_000, 'sem a habilidade Recarga, o pênalti continua 10:00');
+check(R.cooldownFor({ ...full, skillCd: 5 }, 'PENALTY') === 7.5 * 60_000, 'no nível 5 da Recarga: 7:30 (30 s por nível)');
+// VIP chega ao piso mais cedo, e o piso é o mesmo para todo mundo
+const vip = { ...full, skillCd: 1, vipUntil: new Date(Date.now() + 86400e3) };
+check(R.cooldownFor(vip, 'PENALTY') === R.COOLDOWN_MIN, 'VIP com 1 nível de Recarga já bate no piso de 4:30');
 
-// ── habilidade e moeda inválidas
-const e5 = await err(buySkill(rico.id, 'VOO', 'money'));
-const e6 = await err(buySkill(rico.id, 'AIM', 'pix'));
-check(e5?.status === 400 && e6?.status === 400, 'habilidade ou forma de pagar inválida: recusado');
+// ── Boost Auto: -30 s e nunca abaixo de 4 min
+const I = await import('../src/lib/items.js');
+check(I.BOOST_AUTO_MS === 30_000 && I.BOOST_AUTO_MIN_MS === 4 * 60_000, `Boost Auto: -${I.BOOST_AUTO_MS / 1000} s, e o chute direto não passa de ${mmss(I.BOOST_AUTO_MIN_MS)}`);
 
-// ── histórico da loja
-const logs = await prisma.shopLog.findMany({ where: { userId: rico.id } });
-check(logs.length === 2 && logs.every((l) => l.itemKey.startsWith('SKILL_')), 'compras aparecem no histórico da loja');
+// ── comprar habilidade: só com ponto, e o ponto vem do nível
+const u = await mk({ goalsTotal: 200, money: 10_000_000, vipDays: 50 }); // nível 5 = 5 pontos
+check(R.skillPointsLeft(await U(u.id)) === 5, `jogador de 200 gols: nível ${R.levelOf(await U(u.id)).lvl}, ${R.skillPointsLeft(await U(u.id))} pontos`);
+const eMoeda = await err(buySkill(u.id, 'CD', 'money'));
+check(eMoeda?.status === 400, `pagar com dinheiro é recusado: "${eMoeda?.message}"`);
+const eVip = await err(buySkill(u.id, 'CD', 'vip'));
+check(eVip?.status === 400, 'pagar com VIP é recusado');
+for (let i = 0; i < 5; i++) await buySkill(u.id, 'CD', 'point');
+let me = await U(u.id);
+check(me.skillCd === 5 && me.money === 10_000_000 && me.vipDays === 50, '5 níveis de Recarga comprados: não tirou dinheiro nem VIP');
+const eSem = await err(buySkill(u.id, 'AIM', 'point'));
+check(eSem?.code === 'no-points', `acabaram os pontos: "${eSem?.message}"`);
+check(R.cooldownFor(me, 'PENALTY') === 7.5 * 60_000, `a recarga do pênalti dele caiu para ${mmss(R.cooldownFor(me, 'PENALTY'))}`);
 
+// ── teto de cada habilidade
+const alto = await mk({ goalsTotal: 300000 });
+for (let i = 0; i < 9; i++) await buySkill(alto.id, 'AIM', 'point');
+const eTeto = await err(buySkill(alto.id, 'AIM', 'point'));
+check(eTeto?.status === 400 && (await U(alto.id)).skillAim === 9, `Pontaria trava no nível 9: "${eTeto?.message}"`);
+
+// ── chute de prata e de ouro: a recarga rende 2 e 3 batidas
+const sortudo = await mk({ goalsTotal: 5000, skillLuck: 7 });
+// força a bola da próxima recarga para conferir o fluxo sem depender do sorteio
+const forca = (id, kind, bola) => prisma.$executeRawUnsafe('UPDATE "User" SET "ballNext" = jsonb_set(COALESCE("ballNext", \'{}\'::jsonb), ARRAY[$2], $3::jsonb) WHERE id = $1', id, kind, JSON.stringify(bola));
+for (const [bola, batidas] of [['PRATA', 2], ['OURO', 3]]) {
+  await prisma.user.update({ where: { id: sortudo.id }, data: { lastPenaltyAt: null, ballLeft: {} } });
+  await forca(sortudo.id, 'PENALTY', bola);
+  const antes = await U(sortudo.id);
+  check(ballView(antes, 'PENALTY').ball === bola && ballView(antes, 'PENALTY').left === batidas, `card do pênalti mostra a bola ${bola} valendo ${batidas} batidas antes de bater`);
+  const rs = [];
+  for (let i = 0; i < batidas; i++) rs.push(await penalty(sortudo.id, 'left')); // nenhuma pode dar 429
+  check(rs.length === batidas && rs.every((r) => r.ball === bola), `bateu as ${batidas} batidas da bola ${bola} sem esperar recarga`);
+  check(rs.at(-1).ballLeft === 0, 'na última batida a bola acaba');
+  const e429 = await err(penalty(sortudo.id, 'left'));
+  check(e429?.code === 'cooldown', `a ${batidas + 1}ª batida cai na recarga normal ("${e429?.message ?? ''}".trim() = recarga)`);
+  const gols = rs.filter((r) => r.goal).length;
+  const linhas = await prisma.goal.findMany({ where: { userId: sortudo.id, kind: 'PENALTY', ball: bola } });
+  check(linhas.length === gols, `os gols dessa bola ficaram marcados como ${bola} (${gols} de ${batidas} entraram)`);
+  await prisma.goal.deleteMany({ where: { userId: sortudo.id } });
+}
+// a bola da próxima recarga é sorteada sozinha ao gastar a recarga
+await prisma.user.update({ where: { id: sortudo.id }, data: { lastFoulAt: null, ballLeft: {}, ballNext: {} } });
+await foul(sortudo.id, 'over');
+const depois = await U(sortudo.id);
+check('FOUL' in (depois.ballNext ?? {}), 'ao bater, o servidor já sorteia a bola da PRÓXIMA recarga (é ela que pinta o card)');
+
+// ── o sorteio bate com a chance da Sorte
+const sorteios = { PRATA: 0, OURO: 0, normal: 0 };
+const N = 20000;
+for (let i = 0; i < N; i++) { const b = R.rollBall({ skillLuck: 7 }, 'PENALTY'); sorteios[b ?? 'normal']++; }
+const esperado = R.ballChance({ skillLuck: 7 });
+check(Math.abs(sorteios.OURO / N - esperado.gold) < 0.005 && Math.abs(sorteios.PRATA / N - esperado.silver) < 0.008,
+  `${N} sorteios no full: ${(sorteios.PRATA / N * 100).toFixed(1)}% prata e ${(sorteios.OURO / N * 100).toFixed(1)}% ouro (previsto ${(esperado.silver * 100).toFixed(1)}% e ${(esperado.gold * 100).toFixed(1)}%)`);
+check(R.rollBall({ skillLuck: 7 }, 'AUTO') === null, 'chute direto nunca é de prata nem de ouro (decisão do dono)');
+
+// ── a tela recebe tudo
+const view = cooldownsView(await U(sortudo.id));
+check(view.PENALTY.ball !== undefined && view.TRAIL.ball !== undefined && view.AUTO.ball === null, 'cooldownsView manda a bola de cada modo para a tela');
+
+const ids = [u.id, alto.id, sortudo.id];
+await prisma.$transaction([
+  prisma.goal.deleteMany({ where: { userId: { in: ids } } }),
+  prisma.activity.deleteMany({ where: { userId: { in: ids } } }),
+  prisma.shopLog.deleteMany({ where: { userId: { in: ids } } }),
+  prisma.user.deleteMany({ where: { id: { in: ids } } }),
+]);
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');
 await prisma.$disconnect();
 process.exit(fails ? 1 : 0);

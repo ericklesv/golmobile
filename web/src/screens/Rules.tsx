@@ -42,13 +42,26 @@ export function RulesScreen() {
         <p className="mt-2 text-[12px] font-bold text-muted">Nenhum chute recarrega em menos de 4:30, nem com VIP e Energia juntos. Os níveis descontam segundos da Trilha. A artilharia da hora fecha em toda hora cheia; a rodada, às 19:00.</p>
       </Panel>
       <Panel title="HABILIDADES" ribbon="green">
-        <p className="text-[13px] font-bold text-navy-ink">O acerto do pênalti começa em {Math.round((meta?.chances.penalty ?? 0.45) * 100)}% e o da falta em {Math.round((meta?.chances.foul ?? 0.35) * 100)}%. Quem sobe isso são as habilidades da Loja:</p>
+        <p className="text-[13px] font-bold text-navy-ink">O acerto do pênalti começa em {Math.round((meta?.chances.penalty ?? 0.45) * 100)}% e o da falta em {Math.round((meta?.chances.foul ?? 0.35) * 100)}%. Quem sobe isso são as habilidades da Loja, na ordem:</p>
         <ul className="mt-1 text-[13px] font-bold text-navy-ink">
           {(meta?.skills ?? []).map((s) => (
-            <li key={s.key}><b>{s.name}</b>: {s.desc} {s.max} níveis, até {Math.round((s.base + s.max * s.perLevel) * 100)}% — com chuteira o teto é {Math.round(s.cap * 100)}%.</li>
+            <li key={s.key}>
+              <b>{s.name}</b>: {s.desc} {s.max} níveis, até{' '}
+              {s.unit === 'tempo'
+                ? `${Math.floor(s.cap / 60000)}:${String(Math.round((s.cap % 60000) / 1000)).padStart(2, '0')} de recarga`
+                : `${Math.round(s.cap * 100)}%${s.unit === 'acerto' ? ' (já contando a chuteira)' : ''}`}.
+            </li>
           ))}
         </ul>
-        <p className="mt-2 text-[12px] font-bold text-muted">Cada nível custa 1 ponto de nível, {fmt(meta?.skillCost.money ?? 25000)} ou {meta?.skillCost.vip ?? 1} VIP guardado. Cada nível seu dá 1 ponto.</p>
+        <p className="mt-2 text-[12px] font-bold text-muted">
+          Cada nível seu dá 1 ponto, e o ponto é a única moeda das habilidades — dinheiro e VIP não sobem nível.
+          A árvore inteira custa {(meta?.skills ?? []).reduce((t, s) => t + s.max, 0)} pontos: é o full, lá no nível {(meta?.skills ?? []).reduce((t, s) => t + s.max, 0)}.
+        </p>
+        <p className="mt-2 text-[13px] font-bold text-navy-ink">
+          <b>Chute de prata e de ouro</b>: {Math.round((meta?.ball?.base ?? 0.03) * 100)}% dos pênaltis, faltas e trilhas vêm especiais desde o nível 0 —
+          a de prata deixa você bater {meta?.ball?.kicks?.PRATA ?? 2} vezes na mesma recarga e a de ouro, {meta?.ball?.kicks?.OURO ?? 3}.
+          A habilidade Sorte leva essa chance até {Math.round((meta?.ball?.max ?? 0.10) * 100)}%.
+        </p>
       </Panel>
       <Panel title="PREMIAÇÕES" ribbon="yellow">
         <ul className="text-[13px] font-bold text-navy-ink">

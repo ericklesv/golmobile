@@ -20,17 +20,27 @@ const TARGETS: { id: Kind; label: string; icon: string; color: string; to?: stri
   { id: 'TRAIL', label: 'Trilha', icon: '/ui/ico-badge.png', color: '#FF8A2A', to: '/trilha' },
 ];
 
+/** Chute de prata (bate 2x) e de ouro (bate 3x): a cor do metal e como a etiqueta chama cada um. */
+const METAL = {
+  PRATA: { ring: '#C8D4E4', pill: 'bg-[#C8D4E4]', nome: 'PRATA' },
+  OURO: { ring: '#FFC63D', pill: 'bg-gold', nome: 'OURO' },
+};
+
 function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => void }) {
   const me = useAuth((s) => s.me)!;
   const cd = me.cooldowns[t.id];
   const rem = useCountdown(cd.readyAt);
-  const ready = rem <= 0;
+  const ready = rem <= 0 || !!cd.free; // sobrou batida da bola de prata/ouro: bate na hora
   const progress = cd.cooldownMs ? 1 - rem / cd.cooldownMs : 1;
   const nav = useNavigate();
   const meta = useAuth((s) => s.meta);
   const unlockLvl = meta?.unlock[t.id] ?? 0;
   const trailActive = t.id === 'TRAIL' && me.trail.active;
   const active = (ready || trailActive) && cd.unlocked;
+  // a bola desta recarga: o card já fica prateado/dourado ENQUANTO o tempo corre, para o jogador ver o que vem
+  const metal = cd.unlocked && cd.ball ? METAL[cd.ball] : null;
+  const batidas = cd.kicks ?? 1;
+  const faltam = cd.left ?? 1;
 
   function go() {
     if (!cd.unlocked) { toast(`${t.label} libera no nível ${unlockLvl}.`, 'error'); return; }
@@ -39,13 +49,19 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
   }
 
   return (
-    <motion.button whileTap={{ scale: 0.93 }} onClick={go} className={`${active ? 'item-yellow' : 'item-blue'} flex flex-col items-center gap-0.5 pb-1`}>
-      <ProgressRing progress={cd.unlocked ? progress : 0} color={active ? '#FFC63D' : t.color} track="rgba(255,255,255,0.35)" size={58} stroke={5}>
+    <motion.button whileTap={{ scale: 0.93 }} onClick={go} className={`${active ? 'item-yellow' : 'item-blue'} relative flex flex-col items-center gap-0.5 pb-1`}>
+      {metal && (
+        <span className={`t-display absolute -top-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full ${metal.pill} px-2 text-[10px] leading-[16px] text-navy-ink shadow-[0_2px_0_rgba(0,0,0,.18)]`}>
+          {metal.nome}
+        </span>
+      )}
+      <ProgressRing progress={cd.unlocked ? progress : 0} color={metal ? metal.ring : active ? '#FFC63D' : t.color} track="rgba(255,255,255,0.35)" size={58} stroke={metal ? 6 : 5}>
         {!cd.unlocked ? <img src="/ui/ico-lock01_s.png" alt="" className="h-6 w-6" /> : <img src={t.icon} alt="" className={`h-8 w-8 object-contain ${active ? 'animate-bob' : 'opacity-60 grayscale'}`} />}
       </ProgressRing>
       <span className="t-display text-[12px] uppercase text-navy-ink">{t.label}</span>
       <span className={`t-display text-[12px] tabular-nums ${active ? 'text-orange-deep' : 'text-muted'}`}>
-        {!cd.unlocked ? `lvl ${unlockLvl}` : trailActive ? 'EM JOGO' : ready ? 'PRONTO' : countdown(rem)}
+        {!cd.unlocked ? `lvl ${unlockLvl}` : trailActive ? 'EM JOGO' : !ready ? countdown(rem)
+          : metal ? (faltam < batidas ? `FALTAM ${faltam}` : `BATE ${batidas}x`) : 'PRONTO'}
       </span>
     </motion.button>
   );
@@ -96,6 +112,13 @@ export function HomeScreen() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Os chutes vêm ANTES de tudo: "a gente chuta mais do que eventa" (jogador GD, via dono em 17/09/2026) —
+          antes era preciso descer a página para bater. */}
+      {/* Alvos de chute */}
+      <section className="grid grid-cols-4 gap-2">
+        {TARGETS.map((t) => <KickTarget key={t.id} t={t} onAuto={autoKick} />)}
+      </section>
+      <div className="text-center"><span className="t-display t-out text-[13px]">Rodada: {me.goalsRound} gols · Hora: {me.goalsHour}</span></div>
       <PassCard />
       {offers > 0 && (
         <Link to="/propostas" className="card-orange flex items-center gap-3" style={{ borderRadius: 18 }}>
@@ -136,11 +159,6 @@ export function HomeScreen() {
 
       <MinigameSlider />
 
-      {/* Alvos de chute */}
-      <section className="grid grid-cols-4 gap-2">
-        {TARGETS.map((t) => <KickTarget key={t.id} t={t} onAuto={autoKick} />)}
-      </section>
-      <div className="text-center"><span className="t-display t-out text-[13px]">Rodada: {me.goalsRound} gols · Hora: {me.goalsHour}</span></div>
 
       {/* Artilheiros */}
       <Panel title={`TOP HORA ${home ? hourLabel(home.hourKey) : ''}`} ribbon="orange">

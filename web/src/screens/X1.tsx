@@ -41,7 +41,8 @@ interface Bubble { item: ProvocarItem; id: number }
 /** Retrospecto contra o adversário desta partida no X1 (só partidas de verdade que terminaram; null no treino). */
 interface H2H { total: number; wins: number; losses: number; draws: number; last: ('V' | 'D' | 'E')[]; lastAt: string | null }
 // sameTeam = amistoso entre dois do mesmo time: vale só dinheiro (sem gol e fora do Ranking X1)
-interface MatchBase { id: number; you: Side; players: [Player, Player]; turnEndsAt: number; bet: number; training: boolean; sameTeam: boolean; h2h: H2H | null }
+// freeplay = os dois na mesma internet: treino puro — sem aposta, sem gol e fora do Ranking X1 (17/09/2026)
+interface MatchBase { id: number; you: Side; players: [Player, Player]; turnEndsAt: number; bet: number; training: boolean; sameTeam: boolean; freeplay?: boolean; h2h: H2H | null }
 interface PregoMatch extends MatchBase {
   game: 'FUTPREGO'; board: PregoBoardData; ball: { x: number; y: number };
   turn: Side; turns: [number, number]; maxTurns: number; turnSec: number;
@@ -65,7 +66,7 @@ interface Over {
   /** Cancelada pela atualização do jogo (deploy): aposta devolvida, nada contou; `text` explica. */
   canceled?: boolean;
 }
-interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number; sameTeam?: boolean }
+interface OpenChallenge { id: number; game?: X1Game; gameName?: string; from: Player; at: number; sameTeam?: boolean; freeplay?: boolean }
 interface Shown { ball: { x: number; y: number }; pieces: BotaoPiece[] }
 
 const MAX_PULL = 120; // FutPrego: arrasto (em unidades da tábua) para a força máxima
@@ -251,7 +252,7 @@ export function X1Screen() {
         setBusy(false); setWaiting(null); setOver(null); setAim(null); setSent(false); setGoalFlash(null); setBigText(null); setOppDropped(false); setConfirmLeave(false);
         setTray(false); setBubbles([null, null]); setProvocarUntil(0); if (!m.resumed) setMuted(false);
         setOppXray(!!m.oppXray); if (m.oppXray) toast('O adversário está com o Raio-X ligado!', 'error');
-        const base = { id: m.id, you: m.you, players: m.players, turnEndsAt: m.turnEndsAt, bet: m.bet, training: m.training, sameTeam: !!m.sameTeam, h2h: m.h2h ?? null };
+        const base = { id: m.id, you: m.you, players: m.players, turnEndsAt: m.turnEndsAt, bet: m.bet, training: m.training, sameTeam: !!m.sameTeam, freeplay: !!m.freeplay, h2h: m.h2h ?? null };
         let ball: { x: number; y: number };
         if (m.game === 'BOTAO') {
           const bv: BotaoView = m.botao;
@@ -614,7 +615,7 @@ export function X1Screen() {
         </div>
         <PlayerBar p={match.players[you]} me active={meActive} left={left} total={total} label={meLabel} bubble={bubbles[you]} />
         <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 px-1">
-          <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}{reserve}{xray && <span className="ml-1 rounded bg-gold px-1 text-[9px] text-navy-deep">RAIO-X</span>}</span>
+          <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.freeplay ? 'Treino: vocês estão na mesma internet — sem aposta e sem gol' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}{reserve}{xray && <span className="ml-1 rounded bg-gold px-1 text-[9px] text-navy-deep">RAIO-X</span>}</span>
           <div className="flex shrink-0 items-center gap-2">
             <ProvocarButton left={Math.max(0, provocarUntil - now())} gapMs={rules.provocar?.gapMs ?? 2000} punishMs={rules.provocar?.punishMs ?? 10000} onClick={() => setTray(true)} />
             <button onClick={() => setConfirmLeave(true)} className="btn btn-gray btn-sm">Desistir</button>
@@ -641,7 +642,7 @@ export function X1Screen() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 left-1/2 z-[80] flex w-full max-w-[480px] -translate-x-1/2 items-center bg-navy-deep/70 px-4" role="dialog" aria-modal="true">
               <div className="panel w-full text-center text-navy-ink">
                 <div className="t-display text-[20px]">Desistir da partida?</div>
-                <p className="mt-1 text-[13px] font-bold leading-snug text-muted">{match?.training ? 'É só um treino: nada muda.' : match?.sameTeam ? 'Conta como derrota: você perde a aposta. Fechar o app dá no mesmo.' : 'Conta como derrota: você perde a aposta, o ponto no Ranking X1 e o seu time pode perder 1 gol. Fechar o app dá no mesmo.'}</p>
+                <p className="mt-1 text-[13px] font-bold leading-snug text-muted">{match?.training || match?.freeplay ? 'É só um treino: nada muda.' : match?.sameTeam ? 'Conta como derrota: você perde a aposta. Fechar o app dá no mesmo.' : 'Conta como derrota: você perde a aposta, o ponto no Ranking X1 e o seu time pode perder 1 gol. Fechar o app dá no mesmo.'}</p>
                 <button onClick={() => { giveUp(); }} className="btn btn-red btn-md mt-3 w-full">Desistir</button>
                 <button onClick={() => setConfirmLeave(false)} className="btn btn-blue btn-sm mt-2 w-full">Continuar jogando</button>
               </div>
@@ -725,7 +726,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
               <Avatar url={c.from.avatarUrl} size={38} />
               <div className="min-w-0 flex-1">
                 <div className="t-display truncate text-[15px] text-navy-ink">{c.from.nick}</div>
-                <div className="flex items-center gap-1 text-[11px] font-extrabold text-muted"><Shield team={c.from.team} size={14} /><span className="truncate">{c.sameTeam ? `Amistoso do ${c.from.team.name}: vale só dinheiro` : `${c.from.team.name} desafia no ${c.gameName ?? GAME_NAME[c.game ?? game]}`}</span></div>
+                <div className="flex items-center gap-1 text-[11px] font-extrabold text-muted"><Shield team={c.from.team} size={14} /><span className="truncate">{c.freeplay ? `${c.from.team.name} · mesma internet: treino, sem aposta` : c.sameTeam ? `Amistoso do ${c.from.team.name}: vale só dinheiro` : `${c.from.team.name} desafia no ${c.gameName ?? GAME_NAME[c.game ?? game]}`}</span></div>
               </div>
               <button onClick={() => onAccept(c.id)} disabled={busy || drain} className="btn btn-green btn-sm min-w-[76px]">Aceitar</button>
             </div>
@@ -988,6 +989,8 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   let title = 'PERDEU', text = '', goal = false, money = 0;
   if (over.canceled) { title = 'PARTIDA CANCELADA'; text = over.text ?? 'O JogaGol está sendo atualizado. A aposta voltou e nada contou.'; }
   else if (over.training) { title = won ? 'VENCEU O TREINO' : 'FIM DO TREINO'; text = 'Treino contra bot não vale gol nem dinheiro. Desafie alguém de verdade!'; goal = won; }
+  // mesma internet: jogo por diversão — nada de dinheiro, gol ou ranking (17/09/2026)
+  else if (over.why === 'mesma-internet') { title = won ? 'VENCEU O TREINO' : over.winner === null ? 'EMPATE NO TREINO' : 'FIM DO TREINO'; text = over.text ?? 'Vocês estão na mesma internet: valeu pela diversão — sem aposta, sem gol e fora do Ranking X1.'; }
   else if (over.refund) {
     title = 'EMPATE';
     text = botao ? `Nem o death match desempatou: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;

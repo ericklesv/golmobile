@@ -22,9 +22,12 @@ import { notify } from './inbox.js';
 export const X1_PLAYED = { status: 'FINISHED', reason: { not: 'wo-cedo' } };
 /** Amistoso = os dois do MESMO time na hora da partida (dono, 15/09/2026): vale só o dinheiro — sem gol e fora do ranking. */
 export const X1_SAME_TEAM = { aTeamId: { equals: prisma.x1Match.fields.bTeamId } };
-/** Só o que conta no Ranking X1, na campanha e nos prêmios: partida de verdade que terminou, sem amistoso.
+/** Treino = os dois na MESMA INTERNET (dono, 17/09/2026): vale só a diversão — sem aposta, sem gol e fora do ranking. */
+export const X1_SAME_IP = { aIp: { equals: prisma.x1Match.fields.bIp } };
+/** Só o que conta no Ranking X1, na campanha e nos prêmios: partida de verdade que terminou, sem amistoso
+ *  de mesmo time nem treino da mesma internet.
  *  Tem `NOT`: numa consulta com outro `NOT`, junte com `AND: [X1_COUNTED, …]` (espalhar sobrescreve). */
-export const X1_COUNTED = { ...X1_PLAYED, NOT: X1_SAME_TEAM };
+export const X1_COUNTED = { ...X1_PLAYED, NOT: { OR: [X1_SAME_TEAM, X1_SAME_IP] } };
 
 /** Filtro de período pelo fim da partida: [from, to). Sem `from` = todos os tempos. */
 export const x1Period = (from, to) => (from || to ? { finishedAt: { ...(from ? { gte: from } : {}), ...(to ? { lt: to } : {}) } } : {});

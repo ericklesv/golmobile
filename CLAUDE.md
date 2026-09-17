@@ -203,7 +203,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   (`X1_SAME_TEAM` = `aTeamId` igual a `bTeamId`, os times gravados na partida; `X1_COUNTED` o exclui, `X1_PLAYED` não —
   o retrospecto conta amistoso). Ao desafiar, um desafio aberto de OUTRO time tem preferência sobre o de um colega;
   convite, lista de desafios, `match` e `over` (`why: 'mesmo-time'`) trazem `sameTeam` e a tela fala "amistoso". A
-  trava de mesma internet continua valendo para colega de time; **sair da partida = derrota, SEMPRE**
+  **MESMA INTERNET agora JOGA, como TREINO** (dono, 17/09/2026: "libere, às vezes as pessoas só querem se divertir um
+  pouco" — antes o desafio simplesmente não aparecia e parecia bug): `treinoPorIp` em realtime/x1.js liga `m.freeplay`
+  e aí **ninguém aposta (a partida grava `bet: 0`), ninguém ganha dinheiro, não vale gol e fica fora do Ranking X1**
+  (`X1_SAME_IP` = `aIp` igual a `bIp`; `X1_COUNTED` exclui amistoso de time E treino de internet). Convite, lista,
+  `match` e `over` (`why: 'mesma-internet'`) trazem `freeplay` e a tela fala "treino". Assim não sobra brecha para
+  farmar gol/dinheiro entre duas contas da mesma casa. Teste: `node scripts/test-x1-mesma-internet.js` (API local com
+  X1_JOGO=BOTAO e SEM FUTPREGO_MESMO_IP). **Sair da partida = derrota, SEMPRE**
   (bug explorado, dono 15/09/2026: desistir, fechar o app — W.O. após `reconnectSec` — ou perder a vez 3 vezes é
   derrota de quem saiu; o antigo "W.O. cedo" que devolvia a aposta antes de cada um jogar 2 vezes ACABOU, `woMinTurns`
   não existe mais; resultado já decidido fica em `m.pending` até a animação acabar — quem desistir/cair nesse
@@ -290,7 +296,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   **`services/x1.js`**: `GET /api/rankings/x1-rodada|x1-temporada|x1-geral` (`futprego` = alias de geral, `x1` = da
   temporada) → `x1Ranking`: **pontos = 3 por vitória, 1 por empate, −2 por derrota** (`FUTPREGO.points`, pode ficar
   negativo); desempate por vitórias, maior sequência sem perder, menos derrotas. Só partida de verdade FINISHED sem
-  `wo-cedo` e sem amistoso do mesmo time (`X1_COUNTED` — tem `NOT`: com outro `NOT` na consulta, junte por `AND`);
+  `wo-cedo`, sem amistoso do mesmo time e sem treino da mesma internet (`X1_COUNTED` — tem `NOT`: com outro `NOT`
+  na consulta, junte por `AND`);
   **a partida conta no período em que TERMINOU** (`finishedAt`; rodada =
   `[round.startsAt, fechamento)`, temporada = `season.startsAt`); conta excluída não aparece. Linha = formato da
   artilharia (`goals` = pontos) + `fp {wins, draws, losses, played, points, streak, best, eligible?, prize?, need?}` —

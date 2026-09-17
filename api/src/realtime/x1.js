@@ -223,15 +223,27 @@ async function onMessage(conn, m) {
 // internet para testar. NUNCA na VPS.
 const sameIpOk = () => process.env.NODE_ENV !== 'production' && process.env.FUTPREGO_MESMO_IP === '1';
 
-/** Os dois podem se enfrentar? (jogadores e IPs diferentes, sem bloqueio; mesmo time pode — é amistoso) */
+/**
+ * Os dois podem se enfrentar? Só não dá contra si mesmo ou com bloqueio entre eles.
+ * **Mesma internet PODE desde 17/09/2026** (dono: "libere, às vezes as pessoas só querem se divertir um
+ * pouco"): antes o desafio simplesmente não aparecia e parecia bug. Vira TREINO — ver `treinoPorIp`.
+ */
 async function compatible(a, b) {
-  if (a.user.id === b.user.id || (a.ip === b.ip && !sameIpOk())) return false;
+  if (a.user.id === b.user.id) return false;
   const block = await prisma.userBlock.findFirst({ where: { OR: [{ userId: a.user.id, blockedId: b.user.id }, { userId: b.user.id, blockedId: a.user.id }] }, select: { id: true } });
   return !block;
 }
 
 /** 1 = os dois são do mesmo time (amistoso: vale só dinheiro), 0 = times diferentes. */
 const sameTeamOf = (a, b) => (a.user.teamId === b.user.teamId ? 1 : 0);
+
+/**
+ * Os dois estão na MESMA INTERNET: a partida é só treino — **ninguém aposta, ninguém ganha dinheiro, não
+ * vale gol e não conta no Ranking X1** (dono, 17/09/2026). Assim dá para jogar com quem está na mesma casa
+ * sem abrir brecha para farmar gol e dinheiro entre duas contas. No PC, FUTPREGO_MESMO_IP=1 faz valer como
+ * partida de verdade — é assim que os testes casam duas janelas.
+ */
+const treinoPorIp = (a, b) => a.ip === b.ip && !sameIpOk();
 
 async function canPlay(conn) {
   const u = await prisma.user.findUnique({ where: { id: conn.user.id }, include: { team: true } });
@@ -302,7 +314,7 @@ async function broadcastInvite(ch, only = null) {
     if (now - c.lastInviteAt < INVITE_GAP_MS) continue;
     c.seen.add(ch.id); c.lastInviteAt = now;
     ch.shownTo.add(c);
-    send(c.ws, { t: 'invite', id: ch.id, game: ch.game, gameName: X1.names[ch.game], from: playerView(ch.from), bet: F.bet, seconds: F.inviteSec, sameTeam: !!sameTeamOf(ch.from, c) });
+    send(c.ws, { t: 'invite', id: ch.id, game: ch.game, gameName: X1.names[ch.game], from: playerView(ch.from), bet: treinoPorIp(ch.from, c) ? 0 : F.bet, seconds: F.inviteSec, sameTeam: !!sameTeamOf(ch.from, c), freeplay: treinoPorIp(ch.from, c) });
   }
 }
 
@@ -315,7 +327,7 @@ async function offerOpen(conn) {
 /** Na tela do X1 (sem partida nem desafio): a lista de desafios abertos que dá para aceitar. */
 async function sendOpenList(conn) {
   const list = [];
-  for (const ch of challenges.values()) if (ch.from !== conn && (await compatible(ch.from, conn))) list.push({ ...challengeView(ch), sameTeam: !!sameTeamOf(ch.from, conn) });
+  for (const ch of challenges.values()) if (ch.from !== conn && (await compatible(ch.from, conn))) list.push({ ...challengeView(ch), sameTeam: !!sameTeamOf(ch.from, conn), freeplay: treinoPorIp(ch.from, conn) });
   send(conn.ws, { t: 'open', list });
 }
 async function refreshOpenLists() {
@@ -334,16 +346,19 @@ async function acceptChallenge(conn, id) {
   if (!(await compatible(ch.from, conn))) return err(conn, 'incompatible', 'Vocês não podem se enfrentar (mesma internet ou bloqueio).');
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
   const a = ch.from, b = conn, game = ch.game;
+  const treino = treinoPorIp(a, b); // mesma internet: joga sem aposta, sem gol e fora do ranking
   cancelChallenge(ch, 'aceito'); // sai da lista e fecha os convites (antes de qualquer espera: ninguém mais pega)
   const round = await currentRound().catch(() => null);
   let row;
   try {
     row = await prisma.$transaction(async (tx) => {
-      const pa = await tx.user.updateMany({ where: { id: a.user.id, money: { gte: F.bet } }, data: { money: { decrement: F.bet } } });
-      if (!pa.count) throw Object.assign(new Error('a'), { who: 'a' });
-      const pb = await tx.user.updateMany({ where: { id: b.user.id, money: { gte: F.bet } }, data: { money: { decrement: F.bet } } });
-      if (!pb.count) throw Object.assign(new Error('b'), { who: 'b' });
-      return tx.x1Match.create({ data: { game, seasonId: round?.seasonId ?? null, aId: a.user.id, bId: b.user.id, aTeamId: a.user.teamId, bTeamId: b.user.teamId, aIp: a.ip, bIp: b.ip, bet: F.bet } });
+      if (!treino) { // mesma internet = treino: ninguém paga nada
+        const pa = await tx.user.updateMany({ where: { id: a.user.id, money: { gte: F.bet } }, data: { money: { decrement: F.bet } } });
+        if (!pa.count) throw Object.assign(new Error('a'), { who: 'a' });
+        const pb = await tx.user.updateMany({ where: { id: b.user.id, money: { gte: F.bet } }, data: { money: { decrement: F.bet } } });
+        if (!pb.count) throw Object.assign(new Error('b'), { who: 'b' });
+      }
+      return tx.x1Match.create({ data: { game, seasonId: round?.seasonId ?? null, aId: a.user.id, bId: b.user.id, aTeamId: a.user.teamId, bTeamId: b.user.teamId, aIp: a.ip, bIp: b.ip, bet: treino ? 0 : F.bet } });
     });
   } catch (e) {
     if (e.who === 'a') { err(a, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`); return send(b.ws, { t: 'taken', message: `${a.user.nick} ficou sem dinheiro para jogar.` }); }
@@ -351,7 +366,7 @@ async function acceptChallenge(conn, id) {
     throw e;
   }
   const h2h = await headToHead(a.user.id, b.user.id).catch((e) => { console.error('[x1] retrospecto:', e.message); return null; });
-  startMatch(a, b, row.id, game, h2h, row.aTeamId === row.bTeamId); // mesmo time = amistoso (os times gravados na partida)
+  startMatch(a, b, row.id, game, h2h, row.aTeamId === row.bTeamId, treino); // mesmo time = amistoso; mesma internet = treino
   for (const c of [a, b]) if (!conns.has(c)) onDisconnect(c);
 }
 
@@ -376,9 +391,9 @@ async function startBot(conn) {
   startMatch(conn, bot, null, game);
 }
 
-function startMatch(a, b, dbId, game, h2h = null, sameTeam = false) {
+function startMatch(a, b, dbId, game, h2h = null, sameTeam = false, freeplay = false) {
   const first = randomInt(2);
-  const m = { id: nextId++, dbId, game, conns: [a, b], bot: !!b.bot, sameTeam, turn: first, turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
+  const m = { id: nextId++, dbId, game, conns: [a, b], bot: !!b.bot, sameTeam, freeplay, turn: first, turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
   if (game === 'BOTAO') m.bs = newBotaoMatch(first);
   else { m.board = BOARDS[randomInt(BOARDS.length)]; m.ball = { ...m.board.center }; } // FutPrego: um desenho de tábua por partida (ninguém decora a jogada)
   a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo no campo do servidor
@@ -390,7 +405,7 @@ function startMatch(a, b, dbId, game, h2h = null, sameTeam = false) {
 function sendMatch(c, resumed) {
   const m = c.match;
   const base = {
-    t: 'match', id: m.id, game: m.game, gameName: X1.names[m.game], you: c.side, players: m.conns.map(playerView), turnEndsAt: m.turnEndsAt, bet: m.bot ? 0 : F.bet, training: m.bot, sameTeam: !!m.sameTeam, resumed,
+    t: 'match', id: m.id, game: m.game, gameName: X1.names[m.game], you: c.side, players: m.conns.map(playerView), turnEndsAt: m.turnEndsAt, bet: m.bot || m.freeplay ? 0 : F.bet, training: m.bot, sameTeam: !!m.sameTeam, freeplay: !!m.freeplay, resumed,
     oppXray: isXrayNick(c) && !!m.conns[1 - c.side].xray, // Raio-X do adversário (só as contas que podem usar ficam sabendo)
     // retrospecto contra ESTE adversário no X1, do ponto de vista de quem recebe (null no treino contra bot)
     h2h: m.h2h ? h2hOf(m.h2h, c.user.id) : null,
@@ -664,15 +679,15 @@ async function cancelMatch(m, reason) {
   if (!m.bot && m.dbId) {
     await prisma.$transaction(async (tx) => {
       const { count } = await tx.x1Match.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'CANCELED', reason, finishedAt: new Date() } });
-      if (count) await tx.user.updateMany({ where: { id: { in: [m.conns[0].user.id, m.conns[1].user.id] } }, data: { money: { increment: F.bet } } });
+      if (count && !m.freeplay) await tx.user.updateMany({ where: { id: { in: [m.conns[0].user.id, m.conns[1].user.id] } }, data: { money: { increment: F.bet } } });
     });
   }
   for (const c of m.conns) {
     if (c.bot) continue;
     const msg = {
       t: 'over', game: m.game, winner: null, reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null,
-      money: m.bot ? 0 : F.bet, refund: !m.bot, canceled: true, why: reason,
-      text: m.bot ? 'Treino interrompido: o JogaGol está sendo atualizado.' : `Partida cancelada: o JogaGol está sendo atualizado. Os ${F.bet} da aposta voltaram e nada contou.`,
+      money: m.bot || m.freeplay ? 0 : F.bet, refund: !m.bot && !m.freeplay, canceled: true, why: reason,
+      text: m.bot || m.freeplay ? 'Treino interrompido: o JogaGol está sendo atualizado.' : `Partida cancelada: o JogaGol está sendo atualizado. Os ${F.bet} da aposta voltaram e nada contou.`,
     };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
     c.match = null; c.side = -1;
@@ -719,6 +734,7 @@ function rivalry(rows, m, c) {
 /** O que cada um recebe na tela de fim. */
 function personal(info, m, side, result) {
   if (m.bot) return { money: 0, text: 'Treino contra bot não vale gol nem dinheiro.' };
+  if (m.freeplay) return { money: 0, pot: 0, goal: false, why: 'mesma-internet', text: 'Vocês estão na mesma internet: valeu pela diversão — sem aposta, sem gol e fora do Ranking X1.' };
   if (!info || info.error) return { money: 0, text: 'Não deu para registrar a partida. Se o dinheiro sumiu, fale com o suporte.' };
   if (info.refund) return { money: F.bet, refund: true, why: info.why };
   const won = result.winner === side;
@@ -755,6 +771,10 @@ async function settle(m, result) {
     if (!closed.count) return { error: true };
     // todo resultado que conta vai para os Lances ao vivo (pedido do dono, 15/09/2026); W.O. cedo (aposta devolvida) não
     const feed = (user, text) => tx.activity.create({ data: { userId: user.id, teamId: user.teamId, kind: m.game, goal: false, text } });
+    if (m.freeplay) { // mesma internet: só diversão — nada de dinheiro, gol ou ranking
+      if (result.winner !== null) await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: m.conns[result.winner].user.id } });
+      return { pot: 0, goal: false, why: 'mesma-internet' };
+    }
     if (result.winner === null) {
       await tx.user.updateMany({ where: { id: { in: [a.user.id, b.user.id] } }, data: { money: { increment: F.bet } } });
       await feed(a.user, m.game === 'BOTAO'

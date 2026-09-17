@@ -340,14 +340,18 @@ check(oBot?.training === true && (await money(D)) === 500, 'treino acabou: dinhe
 // ninguém, placar do time igual, fora do Ranking X1 (conferido no fim) —, e ao desafiar o de outro time tem preferência
 {
   const G = await mkUser('bahia', 1000);
-  const gC2 = phone(C, 'game', '10.0.0.3'), gG = phone(G, 'game', '10.0.0.3'); // G na MESMA internet de C: os dois não se enfrentam
+  // C e G precisam ficar os DOIS esperando para A escolher. Até 16/09 o teste conseguia isso pondo os dois na
+  // mesma internet; desde 17/09/2026 a mesma internet casa (como treino — scripts/test-x1-mesma-internet.js),
+  // então agora eles ficam bloqueados entre si, que é a outra coisa que impede um par.
+  await prisma.userBlock.create({ data: { userId: C.id, blockedId: G.id } });
+  const gC2 = phone(C, 'game', '10.0.0.3'), gG = phone(G, 'game', '10.0.0.7');
   await Promise.all([gC2.open, gG.open]);
   gC2.send({ t: 'challenge' });
   const wC = await gC2.wait('waiting');
   await sleep(50);
   gG.send({ t: 'challenge' });
   const wG = await gG.wait('waiting');
-  check(!!wC && !!wG, 'C (Náutico) e G (Bahia, mesma internet de C) ficam os dois esperando');
+  check(!!wC && !!wG, 'C (Náutico) e G (Bahia, bloqueados entre si) ficam os dois esperando');
   const openA = await gA.wait('open', 3000, (m) => m.list?.some((x) => x.id === wC?.id) && m.list.some((x) => x.id === wG?.id));
   const eC = openA?.list.find((x) => x.id === wC?.id), eG = openA?.list.find((x) => x.id === wG?.id);
   check(eC?.sameTeam === true && eG?.sameTeam === false, 'na lista de A: o desafio de C (mesmo time) vem marcado como amistoso, o de G não');

@@ -38,6 +38,19 @@ app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } })); // cabeçalhos de segurança da API (fotos em /api/uploads são lidas pelo site)
 app.use(cors({ origin: config.corsOrigins.length ? config.corsOrigins : true }));
 app.use(express.json({ limit: '64kb' }));
+/**
+ * Corpo que não é JSON (17/09/2026): um jogador mandou multipart numa rota JSON e o body-parser derrubou o
+ * pedido com um erro feio no log — e um aviso de erro no Telegram. Agora vira um 400 educado, sem barulho.
+ */
+app.use((err, _req, res, next) => {
+  if (err?.type === 'entity.parse.failed' || (err instanceof SyntaxError && 'body' in err)) {
+    return res.status(400).json({ error: 'bad-json', message: 'O pedido não está no formato esperado.' });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'too-large', message: 'Pedido grande demais.' });
+  }
+  return next(err);
+});
 app.use(rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false,
   message: { error: 'rate-limit', message: 'Calma, craque! Muitas requisições.' } }));
 

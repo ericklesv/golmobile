@@ -105,6 +105,21 @@ console.log('número de mentira no corpo (jogador ivictor, 17/09/2026: erro 500 
   ok(normal.status === 400 && /VIP/i.test(normal.data?.message ?? ''), `pedido certo sem VIP no banco: "${normal.data?.message ?? ''}"`);
 }
 
+console.log('corpo que não é JSON (17/09/2026: multipart numa rota JSON derrubava o pedido com erro feio)');
+{
+  const cru = async (corpo) => {
+    const r = await fetch(API + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: corpo });
+    return { status: r.status, data: await r.json().catch(() => ({})) };
+  };
+  const CRLF = String.fromCharCode(13, 10);
+  const multipart = await cru(['--b41dfebd', 'Content-Disposition: form-data', '', 'x', '--b41dfebd--'].join(CRLF));
+  ok(multipart.status === 400 && multipart.data?.error === 'bad-json', `multipart numa rota JSON: 400 "${multipart.data?.message ?? ''}"`);
+  const quebrado = await cru('{"login":');
+  ok(quebrado.status === 400 && quebrado.data?.error === 'bad-json', 'JSON pela metade: 400 sem erro interno');
+  const certo = await cru(JSON.stringify({ login: 'naoexiste_' + tag, password: 'x' }));
+  ok(certo.status === 401, 'o login de verdade continua respondendo normalmente (401)');
+}
+
 console.log('cabeçalhos');
 const h = await fetch(API + '/api/health');
 ok(h.headers.get('x-content-type-options') === 'nosniff' && !!h.headers.get('x-frame-options'), 'helmet: nosniff + x-frame-options');

@@ -19,14 +19,16 @@ export const COOLDOWN_MIN = 4.5 * MIN;
 export const COOLDOWN_TOLERANCE_MS = 1500;
 
 // ─── Dinheiro ───────────────────────────────────────────────────────────────
+// Dinheiro por gol: quanto mais difícil o chute, mais paga (dono, 17/09/2026 — "chute o valor atual,
+// pênalti x2, falta x3 e trilha x4"). A trilha é o mais difícil (~17% de gol) e passou a ser o que mais paga.
 export const MONEY = {
   AUTO: 10,
-  PENALTY: 20,
-  FOUL: 30,
-  TRAIL: 40,
-  PARTY_BET: 500, // roleta do Party GoL (dono, 15/09/2026: de 50/150 para 500/1500)
-  PARTY_PRIZE: 1500,
-  MINIGAME_WIN: 500, // saldo por vitória nos minigames diários, além do gol (dono, 15/09/2026) — ver MINIGAME_MONEY_KINDS
+  PENALTY: 40, // era 20
+  FOUL: 90, // era 30
+  TRAIL: 160, // era 40
+  PARTY_BET: 100, // roleta do Party GoL: de R$ 500 para R$ 100 (dono, 17/09/2026) — metade dos jogadores tem R$ 1.080
+  PARTY_PRIZE: 300, // o prêmio acompanha a aposta (3x, como era em 500/1500): baixar só a aposta viraria dinheiro de graça
+  MINIGAME_WIN: 500, // piso/fallback do saldo por vitória nos minigames — ver MINIGAME_MONEY
   DEXTERITY_PRICE: 1000, // LEGADO: preço do ponto de destreza, usado só para devolver o dinheiro
   VIP_TO_MONEY: 50000, // Loja: 1 VIP guardado vira R$ 50 mil (ideia do erickles "1 vip por 100k"; dono cortou pela metade em 15/09/2026)
   NERF_PRICE: 1000,
@@ -34,13 +36,33 @@ export const MONEY = {
 // Nerf DESLIGADO em 16/09/2026 (dono: "desligar o nerf por enquanto"): ele tirava destreza, que acabou.
 export const NERF_OFF = true;
 export const PARTY_WIN_CHANCE = 3 / 8; // roleta de 8 fatias, 3 de GOL
-/** Giros da roleta por dia (Brasília): jogador comum e VIP ativo (dono, 15/09/2026). Conta pelas Activity PARTY do dia. */
-export const PARTY_SPINS = { free: 5, vip: 10 };
+/** Giros da roleta por dia (Brasília): 10 para todo mundo (dono, 17/09/2026: "só pode jogar 10x ao dia"). */
+export const PARTY_SPINS = { free: 10, vip: 10 };
 /**
  * Minigames que dão MONEY.MINIGAME_WIN de saldo a cada gol/vitória (applyResult põe quando o serviço manda
  * `money: 0`). Fora: chutes (têm o valor próprio), PARTY (aposta), X1 (pote) e FRANGACO (manda o dele).
  */
 export const MINIGAME_MONEY_KINDS = ['TERMO', 'QUIZ', 'STATS', 'MEMORIA', 'QUALTIME', 'CAMISAS', 'ALVO', 'HATTRICK', 'FALTAPRO', 'GANHAPERDE', 'CABECAO'];
+/**
+ * Quanto cada minigame paga por vitória (dono, 17/09/2026: "quanto mais difícil, mais paga"). A ordem saiu
+ * da MEDIÇÃO de 3 dias em produção (% de vitória de quem jogou): Alvo 6%, Estatísticas 11%, Falta PRO 42%,
+ * Camisas 43%, Ganha ou Perde 48%, De que time é? 52%, Hat Trick 62%, Termo 77%, Quiz 80%, Memória 95%.
+ * Ninguém caiu: o mais fácil ficou nos R$ 500 de antes. Camisas, Hat Trick e Ganha ou Perde podem vencer
+ * várias vezes no mesmo dia — por isso pagam menos do que a dificuldade sozinha mandaria.
+ */
+export const MINIGAME_MONEY = {
+  ALVO: 3000,
+  STATS: 2500,
+  FALTAPRO: 1500,
+  CAMISAS: 1200,
+  QUALTIME: 1000,
+  GANHAPERDE: 1000,
+  CABECAO: 800,
+  HATTRICK: 800,
+  TERMO: 700,
+  QUIZ: 700,
+  MEMORIA: 500,
+};
 
 // ─── Habilidades (dono, 16/09/2026, no modelo do BRGOL 2.0) ────────────────────────────────────────────────
 // Feedback do hitou (jogador veterano do BRGOL): em 2 dias ele já tinha 96,7% no pênalti, porque a destreza custava
@@ -263,19 +285,22 @@ export const resetLabel = (game) => ({ 0: 'à meia-noite', 12: 'ao meio-dia' }[R
 // ─── Hub de minigames (slider da Home) ─────────────────────────────────────
 // Ordem do slider e nível que libera cada um. `soon` = ainda não implementado
 // (aparece bloqueado com "EM BREVE"). Os diários entram também em DAILY_GAMES.
+/** "gol + R$ X + <extra>" para o card do minigame, sempre com o valor de MINIGAME_MONEY. */
+const premio = (id, extra) => `gol + R$ ${(MINIGAME_MONEY[id] ?? MONEY.MINIGAME_WIN).toLocaleString('pt-BR')}${extra ? ` + ${extra}` : ''}`;
+
 export const MINIGAMES = [
-  { id: 'TERMO', name: 'Termo do dia', unlock: 0, daily: true, route: '/termo', icon: '/ui/ico-gift_purple.png', desc: 'Acerte a palavra de futebol em até 6 tentativas.', reward: 'gol + até 30 de nível' },
-  { id: 'QUIZ', name: 'Quiz do dia', unlock: 0, daily: true, route: '/quiz', icon: '/ui/ico-chesticon_gold01_l.png', desc: '5 perguntas de futebol, 20 s cada.', reward: 'gol + até 30 de nível' },
+  { id: 'TERMO', name: 'Termo do dia', unlock: 0, daily: true, route: '/termo', icon: '/ui/ico-gift_purple.png', desc: 'Acerte a palavra de futebol em até 6 tentativas.', reward: premio('TERMO', 'até 30 de nível') },
+  { id: 'QUIZ', name: 'Quiz do dia', unlock: 0, daily: true, route: '/quiz', icon: '/ui/ico-chesticon_gold01_l.png', desc: '5 perguntas de futebol, 20 s cada.', reward: premio('QUIZ', 'até 30 de nível') },
   { id: 'PARTY', name: 'Party GoL', unlock: 1, daily: false, route: '/partygol', icon: '/ui/ico-coin02.png', desc: 'Aposte R$ 500 na roleta e leve R$ 1.500. Primeira vitória do dia vale gol. 5 giros por dia (VIP: 10).', reward: 'gol + R$ 1.500' },
-  { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: 'gol + até 30 de nível' },
-  { id: 'STATS', name: 'Estatísticas', unlock: 3, daily: true, route: '/estatisticas', icon: '/ui/ico-ranking.png', desc: 'Quem tem mais? Acertou, segue; errou, acaba. 5 seguidos é gol.', reward: 'gol + até 30 de nível' },
-  { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Pista → escudo e escudo → pista. 10 rodadas, 7 s cada; 8 acertos é gol.', reward: 'gol + até 30 de nível' },
-  { id: 'CAMISAS', name: 'Camisas', unlock: 5, daily: true, route: '/camisas', icon: '/ui/ico-camisa.svg', desc: 'Maior ou menor? Cada 4 camisas certas é um gol.', reward: '1 gol a cada 4 camisas + até 30 de nível' },
-  { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-target.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: 'gol + até 30 de nível' },
-  { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: '1 gol a cada gol + até 30 de nível' },
-  { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: 'gol + até 20 de nível + R$ 50 por alvo' },
+  { id: 'MEMORIA', name: 'Memória dos Escudos', unlock: 2, daily: true, route: '/memoria', icon: '/ui/ico-badge.png', desc: 'Ache os 8 pares de escudos com poucas jogadas.', reward: premio('MEMORIA', 'até 30 de nível') },
+  { id: 'STATS', name: 'Estatísticas', unlock: 3, daily: true, route: '/estatisticas', icon: '/ui/ico-ranking.png', desc: 'Quem tem mais? Acertou, segue; errou, acaba. 5 seguidos é gol.', reward: premio('STATS', 'até 30 de nível') },
+  { id: 'QUALTIME', name: 'De que time é?', unlock: 4, daily: true, route: '/qualtime', icon: '/ui/ico-clan.png', desc: 'Pista → escudo e escudo → pista. 10 rodadas, 7 s cada; 8 acertos é gol.', reward: premio('QUALTIME', 'até 30 de nível') },
+  { id: 'CAMISAS', name: 'Camisas', unlock: 5, daily: true, route: '/camisas', icon: '/ui/ico-camisa.svg', desc: 'Maior ou menor? Cada 4 camisas certas é um gol.', reward: premio('CAMISAS', 'a cada 4 camisas, + até 30 de nível') },
+  { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-target.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: premio('ALVO', 'até 30 de nível') },
+  { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: premio('HATTRICK', 'a cada gol, + até 30 de nível') },
+  { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: premio('FALTAPRO', 'até 20 de nível + R$ 50 por alvo') },
   { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
-  { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: '1 gol + 5 de nível a cada acerto' },
+  { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: premio('GANHAPERDE', '5 de nível a cada acerto') },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'FRANGACO', name: 'Frangaço', unlock: 10, daily: true, route: '/frangaco', icon: '/ui/ico-crown_silver.png', desc: 'Duelo de pênaltis contra um clube da sua série: bata 5 e defenda 5. Mata-mata de 4 fases.', reward: 'gol + R$ 500 se for campeão', soon: true }, // DESATIVADO (dono, 14/09/2026: "muito bugado") — card EM BREVE e /api/frangaco/* recusa
   { id: 'EMBAIXADINHAS', name: 'Embaixadinhas', unlock: 12, daily: true, route: '/embaixadinhas', icon: '/ui/ico-energy.png', desc: 'Toque no ritmo e não deixe a bola cair.', reward: 'gol + nível', soon: true },

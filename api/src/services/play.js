@@ -8,7 +8,7 @@ import { hourKey, nextMidnight } from '../lib/time.js';
 import {
   COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE,
   CHANCE_CAP, skillBonus, PARTY_WIN_CHANCE, REBOUND_CHANCE, KIND_LABEL,
-  cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, isVip } from '../lib/rules.js';
+  cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip } from '../lib/rules.js';
 import { liveMatchForTeam } from './league.js';
 import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines } from '../lib/items.js';
 
@@ -73,9 +73,10 @@ async function scoreOnLiveMatch(tx, teamId, match) {
 /** Aplica gol/erro: contadores, Goal, Activity, placar da partida. (Os minigames diários também usam.) */
 export async function applyResult(tx, user, { kind, goal, now, match, phrase, money }) {
   const hk = hourKey(now);
-  // saldo dos minigames (dono, 15/09/2026): quem manda money 0 e é minigame ganha MONEY.MINIGAME_WIN por gol
+  // saldo dos minigames: quem manda money 0 e é minigame ganha o valor do MINIGAME_MONEY (quanto mais
+  // difícil o minigame, mais paga — dono, 17/09/2026); sem valor na tabela, o piso de MINIGAME_WIN
   const bonus = goal && !(money > 0) && MINIGAME_MONEY_KINDS.includes(kind);
-  money = bonus ? MONEY.MINIGAME_WIN : (money ?? 0);
+  money = bonus ? (MINIGAME_MONEY[kind] ?? MONEY.MINIGAME_WIN) : (money ?? 0);
   if (goal && match) match = await scoreOnLiveMatch(tx, user.teamId, match); // o placar primeiro: define a rodada do gol
   const seasonId = match?.round?.seasonId ?? null;
   const roundId = match?.roundId ?? null;

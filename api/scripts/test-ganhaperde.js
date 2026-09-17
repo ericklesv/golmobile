@@ -14,7 +14,7 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
 }
 const { prisma } = await import('../src/prisma.js');
 const { ganhaPerdeState, ganhaPerdeSpin } = await import('../src/services/ganhaperde.js');
-const { GANHAPERDE, ganhaPerdeBase, ganhaPerdePrice, levelOf } = await import('../src/lib/rules.js');
+const { GANHAPERDE, ganhaPerdeBase, ganhaPerdePrice, levelOf, MINIGAME_MONEY, MONEY } = await import('../src/lib/rules.js');
 
 let fails = 0;
 const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`); if (!ok) fails++; };
@@ -61,7 +61,8 @@ while ((!sawWin || !sawLoss) && rounds < 40) {
     const goalsAfter = await prisma.goal.count({ where: { userId: u.id, kind: 'GANHAPERDE' } });
     const inSector = r.win ? r.at >= 0 && r.at < chance : r.at >= chance && r.at < 100;
     if (!inSector) check(false, `seta fora da fatia: at=${r.at} chance=${chance} win=${r.win}`);
-    if (after.money !== before.money - price) check(false, `cobrança errada: ${before.money} → ${after.money} (preço ${price})`);
+    const premio = r.win ? (MINIGAME_MONEY.GANHAPERDE ?? MONEY.MINIGAME_WIN) : 0; // a vitória paga saldo (dono, 17/09/2026: quanto mais difícil, mais paga)
+    if (after.money !== before.money - price + premio) check(false, `dinheiro errado: ${before.money} → ${after.money} (preço ${price}, prêmio ${premio})`);
     if (r.win) {
       wins++;
       if (!sawWin) {
@@ -97,7 +98,9 @@ const both = await Promise.allSettled([ganhaPerdeSpin(u.id, 55), ganhaPerdeSpin(
 const ok = both.filter((x) => x.status === 'fulfilled').map((x) => x.value);
 const row2 = await prisma.dailyGame.findFirst({ where: { userId: u.id, game: 'GANHAPERDE' } });
 const m2 = (await U(u.id)).money;
-check(row2.state.spins === ok.length && m2 === 1000 - row2.state.spent && ok.length >= 1, `dois toques juntos: ${ok.length} girada(s) valeram, cobrado R$ ${1000 - m2} = gasto registrado`);
+const premios2 = ok.filter((r) => r.win).length * (MINIGAME_MONEY.GANHAPERDE ?? MONEY.MINIGAME_WIN); // vitória paga saldo
+check(row2.state.spins === ok.length && m2 === 1000 - row2.state.spent + premios2 && ok.length >= 1,
+  `dois toques juntos: ${ok.length} girada(s) valeram, cobrado R$ ${row2.state.spent} e pago R$ ${premios2} de prêmio`);
 
 // ── a tela desatualizada (viu outra quantidade de giradas): recusa em vez de cobrar outro preço
 await resetDay(u.id);

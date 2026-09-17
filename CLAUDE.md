@@ -470,6 +470,15 @@ depois que o novo estiver estável. Não instalar nada dele.
   em 16/09** — sem fonte o texto sai vazio); `tg.photo()`; `DailyReport` (migração 0037) = dia já enviado (não repete
   no reinício). Reenviar/testar: `POST /api/admin/relatorio-diario {day?, force?}` (x-admin-key; `?ver=1` só devolve
   o PNG). Métrica nova = `series()` + `text` + painel em `renderDailyChart`.
+- **Banir IP** (primeira vez em 17/09/2026, pedido do dono): o CÓDIGO não tem ban por IP — o bloqueio é no nginx,
+  em `/etc/nginx/snippets/brgol-bloqueados.conf` (um `deny <ip>;` por linha, com data e motivo), incluído no
+  bloco `server` de jogagol.com.br (linha logo abaixo do `brgol-headers.conf`). Mexeu? `nginx -t` e
+  `systemctl reload nginx`; para liberar alguém, apague a linha e recarregue. **Cuidado ao editar com `sed`**:
+  a linha do `brgol-headers.conf` aparece em várias `location`, e um `sed` global duplica o include (aconteceu;
+  foi limpo na hora). Conferido bloqueando o próprio IP por 10 s: página, rotas do SPA e API todas em 403.
+  Primeiro bloqueado: `177.23.227.136` (jogador ivictor — varredura do jogo com contas testadmin99,
+  massassign99 e audit_6586; 1.774 pedidos num dia). Backup do arquivo antes:
+  `/root/brgol-nginx-antes-bloqueio-2026-09-17.conf`.
 - **Telegram** (`lib/telegram.js`, `tg.info/warn/error`, mesmo bot do Managol (@Managol_bot) via `TELEGRAM_BOT_TOKEN`/
   `TELEGRAM_CHAT_ID`; pedido do dono, 15/09/2026; **desde 16/09 o chat é o grupo "JogaGol - ADMIN" (dono + Erickles),
   id em `docs/SEGURANCA.md` — trocar de chat = `api/.env` + `/etc/brgol-telegram.conf` + `pm2 restart`**): cadastro, cadastro barrado, conta trancada, PIX gerado/pago,

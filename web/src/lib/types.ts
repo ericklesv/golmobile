@@ -113,25 +113,24 @@ export interface TrailResult {
 
 export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; prizes?: number[]; money: number; prize: number; bet: number; spins: number; max: number; left: number }
 /** Giros da roleta hoje (GET /api/play/party): usados, limite (VIP tem mais) e quantos faltam. */
-/** Paredão (minigame do goleiro): a bola nº i já sorteada pelo servidor; "at" = quando ela cruza o gol (ms). */
-export interface ParedaoShot {
-  i: number; T: number; at: number; curve: number;
-  from: { x: number; y: number }; to: { x: number; y: number };
-}
-export interface ParedaoState {
-  day: number; nextAt: number; goalTarget: number; pointsPerSave: number; maxPoints: number;
-  keeper: { reach: number; highReach: number; highFrom: number; speed: number; start: number };
+/** Goleada (minigame): o goleiro da bola nº i, já sorteado pelo servidor. `lean` = para que lado ele se jogou. */
+export interface GoleadaKeeper { i: number; react: number; speed: number; lean: -1 | 0 | 1 }
+export interface GoleadaState {
+  day: number; nextAt: number; goalTarget: number; pointsPerGoal: number; maxPoints: number;
+  keeper: { reactFirst: number; reactLast: number; speedFirst: number; speedLast: number; ramp: number; afterRamp: number; reach: number; highReach: number; highFrom: number; leanHelp: number };
+  shot: { fast: number; slow: number };
+  aim: { margin: number; top: number };
   gap: number; playing: boolean; finished: boolean; freePlay: boolean;
-  saves: number; points: number; best: number; record: boolean;
+  goals: number; points: number; best: number; record: boolean;
 }
-/** Placar coletivo: defesas do meu time contra o adversário da rodada. */
-export interface ParedaoBoard {
-  mine: { team: Team; saves: number };
-  rival: { team: Team; saves: number } | null;
+/** Placar coletivo: gols do meu time contra o adversário da rodada. */
+export interface GoleadaBoard {
+  mine: { team: Team; goals: number };
+  rival: { team: Team; goals: number } | null;
 }
-export interface ParedaoEnd {
-  saves: number; goalAt: number | null; levelPoints: number; record: boolean; best: number;
-  goal: { text: string } | null; state: ParedaoState; scoreboard: ParedaoBoard | null;
+export interface GoleadaEnd {
+  goals: number; stoppedAt: number | null; why: string | null; levelPoints: number; record: boolean; best: number;
+  goal: { text: string } | null; state: GoleadaState; scoreboard: GoleadaBoard | null;
 }
 
 export interface PartyStatus { bet: number; prize: number; prizes?: number[]; spins: number; max: number; left: number; vip: boolean; freeMax: number; vipMax: number }

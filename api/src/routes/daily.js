@@ -10,7 +10,7 @@ import { hattrickState, hattrickStart, hattrickShoot } from '../services/hattric
 import { faltaproState, faltaproStart, faltaproKick } from '../services/faltapro.js';
 import { frangacoHub } from '../services/frangaco.js';
 import { ganhaPerdeState, ganhaPerdeSpin } from '../services/ganhaperde.js';
-import { paredaoState, paredaoStart, paredaoMore, paredaoEnd } from '../services/paredao.js';
+import { goleadaState, goleadaStart, goleadaMore, goleadaEnd } from '../services/goleada.js';
 
 /**
  * Minigames diários (1x por dia): GET /api/daily · Termo: GET /api/daily/termo,
@@ -61,11 +61,11 @@ daily.post('/faltapro/kick', handle((req) => faltaproKick(req.user.id, req.body)
 // Frangaço: o jogo é o cliente Unity (/tv/?mode=penalty) falando com /api/frangaco/*;
 // aqui só o estado simples do slider da Home (available/started/finished/won)
 daily.get('/frangaco', handle((req) => frangacoHub(req.user.id)));
-// Paredão (goleiro): GET estado, POST start (manda as bolas), POST more (mais bolas) e POST end (rastro do dedo)
-daily.get('/paredao', handle((req) => paredaoState(req.user.id)));
-daily.post('/paredao/start', handle((req) => paredaoStart(req.user.id)));
-daily.post('/paredao/more', handle((req) => paredaoMore(req.user.id, req.body?.from)));
-daily.post('/paredao/end', handle((req) => paredaoEnd(req.user.id, req.body)));
+// Goleada (batedor): GET estado, POST start (manda os goleiros), POST more (mais goleiros) e POST end (os chutes)
+daily.get('/goleada', handle((req) => goleadaState(req.user.id)));
+daily.post('/goleada/start', handle((req) => goleadaStart(req.user.id)));
+daily.post('/goleada/more', handle((req) => goleadaMore(req.user.id, req.body?.from)));
+daily.post('/goleada/end', handle((req) => goleadaEnd(req.user.id, req.body)));
 
 // Ganha ou Perde (roleta): GET /api/daily/ganhaperde, POST /api/daily/ganhaperde/spin {chance, spins}
 daily.get('/ganhaperde', handle((req) => ganhaPerdeState(req.user.id)));

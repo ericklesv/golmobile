@@ -36,7 +36,7 @@ enum KickKind {
   GANHAPERDE
   FUTPREGO
   BOTAO
-  PAREDAO
+  GOLEADA
 }
 
 enum SeasonStatus {
@@ -102,8 +102,8 @@ model User {
   // modo ({"PENALTY":"OURO"}), `ballLeft` = quantas batidas ainda faltam da recarga atual ({"PENALTY":2}).
   ballNext    Json?
   ballLeft    Json?
-  /** Paredão (minigame do goleiro): maior sequência de defesas que ele já fez. */
-  paredaoBest Int     @default(0)
+  /** Goleada (minigame): maior sequência de gols seguidos que ele já fez. */
+  goleadaBest Int     @default(0)
 
   // Contadores de gols (espelham a tabela Goal para leitura rápida)
   goalsTotal  Int     @default(0)
@@ -190,17 +190,17 @@ model User {
 // Minigames diários: 1 partida por jogador, por jogo, por dia (o dia vira à
 // meia-noite de Brasília). `game` é texto para um minigame novo não pedir migração.
 /**
- * Placar coletivo do Paredão: quantas defesas os torcedores de cada time fizeram na rodada. É a versão
+ * Placar coletivo da Goleada: quantos gols os torcedores de cada time fizeram na rodada. É a versão
  * JogaGol do contador de países do Mini Cup ("Brasil 30,6 mi x 4,44 mi Marrocos") — aqui o duelo é o do
  * seu time contra o adversário da rodada, e zera junto com ela.
  */
-model ParedaoTeam {
+model GoleadaTeam {
   id        Int      @id @default(autoincrement())
   roundId   Int
   round     Round    @relation(fields: [roundId], references: [id])
   teamId    Int
   team      Team     @relation(fields: [teamId], references: [id])
-  saves     Int      @default(0)
+  goals     Int      @default(0)
   updatedAt DateTime @updatedAt
 
   @@unique([roundId, teamId])
@@ -246,7 +246,7 @@ model Team {
   titles      Title[]
   activities  Activity[]
   roles       TeamRole[]
-  paredao     ParedaoTeam[]
+  goleada     GoleadaTeam[]
   offers      TransferOffer[] @relation("OfferTeam")
   offersOut   TransferOffer[] @relation("OfferFromTeam")
 }
@@ -326,7 +326,7 @@ model Round {
 
   matches Match[]
   goals   Goal[]
-  paredao ParedaoTeam[]
+  goleada GoleadaTeam[]
 
   @@unique([seasonId, number])
   @@index([status, endsAt])

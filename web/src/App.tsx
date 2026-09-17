@@ -49,7 +49,7 @@ import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirS
 import { StatsScreen } from './screens/Stats';
 import { CamisasScreen } from './screens/Camisas';
 import { GanhaPerdeScreen } from './screens/GanhaPerde';
-import { ParedaoScreen } from './screens/Paredao';
+import { GoleadaScreen } from './screens/Goleada';
 import { X1Screen } from './screens/X1';
 import { HattrickScreen } from './screens/Hattrick';
 import { VipScreen } from './screens/Vip';
@@ -133,7 +133,7 @@ export default function App() {
         <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
         <Route path="/camisas" element={<Private><CamisasScreen /></Private>} />
         <Route path="/ganha-ou-perde" element={<Private><GanhaPerdeScreen /></Private>} />
-        <Route path="/paredao" element={<Private><ParedaoScreen /></Private>} />
+        <Route path="/goleada" element={<Private><GoleadaScreen /></Private>} />
         <Route path="/x1" element={<Private><X1Screen /></Private>} />
         <Route path="/futprego" element={<Private><X1Screen /></Private>} />{/* nome antigo (links e convites de antes do X1) */}
         <Route path="/hat-trick" element={<Private><HattrickScreen /></Private>} />

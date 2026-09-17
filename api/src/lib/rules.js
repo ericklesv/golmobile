@@ -48,7 +48,7 @@ export const PARTY_SPINS = { free: 10, vip: 10 };
  * Minigames que dão MONEY.MINIGAME_WIN de saldo a cada gol/vitória (applyResult põe quando o serviço manda
  * `money: 0`). Fora: chutes (têm o valor próprio), PARTY (aposta), X1 (pote) e FRANGACO (manda o dele).
  */
-export const MINIGAME_MONEY_KINDS = ['TERMO', 'QUIZ', 'STATS', 'MEMORIA', 'QUALTIME', 'CAMISAS', 'ALVO', 'HATTRICK', 'FALTAPRO', 'GANHAPERDE', 'CABECAO'];
+export const MINIGAME_MONEY_KINDS = ['TERMO', 'QUIZ', 'STATS', 'MEMORIA', 'QUALTIME', 'CAMISAS', 'ALVO', 'HATTRICK', 'FALTAPRO', 'GANHAPERDE', 'CABECAO', 'PAREDAO'];
 /**
  * Quanto cada minigame paga por vitória (dono, 17/09/2026: "quanto mais difícil, mais paga"). A ordem saiu
  * da MEDIÇÃO de 3 dias em produção (% de vitória de quem jogou): Alvo 6%, Estatísticas 11%, Falta PRO 42%,
@@ -60,6 +60,7 @@ export const MINIGAME_MONEY = {
   ALVO: 3000,
   STATS: 2500,
   FALTAPRO: 1500,
+  PAREDAO: 1400, // defender 10 seguidas é difícil, mas ele pode tentar quantas bolas aguentar
   CAMISAS: 1200,
   QUALTIME: 1000,
   GANHAPERDE: 1000,
@@ -403,6 +404,7 @@ export const MINIGAMES = [
   { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: premio('HATTRICK', 'a cada gol, + até 30 de nível') },
   { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: premio('FALTAPRO', 'até 20 de nível + R$ 50 por alvo') },
   { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
+  { id: 'PAREDAO', name: 'Paredão', unlock: 3, daily: true, route: '/paredao', icon: '/ui/ico-glove.png', desc: 'Você é o goleiro: arraste e defenda o máximo de bolas seguidas que conseguir.', reward: premio('PAREDAO', 'até 30 de nível') },
   { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: premio('GANHAPERDE', '5 de nível a cada acerto') },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'FRANGACO', name: 'Frangaço', unlock: 10, daily: true, route: '/frangaco', icon: '/ui/ico-crown_silver.png', desc: 'Duelo de pênaltis contra um clube da sua série: bata 5 e defenda 5. Mata-mata de 4 fases.', reward: 'gol + R$ 500 se for campeão', soon: true }, // DESATIVADO (dono, 14/09/2026: "muito bugado") — card EM BREVE e /api/frangaco/* recusa
@@ -486,6 +488,13 @@ export const GANHAPERDE = { start: 50, drop: 5, min: 5, max: 75, step: 5, stepPr
 RESET_HOUR.GANHAPERDE = 21;
 DAILY_GAMES.push('GANHAPERDE');
 KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
+// Paredão (o goleiro; vira às 22h — pedido do dono em 17/09/2026, a partir do "Mini Cup" do Google): as
+// bolas vêm cada vez mais rápidas e o jogador arrasta o goleiro para defender. 10 defesas seguidas = 1 gol
+// (a regra da casa) + dinheiro; cada defesa dá 3 de nível, até 30; tomou gol, acabou o dia. Números e
+// física em lib/paredao.js; o placar coletivo do time fica em services/paredao.js.
+RESET_HOUR.PAREDAO = 22;
+DAILY_GAMES.push('PAREDAO');
+KIND_LABEL.PAREDAO = 'Paredão';
 // X1 (jogos 1x1 ao vivo — dono, 15/09/2026: "jogos X1 rotativos, cada dia 1 jogo para não ficar
 // enjoativo"): um jogo por dia, FutPrego e Futebol de Botão se alternando (x1GameOf); o jogo troca às 19h
 // de Brasília, JUNTO com o fechamento da rodada (X1.switchHour — dono, 15/09/2026: "os jogos eram para mudar junto

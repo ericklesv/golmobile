@@ -646,6 +646,21 @@ depois que o novo estiver estável. Não instalar nada dele.
   converte ~50% —, médio ~23%, iniciante ~17%). Rota oculta `/debug-faltapro` (sem login):
   a MESMA cena com cobrança mockada — `?flight=1` anima um voo com curva, `?t=<s>` congela,
   `?bx=&bz=` mudam a bola. `MINIGAMES_LIVRES=1` também vale aqui.
+- **Paredão** (`lib/paredao.js` = matemática pura; `services/paredao.js`; tela `Paredao.tsx`; nível 3, vira às
+  22h): **você é o goleiro**. Porte do "Mini Cup" do Google (o dono mandou o vídeo em 17/09/2026: "monte o
+  mais próximo possível do mini cup sem perder a identidade do jogo"). As bolas vêm do fundo do campo cada
+  vez mais rápidas (1,5 s na 1ª, 0,65 s na 25ª, piso de 0,47 s) e o dedo ARRASTA o goleiro pela linha do gol;
+  contador de defesas seguidas, faixa "NOVA MAIOR PONTUAÇÃO" ao bater o recorde (`User.paredaoBest`) e, no
+  lugar do contador de países do Google, **o placar do seu time contra o adversário da rodada**
+  (`ParedaoTeam`, zera com a rodada). O goleiro veste as cores do clube. **10 defesas seguidas = 1 gol**
+  (kind `PAREDAO`) + o dinheiro de `MINIGAME_MONEY`; cada defesa dá 3 de nível, até 30; tomou gol, acabou o
+  dia. **Sem internet no meio da jogada** (a mesma razão de o X1 ser por turnos): o servidor manda as bolas
+  já sorteadas em lotes de 40 (`POST /api/daily/paredao/start` e `/more`, pedido com 12 de antecedência) e a
+  tela só anima, no relógio de `performance.now()`. No fim ela manda o RASTRO DO DEDO (`/end`) e **o servidor
+  refaz a partida** (`judge`) para contar as defesas — a contagem da tela é só animação; rastro com
+  teletransporte, fora do gol ou com o relógio de trás para frente é recusado. Calibrar:
+  `node scripts/paredao-balance.js` (craque ~21 defesas, mediano ~13, iniciante ~6). **Mexeu? Rode
+  `node scripts/test-paredao.js`** (pasta api/, banco LOCAL).
 - **Frangaço — DESATIVADO em 14/09/2026 pelo dono ("muito bugado")**: `soon: true` no `MINIGAMES` (some do slider e
   do `/api/meta`), `/api/frangaco/*` responde 503 "em manutenção" e `/frangaco` mostra o aviso. Para religar:
   tirar o `soon` (o resto se ajusta sozinho). Documentação original abaixo.

@@ -1,4 +1,4 @@
-import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, ParedaoShot, ParedaoState, ParedaoBoard, ParedaoEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -89,6 +89,11 @@ export const api = {
   camisas: () => req<{ state: CamisasState }>('GET', '/api/daily/camisas'),
   camisasStart: () => req<{ state: CamisasState }>('POST', '/api/daily/camisas/start'),
   camisasGuess: (guess: 'maior' | 'menor') => req<CamisasGuess>('POST', '/api/daily/camisas/guess', { guess }),
+  // Paredão (goleiro): o servidor manda as bolas prontas; a tela só devolve o rastro do dedo no fim
+  paredao: () => req<{ state: ParedaoState; scoreboard: ParedaoBoard | null }>('GET', '/api/daily/paredao'),
+  paredaoStart: () => req<{ state: ParedaoState; scoreboard: ParedaoBoard | null; shots: ParedaoShot[] }>('POST', '/api/daily/paredao/start'),
+  paredaoMore: (from: number) => req<{ shots: ParedaoShot[] }>('POST', '/api/daily/paredao/more', { from }),
+  paredaoEnd: (body: { trace: [number, number][]; crossings: { i: number; t: number }[] }) => req<ParedaoEnd>('POST', '/api/daily/paredao/end', body),
   ganhaPerde: () => req<{ state: GanhaPerdeState }>('GET', '/api/daily/ganhaperde'),
   ganhaPerdeSpin: (chance: number, spins: number) => req<GanhaPerdeSpin>('POST', '/api/daily/ganhaperde/spin', { chance, spins }),
   hattrick: () => req<{ state: HattrickState }>('GET', '/api/daily/hattrick'),

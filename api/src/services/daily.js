@@ -33,6 +33,7 @@ function calendar(now) {
     FALTAPRO: { day: dayNumberAt(RESET_HOUR.FALTAPRO, now), nextAt: nextResetAt(RESET_HOUR.FALTAPRO, now).getTime() },
     FRANGACO: { day: dayNumberAt(RESET_HOUR.FRANGACO, now), nextAt: nextResetAt(RESET_HOUR.FRANGACO, now).getTime() },
     GANHAPERDE: { day: dayNumberAt(RESET_HOUR.GANHAPERDE, now), nextAt: nextResetAt(RESET_HOUR.GANHAPERDE, now).getTime() },
+    PAREDAO: { day: dayNumberAt(RESET_HOUR.PAREDAO, now), nextAt: nextResetAt(RESET_HOUR.PAREDAO, now).getTime() },
     // Estatísticas viram às 13h; sem os dados baixados, ficam de fora
     ...(statsReady() ? { STATS: { day: statsDayNumber(now), nextAt: nextStatsReset(now).getTime() } } : {}),
   };

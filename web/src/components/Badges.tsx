@@ -1,9 +1,10 @@
 import type { ClubRole, TopBadge, TopScope, TopTally } from '../lib/types';
 
 /**
- * Distintivos ao lado do nome (api/src/services/badges.js): P/D do cargo no time e o top 3 de AGORA —
- * hora = estrela, rodada = medalha, temporada = troféu; 1º ouro, 2º prata, 3º bronze. Se alguém passa
- * na frente, o ícone muda de dono. E o quadro de top 10 do perfil (quantas vezes em cada posição).
+ * Distintivos ao lado do nome (api/src/services/badges.js): P/D do cargo no time e **um** ícone de top 3 —
+ * hora = estrela, rodada = medalha, temporada = troféu; 1º ouro, 2º prata, 3º bronze. Desde 17/09/2026 o
+ * ícone é do período que JÁ FECHOU (a hora passada, a rodada passada) e o jogador ostenta só o de maior
+ * prestígio, escolhido no servidor. E o quadro de top 10 do perfil (quantas vezes em cada posição).
  */
 
 const METAL = ['gold', 'silver', 'bronze'] as const;
@@ -12,9 +13,11 @@ const METAL = ['gold', 'silver', 'bronze'] as const;
 const FILE: Record<TopScope, string> = { HOUR: 'ico-star', ROUND: 'ico-medal', SEASON: 'ico-trophy', X1_ROUND: 'ico-skull', X1_SEASON: 'ico-skullking', X1_ALL: 'ico-skullwreath' };
 export const topIcon = (scope: TopScope, pos: number) => `/ui/${FILE[scope]}_${METAL[pos - 1]}.png`;
 const OF: Record<TopScope, string> = { HOUR: 'da hora', ROUND: 'da rodada', SEASON: 'da temporada', X1_ROUND: 'do X1 na rodada', X1_SEASON: 'do X1 na temporada', X1_ALL: 'do X1 geral' };
+/** Como o ícone se apresenta: ele é sempre do período fechado (o geral do X1 é de todos os tempos). */
+const QUANDO: Record<TopScope, string> = { HOUR: 'passada', ROUND: 'passada', SEASON: 'passada', X1_ROUND: 'passada', X1_SEASON: 'passada', X1_ALL: '' };
 const NAME: Record<TopScope, string> = { HOUR: 'Hora', ROUND: 'Rodada', SEASON: 'Temporada', X1_ROUND: 'Rodada', X1_SEASON: 'Temporada', X1_ALL: 'Geral' };
-/** Só estes aparecem ao lado do nick (o geral do X1 muda pouco e fica no perfil — evita 6 ícones no nome). */
-const NAME_SCOPES: TopScope[] = ['HOUR', 'ROUND', 'SEASON', 'X1_ROUND', 'X1_SEASON'];
+/** O servidor já manda um ícone só; aqui ficam os que podem aparecer ao lado do nick. */
+const NAME_SCOPES: TopScope[] = ['HOUR', 'ROUND', 'SEASON', 'X1_ROUND', 'X1_SEASON', 'X1_ALL'];
 
 export function RoleChip({ role, size = 16 }: { role?: ClubRole | null; size?: number }) {
   if (!role) return null;
@@ -32,7 +35,7 @@ export function TopIcons({ tops, size = 16 }: { tops?: TopBadge[]; size?: number
   return (
     <>
       {shown.map((t) => (
-        <img key={t.scope} src={topIcon(t.scope, t.pos)} title={`${t.pos}º ${OF[t.scope]} agora`} alt={`${t.pos}º ${OF[t.scope]}`}
+        <img key={t.scope} src={topIcon(t.scope, t.pos)} title={`${t.pos}º ${OF[t.scope]} ${QUANDO[t.scope]}`.trim()} alt={`${t.pos}º ${OF[t.scope]}`}
           className="ico shrink-0 object-contain" style={{ width: size, height: size }} />
       ))}
     </>

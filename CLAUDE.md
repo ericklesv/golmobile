@@ -154,8 +154,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   `questions.js`: **pergunta nova entra no fim de `ORDER`**. 172 perguntas = 34 dias.
 - **Loja** (`lib/items.js` = catálogo estático + efeitos; `services/shop.js`; tabelas `UserItem`
   com validade/nível/equipada/consumida e `ShopLog`): Energia do chute nv 1–5 (−10 %/nível na
-  recarga de pênalti/falta/trilha, 28 h), Boost Auto (−60 s no chute direto, 28 h), Caneleira
-  (última linha da trilha; gasta quando a trilha termina na última linha), Chuteiras (+2 % a +10 %
+  recarga de pênalti/falta/trilha, 28 h, **até o piso de 4:30**), Boost Auto (−30 s no chute direto, 28 h; o
+  chute direto nunca fica abaixo de 4 min — dono, 17/09/2026), Caneleira (R$ 10 mil desde 17/09/2026; sorteia
+  a última linha da trilha, gasta quando a trilha termina nela), **Atacante extra** (R$ 1.000 por HORA, dono
+  17/09/2026 recuperando o buff do BRGOL: a última linha passa a ter 2 casas livres de 3 em vez de 1 — o gol
+  na trilha vai de 17 % para 33 % enquanto durar; vale junto com a Caneleira, ficando a linha mais fácil das
+  duas), Chuteiras (+2 % a +10 %
   em pênalti/falta, 30 dias, só uma equipada), troca de nick, cor do nick (`User.nickColor`, nível 8+),
   **Troca de time** (dono, 15/09/2026: R$ 50 mil ou 1 VIP do banco; `TEAM_CHANGE` + `changeTeam` em `services/shop.js`,
   `POST /api/shop/team {teamSlug, currency}`; antes era de graça e sem tela — o endereço antigo `/api/me/change-team`
@@ -403,11 +407,16 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **VIP vira saldo** (pedido do dono/erickles, 15/09/2026): Loja → "Saco de dinheiro": `POST /api/me/vip-to-money
   {qtd}` troca VIP guardado por `MONEY.VIP_TO_MONEY` (R$ 50 mil) cada, sem limite (ShopLog `VIP_MONEY`). Por isso o
   bônus de saldo dos pacotes está na mesma escala (R$ 50 mil · 200 mil · 450 mil · 1 mi · 2,25 mi · 5 mi).
-- **Distintivos ao lado do nome** (pedido do dono, 13/09/2026; `services/badges.js`, `components/Badges.tsx`): **P**
-  (Presidente) / **D** (Diretor) do cargo no time e o **top 3 de AGORA** — hora = estrela, rodada = medalha, temporada
-  = troféu; 1º ouro, 2º prata, 3º bronze (`/ui/ico-{star,medal,trophy}_{gold,silver,bronze}.png`; estrela/troféu prata
-  e bronze feitos a partir do dourado do kit). É ao vivo (cache de 15 s; cargos 30 s, zerado em toda ação da diretoria):
-  passou na frente, o ícone muda de dono. Aparecem nos rankings (`withBadges` em /home, /rankings, /teams), no chat
+- **Distintivos ao lado do nome** (pedido do dono, 13/09/2026; regra refeita em 17/09/2026 com o feedback do jogador
+  GD — "achei os ícones legais mas mt poluídos"; `services/badges.js`, `components/Badges.tsx`): **P**
+  (Presidente) / **D** (Diretor) do cargo no time e **UM ícone só, do período que JÁ FECHOU** — hora = estrela,
+  rodada = medalha, temporada = troféu; 1º ouro, 2º prata, 3º bronze (`/ui/ico-{star,medal,trophy}_{gold,silver,bronze}.png`;
+  estrela/troféu prata e bronze feitos a partir do dourado do kit). **Quem está liderando agora não ganha ícone**:
+  ganha quem terminou no top 3 quando a hora/rodada/temporada fechou (lê `HourResult/Round/Season.topJson` e
+  `x1Json.paid`), e ele ostenta durante o período seguinte. O jogador mostra só o de MAIOR prestígio, na ordem de
+  `TOP_SCOPES` (temporada > geral do X1 > temporada do X1 > rodada > rodada do X1 > hora) — antes dava para
+  aparecer com 5 ícones no nick. Cache de 60 s (só muda quando algo fecha); cargos 30 s, zerado em toda ação da
+  diretoria. Aparecem nos rankings (`withBadges` em /home, /rankings, /teams), no chat
   e no perfil. **Quadro TOP 10 do perfil** (`topHistory`): quantas vezes em 1º/2º/3º e no top 10 das horas, rodadas e
   temporadas fechadas — lê os top 10 congelados em `HourResult/Round/Season.topJson` (Season.topJson gravado no
   `finishSeason` desde a migração 0021; índice GIN em HourResult.topJson para o `@>`).

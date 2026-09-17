@@ -108,7 +108,7 @@ export function ShopScreen() {
     return (
       <Row key={def.key} icon={def.icon} title={def.name} desc={def.desc} active={!!cur} busy={busy}
         sub={cur ? `Ativo · vence em ${remaining(cur.expiresAt - now())}` : undefined}
-        price={def.price != null ? fmt(def.price) : undefined} cta={blocked ? 'Ativo' : cur ? '+28 h' : 'Comprar'} busyKey={`${def.key}:money`} disabled={blocked || !canMoney} onClick={() => buy(def)}
+        price={def.price != null ? fmt(def.price) : undefined} cta={blocked ? 'Ativo' : cur ? `+${def.durationMs && def.durationMs < 3600_000 * 2 ? '1 h' : `${Math.round((def.durationMs ?? 0) / 3600_000)} h`}` : 'Comprar'} busyKey={`${def.key}:money`} disabled={blocked || !canMoney} onClick={() => buy(def)}
         extra={def.priceVip != null && !blocked ? (
           <button onClick={() => buy(def, 'vip')} disabled={busy !== null || !canVip} className="btn btn-sky btn-sm min-w-[64px]">{busy === `${def.key}:vip` ? '…' : `${def.priceVip} VIP`}</button>
         ) : null} />

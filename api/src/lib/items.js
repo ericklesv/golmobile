@@ -13,6 +13,8 @@ const DAY = 24 * HOUR;
 
 /** Validade padrão dos boosts (28 h, igual ao concorrente) e das chuteiras (30 dias). */
 export const BOOST_DURATION_MS = 28 * HOUR;
+/** Atacante extra (trilha mais fácil): cada compra vale 1 hora (dono, 17/09/2026: "1k por hora"). */
+export const STRIKER_MS = HOUR;
 export const BOOT_DURATION_MS = 30 * DAY;
 
 /** Energia do chute: cada nível tira 10% a mais da recarga de pênalti/falta/trilha. */
@@ -110,9 +112,19 @@ export const ITEMS = [
     price: 5000, durationMs: BOOST_DURATION_MS,
   },
   {
+    // O item que o dono lembrou do BRGOL ("era pra atacar com 2 e não tirar 1; ficava 2/3 a chance no ataque;
+    // era um buff e dependia do nível a duração — pode criar um item de 1k por hora"). Aqui: R$ 1.000 compra
+    // 1 hora e comprar de novo soma mais 1 hora, como o Boost Auto.
+    key: 'STRIKER', kind: 'boost', category: 'chutes', name: 'Atacante extra', icon: 'ico-member',
+    desc: 'Na última linha da trilha você ataca com 2 jogadores: 2 casas livres de 3 em vez de 1. Vale por 1 hora.',
+    price: 1000, durationMs: STRIKER_MS,
+  },
+  {
+    // Preço de R$ 80.000 para R$ 10.000 (dono, 17/09/2026): com o Atacante extra a R$ 1.000 a hora, ninguém
+    // pagaria 80 mil pelo sorteio. A Caneleira fica sendo a versão "sorte grande" (pode abrir 3 casas).
     key: 'SHIN_GUARD', kind: 'boost', category: 'chutes', name: 'Caneleira', icon: 'ico-glove',
     desc: 'Na última linha da próxima trilha: 50% de 2 casas livres, 5% de 3 livres, 45% de 1 livre. Gasta quando a trilha termina na última linha (ou vence em 28 h). Só uma por vez.',
-    price: 80000, priceVip: 1, durationMs: BOOST_DURATION_MS, single: true,
+    price: 10000, durationMs: BOOST_DURATION_MS, single: true,
   },
   { key: 'BOOT_LEATHER', kind: 'boot', category: 'chuteiras', name: 'Chuteira de Couro', icon: 'ico-star01_s', bonus: 0.02, price: 10000, durationMs: BOOT_DURATION_MS },
   { key: 'BOOT_BRONZE', kind: 'boot', category: 'chuteiras', name: 'Chuteira de Bronze', icon: 'ico-medal_bronze', bonus: 0.04, price: 25000, durationMs: BOOT_DURATION_MS },
@@ -180,6 +192,11 @@ export function bootBonus(user, now = Date.now()) {
 /** A Caneleira ativa (ainda não consumida) ou null. */
 export function shinGuard(user, now = Date.now()) {
   return activeItems(user, now).find((i) => i.itemKey === 'SHIN_GUARD') || null;
+}
+
+/** Atacante extra ativo? (tira 1 ladrão da última linha da trilha enquanto durar). */
+export function strikerOn(user, now = Date.now()) {
+  return activeItems(user, now).some((i) => i.itemKey === 'STRIKER');
 }
 
 /** Sorteia quantos ladrões a última linha da trilha terá com a Caneleira. */

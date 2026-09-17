@@ -1,8 +1,12 @@
 /**
- * Distintivos ao lado do nome (pedido do dono, 13/09/2026):
+ * Distintivos ao lado do nome (pedido do dono, 13/09/2026; regra refeita em 17/09/2026):
  * - cargo no time: P (Presidente) / D (Diretor) — só vale no time em que o jogador está;
- * - top 3 AGORA da hora, da rodada e da temporada (1º ouro, 2º prata, 3º bronze; hora = estrela, rodada =
- *   medalha, temporada = troféu). É ao vivo: se alguém passa na frente, o ícone muda de dono (cache de 15 s);
+ * - **um ícone só, e do que JÁ FECHOU** (feedback do jogador GD, trazido pelo dono: "achei os ícones legais
+ *   mas mt poluídos… você só ganhava ícone referente ao passado: hora passada, rodada passada, e ficava na
+ *   rodada seguinte mostrando… mostrava só o mais top"). Então: o top 3 da última hora fechada, da última
+ *   rodada fechada e da última temporada fechada (1º ouro, 2º prata, 3º bronze; hora = estrela, rodada =
+ *   medalha, temporada = troféu) — e o jogador ostenta **apenas o de maior prestígio**, na ordem de
+ *   `TOP_SCOPES`. Quem está liderando a hora de agora não ganha ícone: ganha quando a hora fechar;
  * - no perfil, quantas vezes ficou em 1º, 2º, 3º e no top 10 de cada hora/rodada/temporada já fechada
  *   (lê os top 10 congelados em HourResult/Round/Season.topJson);
  * - **medalhas do X1** (pedido do dono, 15/09/2026): caveira = rodada, caveira coroada ("super caveira") =
@@ -12,12 +16,9 @@
  *   (x1Json.rows) das rodadas/temporadas fechadas.
  */
 import { prisma } from '../prisma.js';
-import { hourKey } from '../lib/time.js';
-import { liveRound, topScorers } from './league.js';
 import { x1Ranking } from './x1.js';
-import { FUTPREGO } from '../lib/rules.js';
 
-const TOPS_TTL = 15_000, ROLES_TTL = 30_000;
+const TOPS_TTL = 60_000, ROLES_TTL = 30_000; // só muda quando uma hora/rodada/temporada fecha
 let tops = { at: 0, value: null, pending: null };
 let roles = { at: 0, value: null, pending: null };
 
@@ -27,23 +28,27 @@ async function cached(box, ttl, load) {
   return box.pending;
 }
 
-export const TOP_SCOPES = ['HOUR', 'ROUND', 'SEASON', 'X1_ROUND', 'X1_SEASON', 'X1_ALL'];
+/**
+ * Ordem de prestígio: o jogador mostra SÓ o primeiro desta lista em que ele aparece ("se eu fui o top
+ * rodada, eu só mostrava top rodada e não top hora" — GD). Temporada vale mais que rodada, que vale mais
+ * que hora; o geral do X1 (todos os tempos) fica logo abaixo da temporada.
+ */
+export const TOP_SCOPES = ['SEASON', 'X1_ALL', 'X1_SEASON', 'ROUND', 'X1_ROUND', 'HOUR'];
 
-/** Top 3 de agora: { HOUR: [userId 1º, 2º, 3º], ROUND, SEASON, X1_ROUND, X1_SEASON, X1_ALL }. */
-export const liveTops = () => cached(tops, TOPS_TTL, async () => {
-  const live = liveRound();
-  const period = live ? await prisma.round.findUnique({ where: { id: live.roundId }, select: { startsAt: true, season: { select: { startsAt: true } } } }) : null;
-  const [h, r, s, xr, xs, xa] = await Promise.all([
-    topScorers({ hourKey: hourKey() }, 3),
-    live ? topScorers({ roundId: live.roundId }, 3) : [],
-    live ? topScorers({ seasonId: live.seasonId }, 3) : [],
-    period ? x1Ranking({ from: period.startsAt, table: FUTPREGO.prizes.round, take: 30 }) : [],
-    period ? x1Ranking({ from: period.season.startsAt, table: FUTPREGO.prizes.season, take: 30 }) : [],
-    x1Ranking({ take: 3 }),
+/** Os 3 primeiros de cada período JÁ FECHADO: { SEASON: [userId 1º, 2º, 3º], ROUND, HOUR, X1_* }. */
+export const topsDoPeriodoFechado = () => cached(tops, TOPS_TTL, async () => {
+  const [hora, rodada, temporada, xa] = await Promise.all([
+    prisma.hourResult.findFirst({ orderBy: { hourKey: 'desc' }, select: { topJson: true } }),
+    prisma.round.findFirst({ where: { status: 'FINISHED' }, orderBy: { endsAt: 'desc' }, select: { topJson: true, x1Json: true } }),
+    prisma.season.findFirst({ where: { status: 'FINISHED' }, orderBy: { endsAt: 'desc' }, select: { topJson: true, x1Json: true } }),
+    x1Ranking({ take: 3 }), // o geral do X1 não tem "período passado": é a lista de todos os tempos
   ]);
-  const ids = (rows) => rows.map((x) => x.userId);
-  const paid = (rows) => rows.filter((x) => x.fp?.prize).slice(0, 3).map((x) => x.userId); // os 3 elegíveis (mesma ordem do prêmio)
-  return { HOUR: ids(h), ROUND: ids(r), SEASON: ids(s), X1_ROUND: paid(xr), X1_SEASON: paid(xs), X1_ALL: ids(xa) };
+  const top3 = (json) => (Array.isArray(json) ? json : []).slice(0, 3).map((x) => x.userId);
+  const pagos = (json) => (json?.paid ?? []).slice(0, 3).map((x) => x.userId); // os 3 que levaram prêmio
+  return {
+    HOUR: top3(hora?.topJson), ROUND: top3(rodada?.topJson), SEASON: top3(temporada?.topJson),
+    X1_ROUND: pagos(rodada?.x1Json), X1_SEASON: pagos(temporada?.x1Json), X1_ALL: xa.map((x) => x.userId),
+  };
 });
 
 /** userId → 'PRESIDENTE' | 'DIRETOR' (cargo do time em que ele está hoje). */
@@ -55,16 +60,18 @@ const roleMap = () => cached(roles, ROLES_TTL, async () => {
 /** A diretoria mudou (club.js): o P/D aparece na hora, sem esperar o cache. */
 export function invalidateRoles() { roles.at = 0; }
 
-/** Função (userId) → { role, tops: [{ scope, pos }] } com o cargo e o top 3 de agora. */
+/**
+ * Função (userId) → { role, tops: [{ scope, pos }] } com o cargo e **no máximo UM** ícone: o primeiro
+ * de `TOP_SCOPES` em que o jogador aparece. `tops` continua sendo lista para a tela não mudar de formato.
+ */
 export async function badgeLookup() {
-  const [t, r] = await Promise.all([liveTops(), roleMap()]);
+  const [t, r] = await Promise.all([topsDoPeriodoFechado(), roleMap()]);
   return (id) => {
-    const out = [];
     for (const scope of TOP_SCOPES) {
       const i = t[scope].indexOf(id);
-      if (i >= 0) out.push({ scope, pos: i + 1 });
+      if (i >= 0) return { role: r.get(id) ?? null, tops: [{ scope, pos: i + 1 }] };
     }
-    return { role: r.get(id) ?? null, tops: out };
+    return { role: r.get(id) ?? null, tops: [] };
   };
 }
 

@@ -11,7 +11,7 @@ import {
   cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip, rollBall, BALL } from '../lib/rules.js';
 import { ballNextOf, ballLeftOf, kicksOf, saveNextBall, saveBallLeft } from '../lib/bola.js';
 import { liveMatchForTeam } from './league.js';
-import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines } from '../lib/items.js';
+import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines, strikerOn } from '../lib/items.js';
 
 const rnd = Math.random;
 
@@ -257,12 +257,18 @@ export async function trailPick(userId, pickIndex) {
       const claim = await claimKick(tx, user, 'TRAIL', now);
       cd = claim.cd;
       state = { active: true, phase: 0, layout: TRAIL_LINES.map(shuffledLine), revealed: [], startedAt: now.getTime(), ball: claim.ball, ballLeft: claim.left };
-      // Caneleira (loja): sorteia menos ladrões na última linha; é consumida quando esta trilha termina
+      // Última linha (o ataque) com ajuda da loja: o Atacante extra tira 1 ladrão fixo enquanto dura, e a
+      // Caneleira sorteia (pode abrir até 3 casas) e é consumida quando esta trilha termina. Valem juntos:
+      // fica sempre a linha mais fácil das duas.
+      const last = TRAIL_LINES.length - 1;
       const guard = shinGuard(user, now.getTime());
-      if (guard) {
-        const last = TRAIL_LINES.length - 1;
-        state.layout[last] = shuffledLine({ total: TRAIL_LINES[last].total, mines: rollShinGuardMines(rnd) });
-        state.shinGuardId = guard.id;
+      const striker = strikerOn(user, now.getTime());
+      if (guard || striker) {
+        let mines = TRAIL_LINES[last].mines;
+        if (striker) mines = Math.max(0, mines - 1);
+        if (guard) { mines = Math.min(mines, rollShinGuardMines(rnd)); state.shinGuardId = guard.id; }
+        state.layout[last] = shuffledLine({ total: TRAIL_LINES[last].total, mines });
+        state.striker = striker;
       }
     }
     const line = state.phase;

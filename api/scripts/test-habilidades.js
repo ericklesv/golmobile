@@ -110,12 +110,42 @@ check(Math.abs(sorteios.OURO / N - esperado.gold) < 0.005 && Math.abs(sorteios.P
   `${N} sorteios no full: ${(sorteios.PRATA / N * 100).toFixed(1)}% prata e ${(sorteios.OURO / N * 100).toFixed(1)}% ouro (previsto ${(esperado.silver * 100).toFixed(1)}% e ${(esperado.gold * 100).toFixed(1)}%)`);
 check(R.rollBall({ skillLuck: 7 }, 'AUTO') === null, 'chute direto nunca é de prata nem de ouro (decisão do dono)');
 
+// ── Atacante extra (loja): a última linha da trilha vira 2 casas livres de 3
+const { trailPick } = await import('../src/services/play.js');
+const I2 = await import('../src/lib/items.js');
+const cavador = await mk({ goalsTotal: 5000, money: 1_000_000 });
+const linhaFinal = R.TRAIL_LINES.length - 1;
+const ladroesDaUltima = async (id) => {
+  // a trilha é sorteada ao começar; se a primeira escolha já for ladrão a trilha acaba e o layout some,
+  // então tenta de novo até pegar uma que continuou viva
+  for (let i = 0; i < 15; i++) {
+    await prisma.user.update({ where: { id }, data: { lastTrailAt: null, trailState: null, ballLeft: {}, ballNext: {} } });
+    await trailPick(id, 0);
+    const st = (await U(id)).trailState;
+    if (st?.layout) return st.layout[linhaFinal].filter(Boolean).length;
+  }
+  return -1;
+};
+const semItem = await ladroesDaUltima(cavador.id);
+check(semItem === R.TRAIL_LINES[linhaFinal].mines, `sem item, o ataque tem ${semItem} ladrões de ${R.TRAIL_LINES[linhaFinal].total} (1 casa livre)`);
+const def = I2.ITEMS.find((x) => x.key === 'STRIKER');
+check(def.price === 1000 && def.durationMs === 3600_000, `Atacante extra: R$ ${def.price} por ${def.durationMs / 3600_000} hora`);
+await prisma.userItem.create({ data: { userId: cavador.id, itemKey: 'STRIKER', expiresAt: new Date(Date.now() + 3600_000) } });
+const comItem = await ladroesDaUltima(cavador.id);
+check(comItem === R.TRAIL_LINES[linhaFinal].mines - 1, `com o Atacante extra: ${comItem} ladrão de ${R.TRAIL_LINES[linhaFinal].total} — ataca com 2, como no BRGOL`);
+// a chance de fazer gol na trilha dobra
+const chance = (mines) => R.TRAIL_LINES.reduce((p, l, i) => p * ((l.total - (i === linhaFinal ? mines : l.mines)) / l.total), 1);
+check(chance(comItem) > chance(semItem) * 1.9, `gol na trilha: de ${(chance(semItem) * 100).toFixed(1)}% para ${(chance(comItem) * 100).toFixed(1)}% enquanto o item durar`);
+await prisma.userItem.deleteMany({ where: { userId: cavador.id } });
+check((await ladroesDaUltima(cavador.id)) === R.TRAIL_LINES[linhaFinal].mines, 'vencido o item, o ataque volta a ser 1 casa livre de 3');
+
 // ── a tela recebe tudo
 const view = cooldownsView(await U(sortudo.id));
 check(view.PENALTY.ball !== undefined && view.TRAIL.ball !== undefined && view.AUTO.ball === null, 'cooldownsView manda a bola de cada modo para a tela');
 
-const ids = [u.id, alto.id, sortudo.id];
+const ids = [u.id, alto.id, sortudo.id, cavador.id];
 await prisma.$transaction([
+  prisma.userItem.deleteMany({ where: { userId: { in: ids } } }),
   prisma.goal.deleteMany({ where: { userId: { in: ids } } }),
   prisma.activity.deleteMany({ where: { userId: { in: ids } } }),
   prisma.shopLog.deleteMany({ where: { userId: { in: ids } } }),

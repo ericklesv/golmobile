@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
 }
 const { prisma } = await import('../src/prisma.js');
 const { goleadaState, goleadaStart, goleadaEnd } = await import('../src/services/goleada.js');
-const { GOLEADA: C, keeperAt, shoot, judge, phaseOf, flightAt, reactAt, diveAt, periodAt } = await import('../src/lib/goleada.js');
+const { GOLEADA: C, keeperAt, shoot, judge, phaseOf, flightAt, tempoDeVoo, reactAt, diveAt, periodAt } = await import('../src/lib/goleada.js');
 const { MINIGAME_MONEY } = await import('../src/lib/rules.js');
 const { refreshLiveRound, liveRound } = await import('../src/services/league.js');
 
@@ -35,19 +35,19 @@ function toque(seed, i, t0) {
     if (dist > nota) { nota = dist; melhor = t0 + d; lado = gk > 0.5 ? -1 : 1; }
   }
   const gk = keeperAt(seed, melhor + reactAt(melhor));
-  const anda = (diveAt(melhor) * Math.max(0, flightAt(melhor) - reactAt(melhor))) / 1000;
+  const anda = (diveAt(melhor) * Math.max(0, tempoDeVoo(0.9, melhor) - reactAt(melhor))) / 1000;
   const borda = lado < 0 ? gk - anda - C.keeper.reach : gk + anda + C.keeper.reach;
   const trave = lado < 0 ? C.aim.margin : 1 - C.aim.margin;
-  return { i, x: Number(((borda + trave) / 2).toFixed(4)), y: 0.3, t: Math.round(melhor) };
+  return { i, x: Number(((borda + trave) / 2).toFixed(4)), y: 0.3, power: 0.9, spin: 0, t: Math.round(melhor) };
 }
 /** Uma série de `ate` toques bons; `erraNa` manda no meio do gol (o goleiro pega). */
 function serie(seed, ate, erraNa = null) {
   const out = [];
   let t = 400;
   for (let i = 1; i <= ate; i++) {
-    const s = i === erraNa ? { i, x: 0.5, y: 0.3, t: Math.round(t) } : toque(seed, i, t);
+    const s = i === erraNa ? { i, x: 0.5, y: 0.3, power: 0.9, spin: 0, t: Math.round(t) } : toque(seed, i, t);
     out.push(s);
-    t = s.t + flightAt(s.t) + C.gap + 20;
+    t = s.t + tempoDeVoo(s.power, s.t) + C.gap + 20;
   }
   return out;
 }

@@ -120,8 +120,10 @@ export interface PartyResult { win: boolean; goal: boolean; text: string; segmen
 export interface GoleadaState {
   day: number; nextAt: number; goalTarget: number; pointsPerGoal: number; maxPoints: number;
   keeper: { amp: number; periodFirst: number; periodLast: number; reactFirst: number; reactLast: number; speedFirst: number; speedLast: number; reach: number; highReach: number; highFrom: number };
-  shot: { first: number; last: number };
+  shot: { first: number; last: number; powerCut: number };
   aim: { margin: number; top: number };
+  /** O quanto o efeito engana o goleiro (ele lê a saída da bola, não a chegada). */
+  spinEdge: number;
   gap: number; ramp: number;
   /** Fase da ronda desta partida (null fora de jogo). */
   phase: number | null;

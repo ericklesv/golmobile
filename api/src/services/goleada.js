@@ -54,7 +54,7 @@ function view(row, now, user) {
   return {
     day: dayNumberAt(HOUR, now), nextAt: nextResetAt(HOUR, now).getTime(),
     goalTarget: C.goalTarget, pointsPerGoal: C.pointsPerGoal, maxPoints: C.maxPoints,
-    keeper: C.keeper, shot: C.shot, aim: C.aim, gap: C.gap, ramp: C.ramp,
+    keeper: C.keeper, shot: C.shot, aim: C.aim, gap: C.gap, ramp: C.ramp, spinEdge: C.spinEdge,
     // a fase da ronda (não a semente): é só o que a tela precisa para desenhar o goleiro no lugar certo
     phase: st.seed && !st.over ? phaseOf(st.seed) : null,
     playing: !!st.seed && !st.over, finished: !!row?.finishedAt, freePlay: FREE,

@@ -92,7 +92,7 @@ export const api = {
   // Goleada: os goleiros vêm prontos; a tela só devolve os chutes no fim (o servidor refaz a série)
   goleada: () => req<{ state: GoleadaState; scoreboard: GoleadaBoard | null }>('GET', '/api/daily/goleada'),
   goleadaStart: () => req<{ state: GoleadaState; scoreboard: GoleadaBoard | null }>('POST', '/api/daily/goleada/start'),
-  goleadaEnd: (body: { shots: { i: number; x: number; y: number; t: number }[] }) => req<GoleadaEnd>('POST', '/api/daily/goleada/end', body),
+  goleadaEnd: (body: { shots: { i: number; x: number; y: number; power: number; spin: number; t: number }[] }) => req<GoleadaEnd>('POST', '/api/daily/goleada/end', body),
   ganhaPerde: () => req<{ state: GanhaPerdeState }>('GET', '/api/daily/ganhaperde'),
   ganhaPerdeSpin: (chance: number, spins: number) => req<GanhaPerdeSpin>('POST', '/api/daily/ganhaperde/spin', { chance, spins }),
   hattrick: () => req<{ state: HattrickState }>('GET', '/api/daily/hattrick'),

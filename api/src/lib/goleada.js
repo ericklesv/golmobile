@@ -1,7 +1,12 @@
 /**
  * GOLEADA — porte do "Mini Cup" do Google (dono, 17/09/2026). Você é o BATEDOR: a bola fica no seu pé e
- * você TOCA no canto do gol para chutar. Nada de mira nem de barra de força — é tocar e a bola sai
- * (feedback do dono depois de jogar: "o chute tem que ser mais rápido sem mira").
+ * você **puxa o dedo como na Falta PRO** para chutar (dono, 18/09/2026: "a ideia não é clicar onde você
+ * quer chutar a bola, é fazer o movimento do chute assim como no falta pro"; e antes: "o chute tem que ser
+ * mais rápido sem mira" — por isso não há alvo desenhado nem barra de força: o gesto é a mira).
+ *
+ * O gesto vira três coisas, como lá: **direção** (para onde você puxou), **força** (a VELOCIDADE do puxão,
+ * que encurta o voo da bola) e **efeito** (o arco que o dedo desenhou, que faz a bola sair para um lado e
+ * fechar no outro — o goleiro lê a saída e se engana).
  *
  * O goleiro **nunca fica parado**: ele vai de uma trave à outra o tempo todo ("ele está parado no meio, ele
  * tem que se movimentar de um lado pro outro"). O jogo é de TIMING — você espera ele sair do canto que quer
@@ -30,13 +35,14 @@ export const GOLEADA = {
     reactFirst: 380, // ms até ele largar a ronda e mergulhar na bola…
     reactLast: 140, // …no fim
     speedFirst: 0.70, // larguras de gol por segundo no mergulho…
-    speedLast: 1.90, // …no fim (calibrado em scripts/goleada-balance.js: no máximo ele quase fecha o gol)
+    speedLast: 2.70, // …no fim: calibrado para que, no máximo, ele FECHE o gol — toda série tem fim
     reach: 0.085, // meio corpo + luva
     highReach: 0.80, // bola no alto: alcança menos
     highFrom: 0.60,
   },
   ramp: 100_000, // em 100 s de jogo o goleiro chega ao máximo (é o relógio que aperta, não os gols)
-  shot: { first: 820, last: 460 }, // voo da bola: encurta junto (dá menos tempo de pensar)
+  shot: { first: 820, last: 460, powerCut: 0.4 }, // voo da bola: encurta com o relógio e com a força do gesto
+  spinEdge: 0.09, // o quanto o efeito engana o goleiro (ele lê a saída da bola, não a chegada)
   aim: { margin: 0.045, top: 0.05 }, // rente à trave ou por cima do travessão = fora
   gap: 360, // tempo mínimo entre um chute e o próximo (a bola precisa voltar para o pé)
   maxShots: 400,
@@ -83,17 +89,25 @@ export const reachAt = (y) => GOLEADA.keeper.reach * (y > GOLEADA.keeper.highFro
  * Devolve { goal, why, T, from, kx }: `from` é onde o goleiro estava ao ver a bola e `kx` onde ele chegou —
  * é disso que a tela precisa para animar o mergulho.
  */
+export function tempoDeVoo(power, t) {
+  const p = Math.max(0, Math.min(1, Number(power) || 0));
+  return Math.round(flightAt(t) * (1 + GOLEADA.shot.powerCut * (0.5 - p))); // puxão forte = bola mais rápida
+}
+
 export function shoot(seed, aim, t) {
   const x = Number(aim?.x), y = Number(aim?.y), quando = Number(t);
-  const T = flightAt(quando);
+  const power = Number(aim?.power ?? 0.5), spin = Number(aim?.spin ?? 0) || 0;
+  const T = tempoDeVoo(power, quando);
   if (![x, y, quando].every(Number.isFinite)) return { goal: false, why: 'invalido', T, from: 0.5, kx: 0.5 };
   const from = keeperAt(seed, quando + reactAt(quando)); // ele segue na ronda enquanto não reage
   if (x < GOLEADA.aim.margin || x > 1 - GOLEADA.aim.margin || y < 0 || y > 1 - GOLEADA.aim.top) {
     return { goal: false, why: 'fora', T, from: Number(from.toFixed(4)), kx: Number(from.toFixed(4)) };
   }
+  // ele mergulha para onde a bola PARECE ir: com efeito, ela sai para um lado e fecha no outro
+  const lido = x - Math.max(-1, Math.min(1, spin)) * GOLEADA.spinEdge;
   const sobra = Math.max(0, T - reactAt(quando)) / 1000; // tempo que sobra para o mergulho
   const anda = diveAt(quando) * sobra;
-  const kx = from + Math.max(-anda, Math.min(anda, x - from));
+  const kx = from + Math.max(-anda, Math.min(anda, lido - from));
   const pegou = Math.abs(kx - x) <= reachAt(y);
   return { goal: !pegou, why: pegou ? 'defendeu' : 'gol', T, from: Number(from.toFixed(4)), kx: Number(kx.toFixed(4)) };
 }

@@ -7,13 +7,13 @@
  *
  * Uso (na pasta api/):  node scripts/goleada-balance.js
  */
-import { GOLEADA as C, shoot, keeperAt, flightAt, reactAt, diveAt, periodAt } from '../src/lib/goleada.js';
+import { GOLEADA as C, shoot, keeperAt, flightAt, tempoDeVoo, reactAt, diveAt, periodAt } from '../src/lib/goleada.js';
 
 const PERFIS = [
-  { nome: 'craque', erroX: 0.025, erroT: 60, paciencia: 1.0 },
-  { nome: 'bom', erroX: 0.045, erroT: 110, paciencia: 0.85 },
-  { nome: 'mediano', erroX: 0.075, erroT: 180, paciencia: 0.6 },
-  { nome: 'iniciante', erroX: 0.12, erroT: 280, paciencia: 0.35 },
+  { nome: 'craque', erroX: 0.025, erroT: 60, paciencia: 1.0, forca: 0.95, efeito: 0.8 },
+  { nome: 'bom', erroX: 0.045, erroT: 110, paciencia: 0.85, forca: 0.85, efeito: 0.5 },
+  { nome: 'mediano', erroX: 0.075, erroT: 180, paciencia: 0.6, forca: 0.7, efeito: 0.2 },
+  { nome: 'iniciante', erroX: 0.12, erroT: 280, paciencia: 0.35, forca: 0.5, efeito: 0 },
 ];
 
 /** Uma série: devolve quantos gols seguidos o perfil fez e por que parou. */
@@ -32,12 +32,12 @@ function serie(p, seed) {
     const quando = melhor + (Math.random() * 2 - 1) * p.erroT;
     // mira no meio do vão do lado contrário ao goleiro
     const gk = keeperAt(seed, quando + reactAt(quando));
-    const anda = diveAt(quando) * Math.max(0, flightAt(quando) - reactAt(quando)) / 1000;
+    const anda = diveAt(quando) * Math.max(0, tempoDeVoo(p.forca, quando) - reactAt(quando)) / 1000;
     const borda = lado < 0 ? gk - anda - C.keeper.reach : gk + anda + C.keeper.reach;
     const trave = lado < 0 ? C.aim.margin : 1 - C.aim.margin;
     const x = (borda + trave) / 2 + (Math.random() * 2 - 1) * p.erroX;
     const y = 0.2 + Math.random() * 0.4;
-    const r = shoot(seed, { x, y }, quando);
+    const r = shoot(seed, { x, y, power: p.forca, spin: p.efeito ?? 0 }, quando);
     if (!r.goal) return { gols: i - 1, motivo: r.why, tempo: quando };
     t = quando + r.T + C.gap;
   }

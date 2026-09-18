@@ -32,7 +32,7 @@ function rowView(u, now = Date.now()) {
     team: teamView(u.team), level: { lvl: level.lvl, name: level.name }, levelPoints: levelPoints(u),
     goalsTotal: u.goalsTotal, money: u.money, vip: isVip(u, now), vipDays: u.vipDays,
     banned: !!(u.bannedUntil && new Date(u.bannedUntil).getTime() > now), bannedUntil: u.bannedUntil,
-    isAdmin: u.isAdmin, lastSeenAt: u.lastSeenAt, createdAt: u.createdAt,
+    isAdmin: u.isAdmin, isBot: !!u.isBot, lastSeenAt: u.lastSeenAt, createdAt: u.createdAt, // isBot: conta que o servidor joga (services/bots.js)
     invitedBy: u.referredBy?.nick ?? null, // entrou pelo link de convite de alguém (services/referral.js)
     createdIp: u.createdIp ?? null, // IP do cadastro (segurança: contas em massa)
     // último aparelho (lib/device.js): nome, celular ou não e um pedaço do código do navegador (para comparar de olho)

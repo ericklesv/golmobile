@@ -42,6 +42,7 @@ async function series(last, days) {
   const rows = await prisma.$queryRawUnsafe(`
     WITH g AS (
       SELECT (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE $3)::date AS d, "userId" FROM "Goal" WHERE "createdAt" >= $1 AND "createdAt" < $2
+        AND "userId" NOT IN (SELECT id FROM "User" WHERE "isBot") -- bots fora (services/bots.js)
     ), per AS (SELECT d, "userId", count(*) AS c FROM g GROUP BY d, "userId")
     SELECT to_char(d, 'YYYY-MM-DD') AS day,
            (SELECT count(*) FROM g g2 WHERE g2.d = per.d) AS goals,
@@ -50,7 +51,7 @@ async function series(last, days) {
     FROM per GROUP BY d ORDER BY d`, from, to, TZ);
   const users = await prisma.$queryRawUnsafe(`
     SELECT to_char((("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day, count(*) AS n
-    FROM "User" WHERE "createdAt" >= $1 AND "createdAt" < $2 GROUP BY 1`, from, to, TZ);
+    FROM "User" WHERE "createdAt" >= $1 AND "createdAt" < $2 AND NOT "isBot" GROUP BY 1`, from, to, TZ);
   const pix = await prisma.$queryRawUnsafe(`
     SELECT to_char((("paidAt" AT TIME ZONE 'UTC') AT TIME ZONE $3)::date, 'YYYY-MM-DD') AS day, count(*) AS n, coalesce(sum("amountCents"), 0) AS cents
     FROM "VipPurchase" WHERE status = 'PAID' AND "paidAt" >= $1 AND "paidAt" < $2 GROUP BY 1`, from, to, TZ);

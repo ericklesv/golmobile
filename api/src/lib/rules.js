@@ -712,3 +712,30 @@ export const COMMUNITY = {
   // admin, pelo painel, quando o jogador se identifica na DM — o jogo só divulga (components/InstaInvite.tsx).
   instagram: { url: 'https://www.instagram.com/jogagolbr/', handle: '@jogagolbr', vipFollow: 3, vipRepost: 7 }, // aparece UMA VEZ por jogador (User.avisosVistos)
 };
+
+// ─── Bots "quase reais" (dono, 18/09/2026) ────────────────────────────────────
+// Contas que o servidor joga sozinho para encher os times da Série A sem ninguém (a troca automática tirava
+// time grande da A por falta de gol). Cada bot tem uma PERSONA (perfil, horários preferidos, quais chutes usa,
+// quanto demora para chutar depois da recarga) e ganha um PLANO por dia: sessões de tantos minutos em horários
+// sorteados dentro das janelas dele — fora da sessão fica "offline". Dentro da sessão chuta pelos MESMOS
+// serviços do jogador (recarga, chance, trilha, lances ao vivo), resgata a Presença e gasta ponto de nível
+// nas habilidades. Nunca conversa no chat, nunca joga minigame nem X1 (deixaria o rastro na cara). Lista dos
+// bots em data/bots.js; motor em services/bots.js; criação com `node scripts/bots.js criar`.
+// Volume esperado (não-VIP, recarga de 10 min por chute): casual ~3–10 gols/dia, regular ~10–25, assíduo ~30–55
+// — de propósito abaixo do top 10 da rodada (quem fica lá faz 80+), e os bots NUNCA entram na premiação
+// (artilharia da rodada/temporada e VIP do time campeão são calculados sem eles — league.js).
+export const BOTS = {
+  tickMs: 20_000, // volta do motor; cada ação sai com atraso sorteado dentro da volta (nada cai no segundo exato)
+  // janelas do dia (hora de Brasília, [de, até)): a persona tem 1 a 3 delas
+  windows: { madrugada: [0, 5], manha: [6, 10], almoco: [11, 14], tarde: [14, 18], noite: [18, 24] },
+  // perfil: sessões por dia [min, max], minutos por sessão [min, max] e chance de pular o dia inteiro
+  profiles: {
+    casual: { sessions: [1, 2], minutes: [12, 40], skip: 0.3 },
+    regular: { sessions: [1, 3], minutes: [20, 70], skip: 0.12 },
+    assiduo: { sessions: [2, 4], minutes: [40, 130], skip: 0.05 },
+  },
+  reactSec: [8, 240], // acabou a recarga → quanto tempo até chutar (humano não chuta no segundo exato)
+  trailStepSec: [4, 25], // entre uma linha e outra da trilha
+  heartbeatSec: 50, // "online" enquanto a sessão dura (o site de verdade manda a cada 60 s)
+  skillChance: 0.25, // por volta, com ponto de nível sobrando: gasta um na habilidade preferida
+};

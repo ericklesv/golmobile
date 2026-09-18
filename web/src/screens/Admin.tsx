@@ -28,6 +28,7 @@ function Badges({ u }: { u: AdminUserRow }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
       {u.isAdmin && <span className="trap trap-orange text-[9px] uppercase">Admin</span>}
+      {u.isBot && <span className="rounded-md bg-[#5C6B85] px-1.5 py-0.5 font-display text-[9px] uppercase text-white" title="Conta que o servidor joga sozinho (services/bots.js)">Bot</span>}
       {u.vip && <span className="trap trap-blue text-[9px] uppercase">VIP</span>}
       {u.banned && <span className="rounded-md bg-[#C0392B] px-1.5 py-0.5 font-display text-[9px] uppercase text-white">Banido</span>}
       {u.online && <span className="trap trap-green text-[9px] uppercase">Online</span>}

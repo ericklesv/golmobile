@@ -22,6 +22,14 @@ para todos; o resto e as frases só VIP; silenciar; ritmo de 2 s). Ver `CLAUDE.m
 **Deploy sem partida travada**: o `brgol-deploy.sh` trava a busca do X1, espera as partidas acabarem e cancela o que
 sobrar com a aposta devolvida e o motivo na tela (`CLAUDE.md` → X1 → Trava de atualização; `scripts/test-deploy-x1.js`).
 
+## Feito em 18/09/2026 — bots "quase reais" para os times da Série A sem ninguém
+Contas que o servidor joga sozinho (`api/src/services/bots.js`; lista `api/src/data/bots.js`; números `BOTS` em
+`rules.js`): persona (casual/regular/assíduo, janelas do dia, quais chutes usa), plano diário sorteado (sessões,
+folga), chutes pelos MESMOS serviços do jogador com atraso humano, Presença resgatada, ponto de nível gasto na
+habilidade; nunca chat/minigame/X1; fora da premiação e do relatório diário; selo "Bot" só no painel de admin.
+`node scripts/bots.js listar|criar|status|persona` (o `criar` só depois de o dono validar os nicks). Teste:
+`scripts/test-bots.js`. Ver `CLAUDE.md` → "Bots quase reais".
+
 ## Próximos passos (atualizado 14/09/2026 — fazer nesta ordem)
 0. [~] **Google Play** (14/09/2026, decisões do dono; guia completo em **`docs/PLAY_STORE.md`**):
    app = TWA com Bubblewrap; Play Billing dentro do app + PIX só no site (modelo Pokémon GO); conta

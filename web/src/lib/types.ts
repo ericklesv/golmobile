@@ -401,7 +401,7 @@ export interface AdminUserRow {
   id: number; nick: string; email: string; avatarUrl: string | null; nickColor: string | null; nickFade?: NickFade;
   team: Team | null; level: { lvl: number; name: string }; levelPoints: number;
   goalsTotal: number; money: number; vip: boolean; vipDays: number;
-  banned: boolean; bannedUntil: string | null; isAdmin: boolean; lastSeenAt: string; online: boolean;
+  banned: boolean; bannedUntil: string | null; isAdmin: boolean; isBot?: boolean; lastSeenAt: string; online: boolean;
   createdAt: string; invitedBy?: string | null;
   /** IP do cadastro (não muda). */
   createdIp?: string | null;

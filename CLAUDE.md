@@ -370,6 +370,24 @@ depois que o novo estiver estável. Não instalar nada dele.
   enquanto, pedido da torcida 15/09/2026): no X1 a peça fica listrada na horizontal primária · terciária · secundária
   (prego em `PregoBoard`, botão em `BotaoField` com o aro na 3ª cor) — a 3ª cor no meio separa as outras ("sem o
   preto tocar no vermelho").
+- **Bots "quase reais"** (pedido do dono, 18/09/2026: "preencher os times que estão sem ninguém na Série A", com nomes
+  reais, gols espalhados pelo dia, "não podem ficar na cara que são bots"; `services/bots.js`, lista em `data/bots.js`
+  — **os nicks precisam do OK do dono antes do `criar`** (pedido dele) —, números em `BOTS` de `rules.js`, `User.isBot`/`botJson`, migração 0042):
+  cada bot tem uma **persona** (casual/regular/assíduo, janelas do dia — madrugada/manhã/almoço/tarde/noite —, chance
+  de usar pênalti/falta/trilha, onde gasta ponto de nível, se resgata a Presença) e ganha um **plano por dia** (folga
+  em 30/12/5 % dos dias; senão 1–4 sessões de 12–130 min em horários sorteados nas janelas), gravado em `botJson.plan`
+  (reiniciar a API NÃO sorteia de novo). Na sessão fica "online" (lastSeenAt anda) e chuta pelos **mesmos serviços do
+  jogador** (`autoKick`/`penalty`/`foul`/`trailPick`), esperando 8 s–4 min depois da recarga, trilha linha a linha;
+  uma ação por bot por volta de 20 s, disparada com atraso sorteado (nunca todos no mesmo segundo). **Nunca** chat,
+  minigame nem X1. Volume: casual ~3–10 gols/dia, regular ~10–25, assíduo ~30–55 (abaixo do top 10 da rodada de
+  propósito). **Bots não recebem prêmio**: `topAndPrizes` em league.js tira os bots da lista premiada (artilharia da
+  rodada/temporada; quem vem depois sobe de posição) numa consulta só com o quadro — duas consultas embaralhavam os
+  empates —; o VIP do time campeão também pula bots. Fora do relatório diário do Telegram (contas e gols). O painel de
+  admin mostra o selo **Bot** (e-mail `<nick>@bots.jogagol.com.br`); `isBot` NUNCA vai para o front público (views
+  projetam campos). Operação (pasta api/, na VPS com o .env): `node scripts/bots.js listar|criar|status|persona`
+  (`criar` é idempotente e pula nick de jogador de verdade; `persona` regrava o jeito de jogar pela lista).
+  `BOTS_OFF=1` desliga o motor (testes). **Mexeu? Rode `node scripts/test-bots.js`** (pasta api/, só banco LOCAL,
+  ~1 min; tem de dar "TUDO OK") e o `sim-liga.js`.
 - **Grupo do WhatsApp** (pedido do dono, 14/09/2026; link em `COMMUNITY` de `rules.js`, via `/api/meta`; tela
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi

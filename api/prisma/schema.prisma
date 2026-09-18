@@ -142,6 +142,11 @@ model User {
   // Avisos de uma vez só que este jogador já viu (ex.: { "instagram": "2026-09-17T…" }) — dono, 17/09/2026
   avisosVistos Json?
 
+  // Bot "quase real" (dono, 18/09/2026): conta que o servidor joga sozinho para encher time sem gente
+  // (services/bots.js). `botJson` = { persona, plan } — o jeito de jogar e as sessões do dia.
+  isBot   Boolean @default(false)
+  botJson Json?
+
   // Contratado por proposta: não troca de time nem aceita outra proposta até aqui (1 dia por VIP)
   contractUntil DateTime?
 
@@ -184,6 +189,7 @@ model User {
   @@index([goalsTotal])
   @@index([referredById])
   @@index([createdIp, createdAt])
+  @@index([isBot])
   @@index([deviceId])
 }
 

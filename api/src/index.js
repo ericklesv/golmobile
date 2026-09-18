@@ -30,6 +30,7 @@ import { inbox } from './routes/inbox.js';
 import { account } from './routes/account.js';
 import { ensureSeason } from './services/league.js';
 import { startScheduler } from './services/scheduler.js';
+import { startBots } from './services/bots.js';
 import { attachCabecao, cabecaoStatus } from './realtime/cabecao.js';
 import { attachX1, x1Status } from './realtime/x1.js';
 
@@ -91,6 +92,7 @@ app.use((_req, res) => res.status(404).json({ error: 'not-found', message: 'Rota
 ensureSeason()
   .then(() => {
     startScheduler();
+    if (process.env.BOTS_OFF !== '1') startBots(); // bots "quase reais" (services/bots.js); BOTS_OFF=1 desliga o motor (testes)
     const server = http.createServer(app);
     attachCabecao(server);
     attachX1(server);

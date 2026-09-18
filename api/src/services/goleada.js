@@ -7,9 +7,9 @@
  * adversário tenta pegar. Fez o gol, vem outra bola — o goleiro reage mais rápido a cada uma. Ele pegou ou
  * você mandou fora, acabou a série.
  *
- * Sem depender da internet no meio da jogada (a mesma razão de o X1 ser por turnos): o servidor manda os
- * goleiros JÁ SORTEADOS em lotes de 40 e a tela roda a mesma conta do servidor para animar. No fim, a tela
- * manda os CHUTES e o servidor **refaz a série** para contar os gols — quem conta não é o cliente.
+ * Sem depender da internet no meio da jogada (a mesma razão de o X1 ser por turnos): o servidor manda só a
+ * SEMENTE da partida e a tela roda a mesma conta dele (o goleiro é uma função do tempo) para animar. No fim,
+ * a tela manda os CHUTES e o servidor **refaz a série** para contar os gols — quem conta não é o cliente.
  *
  * Identidade do JogaGol no lugar do contador de países: **cada gol soma no placar do seu time contra o
  * adversário da rodada** (tabela `GoleadaTeam`, zera junto com a rodada) e o goleiro veste o uniforme desse
@@ -24,7 +24,7 @@ import { prisma } from '../prisma.js';
 import { GameError, badRequest } from '../lib/errors.js';
 import { dayNumberAt, nextResetAt } from '../lib/time.js';
 import { MINIGAMES, RESET_HOUR, resetLabel, levelOf } from '../lib/rules.js';
-import { GOLEADA as C, keepers, judge } from '../lib/goleada.js';
+import { GOLEADA as C, judge, phaseOf } from '../lib/goleada.js';
 import { applyResult, loadUser } from './play.js';
 import { liveMatchForTeam, liveRound } from './league.js';
 import { teamView } from './view.js';
@@ -54,7 +54,9 @@ function view(row, now, user) {
   return {
     day: dayNumberAt(HOUR, now), nextAt: nextResetAt(HOUR, now).getTime(),
     goalTarget: C.goalTarget, pointsPerGoal: C.pointsPerGoal, maxPoints: C.maxPoints,
-    keeper: C.keeper, shot: C.shot, aim: C.aim, gap: C.gap,
+    keeper: C.keeper, shot: C.shot, aim: C.aim, gap: C.gap, ramp: C.ramp,
+    // a fase da ronda (não a semente): é só o que a tela precisa para desenhar o goleiro no lugar certo
+    phase: st.seed && !st.over ? phaseOf(st.seed) : null,
     playing: !!st.seed && !st.over, finished: !!row?.finishedAt, freePlay: FREE,
     goals: st.goals ?? 0, points: st.points ?? 0, best: user?.goleadaBest ?? 0,
     record: !!st.record, // bateu o recorde nesta partida
@@ -97,19 +99,8 @@ export function goleadaStart(userId) {
     const user = await tx.user.findUnique({ where: { id: userId } });
     if (g && levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `A Goleada libera no nível ${g.unlock}.`);
     if (!st.seed || st.over) Object.assign(st, { seed: `${userId}:${Date.now()}:${randomInt(0, 2 ** 31)}`, goals: 0, points: 0, over: false, record: false });
-    return { keepers: keepers(st.seed, 1, C.batch) };
+    return {};
   });
-}
-
-/** Mais goleiros, para quem está indo longe (a tela pede antes de acabar o lote — nada de pausa). */
-export async function goleadaMore(userId, from) {
-  const i = Number(from);
-  if (!Number.isInteger(i) || i < 2 || i > 5000) throw badRequest('Bola inválida.');
-  const now = new Date();
-  const row = await prisma.dailyGame.findUnique({ where: { userId_game_day: { userId, game: 'GOLEADA', day: dayNumberAt(HOUR, now) } } });
-  const st = row?.state ?? {};
-  if (!st.seed || st.over) throw new GameError(409, 'no-run', 'Comece a Goleada.');
-  return { keepers: keepers(st.seed, i, C.batch) };
 }
 
 /**

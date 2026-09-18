@@ -647,22 +647,24 @@ depois que o novo estiver estável. Não instalar nada dele.
   a MESMA cena com cobrança mockada — `?flight=1` anima um voo com curva, `?t=<s>` congela,
   `?bx=&bz=` mudam a bola. `MINIGAMES_LIVRES=1` também vale aqui.
 - **Goleada** (`lib/goleada.js` = matemática pura; `services/goleada.js`; tela `Goleada.tsx`; nível 3, vira
-  às 22h): **você é o batedor**. Porte do "Mini Cup" do Google (o dono mandou o vídeo em 17/09/2026: "monte
-  o mais próximo possível do mini cup sem perder a identidade do jogo" — e corrigiu a primeira leitura:
-  "no minicup você é o jogador e não o goleiro"). A bola fica grande no pé do jogador; ele puxa o dedo na
-  direção do gol e solta. O goleiro **veste o uniforme do adversário da rodada** e melhora a cada gol
-  (reage em 430 ms na 1ª e 200 ms da 20ª em diante, e segue ganhando velocidade depois disso, até fechar o
-  vão); às vezes ele **se joga antes** (`lean`) e aí o canto contrário fica livre — é a dica visual do
-  original. Bola rente à trave ou por cima é FORA e acaba a série. No lugar do contador de países:
-  **o placar de gols do seu time contra o adversário da rodada** (`GoleadaTeam`, zera com a rodada).
-  **10 gols seguidos = 1 gol** (kind `GOLEADA`) + o dinheiro de `MINIGAME_MONEY`; cada gol dá 3 de nível,
-  até 30. Recorde pessoal em `User.goleadaBest` (é o que acende a faixa "NOVA MAIOR PONTUAÇÃO").
-  **Sem internet no meio da série** (a mesma razão de o X1 ser por turnos): o servidor manda os goleiros já
-  sorteados em lotes de 40 (`/start` e `/more`, pedido com 12 de antecedência) e a tela roda a MESMA conta
-  do servidor (`decide` = `shoot`) só para animar, no relógio de `performance.now()`. No fim ela manda os
-  chutes (`/end`) e **o servidor refaz a série** (`judge`) para contar os gols. Calibrar:
-  `node scripts/goleada-balance.js` (craque ~29 gols, bom ~20, mediano ~8, iniciante ~4; 44% dos medianos
-  fazem os 10 do gol do dia). **Mexeu? Rode `node scripts/test-goleada.js`** (pasta api/, banco LOCAL).
+  às 22h): **você é o batedor**. Porte do "Mini Cup" do Google (dono, 17/09/2026: "monte o mais próximo
+  possível do mini cup sem perder a identidade do jogo"; e depois de jogar a 1ª versão: "no minicup você é
+  o jogador e não o goleiro", "o goleiro está parado no meio, ele tem que se movimentar de um lado pro
+  outro", "o chute tem que ser mais rápido sem mira", "a velocidade do goleiro tem que ir aumentando
+  conforme o tempo que você tá com o jogo aberto"). **Toca no canto do gol e a bola sai** — sem mira, sem
+  barra de força. O goleiro **veste o uniforme do adversário da rodada** e faz RONDA de uma trave à outra o
+  tempo todo; ao ver a bola ele reage e mergulha. **Tudo aperta pelo RELÓGIO da série** (`ramp` = 100 s):
+  a ronda vai de 3,4 s para 1,15 s, a reação de 380 ms para 140, o mergulho de 0,7 para 1,9 largura/s e o
+  voo da bola de 820 ms para 460 — ninguém fica no gol para sempre. Bola rente à trave ou por cima é FORA e
+  acaba a série. No lugar do contador de países: **o placar de gols do seu time contra o adversário da
+  rodada** (`GoleadaTeam`, zera com a rodada). **10 gols seguidos = 1 gol** (kind `GOLEADA`) + o dinheiro
+  de `MINIGAME_MONEY`; cada gol dá 3 de nível, até 30; recorde em `User.goleadaBest`.
+  **Sem internet no meio da série**: o servidor manda só a FASE da ronda (`state.phase`) e a tela roda as
+  mesmas contas de `lib/goleada.js` para animar (o goleiro é uma função do tempo, com a fase sorteada por
+  partida). No fim ela manda os toques (`/end`) e **o servidor refaz a série** (`judge`), que também recusa
+  chute fora de ordem ou antes de a bola voltar. Calibrar: `node scripts/goleada-balance.js` (craque ~60
+  gols em 75 s, bom ~53, mediano ~33, iniciante ~13). **Mexeu? Rode `node scripts/test-goleada.js`**
+  (pasta api/, banco LOCAL).
 - **Frangaço — DESATIVADO em 14/09/2026 pelo dono ("muito bugado")**: `soon: true` no `MINIGAMES` (some do slider e
   do `/api/meta`), `/api/frangaco/*` responde 503 "em manutenção" e `/frangaco` mostra o aviso. Para religar:
   tirar o `soon` (o resto se ajusta sozinho). Documentação original abaixo.

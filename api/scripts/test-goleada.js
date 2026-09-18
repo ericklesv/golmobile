@@ -12,8 +12,8 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
   process.exit(1);
 }
 const { prisma } = await import('../src/prisma.js');
-const { goleadaState, goleadaStart, goleadaMore, goleadaEnd } = await import('../src/services/goleada.js');
-const { GOLEADA: C, keeperOf, keepers, shoot, judge, flightOf } = await import('../src/lib/goleada.js');
+const { goleadaState, goleadaStart, goleadaEnd } = await import('../src/services/goleada.js');
+const { GOLEADA: C, keeperAt, shoot, judge, phaseOf, flightAt, reactAt, diveAt, periodAt } = await import('../src/lib/goleada.js');
 const { MINIGAME_MONEY } = await import('../src/lib/rules.js');
 const { refreshLiveRound, liveRound } = await import('../src/services/league.js');
 
@@ -26,58 +26,66 @@ const mk = (extra = {}) => { const n = `tg${Date.now() % 1e6}${seq++}`; return p
 const U = (id) => prisma.user.findUnique({ where: { id } });
 await refreshLiveRound();
 
-/** Mira no meio do vão que sobra (é o que um jogador bom faz): do lado contrário ao pulo do goleiro. */
-function mirar(seed, i, forca = 0.95) {
-  const k = keeperOf(seed, i);
-  const lado = k.lean !== 0 ? -k.lean : -1;
-  const T = flightOf(forca);
-  const anda = (k.speed * Math.max(0, T - k.react)) / 1000;
-  const partida = 0.5 + k.lean * C.keeper.leanHelp * 0.5;
-  const borda = lado < 0 ? partida - anda - C.keeper.reach : partida + anda + C.keeper.reach;
+/** Acha um instante bom para chutar (goleiro longe de um canto) e devolve o toque. */
+function toque(seed, i, t0) {
+  let melhor = t0, nota = -1, lado = 1;
+  for (let d = 0; d <= 1800; d += 30) {
+    const gk = keeperAt(seed, t0 + d + reactAt(t0 + d));
+    const dist = Math.abs(gk - 0.5);
+    if (dist > nota) { nota = dist; melhor = t0 + d; lado = gk > 0.5 ? -1 : 1; }
+  }
+  const gk = keeperAt(seed, melhor + reactAt(melhor));
+  const anda = (diveAt(melhor) * Math.max(0, flightAt(melhor) - reactAt(melhor))) / 1000;
+  const borda = lado < 0 ? gk - anda - C.keeper.reach : gk + anda + C.keeper.reach;
   const trave = lado < 0 ? C.aim.margin : 1 - C.aim.margin;
-  return { i, x: Number(((borda + trave) / 2).toFixed(4)), y: 0.3, power: forca };
+  return { i, x: Number(((borda + trave) / 2).toFixed(4)), y: 0.3, t: Math.round(melhor) };
 }
-const serie = (seed, ate, erraNa = null) => Array.from({ length: ate }, (_, k) => {
-  const i = k + 1;
-  return i === erraNa ? { i, x: 0.5, y: 0.3, power: 0.3 } : mirar(seed, i); // no meio e fraco = o goleiro pega
-});
+/** Uma série de `ate` toques bons; `erraNa` manda no meio do gol (o goleiro pega). */
+function serie(seed, ate, erraNa = null) {
+  const out = [];
+  let t = 400;
+  for (let i = 1; i <= ate; i++) {
+    const s = i === erraNa ? { i, x: 0.5, y: 0.3, t: Math.round(t) } : toque(seed, i, t);
+    out.push(s);
+    t = s.t + flightAt(s.t) + C.gap + 20;
+  }
+  return out;
+}
 
-// ── os goleiros
-const k1 = keepers('fixa', 1, 5), k2 = keepers('fixa', 1, 5);
-check(JSON.stringify(k1) === JSON.stringify(k2), 'a mesma semente devolve sempre os mesmos goleiros (o servidor reconfere sem guardar nada)');
-check(keeperOf('fixa', 1).react > keeperOf('fixa', 20).react && keeperOf('fixa', 20).speed > keeperOf('fixa', 1).speed,
-  `o goleiro melhora: reage em ${keeperOf('fixa', 1).react} ms e corre ${keeperOf('fixa', 1).speed.toFixed(2)} na 1ª; ${keeperOf('fixa', 20).react} ms e ${keeperOf('fixa', 20).speed.toFixed(2)} na 20ª`);
-check([1, 2, 3].every((i) => keeperOf('fixa', i).lean === 0), 'nas 3 primeiras ele espera parado (o jogo ensina antes de cobrar)');
-check(flightOf(1) === C.shot.fast && flightOf(0) === C.shot.slow, `chute forte chega em ${flightOf(1)} ms e o fraco em ${flightOf(0)} ms`);
+// ── a ronda do goleiro
+check(Math.abs(keeperAt('a', 0) - keeperAt('b', 0)) > 1e-6, 'cada partida começa com o goleiro num pé diferente (fase sorteada)');
+const pontos = [0, 200, 400, 600, 800, 1000, 1400, 1800].map((t) => keeperAt('fixa', t));
+check(Math.max(...pontos) - Math.min(...pontos) > 0.3, `ele não fica parado: em 2 s varre ${(Math.max(...pontos) - Math.min(...pontos)).toFixed(2)} da largura do gol`);
+check(periodAt(0) > periodAt(60_000) && reactAt(0) > reactAt(60_000) && diveAt(0) < diveAt(60_000),
+  `aperta com o relógio: ronda de ${(periodAt(0) / 1000).toFixed(1)}s → ${(periodAt(60_000) / 1000).toFixed(1)}s, reação ${Math.round(reactAt(0))} → ${Math.round(reactAt(60_000))} ms, mergulho ${diveAt(0).toFixed(2)} → ${diveAt(60_000).toFixed(2)}`);
+check(flightAt(0) > flightAt(100_000), `e a bola vai mais rápido: ${flightAt(0)} ms no começo, ${flightAt(100_000)} ms no fim`);
 
-// ── o que é gol, o que é defesa e o que é fora
-check(shoot('fixa', 1, { x: 0.02, y: 0.3, power: 1 }).why === 'fora', 'rente à trave é fora');
-check(shoot('fixa', 1, { x: 0.5, y: 0.99, power: 1 }).why === 'fora', 'por cima do travessão é fora');
-check(shoot('fixa', 1, { x: 0.5, y: 0.3, power: 0.2 }).why === 'defendeu', 'no meio e sem força o goleiro pega');
-check(shoot('fixa', 1, mirar('fixa', 1)).goal, 'no cantinho, com força, é gol');
-const comLean = [...Array(40)].map((_, i) => keeperOf('fixa', i + 1)).find((k) => k.lean !== 0);
-const contra = shoot('fixa', comLean.i, { x: comLean.lean < 0 ? 0.8 : 0.2, y: 0.3, power: 0.95 });
-const junto = shoot('fixa', comLean.i, { x: comLean.lean < 0 ? 0.2 : 0.8, y: 0.3, power: 0.95 });
-check(contra.goal && !junto.goal, `o pulo do goleiro decide: no canto contrário é gol, no canto em que ele caiu é defesa (bola ${comLean.i})`);
+// ── o que é gol, defesa e fora
+check(shoot('fixa', { x: 0.02, y: 0.3 }, 1000).why === 'fora', 'rente à trave é fora');
+check(shoot('fixa', { x: 0.5, y: 0.99 }, 1000).why === 'fora', 'por cima do travessão é fora');
+const noGoleiro = keeperAt('fixa', 1000 + reactAt(1000));
+check(shoot('fixa', { x: noGoleiro, y: 0.3 }, 1000).why === 'defendeu', 'em cima do goleiro ele pega');
+check(shoot('fixa', toque('fixa', 1, 400), toque('fixa', 1, 400).t).goal, 'no canto vazio, na hora certa, é gol');
+// esperar demais custa: no mesmo lugar, mais tarde, ele alcança
+const cedo = toque('fixa', 1, 400);
+check(!shoot('fixa', { x: cedo.x, y: cedo.y }, 150_000).goal, 'o MESMO chute, 2 minutos depois, o goleiro alcança (é o relógio apertando)');
 
 // ── o servidor é quem conta
-const j = judge('fixa', serie('fixa', 12));
-check(j.goals === 12, `12 chutes bem mirados: ${j.goals} gols`);
+check(judge('fixa', serie('fixa', 12)).goals === 12, '12 toques bons: 12 gols');
 const j2 = judge('fixa', serie('fixa', 12, 5));
 check(j2.goals === 4 && j2.stoppedAt === 5, `errou o 5º: o servidor conta ${j2.goals} gols e para na bola ${j2.stoppedAt}`);
-check(judge('fixa', [{ i: 2, x: 0.1, y: 0.3, power: 1 }]).goals === 0, 'chute fora de ordem não conta');
-check(judge('fixa', [{ i: 1, x: 'x', y: null, power: 1 }]).goals === 0, 'chute inválido não conta');
+check(judge('fixa', [{ i: 2, x: 0.1, y: 0.3, t: 500 }]).goals === 0, 'chute fora de ordem não conta');
+check(judge('fixa', [{ i: 1, x: 0.1, y: 0.3, t: 500 }, { i: 2, x: 0.1, y: 0.3, t: 520 }]).goals <= 1, 'dois chutes colados (a bola nem voltou) não contam');
 
 // ── partida inteira pelo serviço
 const u = await mk();
 const st0 = await goleadaState(u.id);
 check(!st0.state.playing && st0.state.best === 0, 'abrir a tela não começa a série');
 const ini = await goleadaStart(u.id);
-check(ini.keepers.length === C.batch && ini.state.playing, `começou: ${ini.keepers.length} goleiros de uma vez (nenhuma ida ao servidor durante a série)`);
-check((await goleadaMore(u.id, C.batch + 1)).keepers[0].i === C.batch + 1, 'quem vai longe pede mais goleiros antes de acabar o lote');
+check(ini.state.playing && typeof ini.state.phase === 'number', 'começou: o servidor manda só a fase da ronda (nenhuma ida ao servidor durante a série)');
 
 const seed = (await prisma.dailyGame.findFirst({ where: { userId: u.id, game: 'GOLEADA' } })).state.seed;
-const fim = await goleadaEnd(u.id, { shots: serie(seed, 12, 13) });
+const fim = await goleadaEnd(u.id, { shots: serie(seed, 12) });
 check(fim.goals === 12, `fim de série: ${fim.goals} gols`);
 check(!!fim.goal, `passou dos ${C.goalTarget} e marcou o gol do dia: "${fim.goal?.text?.slice(0, 60)}…"`);
 check(fim.levelPoints === C.maxPoints, `XP: ${fim.levelPoints} (3 por gol, teto ${C.maxPoints})`);

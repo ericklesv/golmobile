@@ -1,4 +1,4 @@
-import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaKeeper, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -91,9 +91,8 @@ export const api = {
   camisasGuess: (guess: 'maior' | 'menor') => req<CamisasGuess>('POST', '/api/daily/camisas/guess', { guess }),
   // Goleada: os goleiros vêm prontos; a tela só devolve os chutes no fim (o servidor refaz a série)
   goleada: () => req<{ state: GoleadaState; scoreboard: GoleadaBoard | null }>('GET', '/api/daily/goleada'),
-  goleadaStart: () => req<{ state: GoleadaState; scoreboard: GoleadaBoard | null; keepers: GoleadaKeeper[] }>('POST', '/api/daily/goleada/start'),
-  goleadaMore: (from: number) => req<{ keepers: GoleadaKeeper[] }>('POST', '/api/daily/goleada/more', { from }),
-  goleadaEnd: (body: { shots: { i: number; x: number; y: number; power: number }[] }) => req<GoleadaEnd>('POST', '/api/daily/goleada/end', body),
+  goleadaStart: () => req<{ state: GoleadaState; scoreboard: GoleadaBoard | null }>('POST', '/api/daily/goleada/start'),
+  goleadaEnd: (body: { shots: { i: number; x: number; y: number; t: number }[] }) => req<GoleadaEnd>('POST', '/api/daily/goleada/end', body),
   ganhaPerde: () => req<{ state: GanhaPerdeState }>('GET', '/api/daily/ganhaperde'),
   ganhaPerdeSpin: (chance: number, spins: number) => req<GanhaPerdeSpin>('POST', '/api/daily/ganhaperde/spin', { chance, spins }),
   hattrick: () => req<{ state: HattrickState }>('GET', '/api/daily/hattrick'),

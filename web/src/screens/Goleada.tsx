@@ -6,27 +6,28 @@ import { useAuth } from '../store/auth';
 import { Shield } from '../components/Shield';
 import { toast } from '../components/Toast';
 import { money as fmt } from '../lib/format';
-import type { GoleadaKeeper, GoleadaState, GoleadaBoard } from '../lib/types';
+import type { GoleadaState, GoleadaBoard } from '../lib/types';
 
 /**
- * GOLEADA — porte do "Mini Cup" do Google (dono, 17/09/2026; ele corrigiu a leitura do vídeo: "no minicup
- * você é o jogador e não o goleiro"). A bola fica grande no seu pé; você puxa o dedo na direção do gol e
- * solta para chutar. O goleiro adversário reage mais rápido a cada gol; ele pegou ou você mandou fora,
- * acabou a série.
+ * GOLEADA — porte do "Mini Cup" do Google (dono, 17/09/2026). Você é o batedor: **toca no canto do gol e a
+ * bola sai na hora** — sem mira, sem barra de força (feedback do dono jogando: "o chute tem que ser mais
+ * rápido sem mira"). O goleiro **anda de uma trave à outra o tempo todo** e vai ficando mais rápido quanto
+ * mais a série dura ("a velocidade do goleiro tem que ir aumentando conforme o tempo que você tá com o jogo
+ * aberto"). O jogo é de TIMING: espere ele sair do canto que você quer e toque lá.
  *
  * Identidade do JogaGol: o goleiro veste o uniforme do ADVERSÁRIO DA RODADA (como no pênalti e na falta) e
- * cada gol soma no placar do seu time contra ele — é o contador de países do Google, à nossa moda.
+ * cada gol soma no placar do seu time contra ele — o contador de países do Google, à nossa moda.
  *
- * **Sem falar com o servidor no meio da série** (a mesma razão de o X1 ser por turnos): os goleiros vêm
- * prontos em lotes de 40 e a tela roda a MESMA conta do servidor (`decide`, igual ao shoot() de
- * lib/goleada.js) só para animar. No fim ela manda os chutes e o servidor refaz tudo: quem conta é ele.
+ * **Sem falar com o servidor no meio da série**: o servidor manda só a FASE da ronda e esta tela roda a
+ * mesma conta dele (as funções abaixo são as de lib/goleada.js) para animar. No fim ela manda os toques e o
+ * servidor refaz a série: quem conta os gols é ele.
  */
 
-/** Boca do gol na tela (viewBox 100×100): x de 18 a 82, y de 36 (rasteiro) a 12 (travessão). */
-const GOL = { x0: 18, x1: 82, yBase: 36, yTop: 12 };
+/** Boca do gol na tela (viewBox 100×100): x de 16 a 84, y de 38 (rasteiro) a 12 (travessão). */
+const GOL = { x0: 16, x1: 84, yBase: 38, yTop: 12 };
 const telaX = (x: number) => GOL.x0 + x * (GOL.x1 - GOL.x0);
 const telaY = (y: number) => GOL.yBase - y * (GOL.yBase - GOL.yTop);
-const BOLA = { x: 50, y: 86, r: 7 };
+const BOLA = { x: 50, y: 88, r: 6.5 };
 
 export function GoleadaScreen() {
   const me = useAuth((s) => s.me)!;
@@ -38,16 +39,15 @@ export function GoleadaScreen() {
   const [gols, setGols] = useState(0);
   const [recorde, setRecorde] = useState(false);
   const [fim, setFim] = useState<{ goals: number; levelPoints: number; goal?: { text: string } | null; best: number; record: boolean; why: string | null } | null>(null);
-  const [mira, setMira] = useState<{ x: number; y: number; power: number } | null>(null); // guia enquanto puxa o dedo
   const [voo, setVoo] = useState<{ x: number; y: number; r: number } | null>(null);
   const [gkX, setGkX] = useState(0.5);
   const [aviso, setAviso] = useState<'gol' | 'defendeu' | 'fora' | null>(null);
-  const [gk, setGk] = useState<GoleadaKeeper | null>(null);
+  const [aperto, setAperto] = useState(0); // 0..1: o quanto o goleiro já acelerou
 
   const campo = useRef<HTMLDivElement>(null);
   const jogo = useRef({
-    seed: '', i: 0, keepers: [] as GoleadaKeeper[], shots: [] as { i: number; x: number; y: number; power: number }[],
-    viva: false, gols: 0, pedindo: false, puxando: null as null | { x: number; y: number },
+    t0: 0, phase: 0, viva: false, gols: 0, liberado: 0, voando: false,
+    shots: [] as { i: number; x: number; y: number; t: number }[],
   });
 
   const rivalCores = board?.rival?.team
@@ -59,94 +59,92 @@ export function GoleadaScreen() {
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  /** A mesma conta do servidor (lib/goleada.js → shoot): sem isso a tela teria de perguntar a cada chute. */
-  function decide(k: GoleadaKeeper, aim: { x: number; y: number; power: number }) {
-    const c = st!;
-    const T = Math.round(c.shot.slow + (c.shot.fast - c.shot.slow) * Math.max(0, Math.min(1, aim.power)));
-    if (aim.x < c.aim.margin || aim.x > 1 - c.aim.margin || aim.y < 0 || aim.y > 1 - c.aim.top) return { goal: false, why: 'fora' as const, T, kx: 0.5 };
-    const partida = 0.5 + k.lean * c.keeper.leanHelp * 0.5;
-    const anda = (k.speed * Math.max(0, T - k.react)) / 1000;
-    const kx = partida + Math.max(-anda, Math.min(anda, aim.x - partida));
-    const alcance = c.keeper.reach * (aim.y > c.keeper.highFrom ? c.keeper.highReach : 1);
-    const pegou = Math.abs(kx - aim.x) <= alcance;
-    return { goal: !pegou, why: pegou ? ('defendeu' as const) : ('gol' as const), T, kx };
+  // ── as mesmas contas do servidor (lib/goleada.js), para a tela animar sozinha
+  const entre = (a: number, b: number, f: number) => a + (b - a) * f;
+  const dureza = (t: number) => Math.min(1, Math.max(0, t) / (st?.ramp ?? 100_000));
+  const reacao = (t: number) => entre(st!.keeper.reactFirst, st!.keeper.reactLast, dureza(t));
+  const mergulho = (t: number) => entre(st!.keeper.speedFirst, st!.keeper.speedLast, dureza(t));
+  const tempoDeVoo = (t: number) => Math.round(entre(st!.shot.first, st!.shot.last, dureza(t)));
+  function anguloDaRonda(t: number) {
+    const P0 = st!.keeper.periodFirst, P1 = st!.keeper.periodLast, R = st?.ramp ?? 100_000;
+    const ms = Math.max(0, t), b = (P1 - P0) / R;
+    if (ms <= R) return (2 * Math.PI * Math.log(1 + (b * ms) / P0)) / b;
+    return (2 * Math.PI * Math.log(P1 / P0)) / b + (2 * Math.PI * (ms - R)) / P1;
+  }
+  const goleiroEm = (t: number) => 0.5 + st!.keeper.amp * Math.sin(anguloDaRonda(t) + jogo.current.phase);
+  const alcance = (y: number) => st!.keeper.reach * (y > st!.keeper.highFrom ? st!.keeper.highReach : 1);
+
+  /** A ronda: o goleiro nunca para, mesmo enquanto o jogador pensa. */
+  function ronda() {
+    const g = jogo.current;
+    if (!g.viva) return;
+    const t = performance.now() - g.t0;
+    if (!g.voando) setGkX(goleiroEm(t));
+    setAperto(dureza(t));
+    requestAnimationFrame(ronda);
   }
 
-  /** Onde o dedo está, em medidas do campo (0..1 na largura, 0..1 na altura de baixo para cima). */
-  function ponto(e: React.PointerEvent) {
+  /** Um toque no campo = um chute naquele ponto. Sem mira, sem força: é tocar e a bola sai. */
+  function tocar(e: React.PointerEvent) {
+    const g = jogo.current;
+    if (!g.viva || g.voando || !st) return;
+    const t = performance.now() - g.t0;
+    if (t < g.liberado) return; // a bola ainda está voltando para o pé
     const r = campo.current!.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width, y: 1 - (e.clientY - r.top) / r.height };
+    const px = ((e.clientX - r.left) / r.width) * 100;
+    const py = ((e.clientY - r.top) / r.height) * 100;
+    // o toque vira um ponto na boca do gol (fora dela, é bola fora — e o jogo cobra isso)
+    const x = (px - GOL.x0) / (GOL.x1 - GOL.x0);
+    const y = (GOL.yBase - py) / (GOL.yBase - GOL.yTop);
+    chutar({ x: Math.max(-0.2, Math.min(1.2, x)), y: Math.max(0, Math.min(1.2, y)) }, t);
   }
 
-  function puxar(e: React.PointerEvent) {
-    if (!jogo.current.viva || voo) return;
-    jogo.current.puxando = ponto(e);
-    setMira({ x: 0.5, y: 0.35, power: 0.5 });
-  }
-  function arrastar(e: React.PointerEvent) {
-    const p0 = jogo.current.puxando;
-    if (!p0 || !jogo.current.viva || voo) return;
-    const p = ponto(e);
-    const dx = p.x - p0.x, dy = p.y - p0.y;
-    // o dedo aponta para onde a bola vai: o quanto ele sobe é a altura, e o tamanho do puxão é a força
-    const x = Math.max(0, Math.min(1, 0.5 + dx * 2.2));
-    const y = Math.max(0, Math.min(1, dy * 2.4));
-    const power = Math.max(0.15, Math.min(1, Math.hypot(dx, dy) * 2.6));
-    setMira({ x, y, power });
-  }
-  function soltar() {
+  function chutar(aim: { x: number; y: number }, t: number) {
     const g = jogo.current;
-    if (!g.puxando || !g.viva || !mira || voo) { g.puxando = null; return; }
-    g.puxando = null;
-    chutar(mira);
-  }
+    const T = tempoDeVoo(t);
+    const saiuDaRonda = goleiroEm(t + reacao(t));
+    const fora = aim.x < st!.aim.margin || aim.x > 1 - st!.aim.margin || aim.y > 1 - st!.aim.top;
+    const sobra = Math.max(0, T - reacao(t)) / 1000;
+    const anda = mergulho(t) * sobra;
+    const kx = fora ? saiuDaRonda : saiuDaRonda + Math.max(-anda, Math.min(anda, aim.x - saiuDaRonda));
+    const pegou = !fora && Math.abs(kx - aim.x) <= alcance(aim.y);
+    const why: 'gol' | 'defendeu' | 'fora' = fora ? 'fora' : pegou ? 'defendeu' : 'gol';
 
-  async function começar() {
-    try {
-      const r = await api.goleadaStart();
-      const g = jogo.current;
-      Object.assign(g, { i: 0, keepers: r.keepers, shots: [], viva: true, gols: 0, pedindo: false, puxando: null });
-      setSt(r.state); setBoard(r.scoreboard); setGols(0); setRecorde(false); setGk(r.keepers[0]); setGkX(0.5); setVoo(null); setMira(null); setFase('jogando');
-    } catch (e) { toast((e as Error).message, 'error'); }
-  }
-
-  /** Chuta: anima o voo (tempo real, não por quadro) e resolve com a mesma conta do servidor. */
-  function chutar(aim: { x: number; y: number; power: number }) {
-    const g = jogo.current;
-    const k = g.keepers[g.i];
-    if (!k) return;
-    const r = decide(k, aim);
-    g.shots.push({ i: k.i, x: Number(aim.x.toFixed(4)), y: Number(aim.y.toFixed(4)), power: Number(aim.power.toFixed(3)) });
-    setMira(null);
-    const t0 = performance.now();
+    g.voando = true;
+    g.shots.push({ i: g.shots.length + 1, x: Number(aim.x.toFixed(4)), y: Number(aim.y.toFixed(4)), t: Math.round(t) });
+    const inicio = performance.now();
     const passo = () => {
-      const p = Math.min(1, (performance.now() - t0) / r.T);
-      setVoo({ x: aim.x, y: aim.y, r: BOLA.r + (2.1 - BOLA.r) * p });
-      // o goleiro só sai do lugar depois da reação dele
-      const react = Math.min(1, Math.max(0, (p * r.T - k.react) / Math.max(1, r.T - k.react)));
-      setGkX(0.5 + k.lean * (st?.keeper.leanHelp ?? 0.45) * 0.5 + (r.kx - (0.5 + k.lean * (st?.keeper.leanHelp ?? 0.45) * 0.5)) * react);
+      const p = Math.min(1, (performance.now() - inicio) / T);
+      setVoo({ x: aim.x, y: aim.y, r: BOLA.r + (2 - BOLA.r) * p });
+      // ele só larga a ronda depois de reagir; daí mergulha no ponto de chegada
+      const tt = t + p * T;
+      const reagiu = Math.max(0, (p * T - reacao(t)) / Math.max(1, T - reacao(t)));
+      setGkX(reagiu <= 0 ? goleiroEm(tt) : saiuDaRonda + (kx - saiuDaRonda) * Math.min(1, reagiu));
       if (p < 1) { requestAnimationFrame(passo); return; }
       setVoo(null);
-      setAviso(r.why);
-      setTimeout(() => setAviso(null), 700);
-      if (r.goal) {
+      g.voando = false;
+      setAviso(why);
+      setTimeout(() => setAviso(null), 650);
+      if (why === 'gol') {
         g.gols += 1; setGols(g.gols);
         if (!recorde && g.gols > (st?.best ?? 0) && (st?.best ?? 0) > 0) setRecorde(true);
-        g.i += 1;
-        setGk(g.keepers[g.i] ?? null);
-        setGkX(0.5);
-        if (!g.pedindo && g.i >= g.keepers.length - 12) {
-          g.pedindo = true;
-          api.goleadaMore(g.keepers[g.keepers.length - 1].i + 1)
-            .then((res) => { g.keepers = [...g.keepers, ...res.keepers]; g.pedindo = false; })
-            .catch(() => { g.pedindo = false; });
-        }
+        g.liberado = t + T + (st?.gap ?? 360);
       } else {
         g.viva = false;
         terminar();
       }
     };
     requestAnimationFrame(passo);
+  }
+
+  async function começar() {
+    try {
+      const r = await api.goleadaStart();
+      const g = jogo.current;
+      Object.assign(g, { t0: performance.now(), phase: r.state.phase ?? 0, viva: true, gols: 0, liberado: 0, voando: false, shots: [] });
+      setSt(r.state); setBoard(r.scoreboard); setGols(0); setRecorde(false); setVoo(null); setAperto(0); setFase('jogando');
+      requestAnimationFrame(ronda);
+    } catch (e) { toast((e as Error).message, 'error'); }
   }
 
   async function terminar() {
@@ -166,7 +164,6 @@ export function GoleadaScreen() {
 
   const total = (board?.mine?.goals ?? 0) + (board?.rival?.goals ?? 0);
   const pctMine = total ? Math.round(((board?.mine?.goals ?? 0) / total) * 100) : 50;
-  const alvo = mira ?? null;
 
   return (
     <div className="app-frame relative flex min-h-full flex-col">
@@ -178,26 +175,24 @@ export function GoleadaScreen() {
         <div className="resbar text-[12px]"><img src="/ui/ico-ball.png" className="ico -ml-3 h-8 w-8" alt="" />{st?.best ?? 0}</div>
       </div>
 
-      <div ref={campo} onPointerDown={puxar} onPointerMove={arrastar} onPointerUp={soltar} onPointerCancel={soltar}
-        className="relative mx-3 touch-none select-none overflow-hidden rounded-2xl border-[3px] border-white/70 shadow-[0_4px_0_rgba(0,0,0,.18)]"
+      <div ref={campo} onPointerDown={tocar}
+        className="relative mx-3 cursor-crosshair touch-none select-none overflow-hidden rounded-2xl border-[3px] border-white/70 shadow-[0_4px_0_rgba(0,0,0,.18)]"
         style={{ aspectRatio: '1 / 1', background: 'linear-gradient(#9AE86B 0%, #7FD455 35%, #63C244 100%)' }}>
         <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
-          {/* gramado em perspectiva: faixas mais largas conforme chegam perto */}
-          {[0, 1, 2, 3, 4].map((i) => <rect key={i} x={0} y={40 + i * i * 2.4 + i * 6} width={100} height={3 + i} fill="#000" opacity={0.04} />)}
-          {/* grande área */}
-          <path d="M28 36 L14 62 L86 62 L72 36 Z" fill="none" stroke="#FFFFFF" strokeWidth={0.7} opacity={0.5} />
-          {/* gol: rede e traves */}
+          {[0, 1, 2, 3, 4].map((i) => <rect key={i} x={0} y={42 + i * i * 2.4 + i * 6} width={100} height={3 + i} fill="#000" opacity={0.04} />)}
+          <path d="M26 38 L10 66 L90 66 L74 38 Z" fill="none" stroke="#FFFFFF" strokeWidth={0.7} opacity={0.45} />
+
           <rect x={GOL.x0} y={GOL.yTop} width={GOL.x1 - GOL.x0} height={GOL.yBase - GOL.yTop} fill="#FFFFFF" opacity={0.16} />
           <g stroke="#FFFFFF" strokeWidth={0.28} opacity={0.55}>
-            {Array.from({ length: 13 }, (_, i) => <line key={`v${i}`} x1={GOL.x0 + i * 5.33} y1={GOL.yTop} x2={GOL.x0 + i * 5.33} y2={GOL.yBase} />)}
-            {Array.from({ length: 5 }, (_, i) => <line key={`h${i}`} x1={GOL.x0} y1={GOL.yTop + i * 6} x2={GOL.x1} y2={GOL.yTop + i * 6} />)}
+            {Array.from({ length: 14 }, (_, i) => <line key={`v${i}`} x1={GOL.x0 + i * 5.23} y1={GOL.yTop} x2={GOL.x0 + i * 5.23} y2={GOL.yBase} />)}
+            {Array.from({ length: 6 }, (_, i) => <line key={`h${i}`} x1={GOL.x0} y1={GOL.yTop + i * 5.2} x2={GOL.x1} y2={GOL.yTop + i * 5.2} />)}
           </g>
           <rect x={GOL.x0 - 1.4} y={GOL.yTop - 1.4} width={GOL.x1 - GOL.x0 + 2.8} height={2} rx={1} fill="#FFFFFF" />
           <rect x={GOL.x0 - 1.4} y={GOL.yTop - 1.4} width={2} height={GOL.yBase - GOL.yTop + 1.4} rx={1} fill="#FFFFFF" />
           <rect x={GOL.x1 - 0.6} y={GOL.yTop - 1.4} width={2} height={GOL.yBase - GOL.yTop + 1.4} rx={1} fill="#FFFFFF" />
 
-          {/* goleiro adversário, pequeno (está longe), com o uniforme do time da rodada */}
-          <g transform={`translate(${telaX(gkX)} ${GOL.yBase}) scale(0.42)`}>
+          {/* goleiro do adversário da rodada, sempre em movimento */}
+          <g transform={`translate(${telaX(gkX)} ${GOL.yBase}) scale(0.44)`}>
             <ellipse cx={0} cy={1.5} rx={9} ry={2} fill="#000" opacity={0.15} />
             <rect x={-15} y={-20} width={30} height={3.4} rx={1.7} fill={rivalCores.a} stroke="#1B2B3A" strokeWidth={0.9} />
             <circle cx={-15.5} cy={-18.4} r={3.4} fill="#F7F3E8" stroke="#1B2B3A" strokeWidth={0.9} />
@@ -209,26 +204,11 @@ export function GoleadaScreen() {
             <circle cx={0} cy={-22.6} r={4} fill="#F2A65A" stroke="#1B2B3A" strokeWidth={1} />
           </g>
 
-          {/* guia da mira enquanto o dedo puxa */}
-          {alvo && !voo && (() => {
-            // mira fora da boca do gol fica vermelha: o jogador aprende a margem sem levar susto
-            const dentro = st ? alvo.x >= st.aim.margin && alvo.x <= 1 - st.aim.margin && alvo.y <= 1 - st.aim.top : true;
-            const cor = dentro ? '#FFC63D' : '#E8503A';
-            return (
-              <g opacity={0.9}>
-                <line x1={BOLA.x} y1={BOLA.y} x2={telaX(alvo.x)} y2={telaY(alvo.y)} stroke="#FFFFFF" strokeWidth={0.8} strokeDasharray="3 3" opacity={0.75} />
-                <circle cx={telaX(alvo.x)} cy={telaY(alvo.y)} r={3.2} fill="none" stroke={cor} strokeWidth={1.2} />
-                <circle cx={telaX(alvo.x)} cy={telaY(alvo.y)} r={1} fill={cor} />
-              </g>
-            );
-          })()}
-
-          {/* a bola: parada no seu pé (grande) ou voando (encolhendo até o gol) */}
           {(() => {
             const b = voo ? { cx: telaX(voo.x), cy: telaY(voo.y), r: voo.r } : { cx: BOLA.x, cy: BOLA.y, r: BOLA.r };
             return (
               <g>
-                <ellipse cx={b.cx} cy={voo ? telaY(0) + 2 : BOLA.y + b.r * 0.9} rx={b.r * 0.85} ry={b.r * 0.28} fill="#000" opacity={0.15} />
+                <ellipse cx={b.cx} cy={voo ? GOL.yBase + 1.5 : BOLA.y + b.r * 0.9} rx={b.r * 0.85} ry={b.r * 0.28} fill="#000" opacity={0.15} />
                 <circle cx={b.cx} cy={b.cy} r={b.r} fill="#FFFFFF" stroke="#1B2B3A" strokeWidth={0.6} />
                 <circle cx={b.cx} cy={b.cy} r={b.r * 0.32} fill="#1B2B3A" />
                 {[0, 72, 144, 216, 288].map((a) => (
@@ -246,9 +226,10 @@ export function GoleadaScreen() {
             <span className="t-display text-[20px] leading-none">{gols}</span>
           </motion.div>
         )}
-        {fase === 'jogando' && mira && (
-          <div className="absolute bottom-2 left-1/2 h-2 w-24 -translate-x-1/2 overflow-hidden rounded-full bg-white/30">
-            <div className="h-full rounded-full bg-gold" style={{ width: `${Math.round(mira.power * 100)}%` }} />
+        {/* o quanto o goleiro já acelerou: sobe sozinho com o relógio */}
+        {fase === 'jogando' && (
+          <div className="absolute right-3 top-3 h-2 w-20 overflow-hidden rounded-full bg-white/30" title="Velocidade do goleiro">
+            <div className="h-full rounded-full bg-orange-deep transition-[width] duration-500" style={{ width: `${Math.round(aperto * 100)}%` }} />
           </div>
         )}
 
@@ -274,7 +255,7 @@ export function GoleadaScreen() {
 
       {fase === 'jogando' && (
         <p className="relative mt-2 px-6 text-center text-[12px] font-extrabold text-white/90">
-          {gk?.lean ? `O goleiro caiu para a ${gk.lean < 0 ? 'esquerda' : 'direita'} — chute no outro canto.` : 'Puxe o dedo na direção do gol e solte. Quanto maior o puxão, mais forte.'}
+          Toque no canto onde quer chutar. O goleiro não para — espere ele sair de lá.
         </p>
       )}
 
@@ -294,10 +275,10 @@ export function GoleadaScreen() {
       {fase === 'abrir' && (
         <div className="relative mx-3 mt-3 panel text-center text-navy-ink">
           <p className="text-[13px] font-bold leading-snug">
-            A bola está no seu pé. Puxe o dedo na direção do gol e solte para chutar — o goleiro {board?.rival ? `do ${board.rival.team.name}` : 'adversário'} fica mais rápido a cada gol.
+            Toque no canto do gol e a bola sai na hora. O goleiro {board?.rival ? `do ${board.rival.team.name}` : 'adversário'} vai de uma trave à outra sem parar — e fica mais rápido a cada segundo de jogo.
           </p>
           <p className="mt-1 text-[13px] font-bold leading-snug text-muted">
-            {st?.goalTarget ?? 10} gols seguidos valem <b className="text-grass-deep">1 gol para o {me.team.name}</b> e {fmt(1400)}. Cada gol ainda dá {st?.pointsPerGoal ?? 3} de nível, até {st?.maxPoints ?? 30}.
+            {st?.goalTarget ?? 10} gols seguidos valem <b className="text-grass-deep">1 gol para o {me.team.name}</b> e {fmt(1400)}. Cada gol ainda dá {st?.pointsPerGoal ?? 3} de nível, até {st?.maxPoints ?? 30}. Bola na trave ou por cima acaba a série.
           </p>
           <p className="mt-1 text-[12px] font-bold text-muted">Seu recorde: {st?.best ? `${st.best} ${st.best === 1 ? 'gol' : 'gols'} seguidos` : 'sem recorde ainda'}</p>
           {st?.finished && !st?.freePlay

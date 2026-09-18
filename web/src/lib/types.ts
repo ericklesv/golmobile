@@ -113,14 +113,19 @@ export interface TrailResult {
 
 export interface PartyResult { win: boolean; goal: boolean; text: string; segment: number; segments: string[]; prizes?: number[]; money: number; prize: number; bet: number; spins: number; max: number; left: number }
 /** Giros da roleta hoje (GET /api/play/party): usados, limite (VIP tem mais) e quantos faltam. */
-/** Goleada (minigame): o goleiro da bola nº i, já sorteado pelo servidor. `lean` = para que lado ele se jogou. */
-export interface GoleadaKeeper { i: number; react: number; speed: number; lean: -1 | 0 | 1 }
+/**
+ * Goleada (minigame): o goleiro é uma FUNÇÃO DO TEMPO (ronda de trave a trave, acelerando com o relógio).
+ * O servidor manda os números e a fase da ronda; a tela roda a mesma conta de lib/goleada.js para animar.
+ */
 export interface GoleadaState {
   day: number; nextAt: number; goalTarget: number; pointsPerGoal: number; maxPoints: number;
-  keeper: { reactFirst: number; reactLast: number; speedFirst: number; speedLast: number; ramp: number; afterRamp: number; reach: number; highReach: number; highFrom: number; leanHelp: number };
-  shot: { fast: number; slow: number };
+  keeper: { amp: number; periodFirst: number; periodLast: number; reactFirst: number; reactLast: number; speedFirst: number; speedLast: number; reach: number; highReach: number; highFrom: number };
+  shot: { first: number; last: number };
   aim: { margin: number; top: number };
-  gap: number; playing: boolean; finished: boolean; freePlay: boolean;
+  gap: number; ramp: number;
+  /** Fase da ronda desta partida (null fora de jogo). */
+  phase: number | null;
+  playing: boolean; finished: boolean; freePlay: boolean;
   goals: number; points: number; best: number; record: boolean;
 }
 /** Placar coletivo: gols do meu time contra o adversário da rodada. */

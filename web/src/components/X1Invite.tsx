@@ -12,7 +12,7 @@ import { money as fmt } from '../lib/format';
 
 /**
  * Convite do X1 (pedido do dono, 14/09/2026): quando alguém desafia, quem está nas telas com as abas vê um
- * cartão pequeno embaixo do topo — "Fulano te chamou para o X1: Futebol de Botão" — por 10 s. Só existe
+ * cartão pequeno acima das abas — "Fulano te chamou para o X1: Futebol de Botão" — por 10 s. Só existe
  * dentro da Layout, então nunca aparece no meio de minigame, chute ou pênalti. Some quando alguém aceita
  * (o servidor avisa) ou quando o tempo acaba. Conexão leve: /api/ws/x1?mode=lobby.
  */
@@ -52,10 +52,12 @@ export function X1InviteWatcher() {
   const accept = () => { if (!inv) return; const id = inv.id; setInv(null); nav(`/x1?aceitar=${id}`); };
 
   return (
-    <div className="pointer-events-none fixed left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 px-3" style={{ top: 'calc(var(--sat) + 90px)' }}>
+    /* Fica EM BAIXO, logo acima das abas: no topo ele tapava os cards de chute, que passaram a abrir a tela
+       inicial (dono, 18/09/2026: "o desafio tá ficando na frente dos chutes"). */
+    <div className="pointer-events-none fixed left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 px-3" style={{ bottom: 'calc(var(--sab) + 78px)' }}>
       <AnimatePresence>
         {inv && (
-          <motion.div key={inv.id} role="alert" initial={{ y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -16, opacity: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+          <motion.div key={inv.id} role="alert" initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 16, opacity: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 28 }}
             className="card-white pointer-events-auto mx-auto flex max-w-[420px] items-center gap-2" style={{ borderRadius: 16 }}>
             <div className="relative shrink-0">
               <Avatar url={inv.from.avatarUrl} size={36} />

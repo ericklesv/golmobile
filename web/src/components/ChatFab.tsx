@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuth } from '../store/auth';
 import { chatLastSeen } from '../screens/Chat';
 
 /** Botão flutuante do chat com contador de mensagens novas (sala geral), acima da barra de abas. */
 export function ChatFab() {
   const nav = useNavigate();
+  const meId = useAuth((s) => s.me?.id);
   const [unread, setUnread] = useState(0);
   useEffect(() => {
     let alive = true;
-    const check = () => api.chat('geral', chatLastSeen()).then((r) => alive && setUnread(r.messages.length)).catch(() => {});
+    // A MINHA mensagem não é novidade para mim: o contador só conta as dos outros (dono, 18/09/2026).
+    const check = () => api.chat('geral', chatLastSeen())
+      .then((r) => alive && setUnread(r.messages.filter((m) => m.user.id !== meId).length))
+      .catch(() => {});
     check();
     const iv = setInterval(check, 20_000);
     return () => { alive = false; clearInterval(iv); };
-  }, []);
+  }, [meId]);
   return (
     <button onClick={() => nav('/chat')} aria-label="Chat" className="no-drag fixed right-3 z-40 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-sky shadow-[0_6px_0_#0B2D6B,0_10px_20px_rgba(0,0,0,0.4)] transition active:translate-y-1 active:shadow-[0_2px_0_#0B2D6B]" style={{ bottom: 'calc(var(--sab) + 92px)', left: 'min(calc(50% + 240px - 68px), calc(100% - 68px))' }}>
       <img src="/ui/ico-chat.png" className="h-8 w-8" alt="" />

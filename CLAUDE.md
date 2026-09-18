@@ -372,7 +372,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   preto tocar no vermelho").
 - **Bots "quase reais"** (pedido do dono, 18/09/2026: "preencher os times que estão sem ninguém na Série A", com nomes
   reais, gols espalhados pelo dia, "não podem ficar na cara que são bots"; `services/bots.js`, lista em `data/bots.js`
-  — **os nicks precisam do OK do dono antes do `criar`** (pedido dele) —, números em `BOTS` de `rules.js`, `User.isBot`/`botJson`, migração 0042):
+  — **os nicks precisam do OK do dono antes do `criar`** (pedido dele; os 27 primeiros foram validados e criados
+  em 18/09/2026, ids 187–213: 20 na Série A, 5 na B, 2 na C) —, números em `BOTS` de `rules.js`, `User.isBot`/`botJson`, migração 0042):
   cada bot tem uma **persona** (casual/regular/assíduo, janelas do dia — madrugada/manhã/almoço/tarde/noite —, chance
   de usar pênalti/falta/trilha, onde gasta ponto de nível, se resgata a Presença) e ganha um **plano por dia** (folga
   em 30/12/5 % dos dias; senão 1–4 sessões de 12–130 min em horários sorteados nas janelas), gravado em `botJson.plan`

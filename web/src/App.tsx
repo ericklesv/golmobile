@@ -133,6 +133,9 @@ export default function App() {
         <Route path="/estatisticas" element={<Private><StatsScreen /></Private>} />
         <Route path="/camisas" element={<Private><CamisasScreen /></Private>} />
         <Route path="/ganha-ou-perde" element={<Private><GanhaPerdeScreen /></Private>} />
+        {/* PenalCup (dono, 18/09/2026: era "Goleada"). O endereço antigo segue valendo: quem tinha o
+            link salvo ou o app aberto não cai em tela em branco. */}
+        <Route path="/penalcup" element={<Private><GoleadaScreen /></Private>} />
         <Route path="/goleada" element={<Private><GoleadaScreen /></Private>} />
         <Route path="/x1" element={<Private><X1Screen /></Private>} />
         <Route path="/futprego" element={<Private><X1Screen /></Private>} />{/* nome antigo (links e convites de antes do X1) */}

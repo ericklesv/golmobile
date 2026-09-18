@@ -1,4 +1,8 @@
 /**
+ * PenalCup (dono, 18/09/2026: "mude o nome do GOLEADA para PenalCup"). O NOME DE TELA é PenalCup;
+ * o id interno segue `GOLEADA` — é valor do enum `KickKind`, chave de `DailyGame`, tabela `GoleadaTeam` e
+ * coluna `User.goleadaBest`, com gols já gravados em produção: trocar isso seria migração sem ganho.
+ *
  * Minigame GOLEADA — você é o BATEDOR (vira às 22h). Porte do "Mini Cup" do Google, pedido do dono em
  * 17/09/2026 ("monte o mais próximo possível do mini cup sem perder a identidade do jogo"; e ele corrigiu
  * a leitura do vídeo: "no minicup você é o jogador e não o goleiro"). A matemática está em lib/goleada.js.
@@ -30,7 +34,7 @@ import { liveMatchForTeam, liveRound } from './league.js';
 import { teamView } from './view.js';
 
 const HOUR = RESET_HOUR.GOLEADA;
-const DONE = () => `Você já jogou a Goleada hoje. Ela renova ${resetLabel('GOLEADA')}!`;
+const DONE = () => `Você já jogou o PenalCup hoje. Ele renova ${resetLabel('GOLEADA')}!`;
 // Teste local (nunca em produção): joga quantas vezes quiser.
 const FREE = process.env.NODE_ENV !== 'production' && process.env.MINIGAMES_LIVRES === '1';
 
@@ -97,7 +101,7 @@ export function goleadaStart(userId) {
     if (row.finishedAt) ctx.patch = { finishedAt: null, won: false }; // teste local: recomeça
     const g = MINIGAMES.find((m) => m.id === 'GOLEADA');
     const user = await tx.user.findUnique({ where: { id: userId } });
-    if (g && levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `A Goleada libera no nível ${g.unlock}.`);
+    if (g && levelOf(user).lvl < g.unlock) throw new GameError(403, 'locked', `O PenalCup libera no nível ${g.unlock}.`);
     if (!st.seed || st.over) Object.assign(st, { seed: `${userId}:${Date.now()}:${randomInt(0, 2 ** 31)}`, goals: 0, points: 0, over: false, record: false });
     return {};
   });
@@ -113,7 +117,7 @@ export async function goleadaEnd(userId, body = {}) {
   if (!chutes) throw badRequest('Série não confere (sem chutes).');
   return withGoleada(userId, async (ctx) => {
     const { st, tx, now } = ctx;
-    if (!st.seed || st.over) throw new GameError(409, 'no-run', ctx.row.finishedAt ? DONE() : 'Comece a Goleada.');
+    if (!st.seed || st.over) throw new GameError(409, 'no-run', ctx.row.finishedAt ? DONE() : 'Comece o PenalCup.');
     const r = judge(st.seed, chutes);
     const user = await loadUser(tx, userId);
     const antes = user.goleadaBest ?? 0;
@@ -137,7 +141,7 @@ export async function goleadaEnd(userId, body = {}) {
     let goal = null;
     if (r.goals >= C.goalTarget && !ctx.row.won) {
       const match = await liveMatchForTeam(user.teamId, tx);
-      const frase = r.goals >= 20 ? `fez ${r.goals} gols seguidos na Goleada e não quis mais parar` : `emendou ${r.goals} gols seguidos na Goleada`;
+      const frase = r.goals >= 20 ? `fez ${r.goals} gols seguidos no PenalCup e não quis mais parar` : `emendou ${r.goals} gols seguidos no PenalCup`;
       const { text, match: m } = await applyResult(tx, user, { kind: 'GOLEADA', goal: true, now, match, money: 0, phrase: frase });
       goal = { text, match: m ? { id: m.id, homeGoals: m.homeGoals, awayGoals: m.awayGoals } : null };
     }

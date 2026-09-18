@@ -407,7 +407,7 @@ export const MINIGAMES = [
   { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: premio('HATTRICK', 'a cada gol, + até 30 de nível') },
   { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: premio('FALTAPRO', 'até 20 de nível + R$ 50 por alvo') },
   { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
-  { id: 'GOLEADA', name: 'Goleada', unlock: 3, daily: true, route: '/goleada', icon: '/ui/ico-ball.png', desc: 'Chute e faça o máximo de gols seguidos: a cada um, o goleiro fica melhor.', reward: premio('GOLEADA', 'até 30 de nível') },
+  { id: 'GOLEADA', name: 'PenalCup', unlock: 3, daily: true, route: '/penalcup', icon: '/ui/ico-ball.png', desc: 'Chute e faça o máximo de gols seguidos: a cada um, o goleiro fica melhor.', reward: premio('GOLEADA', 'até 30 de nível') },
   { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: premio('GANHAPERDE', '5 de nível a cada acerto') },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
   { id: 'FRANGACO', name: 'Frangaço', unlock: 10, daily: true, route: '/frangaco', icon: '/ui/ico-crown_silver.png', desc: 'Duelo de pênaltis contra um clube da sua série: bata 5 e defenda 5. Mata-mata de 4 fases.', reward: 'gol + R$ 500 se for campeão', soon: true }, // DESATIVADO (dono, 14/09/2026: "muito bugado") — card EM BREVE e /api/frangaco/* recusa
@@ -497,7 +497,7 @@ KIND_LABEL.GANHAPERDE = 'Ganha ou Perde';
 // fora, acabou o dia. Números em lib/goleada.js; o placar coletivo do time em services/goleada.js.
 RESET_HOUR.GOLEADA = 22;
 DAILY_GAMES.push('GOLEADA');
-KIND_LABEL.GOLEADA = 'Goleada';
+KIND_LABEL.GOLEADA = 'PenalCup'; // o nome de tela (dono, 18/09/2026); o id GOLEADA fica, é enum e dado no banco
 // X1 (jogos 1x1 ao vivo — dono, 15/09/2026: "jogos X1 rotativos, cada dia 1 jogo para não ficar
 // enjoativo"): um jogo por dia, FutPrego e Futebol de Botão se alternando (x1GameOf); o jogo troca às 19h
 // de Brasília, JUNTO com o fechamento da rodada (X1.switchHour — dono, 15/09/2026: "os jogos eram para mudar junto

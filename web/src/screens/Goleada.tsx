@@ -331,7 +331,7 @@ export function GoleadaScreen() {
     <div className="app-frame relative flex min-h-full flex-col">
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-3" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12" aria-label="Voltar"><img src="/ui/pi-back.png" className="h-5 w-5" alt="" /></button>
-        <div className="ribbon ribbon-green">GOLEADA</div>
+        <div className="ribbon ribbon-green">PenalCup</div>
         <div className="trap trap-blue text-[12px] tabular-nums">recorde {st?.best ?? 0}</div>
       </div>
 
@@ -428,7 +428,7 @@ export function GoleadaScreen() {
             </p>
             <p className="mt-1 text-[12px] font-bold text-muted">Seu recorde: {st?.best ? `${st.best} ${st.best === 1 ? 'gol' : 'gols'} seguidos` : 'sem recorde ainda'}</p>
             {st?.finished && !st?.freePlay
-              ? <p className="mt-2 text-[13px] font-extrabold text-orange-deep">Você já jogou hoje. A Goleada renova às 22h.</p>
+              ? <p className="mt-2 text-[13px] font-extrabold text-orange-deep">Você já jogou hoje. O PenalCup renova às 22h.</p>
               : <button onClick={começar} className="btn btn-green btn-lg mt-3 w-full">Bater a primeira</button>}
           </div>
         )}

@@ -1,4 +1,5 @@
 /**
+ * PenalCup — nome de tela desde 18/09/2026; o id interno continua GOLEADA (enum e banco).
  * GOLEADA — porte do "Mini Cup" do Google (dono, 17/09/2026). Você é o BATEDOR: a bola fica no seu pé e
  * você **puxa o dedo como na Falta PRO** para chutar (dono, 18/09/2026: "a ideia não é clicar onde você
  * quer chutar a bola, é fazer o movimento do chute assim como no falta pro"; e antes: "o chute tem que ser

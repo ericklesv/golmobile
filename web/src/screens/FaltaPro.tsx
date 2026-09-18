@@ -123,6 +123,9 @@ export function Scene({ kick, flight, gkKit, wallKit }: { kick: FaltaProKick; fl
     if (wallG.current) {
       wallG.current.position.y = flight && flight.res.flight.wall.jump ? Math.sin(clamp01((t - 0.08) / 0.55) * Math.PI) * 0.5 : 0;
     }
+    // os clipes dive/save_low terminam DEITADOS e seguram o último quadro; sem isto ele
+    // ficava no chão nas cobranças seguintes (mesmo erro achado na Goleada, 18/09/2026)
+    if (!flight && started.current !== null) { started.current = null; kh.current?.pose('idle'); }
     if (flight && started.current !== flight.t0) { // pose do goleiro (clipes procedurais)
       started.current = flight.t0;
       const cross = flight.res.flight.cross, r = flight.res.result;

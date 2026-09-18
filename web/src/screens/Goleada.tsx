@@ -75,9 +75,12 @@ function Cena({ jogo, st, kit }: { jogo: React.MutableRefObject<Estado>; st: Gol
     if (!v) {
       const x01 = g.viva ? ronda(t) : 0.5;
       k.position.set(worldX(x01), 0, 0.4);
+      k.scale.x = 1; // desfaz o espelho do mergulho anterior
       b.position.set(0, 0.21, BOLA_Z);
       b.rotation.set(0, 0, 0);
-      mergulhou.current = '';
+      // os clipes dive/save_low TERMINAM deitados e seguram o último quadro: sem isto ele
+      // ficava estatelado no gramado a série inteira (dono, 18/09/2026)
+      if (mergulhou.current) { mergulhou.current = ''; gk.current?.pose('idle'); }
       camera.position.lerp(new THREE.Vector3(0, 1.75, 15.5), 0.08);
       camera.lookAt(0, 1.3, 0);
       return;
@@ -89,15 +92,16 @@ function Cena({ jogo, st, kit }: { jogo: React.MutableRefObject<Estado>; st: Gol
     if (e < react) {
       k.position.x = worldX(ronda(t)); // ainda não viu a bola: segue na ronda
     } else {
+      const destino = worldX(v.kx), saida = worldX(v.from);
+      const lado = Math.sign(destino - saida) || 1;
       if (mergulhou.current !== String(v.t0)) {
         mergulhou.current = String(v.t0);
         const longe = Math.abs(v.kx - v.from) > 0.05;
+        k.scale.x = lado; // o clipe voa sempre para +x: espelha quando a bola vai para a esquerda
         gk.current?.pose(longe ? (v.alto ? 'dive' : 'save_low') : 'jump');
       }
       // o clipe do mergulho já leva o corpo ~0,9 m para o lado; o grupo completa o alcance
       const q = ease.out(clamp01((e - react) / Math.max(1, v.T - react)));
-      const destino = worldX(v.kx), saida = worldX(v.from);
-      const lado = Math.sign(destino - saida) || 1;
       k.position.x = saida + (destino - lado * 0.9 - saida) * q;
     }
 

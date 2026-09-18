@@ -13,10 +13,8 @@ export interface Team {
 
 export interface Cooldown {
   cooldownMs: number; remainingMs: number; readyAt: number; unlocked: boolean;
-  /** Chute de prata (bate 2x) e de ouro (bate 3x): a bola desta recarga, quantas batidas ainda dá e o total. */
-  ball?: 'PRATA' | 'OURO' | null; left?: number; kicks?: number;
-  /** true = ainda sobrou batida desta bola; pode bater na hora, sem esperar a recarga. */
-  free?: boolean;
+  /** Chute de prata e de ouro: a bola desta recarga e quanto o gol vale (prata 2, ouro 3; normal 1). */
+  ball?: 'PRATA' | 'OURO' | null; goals?: number;
 }
 
 /** Habilidades (SKILLS em rules.js), na ordem da árvore: Recarga, Pontaria, Chute e Sorte. */
@@ -160,7 +158,7 @@ export interface Meta {
   skills: SkillDef[];
   skillCost: { point: number };
   /** Chute de prata/ouro: chance base, teto e quantas batidas cada bola dá. */
-  ball?: { kinds: string[]; base: number; max: number; goldShare: number; kicks: { PRATA: number; OURO: number }; label: Record<string, string> };
+  ball?: { kinds: string[]; base: number; max: number; goldShare: number; goals: { PRATA: number; OURO: number }; label: Record<string, string> };
   /** Piso de recarga de todo chute (ms) e nerf desligado desde 16/09/2026. */
   cooldownMin: number; nerfOff: boolean;
   levels: { lvl: number; name: string; goals: number; skill: string | null }[];

@@ -114,7 +114,7 @@ export function PenaltyScreen() {
   const [result, setResult] = useState<KickResult | null>(null);
   const [overlay, setOverlay] = useState(false);
   const rem = useCountdown(me.cooldowns.PENALTY.readyAt);
-  const ready = (rem <= 0 || !!me.cooldowns.PENALTY.free) && me.cooldowns.PENALTY.unlocked; // bola de prata/ouro: as batidas que sobraram saem na hora
+  const ready = rem <= 0 && me.cooldowns.PENALTY.unlocked;
   const captcha = useCaptcha(me.captchaRequired);
   const [oppKit, setOppKit] = useState<KitColors | null>(null);
   useEffect(() => { preloadModels(); }, []);
@@ -162,7 +162,7 @@ export function PenaltyScreen() {
       <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-3" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
         <div className="ribbon ribbon-yellow">PÊNALTI</div>
-        <div className="trap trap-blue text-[12px]">{ready ? <span className={me.cooldowns.PENALTY.ball ? 't-gold' : 't-green'}>{me.cooldowns.PENALTY.ball ? `${me.cooldowns.PENALTY.ball} · ${me.cooldowns.PENALTY.left}x` : 'PRONTO'}</span> : <Countdown readyAt={me.cooldowns.PENALTY.readyAt} />}</div>
+        <div className="trap trap-blue text-[12px]">{ready ? <span className={me.cooldowns.PENALTY.ball ? 't-gold' : 't-green'}>{me.cooldowns.PENALTY.ball ? `${me.cooldowns.PENALTY.ball} · VALE ${me.cooldowns.PENALTY.goals ?? 1}x` : 'PRONTO'}</span> : <Countdown readyAt={me.cooldowns.PENALTY.readyAt} />}</div>
       </div>
       <div className="h-[62vh] w-full">
         <Canvas shadows camera={{ position: [0, 1.7, 16], fov: 48 }} dpr={[1, 1.75]} gl={{ antialias: true }} style={{ background: 'linear-gradient(#46b4ff, #1f7ae6)' }}>

@@ -94,7 +94,7 @@ export const SKILLS = [
   { key: 'CD', name: 'Recarga', unit: 'tempo', icon: 'ico-energy', desc: 'Tira 5 s da recarga do chute direto, do pênalti e da falta (a trilha tem a dela, que cai com os níveis).', max: SKILL_STEPS, perLevel: 5_000 },
   { key: 'AIM', name: 'Pontaria', unit: 'acerto', kind: 'PENALTY', icon: 'ico-target', desc: 'Aumenta o acerto do pênalti.', max: SKILL_STEPS, perLevel: 0.025 },
   { key: 'SHOT', name: 'Chute', unit: 'acerto', kind: 'FOUL', icon: 'ico-ball', desc: 'Aumenta o acerto da falta.', max: SKILL_STEPS, perLevel: 0.025 },
-  { key: 'LUCK', name: 'Sorte', unit: 'sorte', icon: 'ico-star01_s', desc: 'Aumenta a chance de vir pênalti, falta ou trilha de prata (bate 2x) ou de ouro (bate 3x).', max: SKILL_STEPS, perLevel: 0.0039 },
+  { key: 'LUCK', name: 'Sorte', unit: 'sorte', icon: 'ico-star01_s', desc: 'Aumenta a chance de vir pênalti, falta ou trilha de prata (o gol vale 2) ou de ouro (vale 3).', max: SKILL_STEPS, perLevel: 0.0039 },
 ];
 export const SKILL_BY_KEY = Object.fromEntries(SKILLS.map((s) => [s.key, s]));
 export const SKILL_FIELD = { CD: 'skillCd', AIM: 'skillAim', SHOT: 'skillShot', LUCK: 'skillLuck' };
@@ -105,14 +105,17 @@ export const CHANCE_CAP = { PENALTY: 0.90, FOUL: 0.80 };
 // ─── Chute de prata e de ouro (dono, 17/09/2026, resgatando o BRGOL) ───────────────────────────────────────
 // "Todos os jogadores têm 2% de chance de vir um chute de prata, 1% de chance de vir um chute de ouro. Isso
 // desde o início do jogo. Pode upar para no máximo 10%, nunca mais que isso" — as duas SOMADAS chegam a 10%,
-// mantendo a prata com o dobro da chance do ouro. Prata = bate 2 vezes na mesma recarga; ouro = 3 vezes
-// (cada batida pode entrar ou não). Só no pênalti, na falta e na trilha — o chute direto fica de fora.
+// mantendo a prata com o dobro da chance do ouro.
+// **Uma batida só, que VALE mais** (dono, 18/09/2026: "ao invés de você chutar 2x 3x, você chuta 1, se
+// acertar conta as 2x ou 3x"): a bola de prata faz o gol valer 2 e a de ouro, 3 — no placar da partida, na
+// artilharia, no nível e no dinheiro. Errou, acabou (antes eram 2 ou 3 batidas na mesma recarga).
+// Só no pênalti, na falta e na trilha — o chute direto fica de fora.
 export const BALL = {
   kinds: ['PENALTY', 'FOUL', 'TRAIL'],
   base: 0.03, // 2% prata + 1% ouro para todo mundo, desde o nível 0
   max: 0.10, // teto com a Sorte no máximo
   goldShare: 1 / 3, // um terço da chance é de ouro, dois terços de prata
-  kicks: { PRATA: 2, OURO: 3 },
+  goals: { PRATA: 2, OURO: 3 }, // quanto o gol vale com cada bola
   label: { PRATA: 'de prata', OURO: 'de ouro' },
 };
 /** Chance de vir chute especial (prata + ouro) para este jogador. */

@@ -51,7 +51,7 @@ game.get('/meta', cached(10000), handle(async () => {
       cap: unit === 'tempo' ? COOLDOWN_MIN : unit === 'sorte' ? BALL.max : CHANCE_CAP[kind],
     })),
     skillCost: SKILL_COST, // só ponto de nível (dono, 17/09/2026)
-    ball: BALL, // chute de prata (2 batidas) e de ouro (3 batidas)
+    ball: BALL, // chute de prata (o gol vale 2) e de ouro (vale 3)
     cooldownMin: COOLDOWN_MIN, // piso de 4:30 em todos os chutes
     partySegments: PARTY_SEGMENTS,
     partyPrizes: PARTY_PRIZES, // quanto paga cada casa da roleta (0 = ERROU)

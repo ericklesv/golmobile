@@ -31,7 +31,7 @@ export function cooldownsView(user, now = Date.now()) {
     const cd = cooldownFor(user, kind, now);
     const last = user[LAST_FIELD[kind]] ? new Date(user[LAST_FIELD[kind]]).getTime() : 0;
     const remaining = Math.max(0, last + cd - now);
-    // `ball` deixa o card prateado/dourado (e diz quantas batidas a recarga vale)
+    // `ball` deixa o card prateado/dourado e diz quanto o gol vale (prata 2, ouro 3)
     out[kind] = { cooldownMs: cd, remainingMs: remaining, readyAt: last + cd, unlocked: levelOf(user).lvl >= UNLOCK_LEVEL[kind], ...ballView(user, kind) };
   }
   return out;

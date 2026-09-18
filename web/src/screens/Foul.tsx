@@ -142,7 +142,7 @@ export function FoulScreen() {
   const [result, setResult] = useState<KickResult | null>(null);
   const [overlay, setOverlay] = useState(false);
   const rem = useCountdown(me.cooldowns.FOUL.readyAt);
-  const ready = (rem <= 0 || !!me.cooldowns.FOUL.free) && me.cooldowns.FOUL.unlocked; // bola de prata/ouro: as batidas que sobraram saem na hora
+  const ready = rem <= 0 && me.cooldowns.FOUL.unlocked;
   const captcha = useCaptcha(me.captchaRequired);
   const [opp, setOpp] = useState<{ gk: KitColors; wall: KitColors } | null>(null);
   useEffect(() => { preloadModels(); }, []);
@@ -184,7 +184,7 @@ export function FoulScreen() {
       <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-3" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
         <div className="ribbon ribbon-blue">FALTA</div>
-        <div className="trap trap-orange text-[12px]">{ready ? <span className={me.cooldowns.FOUL.ball ? 't-gold' : 't-green'}>{me.cooldowns.FOUL.ball ? `${me.cooldowns.FOUL.ball} · ${me.cooldowns.FOUL.left}x` : 'PRONTO'}</span> : <Countdown readyAt={me.cooldowns.FOUL.readyAt} />}</div>
+        <div className="trap trap-orange text-[12px]">{ready ? <span className={me.cooldowns.FOUL.ball ? 't-gold' : 't-green'}>{me.cooldowns.FOUL.ball ? `${me.cooldowns.FOUL.ball} · VALE ${me.cooldowns.FOUL.goals ?? 1}x` : 'PRONTO'}</span> : <Countdown readyAt={me.cooldowns.FOUL.readyAt} />}</div>
       </div>
       <div className="h-[62vh] w-full">
         <Canvas shadows camera={{ position: [3.5, 2.4, 26], fov: 50 }} dpr={[1, 1.75]} gl={{ antialias: true }} style={{ background: 'linear-gradient(#46b4ff, #1f7ae6)' }}>

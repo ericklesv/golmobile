@@ -80,28 +80,47 @@ check(eTeto?.status === 400 && (await U(alto.id)).skillAim === R.SKILL_STEPS, `P
 check(R.shotChance(await U(alto.id), 'PENALTY') === R.CHANCE_CAP.PENALTY, `e no último degrau ela entrega exatamente ${pct(R.CHANCE_CAP.PENALTY)}`);
 check(R.SKILL_BY_KEY.AIM.max + R.SKILL_BY_KEY.SHOT.max === 36, 'os dois acertos no máximo custam 36 pontos (antes eram 18 — o dono chegou lá em 4 dias)');
 
-// ── chute de prata e de ouro: a recarga rende 2 e 3 batidas
+// ── chute de prata e de ouro: UMA batida, que vale 2 e 3 gols (dono, 18/09/2026)
 const sortudo = await mk({ goalsTotal: 5000, skillLuck: R.SKILL_STEPS });
 // força a bola da próxima recarga para conferir o fluxo sem depender do sorteio
 const forca = (id, kind, bola) => prisma.$executeRawUnsafe('UPDATE "User" SET "ballNext" = jsonb_set(COALESCE("ballNext", \'{}\'::jsonb), ARRAY[$2], $3::jsonb) WHERE id = $1', id, kind, JSON.stringify(bola));
-for (const [bola, batidas] of [['PRATA', 2], ['OURO', 3]]) {
-  await prisma.user.update({ where: { id: sortudo.id }, data: { lastPenaltyAt: null, ballLeft: {} } });
+for (const [bola, vale] of [['PRATA', 2], ['OURO', 3]]) {
+  await prisma.user.update({ where: { id: sortudo.id }, data: { lastPenaltyAt: null } });
   await forca(sortudo.id, 'PENALTY', bola);
-  const antes = await U(sortudo.id);
-  check(ballView(antes, 'PENALTY').ball === bola && ballView(antes, 'PENALTY').left === batidas, `card do pênalti mostra a bola ${bola} valendo ${batidas} batidas antes de bater`);
-  const rs = [];
-  for (let i = 0; i < batidas; i++) rs.push(await penalty(sortudo.id, 'left')); // nenhuma pode dar 429
-  check(rs.length === batidas && rs.every((r) => r.ball === bola), `bateu as ${batidas} batidas da bola ${bola} sem esperar recarga`);
-  check(rs.at(-1).ballLeft === 0, 'na última batida a bola acaba');
+  const card = ballView(await U(sortudo.id), 'PENALTY');
+  check(card.ball === bola && card.goals === vale, `card do pênalti mostra a bola ${bola} valendo ${vale} gols antes de bater`);
+
+  // bate até sair gol E erro: em toda batida o que contou tem de bater com o que a bola vale
+  let viuGol = false, viuErro = false;
+  for (let i = 0; i < 30 && !(viuGol && viuErro); i++) {
+    await prisma.user.update({ where: { id: sortudo.id }, data: { lastPenaltyAt: null } });
+    await forca(sortudo.id, 'PENALTY', bola);
+    const gAntes = (await U(sortudo.id)).goalsTotal;
+    const r = await penalty(sortudo.id, 'left');
+    const gDepois = (await U(sortudo.id)).goalsTotal;
+    const linhasGol = await prisma.goal.count({ where: { userId: sortudo.id, kind: 'PENALTY', ball: bola } });
+    if (r.goal && !viuGol) {
+      check(r.ballGoals === vale && gDepois - gAntes === vale, `gol com a bola ${bola}: contou ${vale} gols de uma vez`);
+      check(linhasGol === vale, `e deixou ${vale} linhas na artilharia (é o que o ranking conta)`);
+      check(r.money === R.MONEY.PENALTY * vale, `o dinheiro veio ${vale}x também: R$ ${r.money}`);
+    }
+    if (!r.goal && !viuErro) check(gDepois === gAntes && linhasGol === 0, `errou a bola ${bola}: não contou gol nenhum (uma batida só, sem repique)`);
+    if (r.goal) viuGol = true; else viuErro = true;
+    await prisma.goal.deleteMany({ where: { userId: sortudo.id } });
+  }
+  check(viuGol, `a bola ${bola} chegou a sair em gol nas 30 tentativas`);
+
+  // batida ÚNICA: a seguinte já espera a recarga (antes a prata/ouro davam batida de graça)
+  await prisma.user.update({ where: { id: sortudo.id }, data: { lastPenaltyAt: null } });
+  await forca(sortudo.id, 'PENALTY', bola);
+  await penalty(sortudo.id, 'left');
   const e429 = await err(penalty(sortudo.id, 'left'));
-  check(e429?.code === 'cooldown', `a ${batidas + 1}ª batida cai na recarga normal ("${e429?.message ?? ''}".trim() = recarga)`);
-  const gols = rs.filter((r) => r.goal).length;
-  const linhas = await prisma.goal.findMany({ where: { userId: sortudo.id, kind: 'PENALTY', ball: bola } });
-  check(linhas.length === gols, `os gols dessa bola ficaram marcados como ${bola} (${gols} de ${batidas} entraram)`);
+  check(e429?.code === 'cooldown', `a 2ª batida da bola ${bola} cai na recarga normal ("${(e429?.message ?? '').trim()}")`);
   await prisma.goal.deleteMany({ where: { userId: sortudo.id } });
 }
+
 // a bola da próxima recarga é sorteada sozinha ao gastar a recarga
-await prisma.user.update({ where: { id: sortudo.id }, data: { lastFoulAt: null, ballLeft: {}, ballNext: {} } });
+await prisma.user.update({ where: { id: sortudo.id }, data: { lastFoulAt: null, ballNext: {} } });
 await foul(sortudo.id, 'over');
 const depois = await U(sortudo.id);
 check('FOUL' in (depois.ballNext ?? {}), 'ao bater, o servidor já sorteia a bola da PRÓXIMA recarga (é ela que pinta o card)');
@@ -124,7 +143,7 @@ const ladroesDaUltima = async (id) => {
   // a trilha é sorteada ao começar; se a primeira escolha já for ladrão a trilha acaba e o layout some,
   // então tenta de novo até pegar uma que continuou viva
   for (let i = 0; i < 15; i++) {
-    await prisma.user.update({ where: { id }, data: { lastTrailAt: null, trailState: null, ballLeft: {}, ballNext: {} } });
+    await prisma.user.update({ where: { id }, data: { lastTrailAt: null, trailState: null, ballNext: {} } });
     await trailPick(id, 0);
     const st = (await U(id)).trailState;
     if (st?.layout) return st.layout[linhaFinal].filter(Boolean).length;

@@ -30,7 +30,7 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
   const me = useAuth((s) => s.me)!;
   const cd = me.cooldowns[t.id];
   const rem = useCountdown(cd.readyAt);
-  const ready = rem <= 0 || !!cd.free; // sobrou batida da bola de prata/ouro: bate na hora
+  const ready = rem <= 0;
   const progress = cd.cooldownMs ? 1 - rem / cd.cooldownMs : 1;
   const nav = useNavigate();
   const meta = useAuth((s) => s.meta);
@@ -39,8 +39,7 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
   const active = (ready || trailActive) && cd.unlocked;
   // a bola desta recarga: o card já fica prateado/dourado ENQUANTO o tempo corre, para o jogador ver o que vem
   const metal = cd.unlocked && cd.ball ? METAL[cd.ball] : null;
-  const batidas = cd.kicks ?? 1;
-  const faltam = cd.left ?? 1;
+  const vale = cd.goals ?? 1; // bola de prata/ouro: o gol vale 2 ou 3
 
   function go() {
     if (!cd.unlocked) { toast(`${t.label} libera no nível ${unlockLvl}.`, 'error'); return; }
@@ -61,7 +60,7 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
       <span className="t-display text-[12px] uppercase text-navy-ink">{t.label}</span>
       <span className={`t-display text-[12px] tabular-nums ${active ? 'text-orange-deep' : 'text-muted'}`}>
         {!cd.unlocked ? `lvl ${unlockLvl}` : trailActive ? 'EM JOGO' : !ready ? countdown(rem)
-          : metal ? (faltam < batidas ? `FALTAM ${faltam}` : `BATE ${batidas}x`) : 'PRONTO'}
+          : metal ? `VALE ${vale}x` : 'PRONTO'}
       </span>
     </motion.button>
   );

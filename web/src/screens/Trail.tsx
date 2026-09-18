@@ -70,7 +70,7 @@ export function TrailScreen() {
   // ladrões que ainda restam na linha (o rebote revela um e a jogada continua na mesma linha)
   const thieves = (meta?.trailLines[phase]?.mines ?? 1) - (cells[phase]?.filter((c) => c === 'mine').length ?? 0);
   const rem = useCountdown(me.cooldowns.TRAIL.readyAt);
-  const ready = (rem <= 0 || active || !!me.cooldowns.TRAIL.free) && me.cooldowns.TRAIL.unlocked; // bola de prata/ouro: as trilhas que sobraram começam na hora
+  const ready = (rem <= 0 || active) && me.cooldowns.TRAIL.unlocked;
   const needCaptcha = !!me.captchaRequired && !active; // só para começar uma trilha nova
   const captcha = useCaptcha(needCaptcha);
 
@@ -135,7 +135,7 @@ export function TrailScreen() {
       <div className="relative flex items-center justify-between px-3 pb-2" style={{ paddingTop: 'calc(var(--sat) + 10px)' }}>
         <button onClick={() => nav('/')} className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></button>
         <div className="ribbon ribbon-orange">TRILHA</div>
-        <div className="trap trap-blue text-[12px]">{!me.cooldowns.TRAIL.unlocked ? <span className="t-red">LVL 3</span> : active ? <span className="t-gold">EM JOGO</span> : ready ? <span className={me.cooldowns.TRAIL.ball ? 't-gold' : 't-green'}>{me.cooldowns.TRAIL.ball ? `${me.cooldowns.TRAIL.ball} · ${me.cooldowns.TRAIL.left}x` : 'PRONTO'}</span> : <Countdown readyAt={me.cooldowns.TRAIL.readyAt} />}</div>
+        <div className="trap trap-blue text-[12px]">{!me.cooldowns.TRAIL.unlocked ? <span className="t-red">LVL 3</span> : active ? <span className="t-gold">EM JOGO</span> : ready ? <span className={me.cooldowns.TRAIL.ball ? 't-gold' : 't-green'}>{me.cooldowns.TRAIL.ball ? `${me.cooldowns.TRAIL.ball} · VALE ${me.cooldowns.TRAIL.goals ?? 1}x` : 'PRONTO'}</span> : <Countdown readyAt={me.cooldowns.TRAIL.readyAt} />}</div>
       </div>
 
       <div className="relative mx-auto w-full max-w-[340px] px-3 pt-1">

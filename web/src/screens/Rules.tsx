@@ -59,7 +59,7 @@ export function RulesScreen() {
         </p>
         <p className="mt-2 text-[13px] font-bold text-navy-ink">
           <b>Chute de prata e de ouro</b>: {Math.round((meta?.ball?.base ?? 0.03) * 100)}% dos pênaltis, faltas e trilhas vêm especiais desde o nível 0 —
-          a de prata deixa você bater {meta?.ball?.kicks?.PRATA ?? 2} vezes na mesma recarga e a de ouro, {meta?.ball?.kicks?.OURO ?? 3}.
+          você bate uma vez só, mas se fizer o gol ele vale {meta?.ball?.goals?.PRATA ?? 2} na de prata e {meta?.ball?.goals?.OURO ?? 3} na de ouro — no placar, na artilharia e no bolso.
           A habilidade Sorte leva essa chance até {Math.round((meta?.ball?.max ?? 0.10) * 100)}%.
         </p>
       </Panel>

@@ -49,13 +49,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   **O piso de 4:30 é do VIP** (dono: "ele só deve chegar nos 4:30 se for vip"): o jogador comum sai de 10:00
   e para em 8:30 com a Recarga cheia; o VIP parte de 5:00 e bate no piso no 6º degrau — a tela avisa quem
   está no piso para não gastar ponto à toa.
-- **Chute de prata e de ouro** (`BALL`/`rollBall` em rules.js, `lib/bola.js`, colunas `User.ballNext` e
-  `User.ballLeft`, `Goal.ball`): 3% dos pênaltis, faltas e trilhas vêm especiais desde o nível 0 (2% prata +
-  1% ouro), até 10% com a Sorte — as duas somadas, o ouro sempre metade da prata. **Prata bate 2x e ouro
-  bate 3x na MESMA recarga** (cada batida entra ou não; não é gol em dobro — decisão do dono). O chute
-  direto fica de fora. A bola da PRÓXIMA recarga é sorteada quando o jogador gasta a atual, por isso o card
-  da Home já fica prateado/dourado enquanto o tempo corre. As batidas que sobram saem sem esperar
-  (`free` no `cooldownsView`) — quem gate a tela é esse campo, não só o `readyAt`.
+- **Chute de prata e de ouro** (`BALL`/`rollBall` em rules.js, `lib/bola.js`, coluna `User.ballNext`,
+  `Goal.ball`): 3% dos pênaltis, faltas e trilhas vêm especiais desde o nível 0 (2% prata + 1% ouro), até
+  10% com a Sorte — as duas somadas, o ouro sempre metade da prata. **UMA batida que VALE mais** (dono,
+  18/09/2026: "ao invés de você chutar 2x 3x, você chuta 1, se acertar conta as 2x ou 3x"): o gol vale
+  **2 na prata e 3 no ouro** — placar da partida, artilharia, nível e dinheiro. Errou, acabou. Quem
+  multiplica é `applyResult` (`vale`), que grava **uma linha de `Goal` por gol** (artilharia, ranking da
+  hora/rodada/temporada e página da partida contam LINHAS) e soma o placar de uma vez só. O chute direto
+  fica de fora. A bola da PRÓXIMA recarga é sorteada quando o jogador gasta a atual, por isso o card da
+  Home já fica prateado/dourado ("VALE 2x"/"VALE 3x") enquanto o tempo corre.
+  *(Até 18/09 a bola dava 2 ou 3 BATIDAS de graça na mesma recarga; a coluna `User.ballLeft` era disso e
+  ficou no banco sem uso, para não precisar de migração.)*
   **Mexeu em habilidade, recarga ou bola? Rode `node scripts/test-habilidades.js`** (pasta api/, banco LOCAL).
 - Liga: `api/src/services/league.js` — temporada, rodadas de 24h que fecham às **19:00
   (America/Sao_Paulo)**, round-robin determinístico por série, fechamento de hora/rodada
@@ -651,11 +655,20 @@ depois que o novo estiver estável. Não instalar nada dele.
   possível do mini cup sem perder a identidade do jogo"; e depois de jogar a 1ª versão: "no minicup você é
   o jogador e não o goleiro", "o goleiro está parado no meio, ele tem que se movimentar de um lado pro
   outro", "o chute tem que ser mais rápido sem mira", "a velocidade do goleiro tem que ir aumentando
-  conforme o tempo que você tá com o jogo aberto"). **Toca no canto do gol e a bola sai** — sem mira, sem
-  barra de força. O goleiro **veste o uniforme do adversário da rodada** e faz RONDA de uma trave à outra o
+  conforme o tempo que você tá com o jogo aberto"). **Puxa o dedo a partir da bola, como na Falta PRO**
+  (dono, 18/09/2026: "a ideia não é clicar onde você quer chutar a bola, é fazer o movimento do chute assim
+  como no falta pro") — o gesto é a mira: direção, velocidade do puxão = força e o arco = efeito. A cena é
+  a MESMA do pênalti (estádio, trave com rede, goleiro 3D de uniforme e a Trionda — dono: "você não
+  consegue melhorar o visual?"). **Os clipes `dive`/`save_low` do goleiro terminam DEITADOS e seguram o
+  último quadro**: entre um chute e outro a tela chama `pose('idle')` para ele levantar, e espelha o grupo
+  (`scale.x`) quando o mergulho é para a esquerda — sem isso ele ficava estatelado no gramado e caía ~1,8 m
+  fora do lugar (dono, 18/09/2026). O MESMO descuido existia na Falta PRO, corrigido junto. O goleiro **veste o uniforme do adversário da rodada** e faz RONDA de uma trave à outra o
   tempo todo; ao ver a bola ele reage e mergulha. **Tudo aperta pelo RELÓGIO da série** (`ramp` = 100 s):
-  a ronda vai de 3,4 s para 1,15 s, a reação de 380 ms para 140, o mergulho de 0,7 para 1,9 largura/s e o
-  voo da bola de 820 ms para 460 — ninguém fica no gol para sempre. Bola rente à trave ou por cima é FORA e
+  a ronda vai de **4,1 s** para 1,15 s, a reação de **450 ms** para 140, o mergulho de **0,60** para 2,70
+  largura/s e o voo da bola de 820 ms para 460 — ninguém fica no gol para sempre. O COMEÇO é de propósito
+  um meio-termo (dono, 18/09/2026: primeiro "tá muito rápido até no nível inicial", depois, com o passeio,
+  "agora ficou lento demais, deixe no meio termo"): no 1º segundo ele fecha ~24% da boca do gol (eram 31%
+  no difícil e 18% no lento); aos 100 s fecha 78%, o aperto de sempre. Bola rente à trave ou por cima é FORA e
   acaba a série. No lugar do contador de países: **o placar de gols do seu time contra o adversário da
   rodada** (`GoleadaTeam`, zera com a rodada). **10 gols seguidos = 1 gol** (kind `GOLEADA`) + o dinheiro
   de `MINIGAME_MONEY`; cada gol dá 3 de nível, até 30; recorde em `User.goleadaBest`.
@@ -663,7 +676,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   mesmas contas de `lib/goleada.js` para animar (o goleiro é uma função do tempo, com a fase sorteada por
   partida). No fim ela manda os toques (`/end`) e **o servidor refaz a série** (`judge`), que também recusa
   chute fora de ordem ou antes de a bola voltar. Calibrar: `node scripts/goleada-balance.js` (craque ~60
-  gols em 75 s, bom ~53, mediano ~33, iniciante ~13). **Mexeu? Rode `node scripts/test-goleada.js`**
+  ~73 gols, bom ~54, mediano ~33, iniciante ~13). **Mexeu? Rode `node scripts/test-goleada.js`**
   (pasta api/, banco LOCAL).
 - **Frangaço — DESATIVADO em 14/09/2026 pelo dono ("muito bugado")**: `soon: true` no `MINIGAMES` (some do slider e
   do `/api/meta`), `/api/frangaco/*` responde 503 "em manutenção" e `/frangaco` mostra o aviso. Para religar:

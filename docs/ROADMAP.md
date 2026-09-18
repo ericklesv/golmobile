@@ -2,6 +2,14 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## Publicado em 18/09/2026 14:41 (Brasília) — commit 249740e
+Backup antes: `/var/backups/brgol/antes-goleada-2026-09-18.dump` (produção estava em 0eb1892, de 17/09 21:29).
+Subiu: **minigame Goleada** (nível 3, 22h — porte do Mini Cup do Google, cena 3D do pênalti, puxão de dedo),
+o goleiro dele calibrado em meio-termo depois de dois pedidos do dono, o **goleiro que levanta depois do
+mergulho e cai para o lado certo** (o mesmo descuido estava na Falta PRO, que já estava no ar), a **bola de
+prata/ouro virando UMA batida que vale 2 ou 3 gols** (antes eram 2/3 batidas na mesma recarga), o contador do
+chat que não conta mais a própria mensagem e o aviso de desafio do X1 que desceu para perto das abas.
+
 ## Feito em 15/09/2026 (madrugada) — resumo em `docs/MUDANCAS-2026-09-15.md`
 Ranking X1 (3·1·−2, sequência, prêmios por rodada/temporada, medalhas caveira no perfil), sair da partida =
 derrota, uniforme do time escolhido pelo presidente (Camisas + X1 + 3D), Santa Cruz tricolor, caixa de mensagens
@@ -135,6 +143,7 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [x] **Camisas** (nível 5, vira às 16h): maior ou menor com 4 camisas de 1 a 11 nas cores do time; 4 certas = 1 gol e segue valendo até errar (vários gols no dia, exceção do dono); +3 de nível por acerto (até +30) (13/09/2026)
 - [x] **Hat Trick** (nível 7, vira às 18h): chute de longe com mira de estilingue, batida na bola (lado = curva, embaixo = sobe), vento e goleiro; 3 vidas, cada gol vale gol do time, 3 gols = hat trick (13/09/2026)
 - [x] **Falta PRO** (nível 8, vira às 19h): cobrança de falta 3D estilo Free Kick Classic — arrasta a bola (direção/força; a bola SEGUE o arco do gesto — curva é a arma principal, corrigido 14/09), barreira 3–5 (às vezes pula), goleiro e alvos bônus no ângulo; física em `api/src/lib/faltapro.js` (calibrada em `api/scripts/faltapro-balance.js`: bom ~36%); 5 cobranças, 3+ gols = exatamente 1 gol, +4 de nível por conversão (até +20), alvo = +R$ 50 (13/09/2026)
+- [x] **Goleada** (nível 3, vira às 22h): porte do "Mini Cup" do Google — você é o batedor e o goleiro anda de trave a trave o tempo todo. Puxão de dedo como na Falta PRO (direção, força pela velocidade do gesto, efeito pelo arco) na MESMA cena 3D do pênalti (estádio, goleiro de uniforme do adversário, Trionda). Aperta pelo RELÓGIO, não pelos gols: no 1º segundo o goleiro fecha ~24% do gol e aos 100 s, 78% (dois ajustes do dono em 18/09: "muito rápido no nível inicial" → "lento demais" → meio-termo). 10 gols seguidos = 1 gol do time + dinheiro; cada gol dá 3 de nível (até 30); recorde em `User.goleadaBest`. Calibragem em `api/scripts/goleada-balance.js` (18/09/2026)
 - [x] **Frangaço** (nível 10, vira às 20h; **porte 1:1 do Managol via Unity WebGL**, 13/09/2026): o jogo é o cliente `ManagolTV` em `/tv/?mode=penalty`; a API do JogaGol fala o contrato dele em `/api/frangaco/*` (`state|run|incoming|kick{xAnunciado,xReal}|save{ms,x,y}` — `routes/frangacoTv.js`). Torneio INTEIRO numa sessão: 5 fases contra clubes da mesma série, duelo de 5 cobranças alternadas com finta (sem finta o goleiro quase sempre pega), morte súbita; janela de defesa 900→660 ms validada no relógio do servidor; 1 torneio por dia (`DailyGame`); só o CAMPEÃO pontua = 1 gol (kind FRANGACO) + R$ 500 + 20 de nível; ranking de títulos por temporada. A tela `/frangaco` virou wrapper (iframe + token por postMessage). **Pendente: hospedar o build do ManagolTV em `/tv/` na VPS (nginx)**
 - [x] **Horário de virada por minigame** (um por jogo, para sempre ter algum renovando): Termo 0h, Quiz 12h, Estatísticas 13h, Memória 14h, De que time é? 15h, Camisas 16h, Alvo no Gol 17h; jogo novo pega a próxima hora livre (13/09/2026)
 - [ ] **Baú diário / Giro Premiado** (nível 9): dinheiro ou dias de VIP

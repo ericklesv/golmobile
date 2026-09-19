@@ -394,6 +394,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   `components/WhatsInvite.tsx`): janela convidando para o grupo **a cada 100 h** (controle no aparelho, por conta),
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi
   resolvida (`passSettled`). "Entrar no grupo" = não aparece mais; "Agora não" = 100 h. Botão fixo no Perfil.
+- **Vitrine da tela de entrada** (`GET /api/vitrine` em `routes/game.js`, cache de 15 s; `components/MundoVivo.tsx`
+  em `screens/Login.tsx`): dono, 19/09/2026 — "alguns usuários abrem o site e dão de cara com o login… isso faz
+  eles desanimarem… era ideal mostrar um mundo vivo". Quem ainda não entrou vê, **antes do formulário**, o placar
+  da partida mais disputada da rodada (mais gols na soma; empatando, o placar mais apertado) com o relógio até as
+  19h, e **abaixo dele** os artilheiros do dia e os reis do X1. É tudo dado de verdade — nada de frase de
+  propaganda. O `online` conta igual ao `/api/home` (bots incluídos): o número de fora e o de dentro têm de bater.
+  A API fora do ar = os blocos somem e a tela de entrada funciona igual.
 - **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
   pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/
   empate", artilheiro da partida, top 5 de cada time, gols hora a hora (gráfico espelhado nas cores dos times), gols por

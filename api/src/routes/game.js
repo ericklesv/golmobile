@@ -108,6 +108,39 @@ game.get('/home', cached(5000), handle(async (req) => {
   };
 }));
 
+// ─── Vitrine: o mundo vivo de quem ainda não entrou ─────────────────────────
+/**
+ * Dono, 19/09/2026: "alguns usuários abrem o site e dão de cara com o login… era ideal mostrar um mundo vivo".
+ * Uma chamada só, sem login, para a tela de entrada: o jogo mais disputado da rodada, os artilheiros do dia e
+ * os reis do X1. Fica no cache por 15 s — é a página que mais gente abre sem estar logada.
+ *
+ * "Mais disputado" = a partida com mais gols na soma; empatando, a de placar mais apertado.
+ */
+game.get('/vitrine', cached(15000), handle(async () => {
+  const now = new Date();
+  const round = await currentRound();
+  const [partidas, artilheiros, reis, online] = await Promise.all([
+    round ? prisma.match.findMany({ where: { roundId: round.id }, include: { homeTeam: true, awayTeam: true } }) : [],
+    round ? topScorers({ roundId: round.id }, 5) : [],
+    round ? x1Ranking({ from: round.startsAt, table: FUTPREGO.prizes.round, take: 5 }) : [],
+    // conta igual ao `online` do /api/home (bots incluídos): o número de dentro e o de fora do jogo
+    // precisam bater, senão a vitrine diz 3 e a tela inicial diz 30.
+    prisma.user.count({ where: { lastSeenAt: { gt: new Date(now.getTime() - 2 * 60_000) } } }),
+  ]);
+  const disputa = (m) => m.homeGoals + m.awayGoals;
+  const melhor = partidas
+    .filter((m) => disputa(m) > 0)
+    .sort((a, b) => disputa(b) - disputa(a) || Math.abs(a.homeGoals - a.awayGoals) - Math.abs(b.homeGoals - b.awayGoals) || a.id - b.id)[0] ?? null;
+  return {
+    serverTime: now.getTime(),
+    round: round ? { number: round.number, endsAt: round.endsAt, season: round.season.number } : null,
+    match: melhor ? matchView(melhor) : null,
+    scorers: artilheiros,
+    x1: reis,
+    online,
+  };
+}));
+
 // ─── Rankings ───────────────────────────────────────────────────────────────
 const SCOPES = ['geral', 'temporada', 'rodada', 'hora', 'penal', 'falta', 'trilha', 'x1-rodada', 'x1-temporada', 'x1-geral', 'futprego', 'x1'];
 game.get('/rankings/:scope', cached(5000), handle(async (req) => {

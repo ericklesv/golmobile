@@ -84,6 +84,17 @@ export interface MatchView {
   round?: { id: number; number: number; endsAt: string };
 }
 
+/** Vitrine pública (GET /api/vitrine): o mundo vivo mostrado na tela de entrada. */
+export interface Vitrine {
+  serverTime: number;
+  round: { number: number; endsAt: string; season: number } | null;
+  match: MatchView | null;
+  scorers: TopRow[];
+  /** Ranking X1: aqui `goals` é a pontuação (3 V · 1 E · −2 D). */
+  x1: TopRow[];
+  online: number;
+}
+
 export interface FeedItem { id: number; text: string; goal: boolean; kind: string; at: string; team: Team | null }
 
 export interface Home {

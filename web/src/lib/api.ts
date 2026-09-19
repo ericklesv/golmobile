@@ -1,4 +1,4 @@
-import type { TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { Vitrine, TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -107,6 +107,8 @@ export const api = {
   frangacoReset: () => req<{ ok: boolean }>('POST', '/api/frangaco/reset'),
   // leitura
   meta: () => req<Meta>('GET', '/api/meta'),
+  // vitrine pública da tela de entrada: jogo da rodada, artilheiros e reis do X1
+  vitrine: () => req<Vitrine>('GET', '/api/vitrine'),
   home: (team?: string) => req<Home>('GET', `/api/home${team ? `?team=${encodeURIComponent(team)}` : ''}`),
   rankings: (scope: string, limit = 50) => req<{ scope: string; key: any; rows: TopRow[] }>('GET', `/api/rankings/${scope}?limit=${limit}`),
   league: () => req<League>('GET', '/api/league'),

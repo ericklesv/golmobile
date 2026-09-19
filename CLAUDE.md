@@ -559,7 +559,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   hora 24 h), retenção dos últimos 7 dias (`services/retention.js`, o mesmo miolo do script do Telegram), funil dos
   novatos pelos eventos (conta → viu a home → chutou → viu a recarga → viu os minigames → abriu minigame/X1/chat/Loja →
   voltou), "onde somem" (última tela de quem nunca voltou + sessões `app.saiu.seg`) e os últimos 20 eventos. Tela:
-  `components/AdminReport.tsx` (miolo) dentro do **`AdminDock.tsx`** — fixo à esquerda, só admin, só em tela ≥ 1200 px
+  `components/AdminReport.tsx` (miolo) dentro do **`AdminDock.tsx`** — fixo à esquerda, só admin, só em tela ≥ 1240 px
   (montado no App, aparece em TODAS as telas; recolher/abrir fica no aparelho) — e na aba **Relatório** do /admin (celular).
   **Mexeu? Rode `node scripts/test-eventos.js`** (pasta api/, API local no ar, banco LOCAL; tem de dar "TUDO OK").
 - **Banir IP** (primeira vez em 17/09/2026, pedido do dono): o CÓDIGO não tem ban por IP — o bloqueio é no nginx,

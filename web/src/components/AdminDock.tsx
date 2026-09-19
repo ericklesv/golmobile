@@ -1,7 +1,7 @@
 /**
  * Menu flutuante de RELATÓRIO do admin (pedido do dono, 18/09/2026): fica "fora da tela" do jogo, no fundo da
  * esquerda onde no PC só há a lateral, para acompanhar as métricas enquanto se anda pelas outras abas. Montado no
- * App para quem tem isAdmin; só aparece em tela larga (≥ 1200 px — o app tem 480 px e o menu precisa de espaço
+ * App para quem tem isAdmin; só aparece em tela larga (≥ 1240 px — o app tem 480 px e o menu precisa de espaço
  * ao lado); no celular o mesmo relatório está na aba Relatório do /admin. Recolhido/aberto fica no aparelho.
  */
 import { useState } from 'react';
@@ -16,7 +16,7 @@ export function AdminDock() {
   if (!me?.isAdmin) return null;
   const toggle = () => { setOpen((o) => { try { localStorage.setItem(KEY, o ? '0' : '1'); } catch {} return !o; }); };
   return (
-    <div className="fixed left-3 top-3 z-[60] hidden min-[1200px]:block" style={{ width: 352 }}>
+    <div className="fixed left-3 top-3 z-[60] hidden min-[1240px]:block" style={{ width: 352 }}>
       {open ? (
         <div className="flex flex-col overflow-hidden rounded-2xl bg-navy-deep/95 text-white shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-white/10 backdrop-blur" style={{ maxHeight: 'calc(100vh - 24px)' }}>
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">

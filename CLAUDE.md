@@ -540,6 +540,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   em 16/09** — sem fonte o texto sai vazio); `tg.photo()`; `DailyReport` (migração 0037) = dia já enviado (não repete
   no reinício). Reenviar/testar: `POST /api/admin/relatorio-diario {day?, force?}` (x-admin-key; `?ver=1` só devolve
   o PNG). Métrica nova = `series()` + `text` + painel em `renderDailyChart`.
+- **Relatório de retenção** (pedido do dono, 18/09/2026: "quantos ficam no jogo e depois saem e nunca mais voltam";
+  `api/scripts/relatorio-retencao.js`, só leitura no banco): funil conta → chutou → 10/30 min no 1º dia → voltou outro
+  dia → ativo (48 h), tempo no 1º dia, por dia de cadastro, "quem volta × quem some" (minigame, X1, chat, convite) e
+  recomendações; PNG por SVG → sharp (como o diário) + 2 mensagens via `tg.raw()` (HTML sem selo, na hora).
+  `--ver <png>` só gera; `--enviar` manda ao grupo. Rodar na VPS (pasta api/, usuário brgol). Contas de varredura
+  (IP 177.23.227.136, 0 gol) e bots ficam fora. Primeiro envio em 18/09: 30 % voltam, 45 % somem em < 15 min.
 - **Banir IP** (primeira vez em 17/09/2026, pedido do dono): o CÓDIGO não tem ban por IP — o bloqueio é no nginx,
   em `/etc/nginx/snippets/brgol-bloqueados.conf` (um `deny <ip>;` por linha, com data e motivo), incluído no
   bloco `server` de jogagol.com.br (linha logo abaixo do `brgol-headers.conf`). Mexeu? `nginx -t` e

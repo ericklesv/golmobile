@@ -92,7 +92,8 @@ export interface Vitrine {
   scorers: TopRow[];
   /** Ranking X1: aqui `goals` é a pontuação (3 V · 1 E · −2 D). */
   x1: TopRow[];
-  online: number;
+  /** Gols de todos os times nesta rodada: a soma dos placares. */
+  roundGoals: number;
 }
 
 export interface FeedItem { id: number; text: string; goal: boolean; kind: string; at: string; team: Team | null }

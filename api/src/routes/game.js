@@ -121,13 +121,10 @@ game.get('/home', cached(5000), handle(async (req) => {
 game.get('/vitrine', cached(15000), handle(async () => {
   const now = new Date();
   const round = await currentRound();
-  const [partidas, artilheiros, reis, online] = await Promise.all([
+  const [partidas, artilheiros, reis] = await Promise.all([
     round ? prisma.match.findMany({ where: { roundId: round.id }, include: { homeTeam: true, awayTeam: true } }) : [],
     round ? topScorers({ roundId: round.id }, 5).then(withBadges) : [], // withBadges: os mesmos distintivos do menu
     round ? x1Ranking({ from: round.startsAt, table: FUTPREGO.prizes.round, take: 3 }).then(withBadges) : [], // pódio
-    // conta igual ao `online` do /api/home (bots incluídos): o número de dentro e o de fora do jogo
-    // precisam bater, senão a vitrine diz 3 e a tela inicial diz 30.
-    prisma.user.count({ where: { lastSeenAt: { gt: new Date(now.getTime() - 2 * 60_000) } } }),
   ]);
   const menor = (m) => Math.min(m.homeGoals, m.awayGoals); // o quanto o lado de trás está brigando
   const dif = (m) => Math.abs(m.homeGoals - m.awayGoals);
@@ -135,13 +132,16 @@ game.get('/vitrine', cached(15000), handle(async () => {
   const melhor = partidas
     .filter((m) => total(m) > 0)
     .sort((a, b) => menor(b) - menor(a) || dif(a) - dif(b) || total(b) - total(a) || a.id - b.id)[0] ?? null;
+  // Gols da rodada: a soma dos placares que a tabela mostra (dono, 19/09/2026 — a tela de entrada diz quantos
+  // gols já saíram na rodada, não quantos estão online). Sai de graça: as partidas já estão na mão.
+  const golsDaRodada = partidas.reduce((s, m) => s + total(m), 0);
   return {
     serverTime: now.getTime(),
     round: round ? { number: round.number, endsAt: round.endsAt, season: round.season.number } : null,
     match: melhor ? matchView(melhor) : null,
     scorers: artilheiros,
     x1: reis,
-    online,
+    roundGoals: golsDaRodada,
   };
 }));
 

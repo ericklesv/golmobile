@@ -399,7 +399,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   eles desanimarem… era ideal mostrar um mundo vivo". Quem ainda não entrou vê, **antes do formulário**, o placar
   da partida mais disputada da rodada (mais gols na soma; empatando, o placar mais apertado) com o relógio até as
   19h, e **abaixo dele** os artilheiros do dia e os reis do X1. É tudo dado de verdade — nada de frase de
-  propaganda. O `online` conta igual ao `/api/home` (bots incluídos): o número de fora e o de dentro têm de bater.
+  propaganda. Em cima do placar vai o **total de gols da rodada** — a soma dos placares de todas as partidas
+  (dono, 19/09/2026: antes era quantos estavam chutando agora).
   A API fora do ar = os blocos somem e a tela de entrada funciona igual.
 - **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
   pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/

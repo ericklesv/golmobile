@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { Shield } from './Shield';
 import { Panel, TopList } from './ui';
 import { X1King } from './X1King';
-import { countdown, pct } from '../lib/format';
+import { countdown, num, pct } from '../lib/format';
 import type { Vitrine } from '../lib/types';
 
 /**
@@ -60,7 +60,7 @@ export function BotaoEntrarNoTopo() {
   );
 }
 
-/** O placar da partida mais disputada da rodada, com quantos estão jogando agora. */
+/** O placar da partida mais disputada da rodada, com quantos gols já saíram na rodada inteira. */
 export function PlacarDaRodada() {
   const v = useMundoVivo();
   const [agora, setAgora] = useState(Date.now());
@@ -72,10 +72,10 @@ export function PlacarDaRodada() {
 
   return (
     <div className="relative mt-4 flex flex-col gap-3">
-      {v.online > 0 && (
+      {v.roundGoals > 0 && (
         <p className="flex items-center justify-center gap-2 text-[13px] font-extrabold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.35)]">
           <motion.span animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 2.2, repeat: Infinity }} className="inline-block h-2.5 w-2.5 rounded-full bg-grass" />
-          {v.online === 1 ? '1 jogador chutando agora' : `${v.online} jogadores chutando agora`}
+          {v.roundGoals === 1 ? '1 gol nesta rodada' : `${num(v.roundGoals)} gols nesta rodada`}
         </p>
       )}
       <Panel title="JOGO DA RODADA" ribbon="blue">

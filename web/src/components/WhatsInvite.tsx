@@ -28,8 +28,10 @@ export function WhatsInviteWatcher() {
   const hours = useAuth((s) => s.meta?.community?.everyHours) ?? 100;
   const [open, setOpen] = useState(false);
   const id = me?.id;
+  const tutorial = !!me?.tutorial?.pending;
 
   useEffect(() => {
+    if (tutorial) return; // tutorial de boas-vindas na frente
     if (id === undefined || !link) return;
     const s = read(id);
     if (s.joined || (s.next && Date.now() < s.next)) return;

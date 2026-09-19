@@ -147,6 +147,11 @@ model User {
   isBot   Boolean @default(false)
   botJson Json?
 
+  // Tutorial de boas-vindas (services/tutorial.js): 0 = não respondeu · 1..3 = na etapa · 9 = terminou · -1 = recusou.
+  // Enquanto está em 0..3 a tela NÃO mostra pop-up nenhum (Presença, convites, aviso de nível…).
+  tutorialStep Int       @default(0)
+  tutorialAt   DateTime?
+
   // Contratado por proposta: não troca de time nem aceita outra proposta até aqui (1 dia por VIP)
   contractUntil DateTime?
 

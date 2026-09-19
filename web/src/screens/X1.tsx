@@ -149,6 +149,7 @@ export function X1Screen() {
   const matchRef = useRef<Match | null>(null);
   const shownRef = useRef<Shown | null>(null);
   const acceptId = useRef<number | null>(Number(params.get('aceitar')) || null);
+  const autoDesafio = useRef(params.get('desafiar') === '1'); // tutorial: já chega desafiando (components/Tutorial.tsx)
   const provocarRef = useRef<Provocar | null>(null); // onMessage é o do 1º render: catálogo e "silenciado" por ref
   const phaseRef = useRef(phase);
   const mutedRef = useRef(false);
@@ -229,6 +230,7 @@ export function X1Screen() {
         if (m.today) setToday(m.today);
         setPhase((p) => (p === 'connecting' || p === 'offline' ? 'lobby' : p));
         if (acceptId.current) { send({ t: 'accept', id: acceptId.current }); acceptId.current = null; setParams({}, { replace: true }); }
+        else if (autoDesafio.current) { autoDesafio.current = false; setParams({}, { replace: true }); send({ t: 'challenge' }); }
         break;
       case 'open': setOpen(m.list ?? []); break;
       case 'waiting': setBusy(false); setWaiting({ id: m.id, startedAt: m.at, botOffer: false, gameName: m.gameName ?? '' }); setPhase('waiting'); break;

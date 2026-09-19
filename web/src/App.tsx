@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { MultiAccountScreen } from './components/MultiAccount';
 import { MULTI_EVENT } from './lib/api';
 import { LevelUpWatcher } from './components/LevelUp';
+import { TutorialWatcher } from './components/Tutorial';
 import { PassWatcher } from './components/Pass';
 import { InviteRoute } from './components/Invite';
 import { LoginScreen } from './screens/Login';
@@ -98,6 +99,7 @@ export default function App() {
     <>
       <ToastHost />
       {me?.isAdmin && <AdminDock />}
+      {me && <TutorialWatcher />}
       {me && <LevelUpWatcher />}
       {me && <PassWatcher />}
       <ErrorBoundary resetKey={loc.pathname}>

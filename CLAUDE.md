@@ -449,6 +449,22 @@ depois que o novo estiver estável. Não instalar nada dele.
   e no perfil. **Quadro TOP 10 do perfil** (`topHistory`): quantas vezes em 1º/2º/3º e no top 10 das horas, rodadas e
   temporadas fechadas — lê os top 10 congelados em `HourResult/Round/Season.topJson` (Season.topJson gravado no
   `finishSeason` desde a migração 0021; índice GIN em HourResult.topJson para o `@>`).
+- **Tutorial de boas-vindas** (dono, 18/09/2026; `services/tutorial.js`, `routes/tutorial.js` em `/api/tutorial`,
+  números em `TUTORIAL` de rules.js, colunas `User.tutorialStep/tutorialAt`, migração 0043; tela
+  `components/Tutorial.tsx`): na PRIMEIRA vez o jogador **não vê pop-up nenhum** — só a janela de boas-vindas,
+  que pergunta se ele quer fazer o tutorial por **1 VIP**. Três etapas: **pênalti** (a principal forma de fazer
+  gol), **Termo** (os minigames viram de hora em hora, um por dia, e o nível libera mais) e **X1** (ao vivo,
+  ganhou = +1 gol para o time, perdeu = −1). O passo só anda quando o servidor CONFERE no banco que ele fez
+  (`penaltyTries`, `DailyGame` do Termo, linha em `X1Match`) — a tela pergunta a cada `/me` novo e anda sozinha.
+  `tutorialStep`: 0 = não respondeu · 1..3 = na etapa · 9 = terminou · −1 = recusou; o VIP cai uma vez só
+  (`updateMany` exigindo a etapa 3). **Quem segura os pop-ups é `me.tutorial.pending`**: Presença, troca de
+  séries, WhatsApp, Instagram e "subiu de nível" saem de cena enquanto isso — pop-up novo tem de respeitar esse
+  campo. A migração marcou todo mundo que já jogava como "recusou" (ninguém veterano é interrompido nem ganha o
+  VIP). **No X1 do tutorial, um BOT aceita**: ninguém aceitou em `TUTORIAL.botAcceptSec` (20 s) → um dos bots do
+  Guilherme entra e joga **valendo tudo** (aposta, gol para quem ganha, gol a menos para quem perde e Ranking
+  X1) — decisão do dono ("pra dar a impressão que o jogo tá movimentado"), e **só no tutorial**. Em x1.js,
+  `ai` = lado jogado pelo servidor (vale tudo) e `bot` = treino (não vale nada): são coisas diferentes, não
+  juntar de novo. **Mexeu nisso? Rode `node scripts/test-tutorial.js`** (pasta api/, só banco LOCAL).
 - **Presença da Semana** (login diário; decisões do dono, 13/09/2026 — "tá muito difícil upar"; `services/pass.js`,
   `routes/pass.js` em `/api/pass`, prêmios em `LOGIN_PASS` de `rules.js`, tabela `LoginPass`, migração 0020; tela
   `components/Pass.tsx`: cartela que abre sozinha 1x por dia no aparelho + cartão na Home). Entrar 1x por dia e tocar
@@ -762,7 +778,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `POST /api/auth/register|login|forgot{email}|reset{token,password}` · `GET /api/me` (inclui `items`, `nickColor`, `nickFade`, `captchaRequired`) · `GET /api/me/opponent` (adversário da rodada — cores/escudo para o kit 3D) · `POST /api/me/heartbeat|buy-dexterity|activate-vip|change-team{teamSlug,currency} (PAGA, = /api/shop/team)|nerf/:nick|nick-fade{from,to}` · `PUT /api/me/bio`
 `POST /api/play/auto|penalty{direction}|foul{direction}|trail{index}|party` (+`captchaId`,`answer` quando `captchaRequired`) · `GET /api/play/captcha` · `POST /api/play/captcha{captchaId,answer}`
 `GET /api/shop` · `POST /api/shop/buy{key,currency}|equip{key}|nick{nick}|nick-color{color}|team{teamSlug,currency}` (loja; catálogo também em `/api/meta.items`)
-`GET /api/pass` · `POST /api/pass/claim` (Presença da Semana — login diário) · `GET /api/ref/me` · `GET /api/ref/:code` (convites; o cadastro aceita `ref`)
+`GET /api/tutorial` · `POST /api/tutorial/start|skip|done/:step` (tutorial de boas-vindas) · `GET /api/pass` · `POST /api/pass/claim` (Presença da Semana — login diário) · `GET /api/ref/me` · `GET /api/ref/:code` (convites; o cadastro aceita `ref`)
 `GET /api/club|club/candidates` · `POST /api/club/claim|resign|directors{nick}|directors/remove{nick}|pass{nick}|offers{nick,vip,message}|offers/:id/accept|offers/:id/refuse|offers/:id/cancel|gift{nick,days}` (diretoria e contratações; a diretoria pública vem em `GET /api/teams/:slug` → `board`)
 `GET /api/vip|vip/purchases/:id` · `POST /api/vip/buy{pack}|vip/purchases/:id/test-pay` (só `EFI_FAKE`) · `POST /api/pay/efi/:secret[/pix]` (aviso da Efí, sem login)
 `POST /api/uploads/avatar` (multipart `avatar`, ≤5 MB, PNG/JPG/WEBP/GIF) · `DELETE /api/uploads/avatar` · arquivos em `/api/uploads/avatars/*`

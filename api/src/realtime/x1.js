@@ -23,7 +23,8 @@ import { prisma } from '../prisma.js';
 import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
 import { BOTAO_FIELD, simulateSnap } from '../lib/botao.js';
 import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove, movablePieces } from '../lib/botaoMatch.js';
-import { FUTPREGO, BOTAO, X1, PROVOCAR, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
+import { FUTPREGO, BOTAO, X1, PROVOCAR, TUTORIAL, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
+import { noPassoDoX1 } from '../services/tutorial.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
 import { teamView } from '../services/view.js';
@@ -48,6 +49,8 @@ let nextId = 1;
 function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); }
 const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message });
 const rnd01 = () => randomInt(1_000_000) / 1_000_000;
+/** Este lado é jogado pelo SERVIDOR? `bot` = treino (não vale nada); `ai` = bot do tutorial (vale tudo). */
+const isAi = (c) => !!(c && (c.ai || c.bot));
 
 /** O jogo do X1 agora, o próximo e quando troca (às X1.switchHour = 19h de Brasília, com a rodada). */
 // SÓ NO PC (X1_JOGO=BOTAO ou FUTPREGO no api/.env; ignorado em produção): força o jogo do dia para testar.
@@ -172,7 +175,7 @@ export function attachX1(server) {
     if (mode === 'game') {
       // uma tela de jogo por jogador: a antiga cai, e uma partida em andamento passa para a nova
       for (const c of [...conns]) if (c.mode === 'game' && c.user.id === user.id) { c.replaced = true; send(c.ws, { t: 'kicked' }); c.ws.close(); takeOver(c, conn); }
-      for (const m of matches.values()) for (const c of m.conns) if (!c.bot && c.user.id === user.id && c !== conn && c.dropped) takeOver(c, conn);
+      for (const m of matches.values()) for (const c of m.conns) if (!isAi(c) && c.user.id === user.id && c !== conn && c.dropped) takeOver(c, conn);
     }
     conns.add(conn);
     send(ws, { t: 'hello', me: user.id, rules: rulesView(), today: x1Today(), drain: x1Drain()?.until ?? null });
@@ -279,6 +282,11 @@ async function createChallenge(conn) {
   const ch = { id: nextId++, game, from: conn, at: Date.now(), shownTo: new Set() };
   ch.botTimer = setTimeout(() => send(conn.ws, { t: 'bot-offer' }), F.botAfterSec * 1000);
   ch.expireTimer = setTimeout(() => { if (challenges.has(ch.id)) { send(conn.ws, { t: 'expired', message: 'Ninguém aceitou o desafio. Tente de novo mais tarde.' }); cancelChallenge(ch, 'expirou'); } }, F.challengeMaxSec * 1000);
+  // Tutorial, etapa do X1: ninguém aceitou em TUTORIAL.botAcceptSec → um bot aceita e joga como gente
+  // (dono, 18/09/2026; vale gol, dinheiro e ranking como partida de verdade, e SÓ aqui no tutorial).
+  if (await noPassoDoX1(conn.user.id).catch(() => false)) {
+    ch.tutorTimer = setTimeout(() => botDoTutorialAceita(ch).catch((e) => console.error('[x1] bot do tutorial:', e.message)), TUTORIAL.botAcceptSec * 1000);
+  }
   challenges.set(ch.id, ch);
   conn.challenge = ch;
   send(conn.ws, { t: 'waiting', id: ch.id, game, gameName: X1.names[game], at: ch.at, botAt: ch.at + F.botAfterSec * 1000, until: ch.at + F.challengeMaxSec * 1000 });
@@ -289,7 +297,7 @@ async function createChallenge(conn) {
 function cancelChallenge(ch, _why) {
   if (!challenges.has(ch.id)) return;
   challenges.delete(ch.id);
-  clearTimeout(ch.botTimer); clearTimeout(ch.expireTimer);
+  clearTimeout(ch.botTimer); clearTimeout(ch.expireTimer); clearTimeout(ch.tutorTimer);
   if (ch.from.challenge === ch) ch.from.challenge = null;
   for (const c of ch.shownTo) send(c.ws, { t: 'invite-close', id: ch.id });
   refreshOpenLists().catch(() => {});
@@ -391,6 +399,52 @@ async function startBot(conn) {
   startMatch(conn, bot, null, game);
 }
 
+/**
+ * Bot do TUTORIAL: um dos bots "quase reais" (services/bots.js) aceita o desafio e joga como se fosse gente.
+ * Vale tudo — aposta, gol para quem ganha, gol a menos para quem perde e Ranking X1 (decisão do dono,
+ * 18/09/2026: "jogar como se fosse uma pessoa real, pra dar a impressão que o jogo tá movimentado"). Só é
+ * chamado para quem está na etapa do X1 do tutorial; fora dali o X1 segue como sempre.
+ */
+async function escolheBot(conn) {
+  const bots = await prisma.user.findMany({
+    where: {
+      isBot: true, deletedAt: null, money: { gte: F.bet },
+      teamId: { not: conn.user.teamId }, // time diferente: a partida vale gol
+      OR: [{ bannedUntil: null }, { bannedUntil: { lt: new Date() } }],
+    },
+    include: { team: true },
+  });
+  const ocupado = (id) => [...matches.values()].some((m) => !m.done && m.conns.some((c) => c.user.id === id));
+  const livres = bots.filter((b) => !ocupado(b.id));
+  return livres.length ? livres[randomInt(livres.length)] : null;
+}
+
+async function botDoTutorialAceita(ch) {
+  const a = ch.from;
+  if (!challenges.has(ch.id) || a.match || x1Drain()) return;
+  const bot = await escolheBot(a);
+  if (!bot) return; // nenhum bot livre: o desafio segue esperando gente de verdade
+  if (!challenges.has(ch.id) || a.match) return;
+  const b = { ws: null, ai: true, user: bot, ip: `bot:${bot.id}`, match: null, side: -1, seen: new Set(), mode: 'game' };
+  cancelChallenge(ch, 'bot-tutorial');
+  const round = await currentRound().catch(() => null);
+  let row;
+  try {
+    row = await prisma.$transaction(async (tx) => {
+      const pa = await tx.user.updateMany({ where: { id: a.user.id, money: { gte: F.bet } }, data: { money: { decrement: F.bet } } });
+      if (!pa.count) throw Object.assign(new Error('a'), { who: 'a' });
+      const pb = await tx.user.updateMany({ where: { id: bot.id, money: { gte: F.bet } }, data: { money: { decrement: F.bet } } });
+      if (!pb.count) throw Object.assign(new Error('b'), { who: 'b' });
+      return tx.x1Match.create({ data: { game: ch.game, seasonId: round?.seasonId ?? null, aId: a.user.id, bId: bot.id, aTeamId: a.user.teamId, bTeamId: bot.teamId, aIp: a.ip, bIp: `bot:${bot.id}`, bet: F.bet } });
+    });
+  } catch (e) {
+    if (e.who === 'a') return err(a, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`);
+    return createChallenge(a); // o bot não tinha dinheiro: o desafio dele volta para a fila
+  }
+  const h2h = await headToHead(a.user.id, bot.id).catch(() => null);
+  startMatch(a, b, row.id, ch.game, h2h, false, false);
+}
+
 function startMatch(a, b, dbId, game, h2h = null, sameTeam = false, freeplay = false) {
   const first = randomInt(2);
   const m = { id: nextId++, dbId, game, conns: [a, b], bot: !!b.bot, sameTeam, freeplay, turn: first, turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
@@ -423,7 +477,7 @@ function scheduleTurn(m, delayMs, announce = true) {
   if (announce) for (const c of m.conns) send(c.ws, { t: 'turn', turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns });
   m.turnTimer = setTimeout(() => timeoutTurn(m), delayMs + F.turnSec * 1000 + 800); // 0,8 s de folga para a internet
   const cur = m.conns[m.turn];
-  if (cur.bot) m.botTimer = setTimeout(() => botPlay(m), delayMs + 900 + randomInt(1400));
+  if (isAi(cur)) m.botTimer = setTimeout(() => botPlay(m), delayMs + 900 + randomInt(1400));
 }
 
 function onFlick(conn, msg) {
@@ -499,7 +553,7 @@ function scheduleSnap(m, delayMs, announce = true, extra = {}) {
   m.turnEndsAt = Date.now() + delayMs + BOTAO.snapSec * 1000;
   if (announce) for (const c of m.conns) send(c.ws, { t: 'bturn', botao: botaoView(m.bs), turnEndsAt: m.turnEndsAt, ...extra });
   m.turnTimer = setTimeout(() => timeoutSnap(m), delayMs + BOTAO.snapSec * 1000 + 800);
-  if (m.conns[m.bs.turn].bot) m.botTimer = setTimeout(() => botSnap(m), delayMs + 800 + randomInt(1200));
+  if (isAi(m.conns[m.bs.turn])) m.botTimer = setTimeout(() => botSnap(m), delayMs + 800 + randomInt(1200));
 }
 
 function onSnap(conn, msg) {
@@ -656,7 +710,7 @@ async function onProvocar(conn, msg) {
     conn.provocarBlockedUntil = now + PROVOCAR.punishMs; conn.provocarAt = [];
     send(conn.ws, { t: 'provocar-wait', until: conn.provocarBlockedUntil });
   }
-  if (m.bot) {
+  if (isAi(m.conns[1 - conn.side])) { // treino ou bot do tutorial: ele responde a provocação
     clearTimeout(m.provocarTimer);
     m.provocarTimer = setTimeout(() => {
       if (m.done) return;

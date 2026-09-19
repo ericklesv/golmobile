@@ -25,6 +25,7 @@ import { frangacoTv } from './routes/frangacoTv.js';
 import { vip, pay } from './routes/vip.js';
 import { club } from './routes/club.js';
 import { pass } from './routes/pass.js';
+import { tutorial } from './routes/tutorial.js';
 import { referral } from './routes/referral.js';
 import { inbox } from './routes/inbox.js';
 import { account } from './routes/account.js';
@@ -79,6 +80,7 @@ app.use('/api/frangaco', frangacoTv); // contrato do cliente Unity do Frangaço 
 app.use('/api/vip', vip);
 app.use('/api/club', club);
 app.use('/api/pass', pass);
+app.use('/api/tutorial', tutorial);
 app.use('/api/ref', referral);
 app.use('/api/inbox', inbox); // caixa de mensagens do jogador
 app.use('/api/pay', pay); // aviso de PIX da Efí (sem login)

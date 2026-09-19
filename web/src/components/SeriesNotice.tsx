@@ -48,8 +48,10 @@ export function SeriesNoticeWatcher() {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const id = me?.id, createdAt = me?.createdAt;
+  const tutorial = !!me?.tutorial?.pending;
 
   useEffect(() => {
+    if (tutorial) return; // tutorial de boas-vindas na frente
     if (id === undefined || createdAt === undefined || !due({ id, createdAt })) return;
     let t = 0;
     // espera a Presença da Semana (ela abre sozinha no começo do dia) e mais um instante

@@ -5,6 +5,7 @@ import { itemsView, nickFadeOf } from '../lib/items.js';
 export { nickFadeOf };
 import { hourKey } from '../lib/time.js';
 import { liveRound } from './league.js';
+import { tutorialView } from './tutorial.js';
 
 /** Gols da hora/rodada/temporada: ficam gravados no jogador e só zeram no próximo gol dele, então
  *  na tela valem só enquanto forem do período atual (senão, depois das 19:00, aparecia a rodada velha). */
@@ -46,6 +47,8 @@ export function meView(user, now = Date.now()) {
     money: user.money, vipDays: user.vipDays, vipUntil: user.vipUntil, vip: isVip(user, now),
     dexterity: user.dexterity, // LEGADO (a destreza acabou em 16/09/2026)
     avisos: user.avisosVistos ?? {}, // avisos de uma vez só que ele já viu (ex.: Instagram)
+    // tutorial de boas-vindas: enquanto `pending`, a tela NÃO mostra pop-up nenhum (services/tutorial.js)
+    tutorial: tutorialView(user),
     skills: { CD: user.skillCd ?? 0, AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, LUCK: user.skillLuck ?? 0, points: skillPointsLeft(user) }, // habilidades
     chance: { PENALTY: shotChance(user, 'PENALTY', now), FOUL: shotChance(user, 'FOUL', now), BALL: ballChance(user) }, // acerto de verdade e chance de chute especial
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),

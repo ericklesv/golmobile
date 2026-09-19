@@ -44,6 +44,7 @@ export function PassWatcher() {
   const me = useAuth((s) => s.me);
   const now = useAuth((s) => s.now);
   const { st, open, load, show } = usePass();
+  const tutorial = !!me?.tutorial?.pending;
   const id = me?.id;
 
   useEffect(() => { if (id !== undefined) load(); }, [id]);
@@ -54,10 +55,11 @@ export function PassWatcher() {
     return () => document.removeEventListener('visibilitychange', vis);
   }, []);
   useEffect(() => {
+    if (tutorial) return; // tutorial de boas-vindas na frente: nenhum pop-up (dono, 18/09/2026)
     if (!st || id === undefined || st.claimed || open || seenToday(id, st.today)) return;
     const t = window.setTimeout(() => { markSeen(id, st.today); show(); }, 1500);
     return () => window.clearTimeout(t);
-  }, [st?.today, st?.claimed, id]);
+  }, [st?.today, st?.claimed, id, tutorial]);
 
   return <AnimatePresence>{open && st && <PassSheet key="passe" />}</AnimatePresence>;
 }

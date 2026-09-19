@@ -2,6 +2,13 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## Tutorial de boas-vindas (18/09/2026) — no GitHub, aguardando publicação
+Conta nova não recebe pop-up nenhum: só a janela de boas-vindas, que explica que o jogador faz gols para o time
+vencer as rodadas e oferece 1 VIP para fazer três etapas — pênalti, Termo e X1. O passo só anda quando o servidor
+confere no banco que ele fez a coisa. No X1, se ninguém aceitar o desafio em 20 s, um dos bots do Guilherme aceita
+e joga valendo tudo (decisão do dono; só no tutorial). `services/tutorial.js`, migração 0043,
+`components/Tutorial.tsx`, `scripts/test-tutorial.js`.
+
 ## Publicado em 18/09/2026 14:41 (Brasília) — commit 249740e
 Backup antes: `/var/backups/brgol/antes-goleada-2026-09-18.dump` (produção estava em 0eb1892, de 17/09 21:29).
 Subiu: **minigame Goleada** (nível 3, 22h — porte do Mini Cup do Google, cena 3D do pênalti, puxão de dedo),

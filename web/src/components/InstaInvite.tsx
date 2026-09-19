@@ -51,8 +51,10 @@ export function InstaInviteWatcher() {
   const [open, setOpen] = useState(false);
   const id = me?.id;
   const jaViu = !!me?.avisos?.[AVISO];
+  const tutorial = !!me?.tutorial?.pending;
 
   useEffect(() => {
+    if (tutorial) return; // tutorial de boas-vindas na frente
     if (id === undefined || !insta?.url || jaViu) return;
     const iv = window.setInterval(() => {
       if (!passSettled(id) || !seriesNoticeSettled() || !x1SwitchSettled() || !whatsSettled()) return;

@@ -29,9 +29,13 @@ export interface SkillDef {
   max: number; perLevel: number; base: number; cap: number;
 }
 
+export interface TutorialState { step: number; pending: boolean; done: boolean; steps: number; vip: number; botAcceptSec: number }
+
 export interface Me {
   /** Mensagens não lidas na caixa (/api/me e heartbeat). */
   unread?: number;
+  /** Tutorial de boas-vindas: enquanto `pending`, NENHUM pop-up aparece (components/Tutorial.tsx). */
+  tutorial?: TutorialState;
   id: number; nick: string; email: string; gender: string; bio: string | null; avatarUrl: string | null; isAdmin: boolean; createdAt: string;
   team: Team;
   money: number; vipDays: number; vipUntil: string | null; vip: boolean;

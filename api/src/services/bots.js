@@ -14,7 +14,9 @@
  *    tempo sorteado (8 s a 4 min) antes de chutar; a trilha vai linha a linha com pausa entre elas.
  *  - Uma ação por bot por volta (20 s), disparada com atraso sorteado dentro da volta: nunca dois bots no
  *    mesmo segundo, nunca todos os chutes de um bot de uma vez.
- *  - Nunca conversa, nunca joga minigame nem X1 (deixaria o rastro na cara). Bots não entram na premiação
+ *  - Nunca conversa e nunca joga minigame (deixaria o rastro na cara). No X1 eles também não entram
+ *    sozinhos; a ÚNICA exceção é o tutorial de boas-vindas: se o novato desafiar e ninguém aceitar em
+ *    20 s, um bot aceita e joga valendo tudo (decisão do dono, 18/09/2026 — realtime/x1.js). Bots não entram na premiação
  *    (league.js calcula a artilharia premiada e o VIP do time campeão sem eles) nem no relatório diário.
  * Motor: `startBots()` no index.js (1 instância PM2 — estado "o que está pendente" em memória).
  */

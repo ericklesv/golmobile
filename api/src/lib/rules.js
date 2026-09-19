@@ -724,6 +724,22 @@ export const COMMUNITY = {
 // Volume esperado (não-VIP, recarga de 10 min por chute): casual ~3–10 gols/dia, regular ~10–25, assíduo ~30–55
 // — de propósito abaixo do top 10 da rodada (quem fica lá faz 80+), e os bots NUNCA entram na premiação
 // (artilharia da rodada/temporada e VIP do time campeão são calculados sem eles — league.js).
+// ─── Tutorial de boas-vindas (dono, 18/09/2026) ────────────────────────────────────────────────────────────
+// "Ao abrir o jogo pela primeira vez o jogador não deve receber NENHUM pop up, apenas o tutorial dando boas
+// vindas. E pergunta se ele quer fazer o tutorial e receber 1 vip em troca." São três etapas, na ordem:
+// 1) bater um PÊNALTI (a principal forma de fazer gol), 2) jogar o TERMO (os minigames viram de hora em hora,
+// um por dia, e o nível libera mais), 3) DESAFIAR alguém no X1 (vale 1 gol para quem ganha e tira 1 de quem
+// perde). Terminou as três, cai 1 VIP no banco. Enquanto o tutorial está pendente, NENHUM pop-up aparece.
+export const TUTORIAL = {
+  vip: 1, // VIPs no banco ao terminar
+  steps: 3,
+  // No passo do X1: ninguém aceitou o desafio em 20 s → um dos bots aceita e joga como se fosse gente
+  // (decisão do dono: vale gol, dinheiro e ranking, igual a partida de verdade; SÓ no tutorial).
+  botAcceptSec: 20,
+  DONE: 9,
+  RECUSOU: -1,
+};
+
 export const BOTS = {
   tickMs: 20_000, // volta do motor; cada ação sai com atraso sorteado dentro da volta (nada cai no segundo exato)
   // janelas do dia (hora de Brasília, [de, até)): a persona tem 1 a 3 delas

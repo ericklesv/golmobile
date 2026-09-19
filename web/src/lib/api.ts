@@ -1,4 +1,4 @@
-import type { InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -138,6 +138,10 @@ export const api = {
   refMe: () => req<RefState>('GET', '/api/ref/me'),
   refLookup: (code: string) => req<RefInviter>('GET', `/api/ref/${encodeURIComponent(code)}`),
   // presença da semana (login diário)
+  // tutorial de boas-vindas (api/src/services/tutorial.js)
+  tutorialStart: () => req<TutorialState>('POST', '/api/tutorial/start'),
+  tutorialSkip: () => req<TutorialState>('POST', '/api/tutorial/skip'),
+  tutorialDone: (step: number) => req<TutorialState & { vipGanho: number }>('POST', `/api/tutorial/done/${step}`),
   pass: () => req<PassState>('GET', '/api/pass'),
   passClaim: () => req<{ reward: PassReward & { step: number; week: number }; state: PassState }>('POST', '/api/pass/claim'),
   // diretoria e contratações

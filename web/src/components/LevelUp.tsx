@@ -31,9 +31,11 @@ export function LevelUpWatcher() {
   const me = useAuth((s) => s.me);
   const nav = useNavigate();
   const [pop, setPop] = useState<Pop | null>(null);
+  const tutorial = !!me?.tutorial?.pending;
   const id = me?.id, lvl = me?.level.lvl;
 
   useEffect(() => {
+    if (tutorial) return; // o tutorial de boas-vindas vem primeiro; o nível novo aparece depois dele
     if (id === undefined || lvl === undefined) return;
     const seen = readSeen(id);
     if (seen === null || !Number.isFinite(seen) || lvl < seen) { writeSeen(id, lvl); return; } // 1ª vez no aparelho (ou nível voltou): só anota
@@ -45,7 +47,7 @@ export function LevelUpWatcher() {
       setPop((prev) => build(Math.min(seen, prev?.from ?? seen), lvl, useAuth.getState().meta));
     }, 1200);
     return () => window.clearTimeout(t);
-  }, [id, lvl]);
+  }, [id, lvl, tutorial]);
   useEffect(() => { if (pop) sound.play('goal'); }, [pop?.to]);
 
   const team = me?.team;

@@ -530,7 +530,7 @@ function timeoutTurn(m) {
 function botPlay(m) {
   if (m.done) return;
   const side = m.turn;
-  if (!m.conns[side].bot) return;
+  if (!isAi(m.conns[side])) return; // treino OU bot do tutorial (este joga valendo)
   const t = targetOf(side);
   const base = Math.atan2(t.y - m.ball.y, t.x - m.ball.x);
   const tries = [];
@@ -599,7 +599,7 @@ function timeoutSnap(m) {
 }
 
 function botSnap(m) {
-  if (m.done || !m.conns[m.bs.turn].bot) return;
+  if (m.done || !isAi(m.conns[m.bs.turn])) return; // treino OU bot do tutorial
   const mv = botaoBotMove(m.bs, m.bs.turn, rnd01, 0.45);
   if (!mv) return timeoutSnap(m);
   playSnap(m, m.bs.turn, mv.idx, mv.dx, mv.dy, mv.power);
@@ -737,7 +737,7 @@ async function cancelMatch(m, reason) {
     });
   }
   for (const c of m.conns) {
-    if (c.bot) continue;
+    if (isAi(c)) continue; // quem é jogado pelo servidor não tem tela para receber isto
     const msg = {
       t: 'over', game: m.game, winner: null, reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null,
       money: m.bot || m.freeplay ? 0 : F.bet, refund: !m.bot && !m.freeplay, canceled: true, why: reason,
@@ -761,7 +761,7 @@ async function finish(m, result) {
     if (!info.error) h2h = await headToHead(m.conns[0].user.id, m.conns[1].user.id).catch((e) => { console.error('[x1] retrospecto no fim:', e.message); return null; });
   }
   for (const c of m.conns) {
-    if (c.bot) continue;
+    if (isAi(c)) continue; // quem é jogado pelo servidor não tem tela para receber isto
     // partida de verdade que fechou: quem não é VIP espera challengeCooldownSec para desafiar de novo
     const cd = !m.bot && info && !info.error ? { cooldownUntil: isVip(c.user) ? null : Date.now() + F.challengeCooldownSec * 1000 } : {};
     const msg = {

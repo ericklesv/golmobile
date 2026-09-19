@@ -466,7 +466,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   Guilherme entra e joga **valendo tudo** (aposta, gol para quem ganha, gol a menos para quem perde e Ranking
   X1) — decisão do dono ("pra dar a impressão que o jogo tá movimentado"), e **só no tutorial**. Em x1.js,
   `ai` = lado jogado pelo servidor (vale tudo) e `bot` = treino (não vale nada): são coisas diferentes, não
-  juntar de novo. **Mexeu nisso? Rode `node scripts/test-tutorial.js`** (pasta api/, só banco LOCAL).
+  juntar de novo — e **quem decide a jogada (`botPlay`/`botSnap`) tem de olhar `isAi`, não `bot`**: em
+  18/09 o bot do tutorial entrou na partida e PERDEU A VEZ porque a função de jogar só aceitava o de treino.
+  **Mexeu no bot do X1? Rode `node scripts/test-tutorial-x1.js`** (pasta api/, com a API local no ar): ele
+  espera a jogada do bot chegar — é o teste que teria pego esse erro. **Mexeu nisso? Rode `node scripts/test-tutorial.js`** (pasta api/, só banco LOCAL).
 - **Presença da Semana** (login diário; decisões do dono, 13/09/2026 — "tá muito difícil upar"; `services/pass.js`,
   `routes/pass.js` em `/api/pass`, prêmios em `LOGIN_PASS` de `rules.js`, tabela `LoginPass`, migração 0020; tela
   `components/Pass.tsx`: cartela que abre sozinha 1x por dia no aparelho + cartão na Home). Entrar 1x por dia e tocar

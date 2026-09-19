@@ -123,8 +123,8 @@ game.get('/vitrine', cached(15000), handle(async () => {
   const round = await currentRound();
   const [partidas, artilheiros, reis, online] = await Promise.all([
     round ? prisma.match.findMany({ where: { roundId: round.id }, include: { homeTeam: true, awayTeam: true } }) : [],
-    round ? topScorers({ roundId: round.id }, 5) : [],
-    round ? x1Ranking({ from: round.startsAt, table: FUTPREGO.prizes.round, take: 5 }) : [],
+    round ? topScorers({ roundId: round.id }, 5).then(withBadges) : [], // withBadges: os mesmos distintivos do menu
+    round ? x1Ranking({ from: round.startsAt, table: FUTPREGO.prizes.round, take: 3 }).then(withBadges) : [], // pódio
     // conta igual ao `online` do /api/home (bots incluídos): o número de dentro e o de fora do jogo
     // precisam bater, senão a vitrine diz 3 e a tela inicial diz 30.
     prisma.user.count({ where: { lastSeenAt: { gt: new Date(now.getTime() - 2 * 60_000) } } }),

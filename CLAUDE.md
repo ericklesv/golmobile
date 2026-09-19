@@ -322,8 +322,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   `{t:'preview', seq, path, piece, goal}`; outra conta é ignorada em silêncio. **Os dois precisam saber quando o
   outro está com o Raio-X ligado** (dono): a tela manda `{t:'xray', on}` ao ligar/desligar (e ao reconectar), o
   adversário — se for uma das duas contas — recebe `xray-opp` (selo vermelho "RAIO-X" na barra dele + toast) e a
-  `match` traz `oppXray`; ligar manda aviso no Telegram (`tg.info`, agrupado por 10 min). Contas comuns não veem
-  nada. Nada no banco.
+  `match` traz `oppXray`. **Não avisa no Telegram** (dono, 19/09/2026: "faça o bot do telegram parar de
+  notificar o RAIO X" — virou enxurrada no grupo; quem precisa saber já vê o selo na tela). Contas comuns não
+  veem nada. Nada no banco.
   **Trava de atualização — deploy sem partida travada** (pedido do dono, 15/09/2026: o `pm2 restart` derrubava as
   partidas no meio, a tela ficava "travada"): o `brgol-deploy.sh` (cópia em `tools/vps/brgol-deploy.sh`), quando a API
   muda, faz 1) `POST /api/admin/x1/drain {seconds}` (`startX1Drain` em `realtime/x1.js`: ninguém desafia/aceita/
@@ -597,7 +598,11 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Telegram** (`lib/telegram.js`, `tg.info/warn/error`, mesmo bot do Managol (@Managol_bot) via `TELEGRAM_BOT_TOKEN`/
   `TELEGRAM_CHAT_ID`; pedido do dono, 15/09/2026; **desde 16/09 o chat é o grupo "JogaGol - ADMIN" (dono + Erickles),
   id em `docs/SEGURANCA.md` — trocar de chat = `api/.env` + `/etc/brgol-telegram.conf` + `pm2 restart`**): cadastro, cadastro barrado, conta trancada, PIX gerado/pago,
-  denúncia, exclusão de conta, ações do painel, erro 500, scheduler, exceção, "API subiu". `{ key, every }`
+  denúncia, exclusão de conta, ações do painel, erro 500, scheduler, exceção e **"API subiu"**, que lista
+  **o que aquela versão trouxe** (`lib/versao.js`; dono, 19/09/2026): os títulos dos commits entre o antes e o
+  depois da última linha de `/var/log/brgol-deploy.log`. Restart que não é publicação (queda, watchdog,
+  `pm2 restart`) sai só com o commit — a lista só aparece se a publicação foi nos últimos 10 min e o commit
+  bate com o que está rodando. `{ key, every }`
   agrupa repetidos. Evento novo importante para o dono = chamar `tg.*` (com `tg.esc()` em dado de usuário).
   Na VPS: `brgol-watchdog.sh` (API caiu/voltou a cada 2 min; resumo 09h) e fail2ban → Telegram.
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;

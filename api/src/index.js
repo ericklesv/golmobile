@@ -35,6 +35,7 @@ import { startScheduler } from './services/scheduler.js';
 import { startBots } from './services/bots.js';
 import { attachCabecao, cabecaoStatus } from './realtime/cabecao.js';
 import { attachX1, x1Status } from './realtime/x1.js';
+import { novidades, textoDaSubida } from './lib/versao.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -100,7 +101,11 @@ ensureSeason()
     const server = http.createServer(app);
     attachCabecao(server);
     attachX1(server);
-    server.listen(config.port, () => { console.log(`brgol-api na porta ${config.port}`); if (process.env.NODE_ENV === 'production') tg.info(`🚀 API subiu (pid ${process.pid}${process.env.GIT_COMMIT ? `, ${process.env.GIT_COMMIT.slice(0, 7)}` : ''})`); });
+    server.listen(config.port, () => {
+      console.log(`brgol-api na porta ${config.port}`);
+      // o aviso diz o que esta versão trouxe (dono, 19/09/2026); restart que não é publicação sai só com o commit
+      if (process.env.NODE_ENV === 'production') tg.info(`🚀 ${textoDaSubida(process.pid, novidades())}`);
+    });
   })
   .catch((e) => {
     console.error('Falha ao iniciar a temporada:', e);

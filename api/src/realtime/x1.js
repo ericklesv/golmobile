@@ -31,7 +31,6 @@ import { teamView } from '../services/view.js';
 import { X1_PLAYED, X1_COUNTED } from '../services/x1.js';
 import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
-import { tg } from '../lib/telegram.js';
 import { takeSlot } from '../lib/security.js';
 import { deviceOf } from '../lib/device.js';
 
@@ -638,7 +637,8 @@ function onDisconnect(conn) {
 // simula a MESMA jogada que o peteleco de verdade faria e devolve o caminho da bola. Ninguém mais recebe nada
 // (mensagem ignorada). **Os dois precisam saber quando o outro está com o Raio-X ligado** (dono, 15/09/2026): a tela
 // avisa o servidor ao ligar/desligar (`xray`), o adversário — se for uma destas contas — vê o selo "RAIO-X" na barra
-// (`xray-opp`, e `oppXray` na `match` de quem entra no meio) e ligar manda aviso no Telegram dos dois.
+// (`xray-opp`, e `oppXray` na `match` de quem entra no meio). **Não avisa mais no Telegram** (dono,
+// 19/09/2026: "faça o bot do telegram parar de notificar o RAIO X") — quem precisa saber já vê o selo na tela.
 const XRAY_NICKS = new Set(['MVGIC', 'ericklesv']);
 const isXrayNick = (c) => !!c && !c.bot && XRAY_NICKS.has(c.user.nick);
 function onXray(conn, msg) {
@@ -649,7 +649,6 @@ function onXray(conn, msg) {
   const m = conn.match;
   const opp = m && !m.done ? m.conns[1 - conn.side] : null;
   if (isXrayNick(opp)) send(opp.ws, { t: 'xray-opp', on });
-  if (on) tg.info(`🩻 ${tg.esc(conn.user.nick)} ligou o Raio-X no X1${m ? ` (${X1.names[m.game]} contra ${tg.esc(m.conns[1 - conn.side].user.nick)})` : ''}`, { key: `xray:${conn.user.id}`, every: 10 * 60_000 });
 }
 function onPreview(conn, msg) {
   if (!isXrayNick(conn)) return;

@@ -62,22 +62,27 @@ const e3 = await err(tutorialDone(u.id, 3));
 check(e3?.status === 409 && /X1/i.test(e3.message), `sem partida de X1, não termina: "${e3?.message}"`);
 const rival = await novo();
 const partida = await prisma.x1Match.create({ data: { game: 'FUTPREGO', aId: u.id, bId: rival.id, aTeamId: time.id, bTeamId: time.id, aIp: '1.1.1.1', bIp: '2.2.2.2', bet: 200 } });
-const vipAntes = (await U(u.id)).vipDays;
+const antesDoFim = Date.now();
 const fim = await tutorialDone(u.id, 3);
 check(fim.step === TUTORIAL.DONE && !fim.pending && fim.done, 'jogou o X1: tutorial terminado');
-check(fim.vipGanho === TUTORIAL.vip && (await U(u.id)).vipDays === vipAntes + TUTORIAL.vip, `caiu ${TUTORIAL.vip} VIP no banco`);
+const depoisU = await U(u.id);
+const sobra = depoisU.vipUntil ? depoisU.vipUntil.getTime() - antesDoFim : 0;
+check(fim.vipGanho === TUTORIAL.vip && sobra > 0, `ganhou ${TUTORIAL.vip} VIP`);
+check(sobra > 23.5 * 3600e3 && sobra <= 24.5 * 3600e3, `e ele entrou JÁ ATIVO: ${(sobra / 3600e3).toFixed(1)} h de VIP valendo`);
+check(depoisU.vipDays === 0, 'não foi para o banco de VIP (é ativo, não dá para doar)');
 check(!(await noPassoDoX1(u.id)), 'terminado o tutorial, o X1 volta a ser só entre gente de verdade');
 
 // ── o VIP não sai duas vezes
 const dobro = await tutorialDone(u.id, 3);
-check(dobro.vipGanho === 0 && (await U(u.id)).vipDays === vipAntes + TUTORIAL.vip, 'mandar a última etapa de novo NÃO paga outro VIP');
+const vipDepois = (await U(u.id)).vipUntil.getTime();
+check(dobro.vipGanho === 0 && vipDepois === depoisU.vipUntil.getTime(), 'mandar a última etapa de novo NÃO estica o VIP');
 check((await U(u.id)).tutorialAt instanceof Date, 'ficou gravado quando ele terminou');
 
 // ── quem diz "agora não"
 const r = await novo();
 const rec = await tutorialSkip(r.id);
 check(rec.step === TUTORIAL.RECUSOU && !rec.pending, 'recusou: os pop-ups normais voltam a aparecer');
-check((await U(r.id)).vipDays === 0, 'quem recusa não ganha VIP');
+check(!(await U(r.id)).vipUntil, 'quem recusa não ganha VIP');
 const eRec = await err(tutorialStart(r.id));
 check(eRec?.status === 409, 'e não dá para começar de novo depois de recusar');
 
@@ -87,7 +92,7 @@ await tutorialStart(m.id);
 await prisma.user.update({ where: { id: m.id }, data: { penaltyTries: 1 } });
 await tutorialDone(m.id, 1);
 const pulou = await tutorialSkip(m.id);
-check(pulou.step === TUTORIAL.RECUSOU && (await U(m.id)).vipDays === 0, 'pulou no meio: fecha sem VIP');
+check(pulou.step === TUTORIAL.RECUSOU && !(await U(m.id)).vipUntil, 'pulou no meio: fecha sem VIP');
 
 // ── quem já jogava não é incomodado (a migração marcou todo mundo como recusado)
 const velho = await novo({ tutorialStep: TUTORIAL.RECUSOU });

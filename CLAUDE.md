@@ -452,7 +452,9 @@ depois que o novo estiver estável. Não instalar nada dele.
 - **Tutorial de boas-vindas** (dono, 18/09/2026; `services/tutorial.js`, `routes/tutorial.js` em `/api/tutorial`,
   números em `TUTORIAL` de rules.js, colunas `User.tutorialStep/tutorialAt`, migração 0043; tela
   `components/Tutorial.tsx`): na PRIMEIRA vez o jogador **não vê pop-up nenhum** — só a janela de boas-vindas,
-  que pergunta se ele quer fazer o tutorial por **1 VIP**. Três etapas: **pênalti** (a principal forma de fazer
+  que pergunta se ele quer fazer o tutorial por **1 VIP**, que entra **JÁ ATIVO** (soma em `vipUntil`, como o 7º
+  dia da Presença — não vai para o banco `vipDays`, então não dá para doar; dono, 19/09/2026: o novato tem de
+  sentir o VIP na recarga seguinte, não descobrir onde ativar). Três etapas: **pênalti** (a principal forma de fazer
   gol), **Termo** (os minigames viram de hora em hora, um por dia, e o nível libera mais) e **X1** (ao vivo,
   ganhou = +1 gol para o time, perdeu = −1). O passo só anda quando o servidor CONFERE no banco que ele fez
   (`penaltyTries`, `DailyGame` do Termo, linha em `X1Match`) — a tela pergunta a cada `/me` novo e anda sozinha.

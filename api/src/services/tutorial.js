@@ -3,13 +3,15 @@
  *
  * Regra de ouro: **na primeira vez o jogador não vê pop-up nenhum** — nem Presença da Semana, nem convite de
  * grupo, nem aviso de nível. Só o tutorial, que se apresenta, explica que ele faz gols para o time vencer as
- * rodadas e pergunta se ele quer fazer as três etapas em troca de 1 VIP:
+ * rodadas e pergunta se ele quer fazer as três etapas em troca de 1 VIP, que entra JÁ ATIVO:
  *
  *   1. PÊNALTI  — a principal forma de marcar gol para o time.
  *   2. TERMO    — os minigames viram de hora em hora, um por dia, e o nível libera mais.
  *   3. X1       — partida ao vivo contra outro jogador: ganhou, +1 gol para o time; perdeu, −1.
  *
  * O passo só anda quando o jogador FEZ a coisa (o servidor confere no banco), então o VIP não sai de graça.
+ * O prêmio ATIVA NA HORA (soma em `vipUntil`, como o 7º dia da Presença): o novato sente o VIP na recarga
+ * seguinte, em vez de ter de descobrir onde ativar (dono, 19/09/2026).
  * `User.tutorialStep`: 0 = ainda não respondeu · 1..3 = na etapa · 9 = terminou · −1 = recusou/pulou.
  * O VIP cai uma vez só: o `updateMany` exige `tutorialStep: 3` e a mesma linha não passa duas vezes.
  *
@@ -23,6 +25,7 @@ import { dayNumber } from '../lib/time.js';
 import { tg } from '../lib/telegram.js';
 
 const { DONE, RECUSOU } = TUTORIAL;
+const DAY_MS = 86_400_000;
 
 /** O que a tela precisa saber. `pending` = está no meio do tutorial → NENHUM pop-up pode aparecer. */
 export function tutorialView(user) {
@@ -105,13 +108,23 @@ export async function tutorialDone(userId, step) {
     }
     return { ...tutorialView(await carregar(userId)), vipGanho: 0 };
   }
-  // última etapa: 1 VIP no banco, numa tacada só
-  const { count } = await prisma.user.updateMany({
-    where: { id: userId, tutorialStep: TUTORIAL.steps },
-    data: { tutorialStep: DONE, tutorialAt: new Date(), vipDays: { increment: TUTORIAL.vip } },
+  // Última etapa: o VIP ATIVA NA HORA (dono, 19/09/2026: "quando um novato terminar o tutorial já ativar
+  // automaticamente o vip dele") — soma em `vipUntil`, como o 7º dia da Presença, e não vai para o banco
+  // `vipDays`. Quem fecha a etapa é o `updateMany`: só o primeiro a trocar 3 → terminado paga o VIP.
+  const agora = new Date();
+  const ganhou = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.user.updateMany({
+      where: { id: userId, tutorialStep: TUTORIAL.steps },
+      data: { tutorialStep: DONE, tutorialAt: agora },
+    });
+    if (!count) return 0; // outro pedido já terminou o tutorial: ninguém ganha duas vezes
+    const u = await tx.user.findUnique({ where: { id: userId }, select: { vipUntil: true } });
+    const base = u?.vipUntil && u.vipUntil.getTime() > agora.getTime() ? u.vipUntil.getTime() : agora.getTime();
+    await tx.user.update({ where: { id: userId }, data: { vipUntil: new Date(base + TUTORIAL.vip * DAY_MS) } });
+    return TUTORIAL.vip;
   });
-  if (count) tg.info(`🎓 ${tg.esc(user.nick)} terminou o tutorial e levou ${TUTORIAL.vip} VIP`);
-  return { ...tutorialView(await carregar(userId)), vipGanho: count ? TUTORIAL.vip : 0 };
+  if (ganhou) tg.info(`🎓 ${tg.esc(user.nick)} terminou o tutorial e o VIP dele já entrou ativo (${ganhou} dia)`);
+  return { ...tutorialView(await carregar(userId)), vipGanho: ganhou };
 }
 
 /** O jogador está na etapa do X1? (realtime/x1.js usa para deixar um bot aceitar o desafio) */

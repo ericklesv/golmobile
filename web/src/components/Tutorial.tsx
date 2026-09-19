@@ -123,7 +123,7 @@ export function TutorialWatcher() {
             Você joga pelo <b className="text-grass-deep">{me.team.name}</b>. Cada gol seu entra no placar do time na rodada — e a rodada fecha todo dia às 19h.
           </p>
           <p className="mt-2 text-[13px] font-bold leading-snug text-muted">
-            Quer que eu te mostre as três formas de marcar? Leva dois minutos e no fim você leva {t.vip} VIP.
+            Quer que eu te mostre as três formas de marcar? Leva dois minutos e no fim seu {t.vip} VIP já entra ativo.
           </p>
           <div className="mt-3 flex justify-center"><PremioVip vip={t.vip} /></div>
           <button onClick={começar} disabled={busy} className="btn btn-green btn-lg mt-4 w-full">Fazer o tutorial</button>
@@ -143,7 +143,7 @@ export function TutorialWatcher() {
           <img src="/ui/ico-crown_silver.png" alt="" className="mx-auto mt-3 h-16 w-16" />
           <p className="t-display mt-1 text-[22px] text-grass-deep">+{fim.vip} VIP</p>
           <p className="mt-1 text-[13px] font-bold leading-snug text-muted">
-            Está guardado no seu banco de VIP: ative quando quiser, no topo da tela. Com VIP as recargas caem pela metade.
+            Já está <b className="text-grass-deep">ativo</b> por 1 dia: suas recargas caem pela metade e seu nome fica azul no jogo.
           </p>
           <p className="mt-2 text-[13px] font-extrabold leading-snug">Agora é com você: faça gol, suba de nível e leve o {me.team.name} para o topo.</p>
           <button onClick={() => { setFim(null); nav('/'); }} className="btn btn-green btn-lg mt-4 w-full">Jogar</button>

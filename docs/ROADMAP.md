@@ -2,7 +2,15 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## Tutorial de boas-vindas (18/09/2026) — no GitHub, aguardando publicação
+## Publicado em 19/09/2026 04:38 (Brasília) — commit f0460cc
+Produção estava em 72a85f6 (de hoje, 03:26); sem migração de banco. Backup do dia: `/var/backups/brgol/daily/jogagol-2026-09-19.tar`.
+Subiu: a **tela de entrada com o jogo na frente** (botão Entrar no topo, jogo da rodada, artilheiros de hoje e
+rei do X1 antes do formulário; `GET /api/vitrine`), a linha de cima mostrando **os gols da rodada** no lugar de
+quantos estavam chutando (pedido do dono, 19/09), a seção JOGADOR como primeira da Loja e o aviso do Telegram
+"API subiu" dizendo o que aquela versão trouxe. Conferido: `api/health` OK, vitrine com `roundGoals` e foto da
+tela de entrada em produção.
+
+## Tutorial de boas-vindas (18/09/2026) — publicado em 19/09 03:26
 Conta nova não recebe pop-up nenhum: só a janela de boas-vindas, que explica que o jogador faz gols para o time
 vencer as rodadas e oferece 1 VIP para fazer três etapas — pênalti, Termo e X1. O passo só anda quando o servidor
 confere no banco que ele fez a coisa. No X1, se ninguém aceitar o desafio em 20 s, um dos bots do Guilherme aceita

@@ -276,19 +276,7 @@ export function ShopScreen() {
         <VipBar iconClass="h-8 w-8" />
       </div>
 
-      {skills.length > 0 && (
-        <Panel title="HABILIDADES" ribbon="green">
-          <p className="mb-1 text-[12px] font-bold leading-snug text-muted">
-            Cada nível seu dá 1 ponto, e ponto é a única moeda daqui — não dá para comprar com dinheiro nem com VIP.
-            Você tem <b className="t-display text-[15px] text-grass-deep">{me.skills.points}</b> {me.skills.points === 1 ? 'ponto' : 'pontos'}.
-          </p>
-          <p className="mb-3 text-[11px] font-bold leading-snug text-muted">
-            Na ordem: primeiro a Recarga, para chutar mais vezes; depois Pontaria e Chute, para errar menos; a Sorte por último, quando o resto estiver no máximo.
-          </p>
-          <ol className="flex flex-col">{skills.map(skillRow)}</ol>
-        </Panel>
-      )}
-
+      {/* JOGADOR vem primeiro (dono, 19/09/2026): ativar o VIP guardado é o que mais se procura aqui. */}
       <Panel title="JOGADOR" ribbon="blue">
         <div className="flex flex-col gap-2">
           <Row icon="ico-crown_silver" title="Ativar VIP (1 dia)" desc={`Recargas pela metade e nick azul. Você tem ${me.vipDays} ${me.vipDays === 1 ? 'VIP guardado' : 'VIPs guardados'}.`} busy={busy} active={vipLeft > 0}
@@ -314,6 +302,20 @@ export function ShopScreen() {
           <Link to="/vip" className="btn btn-yellow btn-md w-full"><img src="/ui/ico-crown_silver.png" className="h-6 w-6" alt="" /> Comprar dias de VIP</Link>
         </div>
       </Panel>
+
+      {skills.length > 0 && (
+        <Panel title="HABILIDADES" ribbon="green">
+          <p className="mb-1 text-[12px] font-bold leading-snug text-muted">
+            Cada nível seu dá 1 ponto, e ponto é a única moeda daqui — não dá para comprar com dinheiro nem com VIP.
+            Você tem <b className="t-display text-[15px] text-grass-deep">{me.skills.points}</b> {me.skills.points === 1 ? 'ponto' : 'pontos'}.
+          </p>
+          <p className="mb-3 text-[11px] font-bold leading-snug text-muted">
+            Na ordem: primeiro a Recarga, para chutar mais vezes; depois Pontaria e Chute, para errar menos; a Sorte por último, quando o resto estiver no máximo.
+          </p>
+          <ol className="flex flex-col">{skills.map(skillRow)}</ol>
+        </Panel>
+      )}
+
 
       {(Object.keys(CATEGORY) as ShopItemDef['category'][]).map((cat) => {
         const defs = catalog.filter((d) => d.category === cat);

@@ -456,6 +456,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   gol), **Termo** (os minigames viram de hora em hora, um por dia, e o nível libera mais) e **X1** (ao vivo,
   ganhou = +1 gol para o time, perdeu = −1). O passo só anda quando o servidor CONFERE no banco que ele fez
   (`penaltyTries`, `DailyGame` do Termo, linha em `X1Match`) — a tela pergunta a cada `/me` novo e anda sozinha.
+  **Entrando na etapa 3 o servidor garante a aposta do X1** (`FUTPREGO.bet`) para quem tem menos: conta nova
+  começa com R$ 0 e o desafio custa R$ 200 — sem isso o tutorial mandaria fazer o que o jogador não pode pagar.
   `tutorialStep`: 0 = não respondeu · 1..3 = na etapa · 9 = terminou · −1 = recusou; o VIP cai uma vez só
   (`updateMany` exigindo a etapa 3). **Quem segura os pop-ups é `me.tutorial.pending`**: Presença, troca de
   séries, WhatsApp, Instagram e "subiu de nível" saem de cena enquanto isso — pop-up novo tem de respeitar esse

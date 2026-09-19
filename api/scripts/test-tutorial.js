@@ -12,7 +12,7 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
 }
 const { prisma } = await import('../src/prisma.js');
 const { tutorialState, tutorialStart, tutorialSkip, tutorialDone, noPassoDoX1 } = await import('../src/services/tutorial.js');
-const { TUTORIAL } = await import('../src/lib/rules.js');
+const { TUTORIAL, FUTPREGO } = await import('../src/lib/rules.js');
 const { dayNumber } = await import('../src/lib/time.js');
 
 let fails = 0;
@@ -46,7 +46,16 @@ const e2 = await err(tutorialDone(u.id, 2));
 check(e2?.status === 409 && /termo/i.test(e2.message), `sem jogar o Termo, não anda: "${e2?.message}"`);
 await prisma.dailyGame.create({ data: { userId: u.id, game: 'TERMO', day: dayNumber(), state: { guesses: [] } } });
 check((await tutorialDone(u.id, 2)).step === 3, 'jogou o Termo: foi para a etapa 3 (X1)');
+check((await U(u.id)).money >= FUTPREGO.bet, `quem chegou sem dinheiro recebe a aposta do X1 (R$ ${(await U(u.id)).money}) — senão a etapa 3 seria impossível`);
 check(await noPassoDoX1(u.id), 'na etapa 3 o X1 sabe que pode mandar um bot aceitar o desafio');
+
+// quem já tem dinheiro não ganha nada de graça
+const rico = await novo({ money: 10_000, penaltyTries: 1 });
+await tutorialStart(rico.id);
+await tutorialDone(rico.id, 1);
+await prisma.dailyGame.create({ data: { userId: rico.id, game: 'TERMO', day: dayNumber(), state: {} } });
+await tutorialDone(rico.id, 2);
+check((await U(rico.id)).money === 10_000, 'quem já tinha dinheiro não recebe a aposta de brinde');
 
 // ── etapa 3: só termina depois de uma partida de X1
 const e3 = await err(tutorialDone(u.id, 3));

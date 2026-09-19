@@ -18,7 +18,7 @@
  */
 import { prisma } from '../prisma.js';
 import { GameError } from '../lib/errors.js';
-import { TUTORIAL } from '../lib/rules.js';
+import { TUTORIAL, FUTPREGO } from '../lib/rules.js';
 import { dayNumber } from '../lib/time.js';
 import { tg } from '../lib/telegram.js';
 
@@ -34,6 +34,7 @@ export function tutorialView(user) {
     steps: TUTORIAL.steps,
     vip: TUTORIAL.vip,
     botAcceptSec: TUTORIAL.botAcceptSec,
+    bet: FUTPREGO.bet, // o X1 custa isto; a etapa 3 garante o dinheiro de quem não tem
   };
 }
 
@@ -96,6 +97,12 @@ export async function tutorialDone(userId, step) {
 
   if (n < TUTORIAL.steps) {
     await prisma.user.updateMany({ where: { id: userId, tutorialStep: n }, data: { tutorialStep: n + 1 } });
+    // Entrando na etapa do X1: quem chegou hoje começa com R$ 0 e o desafio custa a aposta — sem isto o
+    // tutorial mandaria fazer uma coisa que o jogador não tem como pagar. A casa paga o primeiro X1 (uma vez
+    // só, e só até o valor da aposta: quem já fez dinheiro não ganha nada).
+    if (n + 1 === TUTORIAL.steps) {
+      await prisma.user.updateMany({ where: { id: userId, money: { lt: FUTPREGO.bet } }, data: { money: FUTPREGO.bet } });
+    }
     return { ...tutorialView(await carregar(userId)), vipGanho: 0 };
   }
   // última etapa: 1 VIP no banco, numa tacada só

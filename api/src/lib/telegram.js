@@ -75,9 +75,26 @@ async function photo(png, caption) {
   } catch (e) { console.warn('[telegram] foto erro:', e.message); return false; }
 }
 
+/**
+ * Texto "cru" (HTML), sem o selo ⚽ JogaGol nem ícone, mandado NA HORA e sozinho numa mensagem (a fila junta
+ * mensagens) — relatórios longos (scripts/relatorio-retencao.js). Devolve se o Telegram aceitou.
+ */
+async function raw(text) {
+  if (!TOKEN || !CHAT) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: CHAT, text: text.slice(0, 4096), parse_mode: 'HTML', disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) { console.warn(`[telegram] texto falhou (${res.status}): ${(await res.text()).slice(0, 200)}`); return false; }
+    return true;
+  } catch (e) { console.warn('[telegram] texto erro:', e.message); return false; }
+}
+
 export const tg = {
   enabled: () => !!(TOKEN && CHAT),
-  photo,
+  photo, raw,
   esc, money,
   info: (text, opts) => send('ℹ️', text, opts),
   warn: (text, opts) => send('⚠️', text, opts),

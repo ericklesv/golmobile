@@ -8,128 +8,19 @@
  *   node scripts/relatorio-retencao.js --ver /tmp/retencao.png    grava o PNG e imprime o texto (não manda nada)
  *   node scripts/relatorio-retencao.js --enviar                    manda para o Telegram (TELEGRAM_* do .env)
  *
- * Definições (dia = dia de Brasília):
- *  - Conta nova = User sem isBot, sem deletedAt, fora as contas de varredura (0 gol, IP banido 177.23.227.136).
- *  - 1º dia = as 24 h depois do cadastro. "Tempo no 1º dia" = do cadastro até o último sinal de vida dentro dessas
- *    24 h (último gol, ou lastSeenAt se ainda está nelas).
- *  - Voltou (D1) = teve atividade (gol, Presença ou lastSeenAt) em um dia DEPOIS do dia do cadastro; só conta para
- *    contas criadas até ontem. Ativo 3+ dias depois (D3) = atividade ≥ 3 dias depois; só contas com 3+ dias.
- *  - Ativo agora = voltou outro dia E lastSeenAt nas últimas 48 h (conta de hoje não conta como "ativa" só por existir).
+ * Definições e leitura por conta: services/retention.js (compartilhado com o relatório ao vivo do painel).
  */
 import 'dotenv/config';
 import fs from 'node:fs';
 import sharp from 'sharp';
 import { prisma } from '../src/prisma.js';
 import { tg } from '../src/lib/telegram.js';
-import { tzParts, calendarDay } from '../src/lib/time.js';
+import { retentionRows, retentionSummary, dm, pct } from '../src/services/retention.js';
 
 const args = process.argv.slice(2);
 const OUT = args.includes('--ver') ? args[args.indexOf('--ver') + 1] || 'retencao.png' : null;
 const SEND = args.includes('--enviar');
-const SWEEP_IP = '177.23.227.136'; // varredura de 17/09 (contas testadmin99, massassign99, audit_…): não são jogadores
-
-const HOUR = 3600_000, DAY = 24 * HOUR;
-const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-const dayOf = (d) => calendarDay(new Date(d));
-const dm = (d) => { const p = tzParts(new Date(d)); return `${String(p.d).padStart(2, '0')}/${String(p.m).padStart(2, '0')}`; };
-const median = (arr) => { if (!arr.length) return 0; const s = [...arr].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-// ─── Dados ────────────────────────────────────────────────────────────────────
-async function collect(now = Date.now()) {
-  const today = dayOf(now);
-  const users = await prisma.user.findMany({
-    where: { isBot: false, deletedAt: null },
-    select: { id: true, nick: true, createdAt: true, lastSeenAt: true, goalsTotal: true, referredById: true, deviceMobile: true, createdIp: true, vipUntil: true, teamId: true },
-    orderBy: { createdAt: 'asc' },
-  });
-  const ids = users.map((u) => u.id);
-  const [goals, passes, dailies, chats, x1] = await Promise.all([
-    prisma.goal.findMany({ where: { userId: { in: ids } }, select: { userId: true, createdAt: true } }),
-    prisma.loginPass.findMany({ where: { userId: { in: ids } }, select: { userId: true, day: true } }),
-    prisma.dailyGame.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _count: { _all: true } }),
-    prisma.chatMessage.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _count: { _all: true } }),
-    prisma.x1Match.findMany({ where: { status: 'FINISHED' }, select: { aId: true, bId: true } }),
-  ]);
-  const byUser = new Map(users.map((u) => [u.id, { ...u, goals: [], passDays: new Set(), minigames: 0, chat: 0, x1: 0 }]));
-  for (const g of goals) byUser.get(g.userId)?.goals.push(g.createdAt.getTime());
-  for (const p of passes) byUser.get(p.userId)?.passDays.add(p.day);
-  for (const d of dailies) { const u = byUser.get(d.userId); if (u) u.minigames = d._count._all; }
-  for (const c of chats) { const u = byUser.get(c.userId); if (u) u.chat = c._count._all; }
-  for (const m of x1) { for (const id of [m.aId, m.bId]) { const u = byUser.get(id); if (u) u.x1++; } }
-
-  const rows = [];
-  let sweep = 0;
-  for (const u of byUser.values()) {
-    if (u.createdIp === SWEEP_IP && !u.goals.length) { sweep++; continue; }
-    const c = u.createdAt.getTime(), seen = u.lastSeenAt.getTime();
-    u.goals.sort((a, b) => a - b);
-    const cDay = dayOf(c);
-    const day0Goals = u.goals.filter((t) => t < c + DAY);
-    const lastDay0 = Math.max(day0Goals.length ? day0Goals[day0Goals.length - 1] : c, seen < c + DAY ? seen : c);
-    const minutes0 = (lastDay0 - c) / 60_000;
-    const activeDays = new Set([...u.goals.map(dayOf), ...u.passDays, dayOf(seen)]);
-    const lastActiveDay = Math.max(...activeDays);
-    rows.push({
-      id: u.id, nick: u.nick, created: c, cDay, label: dm(c), goalsTotal: u.goalsTotal, goals0: day0Goals.length, minutes0,
-      kicked: u.goals.length > 0, minigames: u.minigames, chat: u.chat, x1: u.x1, invite: !!u.referredById, mobile: u.deviceMobile,
-      vip: !!(u.vipUntil && u.vipUntil.getTime() > now), passes: u.passDays.size,
-      d1: lastActiveDay >= cDay + 1, d3: lastActiveDay >= cDay + 3, activeNow: lastActiveDay >= cDay + 1 && seen >= now - 2 * DAY, // ativo = voltou E foi visto nas últimas 48 h
-      elig1: cDay <= today - 1, elig3: cDay <= today - 3, daysActive: activeDays.size,
-    });
-  }
-  return { rows, sweep, today, now };
-}
-
-// ─── Métricas ─────────────────────────────────────────────────────────────────
-function analyze({ rows, sweep, today, now }) {
-  const all = rows.length;
-  const e1 = rows.filter((r) => r.elig1); // contas com pelo menos 1 dia inteiro para voltar
-  const e3 = rows.filter((r) => r.elig3);
-  const funnel = [
-    { key: 'cadastrou', label: 'Criaram a conta', n: e1.length },
-    { key: 'chutou', label: 'Chutaram ao menos 1 vez', n: e1.filter((r) => r.kicked).length },
-    { key: 'min10', label: 'Ficaram 10+ min no 1º dia', n: e1.filter((r) => r.minutes0 >= 10).length },
-    { key: 'min30', label: 'Ficaram 30+ min no 1º dia', n: e1.filter((r) => r.minutes0 >= 30).length },
-    { key: 'd1', label: 'Voltaram outro dia', n: e1.filter((r) => r.d1).length },
-    { key: 'ativo', label: 'Ativos nas últimas 48 h', n: e1.filter((r) => r.activeNow).length },
-  ];
-  const buckets = [
-    { label: 'até 5 min', test: (m) => m < 5 },
-    { label: '5–15 min', test: (m) => m >= 5 && m < 15 },
-    { label: '15–30 min', test: (m) => m >= 15 && m < 30 },
-    { label: '30–60 min', test: (m) => m >= 30 && m < 60 },
-    { label: '1–3 h', test: (m) => m >= 60 && m < 180 },
-    { label: '3 h ou mais', test: (m) => m >= 180 },
-  ].map((b) => ({ ...b, n: e1.filter((r) => r.kicked && b.test(r.minutes0)).length }));
-  const days = [...new Set(rows.map((r) => r.cDay))].sort((a, b) => a - b).map((d) => {
-    const c = rows.filter((r) => r.cDay === d);
-    const el1 = d <= today - 1, el3 = d <= today - 3;
-    return { day: d, label: c[0].label, n: c.length, kicked: c.filter((r) => r.kicked).length, min10: c.filter((r) => r.minutes0 >= 10).length,
-      d1: el1 ? c.filter((r) => r.d1).length : null, d3: el3 ? c.filter((r) => r.d3).length : null, active: el1 ? c.filter((r) => r.activeNow).length : null };
-  });
-  const stay = e1.filter((r) => r.d1), leave = e1.filter((r) => !r.d1);
-  const share = (grp, f) => pct(grp.filter(f).length, grp.length);
-  const compare = [
-    { label: 'Ficaram 30+ min no 1º dia', a: share(stay, (r) => r.minutes0 >= 30), b: share(leave, (r) => r.minutes0 >= 30) },
-    { label: 'Fizeram 10+ gols no 1º dia', a: share(stay, (r) => r.goals0 >= 10), b: share(leave, (r) => r.goals0 >= 10) },
-    { label: 'Jogaram algum minigame', a: share(stay, (r) => r.minigames > 0), b: share(leave, (r) => r.minigames > 0) },
-    { label: 'Jogaram o X1', a: share(stay, (r) => r.x1 > 0), b: share(leave, (r) => r.x1 > 0) },
-    { label: 'Falaram no chat', a: share(stay, (r) => r.chat > 0), b: share(leave, (r) => r.chat > 0) },
-    { label: 'Entraram por convite', a: share(stay, (r) => r.invite), b: share(leave, (r) => r.invite) },
-  ];
-  const kicked1 = e1.filter((r) => r.kicked);
-  const med = { minutes0: median(kicked1.map((r) => r.minutes0)), goals0: median(kicked1.map((r) => r.goals0)) };
-  const quick = e1.filter((r) => r.kicked && r.minutes0 < 15).length; // saiu antes da 2ª recarga
-  const fewKicks = e1.filter((r) => r.kicked && r.goals0 <= 7).length; // só a 1ª leva de chutes
-  const returnedOnce = e1.filter((r) => r.d1 && !r.activeNow).length; // voltou e depois sumiu
-  const loyal = rows.filter((r) => r.daysActive >= 4).length;
-  // aparelho (celular × PC): só gravado desde 15/09 e em quem voltou a entrar — viés; fica nos dados, fora do texto
-  const mobileKnown = e1.filter((r) => r.mobile !== null);
-  const mobile = { n: mobileKnown.length, cel: share(mobileKnown.filter((r) => r.mobile), (r) => r.d1), pc: share(mobileKnown.filter((r) => !r.mobile), (r) => r.d1), nCel: mobileKnown.filter((r) => r.mobile).length, nPc: mobileKnown.filter((r) => !r.mobile).length };
-  const invited = e1.filter((r) => r.invite);
-  return { all, sweep, today, now, e1: e1.length, e3: e3.length, d3: e3.filter((r) => r.d3).length, funnel, buckets, days, compare, stay: stay.length, leave: leave.length, med, quick, fewKicks, returnedOnce, loyal, mobile, invited: { n: invited.length, d1: invited.filter((r) => r.d1).length }, activeNow: rows.filter((r) => r.activeNow).length, first: rows[0]?.label, last: rows[rows.length - 1]?.label };
-}
 
 // ─── Gráfico ──────────────────────────────────────────────────────────────────
 // Cores: superfície marinho (#0B2D6B / painéis #123C8A); marcas em UM azul (#3B93E6) e o destaque "quem fica" em
@@ -289,13 +180,13 @@ Quem volta é quem achou <b>outra coisa para fazer enquanto a recarga corre</b> 
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  const m = analyze(await collect());
+  const m = retentionSummary(await retentionRows());
   const t = texts(m);
   if (OUT) {
     fs.writeFileSync(OUT, await render(m));
     console.log(`PNG gravado em ${OUT}\n`);
     console.log(t.caption, '\n\n', t.body, '\n\n', t.recs);
-    console.log('\n[dados]', JSON.stringify({ e1: m.e1, funnel: m.funnel.map((f) => f.n), buckets: m.buckets.map((b) => b.n), days: m.days, compare: m.compare, med: m.med, quick: m.quick, fewKicks: m.fewKicks, loyal: m.loyal, mobile: m.mobile, invited: m.invited }));
+    console.log('\n[dados]', JSON.stringify({ e1: m.e1, funnel: m.funnel.map((f) => f.n), buckets: m.buckets.map((b) => b.n), days: m.days, compare: m.compare, med: m.med, quick: m.quick, fewKicks: m.fewKicks, loyal: m.loyal, invited: m.invited }));
   }
   if (SEND) {
     if (!tg.enabled()) { console.error('TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID não configurados.'); process.exit(1); }

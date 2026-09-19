@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { track } from '../lib/track';
 import { api, token, ApiError } from '../lib/api';
 import type { Me, Meta } from '../lib/types';
 
@@ -64,6 +65,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     const r = await api.register(b);
     token.set(r.token);
     set({ unread: (r as any)?.unread ?? get().unread, me: r.me, offset: r.me.serverTime - Date.now() });
+    track('cadastro.ok', { time: b.teamSlug, convite: b.ref ? true : undefined }); // funil dos novatos (lib/track.ts)
   },
   logout: () => { token.set(null); set({ me: null }); },
 }));

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api } from '../lib/api';
+import { track } from '../lib/track';
 import { useAuth } from '../store/auth';
 import type { MinigameCard } from '../lib/types';
 import { useCountdown } from './ui';
@@ -53,6 +54,7 @@ function Card({ g }: { g: MinigameCard }) {
   );
 }
 
+let sliderSeen = false;
 export function MinigameSlider() {
   const me = useAuth((s) => s.me)!;
   const [games, setGames] = useState<MinigameCard[] | null>(null);
@@ -67,8 +69,16 @@ export function MinigameSlider() {
   }, [soonest, load]);
 
   const ready = games?.filter((g) => g.available && !g.finished).length ?? 0;
+  // funil dos novatos: o slider apareceu na tela (uma vez por carregamento do site)
+  const box = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (sliderSeen || !box.current || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { sliderSeen = true; track('slider.visto'); io.disconnect(); } }, { threshold: 0.4 });
+    io.observe(box.current);
+    return () => io.disconnect();
+  }, []);
   return (
-    <section className="-mx-3">
+    <section ref={box} className="-mx-3">
       <div className="mb-1 flex items-center justify-between px-3">
         <span className="t-display t-out text-[15px] uppercase">Minigames</span>
         <span className="t-display t-gold text-[12px]">{ready > 0 ? `${ready} pra jogar` : games ? 'volte mais tarde' : ''}</span>

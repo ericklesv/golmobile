@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api, ApiError } from '../lib/api';
+import { track } from '../lib/track';
 import { useAuth } from '../store/auth';
 import type { DailyStatus, Home, Kind } from '../lib/types';
 import { Shield } from '../components/Shield';
@@ -66,6 +67,7 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
   );
 }
 
+let recargaVista = false;
 export function HomeScreen() {
   const me = useAuth((s) => s.me)!;
   const refresh = useAuth((s) => s.refresh);
@@ -91,6 +93,14 @@ export function HomeScreen() {
       else toast((e as Error).message, 'error');
     } finally { setBusy(false); }
   }
+
+  // funil dos novatos (lib/track.ts): a "parede" — todos os chutes em recarga ao mesmo tempo (1x por carregamento)
+  useEffect(() => {
+    if (recargaVista) return;
+    const now = Date.now() + (useAuth.getState().offset || 0);
+    const all = (['AUTO', 'PENALTY', 'FOUL', 'TRAIL'] as const).every((k) => me.cooldowns[k].readyAt > now) && !me.trail.active;
+    if (all) { recargaVista = true; track('recarga.vista'); }
+  }, [me.cooldowns, me.trail.active]);
 
   // Auto-chute igual ao original: com o app aberto, quando o tempo zera o chute sai sozinho.
   const autoRem = useCountdown(me.cooldowns.AUTO.readyAt);

@@ -1,3 +1,4 @@
+import { prisma } from '../prisma.js';
 import { settleDueRounds, closePastHours, ensureSeason, refreshLiveRound } from './league.js';
 import { dailyReportTick } from './dailyReport.js';
 import { vipOfflineAutoKicks } from './play.js';
@@ -12,6 +13,7 @@ let exact = null; // disparo extra para fechar a rodada NA HORA (a volta normal 
 let lastReconcile = 0; // conferência dos PIX do VIP pendentes: a cada 2 min
 let lastClubSweep = 0; // diretoria: cargos perdidos e propostas vencidas (o VIP volta) — a cada 5 min
 let lastReferral = 0; // convites: paga os marcos de gols que os convidados passaram — a cada 2 min
+let lastEvents = 0; // eventos de uso (tabela Event): apaga os com mais de 90 dias — a cada 6 h
 
 async function tick() {
   if (ticking) return;
@@ -41,6 +43,11 @@ async function tick() {
       lastReferral = Date.now();
       const n = await referralSweep();
       if (n) console.log('[convite] marcos pagos:', n);
+    }
+    if (Date.now() - lastEvents > 6 * 3600_000) {
+      lastEvents = Date.now();
+      const { count } = await prisma.event.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 90 * 24 * 3600_000) } } });
+      if (count) console.log('[eventos] apagados (90+ dias):', count);
     }
     // relatório diário no Telegram (08:00 de Brasília, o dia anterior) — um erro aqui não segura o resto
     await dailyReportTick().catch((e) => { console.error('[relatorio] erro:', e); tg.error(`Relatório diário: ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'relatorio', every: 60 * 60_000 }); });

@@ -50,6 +50,7 @@ export async function deleteAccount(userId) {
     await tx.userBlock.deleteMany({ where: { OR: [{ userId: u.id }, { blockedId: u.id }] } });
     await tx.passwordReset.deleteMany({ where: { userId: u.id } });
     await tx.userItem.deleteMany({ where: { userId: u.id } });
+    await tx.event.deleteMany({ where: { userId: u.id } }); // eventos de uso (routes/events.js)
     await tx.$executeRaw`UPDATE "Activity" SET "text" = replace("text", ${u.nick}, 'Jogador excluído') WHERE "userId" = ${u.id}`;
     await tx.user.update({
       where: { id: u.id },

@@ -1,4 +1,4 @@
-import type { InboxPage, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -175,6 +175,7 @@ export const api = {
   adminLog: (page = 1) => req<AdminLogPage>('GET', `/api/painel/log?page=${page}`),
   adminFutprego: (page = 1) => req<AdminFutPregoPage>('GET', `/api/painel/x1?page=${page}`),
   adminMulti: (q = '', page = 1) => req<AdminMultiPage>('GET', `/api/painel/multicontas?q=${encodeURIComponent(q)}&page=${page}`),
+  adminRelatorio: (dias: 1 | 7 | 30 = 7) => req<AdminReport>('GET', `/api/painel/relatorio?dias=${dias}`), // relatório ao vivo (AdminDock)
   // conta (Play Store): exclusão, bloqueios e denúncias — routes/account.js
   deleteAccount: (password: string) => req<{ ok: boolean }>('DELETE', '/api/account', { password }),
   blocks: () => req<BlockedUser[]>('GET', '/api/account/blocks'),

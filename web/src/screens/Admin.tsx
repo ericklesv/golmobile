@@ -6,6 +6,7 @@ import type { AdminFutPregoRow, AdminGeo, AdminLogRow, AdminMultiRow, AdminPatch
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { Panel, Spinner, Tabs, Empty } from '../components/ui';
+import { AdminReport } from '../components/AdminReport';
 import { toast } from '../components/Toast';
 import { nickProps } from '../lib/nick';
 import { money as fmt, num, timeAgo } from '../lib/format';
@@ -718,7 +719,7 @@ function ReportList({ onPick }: { onPick: (id: number) => void }) {
 export function AdminScreen() {
   const me = useAuth((s) => s.me)!;
   const nav = useNavigate();
-  const [tab, setTab] = useState<'jogadores' | 'criadas' | 'multi' | 'denuncias' | 'futprego' | 'avisos' | 'log'>('jogadores');
+  const [tab, setTab] = useState<'relatorio' | 'jogadores' | 'criadas' | 'multi' | 'denuncias' | 'futprego' | 'avisos' | 'log'>('jogadores');
   const [picked, setPicked] = useState<number | null>(null);
 
   if (!me.isAdmin) return <Navigate to="/" replace />;
@@ -732,10 +733,10 @@ export function AdminScreen() {
         <span className="trap trap-blue text-[11px] uppercase">{me.nick}</span>
       </div>
       <div className="relative px-3 pb-2">
-        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'multi', label: 'Multiconta' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'X1' }, { id: 'avisos', label: 'Avisos' }, { id: 'log', label: 'Log' }]} />
+        <Tabs value={tab} onChange={(t) => { setTab(t); setPicked(null); }} items={[{ id: 'relatorio', label: 'Relatório' }, { id: 'jogadores', label: 'Jogadores' }, { id: 'criadas', label: 'Contas' }, { id: 'multi', label: 'Multiconta' }, { id: 'denuncias', label: 'Denúncias' }, { id: 'futprego', label: 'X1' }, { id: 'avisos', label: 'Avisos' }, { id: 'log', label: 'Log' }]} />
       </div>
       <div className="relative flex-1 px-3 pb-4">
-        {tab === 'log' ? <LogList /> : tab === 'avisos' ? <BroadcastPanel /> : picked !== null ? <UserDetail key={picked} id={picked} onBack={() => setPicked(null)} onPick={setPicked} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : tab === 'multi' ? <MultiList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
+        {tab === 'relatorio' ? <AdminReport /> : tab === 'log' ? <LogList /> : tab === 'avisos' ? <BroadcastPanel /> : picked !== null ? <UserDetail key={picked} id={picked} onBack={() => setPicked(null)} onPick={setPicked} /> : tab === 'denuncias' ? <ReportList onPick={setPicked} /> : tab === 'futprego' ? <FutPregoList onPick={setPicked} /> : tab === 'multi' ? <MultiList onPick={setPicked} /> : <UserList key={tab} onPick={setPicked} order={tab === 'criadas' ? 'criadas' : 'recentes'} />}
       </div>
     </div>
   );

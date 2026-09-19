@@ -19,6 +19,7 @@ import { geoForIp } from '../lib/ip.js';
 import { leaveClub } from '../services/club.js';
 import { tg } from '../lib/telegram.js';
 import { notify, sendMessage, broadcast } from '../services/inbox.js';
+import { adminReport } from '../services/report.js';
 
 export const adminPanel = Router();
 adminPanel.use(requireAdmin);
@@ -63,6 +64,12 @@ async function audit(adminId, targetId, action, payload) {
   tg.info(`🛡️ Painel: <b>${tg.esc(row.admin.nick)}</b> → ${tg.esc(action)} ${row.target ? `<b>${tg.esc(row.target.nick)}</b>` : ''} <code>${tg.esc(JSON.stringify(payload ?? {}).slice(0, 200))}</code>`);
   return row;
 }
+
+// ─── Relatório ao vivo (menu flutuante do painel — services/report.js) ──────────
+adminPanel.get('/relatorio', handle(async (req) => {
+  const dias = [1, 7, 30].includes(Number(req.query.dias)) ? Number(req.query.dias) : 7;
+  return adminReport({ days: dias });
+}));
 
 // ─── Lista/busca paginada (50 por página) ───────────────────────────────────
 // order=criadas: contas mais novas primeiro (aba "Contas criadas"); padrão: quem entrou por último.

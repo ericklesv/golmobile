@@ -184,6 +184,7 @@ model User {
   adminTargeted AdminAction[] @relation("AdminActionTo")
   messages    Message[]       @relation("MsgTo")
   messagesSent Message[]      @relation("MsgFrom")
+  events      Event[]
 
   @@index([teamId])
   @@index([goalsTotal])
@@ -734,4 +735,24 @@ model Message {
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
+}
+
+// Eventos de uso do site/app (funil dos novatos — recomendação 8 do relatório de retenção; dono, 18/09/2026):
+// telas abertas, app aberto/fechado (com segundos), recarga vista, slider visto, cadastro feito… O cliente manda em
+// lotes para POST /api/events (routes/events.js), com ou sem login; `deviceId` liga o que aconteceu ANTES do cadastro
+// (landing, formulário) à conta criada depois. Lidos pelo relatório do painel (services/report.js). Apagados depois
+// de 90 dias (scheduler) e na exclusão da conta.
+model Event {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  deviceId  String?
+  name      String // "tela.home", "app.saiu", "recarga.vista", "cadastro.ok"…
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([userId, createdAt])
+  @@index([deviceId, createdAt])
+  @@index([createdAt])
 }

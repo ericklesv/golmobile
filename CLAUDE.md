@@ -546,6 +546,22 @@ depois que o novo estiver estável. Não instalar nada dele.
   recomendações; PNG por SVG → sharp (como o diário) + 2 mensagens via `tg.raw()` (HTML sem selo, na hora).
   `--ver <png>` só gera; `--enviar` manda ao grupo. Rodar na VPS (pasta api/, usuário brgol). Contas de varredura
   (IP 177.23.227.136, 0 gol) e bots ficam fora. Primeiro envio em 18/09: 30 % voltam, 45 % somem em < 15 min.
+- **Eventos de uso + relatório AO VIVO do admin** (recomendação 8 do relatório de retenção; dono, 18/09/2026: "métricas de
+  tudo e em tempo real", num menu flutuante à esquerda "onde hoje é background"). **Eventos**: tabela `Event`
+  (migração 0043; `userId` opcional + `deviceId` = liga a landing/cadastro à conta criada depois), `POST /api/events`
+  (`routes/events.js`, com ou sem login; token/aparelho também no CORPO porque o `sendBeacon` não manda cabeçalho;
+  25 por lote, 40 lotes/min por IP, lote ruim é ignorado em silêncio). O site manda por `web/src/lib/track.ts`:
+  `app.abriu`/`app.saiu {tela, seg}`/`app.voltou` (installTracking no App), `tela.<rota>` a cada tela (efeito no App
+  com `useLocation`), `cadastro.ok` (store/auth), `recarga.vista` (Home: os 4 chutes em recarga), `slider.visto`
+  (MinigameSlider) e `erro.tela` (ErrorBoundary). Evento novo = `track('nome.x', {…})` — nome `[a-z][a-z0-9_.:-]`.
+  Apagados com 90+ dias (scheduler, 6 h) e na exclusão da conta. **Relatório**: `GET /api/painel/relatorio?dias=1|7|30`
+  (`services/report.js`, cache 10 s): agora (online, gols nesta hora/hoje×ontem, contas, X1, PIX, chat, bots, gols por
+  hora 24 h), retenção dos últimos 7 dias (`services/retention.js`, o mesmo miolo do script do Telegram), funil dos
+  novatos pelos eventos (conta → viu a home → chutou → viu a recarga → viu os minigames → abriu minigame/X1/chat/Loja →
+  voltou), "onde somem" (última tela de quem nunca voltou + sessões `app.saiu.seg`) e os últimos 20 eventos. Tela:
+  `components/AdminReport.tsx` (miolo) dentro do **`AdminDock.tsx`** — fixo à esquerda, só admin, só em tela ≥ 1200 px
+  (montado no App, aparece em TODAS as telas; recolher/abrir fica no aparelho) — e na aba **Relatório** do /admin (celular).
+  **Mexeu? Rode `node scripts/test-eventos.js`** (pasta api/, API local no ar, banco LOCAL; tem de dar "TUDO OK").
 - **Banir IP** (primeira vez em 17/09/2026, pedido do dono): o CÓDIGO não tem ban por IP — o bloqueio é no nginx,
   em `/etc/nginx/snippets/brgol-bloqueados.conf` (um `deny <ip>;` por linha, com data e motivo), incluído no
   bloco `server` de jogagol.com.br (linha logo abaixo do `brgol-headers.conf`). Mexeu? `nginx -t` e

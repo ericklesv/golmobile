@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { track } from '../lib/track';
 
 /**
  * Rede de segurança: se uma tela quebrar (erro de render), mostra um aviso com botão em vez de
@@ -10,7 +11,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
 
   static getDerivedStateFromError(error: Error) { return { error }; }
 
-  componentDidCatch(error: Error, info: ErrorInfo) { console.error('[tela quebrou]', error, info.componentStack); }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[tela quebrou]', error, info.componentStack);
+    track('erro.tela', { tela: this.props.resetKey, msg: String(error?.message || error).slice(0, 120) }); // relatório do painel: tela que quebrou
+  }
 
   componentDidUpdate(prev: { resetKey?: string }) {
     if (this.state.error && prev.resetKey !== this.props.resetKey) this.setState({ error: null });

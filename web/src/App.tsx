@@ -38,6 +38,8 @@ import { PrivacyScreen, TermsScreen, DeleteAccountInfoScreen } from './screens/L
 import { ShopScreen } from './screens/Shop';
 import { ActiveScreen } from './screens/Active';
 import { installDragScroll } from './lib/dragScroll';
+import { installTracking, trackScreen } from './lib/track';
+import { AdminDock } from './components/AdminDock';
 import { installClickSounds } from './lib/sound';
 import { LevelsScreen } from './screens/Levels';
 import { ChatScreen } from './screens/Chat';
@@ -86,14 +88,16 @@ export default function App() {
   useEffect(() => {
     const onMulti = (e: Event) => setMulti((e as CustomEvent<string>).detail || 'Contas demais nesta internet.');
     window.addEventListener(MULTI_EVENT, onMulti); // antes do boot: o /api/me dele já pode voltar barrado
-    boot(); const a = installDragScroll(); const b = installClickSounds();
+    boot(); const a = installDragScroll(); const b = installClickSounds(); installTracking(); // eventos de uso (lib/track.ts)
     return () => { window.removeEventListener(MULTI_EVENT, onMulti); a(); b(); };
   }, []);
+  useEffect(() => { trackScreen(loc.pathname); }, [loc.pathname]); // funil: cada tela aberta (lib/track.ts)
   if (multi) return <MultiAccountScreen message={multi} onRetry={async () => { setMulti(null); await boot(); }} />;
   if (loading) return <Splash />;
   return (
     <>
       <ToastHost />
+      {me?.isAdmin && <AdminDock />}
       {me && <LevelUpWatcher />}
       {me && <PassWatcher />}
       <ErrorBoundary resetKey={loc.pathname}>

@@ -421,6 +421,20 @@ export interface AdminUserDetail extends AdminUserRow {
 export interface AdminMultiUser extends AdminUserRow { via: ('cadastro' | 'ultimo')[]; otherIp: string | null; lastIpAt: string | null; sameDevice?: boolean }
 export interface AdminMultiRow { ip: string; count: number; lastSeenAt: string; geo: AdminGeo | null; inviteInside: boolean; sameDevice?: number; users: AdminMultiUser[] }
 export interface AdminMultiPage { page: number; pages: number; total: number; ips: number; accounts: number; rows: AdminMultiRow[] }
+
+/** Relatório ao vivo do painel (GET /api/painel/relatorio?dias= — api/src/services/report.js). */
+export interface AdminReport {
+  at: number; dias: number;
+  agora: {
+    online: number; active24: number; botsOnline: number; golsHora: number; golsHoje: number; golsOntem: number; botsGolsHoje: number;
+    contasHoje: number; contasOntem: number; marcaramHoje: number; marcaramOntem: number; x1AoVivo: number; x1Hoje: number;
+    pixHoje: { n: number; cents: number }; chatHoje: number; porHora: { h: number; n: number }[];
+  };
+  retencao: { base: number; d1: number; base3: number; d3: number; ativos48: number; porDia: { day: number; label: string; n: number; d1: number | null; kicked: number }[] };
+  funil: { steps: { key: string; label: string; n: number; base?: number }[]; cohort: number; medido: number; base1: number };
+  ondeSaem: { ultimaTela: { tela: string; label: string; n: number; pct: number }[]; churned: number; sessao: { n: number; medianaSeg: number; ate1min: number; ate5min: number; ate15min: number; mais15: number } };
+  eventos: { id: number; at: number; nick: string | null; name: string; data: Record<string, unknown> | null }[];
+}
 export interface AdminUsersPage { page: number; pages: number; total: number; users: AdminUserRow[] }
 /** Campos editáveis; banHours > 0 bane a partir de agora, 0 desbane. */
 export interface AdminPatch {

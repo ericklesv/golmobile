@@ -65,8 +65,8 @@ export function PlacarDaRodada() {
       )}
 
       {m && (
-        <div className="panel relative pt-7">
-          <div className="absolute -top-5 left-1/2 -translate-x-1/2"><div className="ribbon ribbon-blue text-[13px]">JOGO DA RODADA</div></div>
+        <div className="panel relative pt-9">
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2"><div className="ribbon ribbon-blue text-[13px]">JOGO DA RODADA</div></div>
           <div className="flex items-center justify-center gap-3">
             <div className="flex w-[33%] flex-col items-center gap-1">
               <Shield team={m.home} size={44} />
@@ -107,8 +107,8 @@ function Linha({ pos, nick, teamAbbr, teamColor, valor, unidade }: { pos: number
 
 function Quadro({ titulo, ribbon, vazio, children }: { titulo: string; ribbon: 'green' | 'orange'; vazio: boolean; children: React.ReactNode }) {
   return (
-    <div className="panel relative flex-1 pt-7">
-      <div className="absolute -top-5 left-1/2 -translate-x-1/2"><div className={`ribbon ribbon-${ribbon} text-[13px]`}>{titulo}</div></div>
+    <div className="panel relative flex-1 pt-9">
+      <div className="absolute -top-7 left-1/2 -translate-x-1/2"><div className={`ribbon ribbon-${ribbon} text-[13px]`}>{titulo}</div></div>
       {vazio ? <p className="py-2 text-center text-[12px] font-bold text-muted">Ninguém pontuou ainda nesta rodada.</p> : <ul className="flex flex-col">{children}</ul>}
     </div>
   );

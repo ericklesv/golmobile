@@ -114,7 +114,9 @@ game.get('/home', cached(5000), handle(async (req) => {
  * Uma chamada só, sem login, para a tela de entrada: o jogo mais disputado da rodada, os artilheiros do dia e
  * os reis do X1. Fica no cache por 15 s — é a página que mais gente abre sem estar logada.
  *
- * "Mais disputado" = a partida com mais gols na soma; empatando, a de placar mais apertado.
+ * "Mais disputado" NÃO é a com mais gols (65 x 0 é goleada, não disputa): é a que tem o **maior placar do
+ * lado que está perdendo** — os dois times brigando. Empatando nisso, ganha a de diferença menor e, depois, a
+ * de mais gols. Assim 12 x 9 passa na frente de 65 x 0.
  */
 game.get('/vitrine', cached(15000), handle(async () => {
   const now = new Date();
@@ -127,10 +129,12 @@ game.get('/vitrine', cached(15000), handle(async () => {
     // precisam bater, senão a vitrine diz 3 e a tela inicial diz 30.
     prisma.user.count({ where: { lastSeenAt: { gt: new Date(now.getTime() - 2 * 60_000) } } }),
   ]);
-  const disputa = (m) => m.homeGoals + m.awayGoals;
+  const menor = (m) => Math.min(m.homeGoals, m.awayGoals); // o quanto o lado de trás está brigando
+  const dif = (m) => Math.abs(m.homeGoals - m.awayGoals);
+  const total = (m) => m.homeGoals + m.awayGoals;
   const melhor = partidas
-    .filter((m) => disputa(m) > 0)
-    .sort((a, b) => disputa(b) - disputa(a) || Math.abs(a.homeGoals - a.awayGoals) - Math.abs(b.homeGoals - b.awayGoals) || a.id - b.id)[0] ?? null;
+    .filter((m) => total(m) > 0)
+    .sort((a, b) => menor(b) - menor(a) || dif(a) - dif(b) || total(b) - total(a) || a.id - b.id)[0] ?? null;
   return {
     serverTime: now.getTime(),
     round: round ? { number: round.number, endsAt: round.endsAt, season: round.season.number } : null,

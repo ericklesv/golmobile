@@ -689,7 +689,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   "agora ficou lento demais, deixe no meio termo"): no 1º segundo ele fecha ~24% da boca do gol (eram 31%
   no difícil e 18% no lento); aos 100 s fecha 78%, o aperto de sempre. Bola rente à trave ou por cima é FORA e
   acaba a série. No lugar do contador de países: **o placar de gols do seu time contra o adversário da
-  rodada** (`GoleadaTeam`, zera com a rodada). **10 gols seguidos = 1 gol** (kind `GOLEADA`) + o dinheiro
+  rodada** (`GoleadaTeam`, zera com a rodada). **A cada 3 gols seguidos = 1 gol do time** (kind `GOLEADA`), **até 3 no dia** (`goalEvery`/`maxGoals`; dono, 18/09/2026: "10 gols seguidos é MUITO difícil", e o teto foi escolha dele) — sai num lance só, com `vale` no `applyResult` (uma linha de `Goal` por gol). Cada gol traz o dinheiro
   de `MINIGAME_MONEY`; cada gol dá 3 de nível, até 30; recorde em `User.goleadaBest`.
   **Sem internet no meio da série**: o servidor manda só a FASE da ronda (`state.phase`) e a tela roda as
   mesmas contas de `lib/goleada.js` para animar (o goleiro é uma função do tempo, com a fase sorteada por

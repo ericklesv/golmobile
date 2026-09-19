@@ -26,7 +26,11 @@
 import { createHash } from 'node:crypto';
 
 export const GOLEADA = {
-  goalTarget: 10, // gols seguidos que valem o gol do dia (regra da casa: 1 gol por minigame vencido)
+  // A CADA 3 GOLS SEGUIDOS sai 1 gol do time, até 3 no dia (dono, 18/09/2026: "10 gols seguidos é MUITO
+  // difícil de fazer, coloque a cada 3 gols = 1 gol" + teto escolhido por ele). Emendou 9, levou os 3; daí
+  // em diante a série continua valendo recorde, nível e o placar do time, mas não gera mais gol.
+  goalEvery: 3,
+  maxGoals: 3,
   pointsPerGoal: 3, // XP por gol…
   maxPoints: 30, // …até este teto
   keeper: {

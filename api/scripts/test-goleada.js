@@ -87,13 +87,13 @@ check(ini.state.playing && typeof ini.state.phase === 'number', 'começou: o ser
 const seed = (await prisma.dailyGame.findFirst({ where: { userId: u.id, game: 'GOLEADA' } })).state.seed;
 const fim = await goleadaEnd(u.id, { shots: serie(seed, 12) });
 check(fim.goals === 12, `fim de série: ${fim.goals} gols`);
-check(!!fim.goal, `passou dos ${C.goalTarget} e marcou o gol do dia: "${fim.goal?.text?.slice(0, 60)}…"`);
+check(fim.teamGoals === C.maxGoals, `12 seguidos dariam 4, mas o teto do dia é ${C.maxGoals}: marcou ${fim.teamGoals} gols`);
 check(fim.levelPoints === C.maxPoints, `XP: ${fim.levelPoints} (3 por gol, teto ${C.maxPoints})`);
 check(fim.record && fim.best === 12, 'bateu o recorde (era 0) — é o que acende a faixa NOVA MAIOR PONTUAÇÃO');
 const me = await U(u.id);
-check(me.money === MINIGAME_MONEY.GOLEADA, `dinheiro do minigame: R$ ${me.money.toLocaleString('pt-BR')}`);
+check(me.money === MINIGAME_MONEY.GOLEADA * C.maxGoals, `dinheiro: R$ ${me.money.toLocaleString('pt-BR')} (${C.maxGoals} × R$ ${MINIGAME_MONEY.GOLEADA.toLocaleString('pt-BR')})`);
 check(me.goleadaBest === 12, 'o recorde ficou guardado no jogador');
-check((await prisma.goal.count({ where: { userId: u.id, kind: 'GOLEADA' } })) === 1, 'exatamente 1 gol (a regra da casa)');
+check((await prisma.goal.count({ where: { userId: u.id, kind: 'GOLEADA' } })) === C.maxGoals, `${C.maxGoals} linhas na artilharia — é o que o ranking conta`);
 
 const e2 = await err(goleadaEnd(u.id, { shots: serie(seed, 12) }));
 check(e2?.status === 409, `mandar os chutes de novo é recusado: "${e2?.message}"`);
@@ -106,16 +106,25 @@ if (round?.roundId) {
   check((await goleadaState(u.id)).scoreboard?.mine?.goals >= 12, 'a tela recebe o placar do meu time contra o adversário da rodada');
 } else check(true, '(sem rodada ao vivo no banco local: placar do time não conferido)');
 
-// ── quem não chega aos 10 não ganha gol
+// ── quem não emenda 3 não ganha gol
 const u2 = await mk();
 await goleadaStart(u2.id);
 const seed2 = (await prisma.dailyGame.findFirst({ where: { userId: u2.id, game: 'GOLEADA' } })).state.seed;
-const fim2 = await goleadaEnd(u2.id, { shots: serie(seed2, 4, 5) });
-check(fim2.goals === 4 && !fim2.goal, `4 gols: sem gol do dia (a meta é ${C.goalTarget})`);
-check((await U(u2.id)).money === 0 && (await U(u2.id)).goleadaBest === 4, 'sem dinheiro, mas o recorde de 4 ficou');
-check(fim2.levelPoints === 12, `e ainda assim levou ${fim2.levelPoints} de nível pelos gols`);
+const fim2 = await goleadaEnd(u2.id, { shots: serie(seed2, 2, 3) });
+check(fim2.goals === 2 && !fim2.goal && fim2.teamGoals === 0, `2 gols: sem gol do time (só a cada ${C.goalEvery})`);
+check((await U(u2.id)).money === 0 && (await U(u2.id)).goleadaBest === 2, 'sem dinheiro, mas o recorde de 2 ficou');
+check(fim2.levelPoints === 6, `e ainda assim levou ${fim2.levelPoints} de nível pelos gols`);
 
-const ids = [u.id, u2.id];
+// ── o meio do caminho: 7 seguidos = 2 gols (a cada 3, e o resto não conta)
+const u3 = await mk();
+await goleadaStart(u3.id);
+const seed3 = (await prisma.dailyGame.findFirst({ where: { userId: u3.id, game: 'GOLEADA' } })).state.seed;
+const fim3 = await goleadaEnd(u3.id, { shots: serie(seed3, 7, 8) });
+check(fim3.goals === 7 && fim3.teamGoals === 2, `7 seguidos: ${fim3.teamGoals} gols do time (a cada ${C.goalEvery}; sobrou 1 sem valer)`);
+check((await prisma.goal.count({ where: { userId: u3.id, kind: 'GOLEADA' } })) === 2, 'e duas linhas na artilharia');
+check(fim3.goal?.goals === 2, 'a tela recebe quantos gols saíram, para escrever "2 GOLS PARA O ..."');
+
+const ids = [u.id, u2.id, u3.id];
 await prisma.$transaction([
   prisma.goal.deleteMany({ where: { userId: { in: ids } } }),
   prisma.activity.deleteMany({ where: { userId: { in: ids } } }),

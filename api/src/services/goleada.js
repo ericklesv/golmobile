@@ -57,7 +57,7 @@ function view(row, now, user) {
   const st = row?.state ?? {};
   return {
     day: dayNumberAt(HOUR, now), nextAt: nextResetAt(HOUR, now).getTime(),
-    goalTarget: C.goalTarget, pointsPerGoal: C.pointsPerGoal, maxPoints: C.maxPoints,
+    goalEvery: C.goalEvery, maxGoals: C.maxGoals, pointsPerGoal: C.pointsPerGoal, maxPoints: C.maxPoints,
     keeper: C.keeper, shot: C.shot, aim: C.aim, gap: C.gap, ramp: C.ramp, spinEdge: C.spinEdge,
     // a fase da ronda (não a semente): é só o que a tela precisa para desenhar o goleiro no lugar certo
     phase: st.seed && !st.over ? phaseOf(st.seed) : null,
@@ -138,15 +138,18 @@ export async function goleadaEnd(userId, body = {}) {
         ON CONFLICT ("roundId", "teamId") DO UPDATE SET goals = "GoleadaTeam".goals + ${r.goals}, "updatedAt" = now()`;
     }
 
+    // A cada 3 gols seguidos sai 1 gol do time, até 3 no dia (dono, 18/09/2026). Um lance só, valendo N:
+    // `applyResult` grava uma linha de Goal por gol e soma o placar de uma vez.
+    const feitos = Math.min(C.maxGoals, Math.floor(r.goals / C.goalEvery));
     let goal = null;
-    if (r.goals >= C.goalTarget && !ctx.row.won) {
+    if (feitos > 0 && !ctx.row.won) {
       const match = await liveMatchForTeam(user.teamId, tx);
       const frase = r.goals >= 20 ? `fez ${r.goals} gols seguidos no PenalCup e não quis mais parar` : `emendou ${r.goals} gols seguidos no PenalCup`;
-      const { text, match: m } = await applyResult(tx, user, { kind: 'GOLEADA', goal: true, now, match, money: 0, phrase: frase });
-      goal = { text, match: m ? { id: m.id, homeGoals: m.homeGoals, awayGoals: m.awayGoals } : null };
+      const { text, match: m } = await applyResult(tx, user, { kind: 'GOLEADA', goal: true, now, match, money: 0, phrase: frase, vale: feitos });
+      goal = { text, goals: feitos, match: m ? { id: m.id, homeGoals: m.homeGoals, awayGoals: m.awayGoals } : null };
     }
     Object.assign(st, { goals: r.goals, points: pontos, over: true, record });
-    ctx.patch = { finishedAt: now, won: r.goals >= C.goalTarget || ctx.row.won, reward: { goals: r.goals, levelPoints: pontos } };
-    return { goals: r.goals, stoppedAt: r.stoppedAt, why: r.shots.at(-1)?.why ?? null, levelPoints: pontos, record, best: Math.max(antes, r.goals), goal };
+    ctx.patch = { finishedAt: now, won: feitos > 0 || ctx.row.won, reward: { goals: r.goals, levelPoints: pontos, teamGoals: feitos } };
+    return { goals: r.goals, stoppedAt: r.stoppedAt, why: r.shots.at(-1)?.why ?? null, levelPoints: pontos, record, best: Math.max(antes, r.goals), goal, teamGoals: feitos };
   });
 }

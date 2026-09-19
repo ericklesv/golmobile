@@ -116,7 +116,7 @@ export interface PartyResult { win: boolean; goal: boolean; text: string; segmen
  * O servidor manda os números e a fase da ronda; a tela roda a mesma conta de lib/goleada.js para animar.
  */
 export interface GoleadaState {
-  day: number; nextAt: number; goalTarget: number; pointsPerGoal: number; maxPoints: number;
+  day: number; nextAt: number; goalEvery: number; maxGoals: number; pointsPerGoal: number; maxPoints: number;
   keeper: { amp: number; periodFirst: number; periodLast: number; reactFirst: number; reactLast: number; speedFirst: number; speedLast: number; reach: number; highReach: number; highFrom: number };
   shot: { first: number; last: number; powerCut: number };
   aim: { margin: number; top: number };
@@ -135,7 +135,7 @@ export interface GoleadaBoard {
 }
 export interface GoleadaEnd {
   goals: number; stoppedAt: number | null; why: string | null; levelPoints: number; record: boolean; best: number;
-  goal: { text: string } | null; state: GoleadaState; scoreboard: GoleadaBoard | null;
+  goal: { text: string; goals: number } | null; teamGoals: number; state: GoleadaState; scoreboard: GoleadaBoard | null;
 }
 
 export interface PartyStatus { bet: number; prize: number; prizes?: number[]; spins: number; max: number; left: number; vip: boolean; freeMax: number; vipMax: number }

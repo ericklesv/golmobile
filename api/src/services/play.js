@@ -84,11 +84,12 @@ async function scoreOnLiveMatch(tx, teamId, match, vale = 1) {
 }
 
 /** Aplica gol/erro: contadores, Goal, Activity, placar da partida. (Os minigames diários também usam.) */
-export async function applyResult(tx, user, { kind, goal, now, match, phrase, money, ball = null }) {
+export async function applyResult(tx, user, { kind, goal, now, match, phrase, money, ball = null, vale: valeDado = null }) {
   const hk = hourKey(now);
-  // Bola de prata/ouro: UMA batida que vale 2 ou 3 gols (dono, 18/09/2026). Vale no placar, na artilharia,
-  // no nível e no dinheiro — os minigames nunca mandam `ball`, então lá continua 1.
-  const vale = goal && ball ? goalsOf(ball) : 1;
+  // Quanto este lance vale em GOLS. Bola de prata/ouro: UMA batida que vale 2 ou 3 (dono, 18/09/2026) — vale
+  // no placar, na artilharia, no nível e no dinheiro. `vale` explícito é para quem conta sozinho (PenalCup:
+  // a cada 3 gols seguidos sai 1). Sem nada disso, 1.
+  const vale = goal ? (valeDado ?? (ball ? goalsOf(ball) : 1)) : 1;
   // saldo dos minigames: quem manda money 0 e é minigame ganha o valor do MINIGAME_MONEY (quanto mais
   // difícil o minigame, mais paga — dono, 17/09/2026); sem valor na tabela, o piso de MINIGAME_WIN
   const bonus = goal && !(money > 0) && MINIGAME_MONEY_KINDS.includes(kind);

@@ -170,7 +170,7 @@ export function GoleadaScreen() {
   const [aperto, setAperto] = useState(0);
   const [aviso, setAviso] = useState<'gol' | 'defendeu' | 'fora' | null>(null);
   const [rastro, setRastro] = useState<{ x: number; y: number }[]>([]);
-  const [fim, setFim] = useState<{ goals: number; levelPoints: number; goal?: { text: string } | null; best: number; record: boolean; why: string | null } | null>(null);
+  const [fim, setFim] = useState<{ goals: number; levelPoints: number; goal?: { text: string; goals: number } | null; teamGoals?: number; best: number; record: boolean; why: string | null } | null>(null);
   const [kit, setKit] = useState<KitColors | null>(null);
 
   const campo = useRef<HTMLDivElement>(null);
@@ -424,7 +424,7 @@ export function GoleadaScreen() {
               O goleiro {board?.rival ? `do ${board.rival.team.name}` : 'adversário'} anda de trave a trave e acelera a cada segundo de jogo.
             </p>
             <p className="mt-1 text-[13px] font-bold leading-snug text-muted">
-              {st?.goalTarget ?? 10} gols seguidos valem <b className="text-grass-deep">1 gol para o {me.team.name}</b> e {fmt(1400)}. Cada gol dá {st?.pointsPerGoal ?? 3} de nível, até {st?.maxPoints ?? 30}. Na trave ou por cima, acabou.
+              A cada {st?.goalEvery ?? 3} gols seguidos você faz <b className="text-grass-deep">1 gol para o {me.team.name}</b> e leva {fmt(1400)} — até {st?.maxGoals ?? 3} por dia. Cada gol dá {st?.pointsPerGoal ?? 3} de nível, até {st?.maxPoints ?? 30}. Na trave ou por cima, acabou.
             </p>
             <p className="mt-1 text-[12px] font-bold text-muted">Seu recorde: {st?.best ? `${st.best} ${st.best === 1 ? 'gol' : 'gols'} seguidos` : 'sem recorde ainda'}</p>
             {st?.finished && !st?.freePlay
@@ -440,8 +440,11 @@ export function GoleadaScreen() {
             {fim.record && <div className="t-display mt-1 text-[15px] text-gold-deep">Recorde novo!</div>}
             <p className="mt-1 text-[12px] font-bold text-muted">{fim.why === 'fora' ? 'A última foi para fora.' : 'O goleiro pegou a última.'}</p>
             {fim.goal
-              ? <p className="mt-2 text-[13px] font-bold leading-snug">{fim.goal.text}</p>
-              : <p className="mt-2 text-[13px] font-bold leading-snug text-muted">Faltaram {Math.max(0, (st?.goalTarget ?? 10) - fim.goals)} para o gol do dia. Amanhã tem mais.</p>}
+              ? (<>
+                  <p className="t-display mt-2 text-[17px] text-grass-deep">{fim.goal.goals > 1 ? `${fim.goal.goals} GOLS PARA O ${me.team.name.toUpperCase()}!` : `GOL PARA O ${me.team.name.toUpperCase()}!`}</p>
+                  <p className="mt-1 text-[13px] font-bold leading-snug">{fim.goal.text}</p>
+                </>)
+              : <p className="mt-2 text-[13px] font-bold leading-snug text-muted">Faltaram {Math.max(0, (st?.goalEvery ?? 3) - fim.goals)} para o primeiro gol. Amanhã tem mais.</p>}
             <p className="mt-1 text-[12px] font-bold text-muted">+{fim.levelPoints} de nível · recorde: {fim.best}</p>
             <div className="mt-3 flex gap-2">
               {st?.freePlay && <button onClick={começar} className="btn btn-green btn-md flex-1">Jogar de novo</button>}

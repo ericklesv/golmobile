@@ -154,9 +154,10 @@ export function skipSnap(s) {
 /**
  * Bot (treino): mira em 3 pontos do gol (meio e os dois cantos), com os 3 botões mais perto da bola; para
  * cada um calcula onde o botão tem de bater na bola, simula e fica com a melhor jogada (às vezes pega outra,
- * para dar para vencer). `skill` 0..1.
+ * para dar para vencer). `skill` 0..1. `botaoBotCands` = a lista de jogadas simuladas, da melhor para a pior
+ * (`goal` = faz gol, `own` = gol contra); `botaoBotMove` = o bot de treino; `botaoHumanMove` = o bot "quase real".
  */
-export function botaoBotMove(s, side, rnd, skill = 0.55) {
+export function botaoBotCands(s, side, rnd) {
   const F = BOTAO_FIELD;
   const gy = side === 0 ? -20 : F.H + 20;
   const targets = [F.W / 2, F.goalX[0] + F.ball + 6, F.goalX[1] - F.ball - 6].map((x) => ({ x, y: gy }));
@@ -178,11 +179,32 @@ export function botaoBotMove(s, side, rnd, skill = 0.55) {
         const sim = simulateSnap(s, idx, Math.cos(ang), Math.sin(ang), power);
         const sc = botaoScorer(sim.goal);
         const score = sc === side ? 10000 : sc !== null ? -10000 : -Math.hypot(sim.ball.x - goal.x, sim.ball.y - goal.y);
-        cands.push({ idx, dx: Math.cos(ang), dy: Math.sin(ang), power, score });
+        cands.push({ idx, dx: Math.cos(ang), dy: Math.sin(ang), power, score, goal: sc === side, own: sc !== null && sc !== side });
       }
     }
   }
+  return cands.sort((a, b) => b.score - a.score);
+}
+
+export function botaoBotMove(s, side, rnd, skill = 0.55) {
+  const cands = botaoBotCands(s, side, rnd);
   if (!cands.length) return null;
-  cands.sort((a, b) => b.score - a.score);
   return rnd() < skill ? cands[0] : cands[Math.min(cands.length - 1, Math.floor(rnd() * Math.min(6, cands.length)))];
+}
+
+/**
+ * Jogada de um bot "quase real" (dono, 20/09/2026: "nem sempre ganhando"): `skill` = a chance de fazer o gol
+ * quando existe um na mesa. Sem gol (ou quando "não viu"), joga uma jogada NORMAL — quase sempre uma das 3
+ * melhores que não dão gol contra, de vez em quando uma qualquer (bola pro mato, como gente distraída). Assim
+ * o bot de skill 0,3 perde de quem joga bem e ganha de quem está começando, sem cara de máquina.
+ */
+export function botaoHumanMove(s, side, rnd, skill = 0.4) {
+  const cands = botaoBotCands(s, side, rnd);
+  if (!cands.length) return null;
+  const goals = cands.filter((c) => c.goal);
+  if (goals.length && rnd() < skill) return goals[Math.floor(rnd() * goals.length)];
+  const safe = cands.filter((c) => !c.goal && !c.own);
+  if (!safe.length) return cands[0];
+  if (rnd() < 0.12) return safe[Math.floor(rnd() * safe.length)]; // jogada distraída
+  return safe[Math.floor(rnd() * Math.min(3, safe.length))];
 }

@@ -22,8 +22,8 @@ import { config } from '../config.js';
 import { prisma } from '../prisma.js';
 import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
 import { BOTAO_FIELD, simulateSnap } from '../lib/botao.js';
-import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove, movablePieces } from '../lib/botaoMatch.js';
-import { FUTPREGO, BOTAO, X1, PROVOCAR, TUTORIAL, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
+import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove, botaoHumanMove, movablePieces } from '../lib/botaoMatch.js';
+import { FUTPREGO, BOTAO, X1, PROVOCAR, TUTORIAL, BOTS, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
 import { noPassoDoX1 } from '../services/tutorial.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
@@ -48,8 +48,18 @@ let nextId = 1;
 function send(ws, msg) { if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)); }
 const err = (conn, code, message) => send(conn.ws, { t: 'error', code, message });
 const rnd01 = () => randomInt(1_000_000) / 1_000_000;
-/** Este lado é jogado pelo SERVIDOR? `bot` = treino (não vale nada); `ai` = bot do tutorial (vale tudo). */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const betweenMs = ([a, b]) => Math.round((a + Math.random() * (b - a)) * 1000);
+/**
+ * Este lado é jogado pelo SERVIDOR? `bot` = treino (não vale nada, joga rápido e forte); `ai` = um dos bots
+ * "quase reais" (services/bots.js) — vale tudo e joga COMO GENTE: demora BOTS.x1.thinkSec para bater, tem uma
+ * `skill` sorteada (nem sempre ganha) e provoca de vez em quando. Chega por dois caminhos: o tutorial
+ * (botDoTutorialAceita) e as visitas do motor (x1BotVisit, `engine: true`).
+ */
 const isAi = (c) => !!(c && (c.ai || c.bot));
+const BX = BOTS.x1;
+/** Quanto o lado do servidor demora para jogar: bot de treino quase na hora; bot "quase real", 3 a 8 s. */
+const aiDelayMs = (c) => (c.ai ? betweenMs(BX.thinkSec) : 900 + randomInt(1400));
 
 /** O jogo do X1 agora, o próximo e quando troca (às X1.switchHour = 19h de Brasília, com a rodada). */
 // SÓ NO PC (X1_JOGO=BOTAO ou FUTPREGO no api/.env; ignorado em produção): força o jogo do dia para testar.
@@ -197,7 +207,7 @@ export function attachX1(server) {
     ws.on('pong', () => { conn.alive = true; });
   });
   setInterval(() => { // keepalive (o nginx fecha conexão parada)
-    for (const c of conns) { if (!c.alive) { c.ws.terminate(); continue; } c.alive = false; try { c.ws.ping(); } catch {} }
+    for (const c of conns) { if (isAi(c)) continue; if (!c.alive) { c.ws.terminate(); continue; } c.alive = false; try { c.ws.ping(); } catch {} }
   }, 25_000).unref();
   refundStale().catch((e) => console.error('[x1] devolução das partidas abertas', e));
   return wss;
@@ -232,6 +242,9 @@ const sameIpOk = () => process.env.NODE_ENV !== 'production' && process.env.FUTP
  */
 async function compatible(a, b) {
   if (a.user.id === b.user.id) return false;
+  // gente x bot "quase real": a mesma pessoa não joga com os bots o tempo todo (BOTS.x1.sameHumanMin/Day) — fora
+  // da cota, o desafio do bot nem aparece para ela (e o bot não pega o dela)
+  if (isAi(a) !== isAi(b) && !(await botQuotaOk((isAi(a) ? b : a).user.id))) return false;
   const block = await prisma.userBlock.findFirst({ where: { OR: [{ userId: a.user.id, blockedId: b.user.id }, { userId: b.user.id, blockedId: a.user.id }] }, select: { id: true } });
   return !block;
 }
@@ -270,7 +283,7 @@ async function createChallenge(conn) {
   // não é VIP e terminou uma partida há menos de 2 min: não desafia (aceitar pode)
   const until = await challengeCooldownUntil(conn.user);
   if (until) return send(conn.ws, { t: 'error', code: 'cooldown', until, message: cooldownText(until) });
-  if (conn.match || conn.challenge || conn.ws.readyState !== conn.ws.OPEN) return;
+  if (conn.match || conn.challenge || (conn.ws && conn.ws.readyState !== conn.ws.OPEN)) return; // (bot: sem tela)
   const game = x1Today().game;
   // alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora — primeiro quem é
   // de outro time (vale gol); só depois um colega de time (amistoso)
@@ -338,7 +351,7 @@ async function sendOpenList(conn) {
   send(conn.ws, { t: 'open', list });
 }
 async function refreshOpenLists() {
-  for (const c of conns) if (c.mode === 'game' && !c.match && !c.challenge) await sendOpenList(c);
+  for (const c of conns) if (c.mode === 'game' && !isAi(c) && !c.match && !c.challenge) await sendOpenList(c);
 }
 
 async function acceptChallenge(conn, id) {
@@ -350,7 +363,10 @@ async function acceptChallenge(conn, id) {
   const problem = await canPlay(conn);
   if (problem) return err(conn, 'no-money', problem);
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
-  if (!(await compatible(ch.from, conn))) return err(conn, 'incompatible', 'Vocês não podem se enfrentar (mesma internet ou bloqueio).');
+  if (!(await compatible(ch.from, conn))) {
+    if (isAi(ch.from)) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' }); // cota com os bots (lista velha)
+    return err(conn, 'incompatible', 'Vocês não podem se enfrentar (mesma internet ou bloqueio).');
+  }
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
   const a = ch.from, b = conn, game = ch.game;
   const treino = treinoPorIp(a, b); // mesma internet: joga sem aposta, sem gol e fora do ranking
@@ -413,7 +429,7 @@ async function escolheBot(conn) {
     },
     include: { team: true },
   });
-  const ocupado = (id) => [...matches.values()].some((m) => !m.done && m.conns.some((c) => c.user.id === id));
+  const ocupado = (id) => busyUser(id) || [...matches.values()].some((m) => !m.done && m.conns.some((c) => c.user.id === id));
   const livres = bots.filter((b) => !ocupado(b.id));
   return livres.length ? livres[randomInt(livres.length)] : null;
 }
@@ -424,7 +440,8 @@ async function botDoTutorialAceita(ch) {
   const bot = await escolheBot(a);
   if (!bot) return; // nenhum bot livre: o desafio segue esperando gente de verdade
   if (!challenges.has(ch.id) || a.match) return;
-  const b = { ws: null, ai: true, user: bot, ip: `bot:${bot.id}`, match: null, side: -1, seen: new Set(), mode: 'game' };
+  // joga como gente e fraco de propósito (é o primeiro X1 do novato): skill na faixa de baixo de BOTS.x1.skill
+  const b = { ws: null, ai: true, user: bot, ip: `bot:${bot.id}`, match: null, side: -1, seen: new Set(), mode: 'game', skill: BX.skill[0] + Math.random() * 0.1 };
   cancelChallenge(ch, 'bot-tutorial');
   const round = await currentRound().catch(() => null);
   let row;
@@ -476,7 +493,7 @@ function scheduleTurn(m, delayMs, announce = true) {
   if (announce) for (const c of m.conns) send(c.ws, { t: 'turn', turn: m.turn, turnEndsAt: m.turnEndsAt, turns: m.turns });
   m.turnTimer = setTimeout(() => timeoutTurn(m), delayMs + F.turnSec * 1000 + 800); // 0,8 s de folga para a internet
   const cur = m.conns[m.turn];
-  if (isAi(cur)) m.botTimer = setTimeout(() => botPlay(m), delayMs + 900 + randomInt(1400));
+  if (isAi(cur)) m.botTimer = setTimeout(() => botPlay(m), delayMs + aiDelayMs(cur));
 }
 
 function onFlick(conn, msg) {
@@ -499,6 +516,7 @@ function playShot(m, side, dx, dy, power) {
   const animMs = Math.round((r.frames.length * 1000) / 30);
   m.busyUntil = Date.now() + animMs;
   for (const c of m.conns) send(c.ws, { t: 'shot', side, frames: r.frames, ball: r.end, goal: scorer, own: scorer !== null && scorer !== side, turns: m.turns });
+  if (scorer !== null) aiReactsToGoal(m, scorer, animMs);
   if (scorer !== null) {
     // gol decidido: fica pendente até a animação acabar — quem desistir ou cair nesse meio-tempo não escapa dele
     m.pending = { winner: scorer, reason: scorer === side ? 'gol' : 'gol-contra' };
@@ -540,7 +558,9 @@ function botPlay(m) {
     const s = scorerOf(r.goal);
     tries.push({ ang, pw, score: s === side ? 1000 : s !== null ? -1000 : -Math.hypot(r.end.x - t.x, r.end.y - t.y) });
   }
-  const pick = randomInt(100) < 45 ? tries.sort((a, b) => b.score - a.score)[0] : tries[0];
+  // treino: a melhor das 4 em 45% das vezes; bot "quase real": na `skill` dele (nem sempre ganha)
+  const best = m.conns[side].ai ? Math.random() < (m.conns[side].skill ?? 0.4) : randomInt(100) < 45;
+  const pick = best ? tries.sort((a, b) => b.score - a.score)[0] : tries[0];
   playShot(m, side, Math.cos(pick.ang), Math.sin(pick.ang), pick.pw);
 }
 
@@ -552,7 +572,7 @@ function scheduleSnap(m, delayMs, announce = true, extra = {}) {
   m.turnEndsAt = Date.now() + delayMs + BOTAO.snapSec * 1000;
   if (announce) for (const c of m.conns) send(c.ws, { t: 'bturn', botao: botaoView(m.bs), turnEndsAt: m.turnEndsAt, ...extra });
   m.turnTimer = setTimeout(() => timeoutSnap(m), delayMs + BOTAO.snapSec * 1000 + 800);
-  if (isAi(m.conns[m.bs.turn])) m.botTimer = setTimeout(() => botSnap(m), delayMs + 800 + randomInt(1200));
+  if (isAi(m.conns[m.bs.turn])) m.botTimer = setTimeout(() => botSnap(m), delayMs + aiDelayMs(m.conns[m.bs.turn]));
 }
 
 function onSnap(conn, msg) {
@@ -575,6 +595,7 @@ function playSnap(m, side, idx, dx, dy, power) {
   const fora = res.events.find((e) => e.t === 'out'); // death match: o botão que jogou saiu do campo
   const over = res.events.find((e) => e.t === 'over');
   for (const c of m.conns) send(c.ws, { t: 'snap', side, idx, frames: res.sim.frames, goal: goal ?? null, out: fora ?? null, botao: botaoView(m.bs) });
+  if (goal) aiReactsToGoal(m, goal.side, animMs);
   if (over) {
     // resultado decidido (gol, empate no death match…): fica pendente até a animação acabar — desistir/cair agora não escapa dele
     m.pending = { winner: over.winner, reason: over.winner === null ? 'empate' : over.reason === 'gols' ? (goal?.own ? 'gol-contra' : 'gol') : over.reason };
@@ -598,8 +619,9 @@ function timeoutSnap(m) {
 }
 
 function botSnap(m) {
-  if (m.done || !isAi(m.conns[m.bs.turn])) return; // treino OU bot do tutorial
-  const mv = botaoBotMove(m.bs, m.bs.turn, rnd01, 0.45);
+  const c = m.conns[m.bs.turn];
+  if (m.done || !isAi(c)) return; // treino OU bot "quase real"
+  const mv = c.ai ? botaoHumanMove(m.bs, m.bs.turn, rnd01, c.skill ?? 0.4) : botaoBotMove(m.bs, m.bs.turn, rnd01, 0.45);
   if (!mv) return timeoutSnap(m);
   playSnap(m, m.bs.turn, mv.idx, mv.dx, mv.dy, mv.power);
 }
@@ -709,13 +731,94 @@ async function onProvocar(conn, msg) {
     conn.provocarBlockedUntil = now + PROVOCAR.punishMs; conn.provocarAt = [];
     send(conn.ws, { t: 'provocar-wait', until: conn.provocarBlockedUntil });
   }
-  if (isAi(m.conns[1 - conn.side])) { // treino ou bot do tutorial: ele responde a provocação
+  const opp = m.conns[1 - conn.side];
+  if (opp.bot) { // treino: responde sempre e com qualquer uma (dá vida ao recurso e mostra as do VIP)
     clearTimeout(m.provocarTimer);
     m.provocarTimer = setTimeout(() => {
       if (m.done) return;
       const r = PROVOCAR.list[randomInt(PROVOCAR.list.length)];
       for (const c of m.conns) send(c.ws, { t: 'provocar', side: 1 - conn.side, key: r.key, at: Date.now() });
     }, 1200 + randomInt(900));
+  } else if (opp.ai && Math.random() < BX.provocarReply) { // bot "quase real": às vezes devolve, sem pressa, só as caras básicas
+    clearTimeout(m.provocarTimer);
+    m.provocarTimer = setTimeout(() => aiProvocar(m, opp.side), 1500 + randomInt(3500));
+  }
+}
+
+// ─── Bots "quase reais" no X1 (dono, 20/09/2026) ────────────────────────────
+
+/** Só as 4 caras básicas (bot não é VIP — mandar frase de VIP entregaria o bot). */
+const AI_PROVOCAR = PROVOCAR.list.filter((e) => !e.vip);
+function aiProvocar(m, side, keys = null) {
+  if (m.done) return;
+  const pool = keys ? AI_PROVOCAR.filter((e) => keys.includes(e.key)) : AI_PROVOCAR;
+  const r = pool[randomInt(pool.length)] ?? AI_PROVOCAR[0];
+  for (const c of m.conns) send(c.ws, { t: 'provocar', side, key: r.key, at: Date.now() });
+}
+/** Saiu gol: o bot "quase real" às vezes ri do gol dele, ou faz raiva/choro do gol que tomou (mais raro). */
+function aiReactsToGoal(m, scorer, animMs) {
+  for (const c of m.conns) {
+    if (!c.ai) continue;
+    const scored = c.side === scorer;
+    if (Math.random() >= (scored ? BX.provocarGoal : BX.provocarConceded)) continue;
+    setTimeout(() => aiProvocar(m, c.side, scored ? ['risada'] : ['raiva', 'choro']), Math.max(600, animMs - 400) + randomInt(1200));
+  }
+}
+
+/**
+ * Cota de gente x bot (dono: "não o tempo todo com o Xumbera, faremos partidas mais espaçadas"): a MESMA pessoa
+ * joga com os bots (todos somados) no máximo BOTS.x1.sameHumanDay vezes em 24 h e com BOTS.x1.sameHumanMin
+ * minutos entre uma e outra. Conta pelas linhas de X1Match com `bot:<id>` no IP (tutorial incluído). Cache de 5 s.
+ */
+const quotaCache = new Map();
+async function botQuotaOk(humanId) {
+  const hit = quotaCache.get(humanId);
+  if (hit && Date.now() - hit.at < 5000) return hit.ok;
+  const rows = await prisma.x1Match.findMany({
+    where: { createdAt: { gte: new Date(Date.now() - 24 * 3600_000) }, status: { not: 'CANCELED' }, OR: [{ aId: humanId, bIp: { startsWith: 'bot:' } }, { bId: humanId, aIp: { startsWith: 'bot:' } }] },
+    select: { createdAt: true, finishedAt: true },
+  });
+  const last = Math.max(0, ...rows.map((r) => (r.finishedAt ?? r.createdAt).getTime()));
+  const ok = rows.length < BX.sameHumanDay && Date.now() - last >= BX.sameHumanMin * 60_000;
+  quotaCache.set(humanId, { at: Date.now(), ok });
+  return ok;
+}
+
+const botVisits = new Map(); // userId -> conn do bot que está no X1 agora (motor: services/bots.js)
+/** Quem está no X1 agora pelo motor (para o motor não passar de BOTS.x1.concurrent e para o status). */
+export const x1BotsInside = () => [...botVisits.values()].map((c) => ({ id: c.user.id, nick: c.user.nick, since: c.since, playing: !!c.match, waiting: !!c.challenge }));
+
+/**
+ * Uma visita do bot ao X1 (motor em services/bots.js, dentro da sessão dele): se alguém de OUTRO time está
+ * esperando, aceita (o desafio mais antigo primeiro); senão abre o desafio dele e espera `waitMs` — a tela dos
+ * outros vê "Fulano está te desafiando", como qualquer jogador. Jogou (vale tudo: aposta, gol, gol a menos,
+ * lances, retrospecto) ou cansou de esperar, sai. Devolve o que aconteceu: `{ played, won, draw, opponent,
+ * matchId }` ou `{ played: false, why }`. Uma visita por bot; o motor escolhe quem e quando.
+ */
+export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000 } = {}) {
+  if (botVisits.has(user.id) || busyUser(user.id)) return { played: false, why: 'ocupado' };
+  if (x1Drain()) return { played: false, why: 'atualizacao' };
+  const conn = { ws: null, ai: true, engine: true, user, ip: `bot:${user.id}`, mode: 'game', alive: true, match: null, side: -1, challenge: null, seen: new Set(), lastInviteAt: 0, skill, since: Date.now() };
+  const problem = await canPlay(conn); // dinheiro, nível, conta (recarrega o user com o time)
+  if (problem) return { played: false, why: problem };
+  conns.add(conn); botVisits.set(user.id, conn);
+  try {
+    const game = x1Today().game;
+    const open = [...challenges.values()].filter((ch) => ch.game === game && !isAi(ch.from) && ch.from.user.teamId !== conn.user.teamId).sort((a, b) => a.at - b.at);
+    for (const ch of open) { if (challenges.has(ch.id) && (await compatible(ch.from, conn))) { await acceptChallenge(conn, ch.id); if (conn.match) break; } }
+    if (!conn.match && !conn.challenge) await createChallenge(conn); // (pode casar na hora com um desafio aberto)
+    if (!conn.match && !conn.challenge) return { played: false, why: 'sem-desafio' }; // cooldown de 2 min, etc.
+    const deadline = Date.now() + waitMs, hardStop = Date.now() + 20 * 60_000;
+    while (Date.now() < hardStop) {
+      await sleep(2000);
+      if (conn.match) continue; // jogando: espera acabar
+      if (conn.lastResult || !conn.challenge || Date.now() >= deadline) break; // acabou / o desafio caiu / cansou
+    }
+    if (conn.lastResult) await sleep(betweenMs(BX.afterMatchSec)); // "lê o resultado" antes de sair
+    return conn.lastResult ? { played: true, ...conn.lastResult } : { played: false, why: 'ninguem' };
+  } finally {
+    if (conn.challenge) cancelChallenge(conn.challenge, 'saiu');
+    conns.delete(conn); botVisits.delete(user.id);
   }
 }
 
@@ -736,7 +839,7 @@ async function cancelMatch(m, reason) {
     });
   }
   for (const c of m.conns) {
-    if (isAi(c)) continue; // quem é jogado pelo servidor não tem tela para receber isto
+    if (isAi(c)) { c.match = null; c.side = -1; continue; } // quem é jogado pelo servidor não tem tela para receber isto
     const msg = {
       t: 'over', game: m.game, winner: null, reason, you: c.side, training: m.bot, players: m.conns.map(playerView), score: m.bs?.score ?? null,
       money: m.bot || m.freeplay ? 0 : F.bet, refund: !m.bot && !m.freeplay, canceled: true, why: reason,
@@ -760,7 +863,11 @@ async function finish(m, result) {
     if (!info.error) h2h = await headToHead(m.conns[0].user.id, m.conns[1].user.id).catch((e) => { console.error('[x1] retrospecto no fim:', e.message); return null; });
   }
   for (const c of m.conns) {
-    if (isAi(c)) continue; // quem é jogado pelo servidor não tem tela para receber isto
+    if (isAi(c)) { // quem é jogado pelo servidor não tem tela para receber isto; o motor lê `lastResult`
+      if (c.engine) c.lastResult = { won: result.winner === c.side, draw: result.winner === null, reason: result.reason, opponent: m.conns[1 - c.side].user.nick, matchId: m.dbId, counted: !!(info && !info.error && info.goal) };
+      c.match = null; c.side = -1;
+      continue;
+    }
     // partida de verdade que fechou: quem não é VIP espera challengeCooldownSec para desafiar de novo
     const cd = !m.bot && info && !info.error ? { cooldownUntil: isVip(c.user) ? null : Date.now() + F.challengeCooldownSec * 1000 } : {};
     const msg = {

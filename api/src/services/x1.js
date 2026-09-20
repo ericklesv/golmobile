@@ -7,7 +7,8 @@
  *     a partida entra no período em que TERMINOU (`finishedAt`).
  *   - Três recortes: rodada (fecha às 19:00 com a liga), temporada e todos os tempos. Rodada e temporada
  *     pagam prêmio (FUTPREGO.prizes) aos 3 primeiros ENTRE QUEM TEM o mínimo de partidas no período
- *     (FUTPREGO.prizes.minGames): quem tem menos aparece na lista, mas o prêmio pula para o próximo.
+ *     (FUTPREGO.prizes.minGames): quem tem menos aparece na lista, mas o prêmio pula para o próximo. Os bots
+ *     "quase reais" (User.isBot) também aparecem e também NUNCA levam prêmio (dono, 20/09/2026).
  *   - Sequência sem perder: vitória ou empate seguidos; derrota zera. `best` = a maior do período, `streak` = a atual.
  * O fechamento (settleX1Round/settleX1Season) roda DEPOIS da transação da liga, em transação própria e
  * idempotente (linha da rodada/temporada travada com FOR UPDATE; só paga se `x1Json` ainda for null):
@@ -94,12 +95,14 @@ export async function x1Ranking({ from = null, to = null, table = null, take = 5
   let elig = 0;
   return top.filter((s) => U.has(s.userId)).slice(0, take).map((s, i) => {
     const u = U.get(s.userId);
-    const eligible = s.played >= min;
+    // bot "quase real" (services/bots.js) aparece na lista mas NUNCA leva prêmio: o prêmio pula para o próximo
+    // (dono, 20/09/2026). Sem `need` para ele, senão a tela diria "faltam N partidas p/ prêmio" — e isBot não vai à tela.
+    const eligible = s.played >= min && !u.isBot;
     const prize = table && eligible ? prizeFor(table, ++elig) : null;
     return {
       position: i + 1, userId: u.id, nick: u.nick, avatarUrl: u.avatarUrl ?? null, nickColor: u.nickColor ?? null, nickFade: nickFadeOf(u),
       team: u.team, vip: !!(u.vipUntil && u.vipUntil > now), goals: s.points,
-      fp: { wins: s.wins, draws: s.draws, losses: s.losses, played: s.played, points: s.points, streak: s.streak, best: s.best, eligible, prize, ...(table ? { need: min } : {}) },
+      fp: { wins: s.wins, draws: s.draws, losses: s.losses, played: s.played, points: s.points, streak: s.streak, best: s.best, eligible, prize, ...(table && !u.isBot ? { need: min } : {}) },
     };
   });
 }

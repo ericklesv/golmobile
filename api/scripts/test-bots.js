@@ -14,9 +14,11 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
   console.error('test-bots.js só roda no banco LOCAL (cria contas de teste).');
   process.exit(1);
 }
+process.env.BOTS_X1_OFF = '1'; // as voltas do motor aqui não mandam ninguém ao X1 (o passo 7 chama a volta do X1 na mão)
 const { prisma } = await import('../src/prisma.js');
-const { BOTS, TRAIL_LINES } = await import('../src/lib/rules.js');
-const { planDay, createBots, botsTick, refreshPersonas, botsStatus } = await import('../src/services/bots.js');
+const { BOTS, TRAIL_LINES, FUTPREGO } = await import('../src/lib/rules.js');
+const { planDay, createBots, botsTick, botsX1Round, refreshPersonas, botsStatus } = await import('../src/services/bots.js');
+const { x1BotsInside, x1Status } = await import('../src/realtime/x1.js');
 const { topScorers, topAndPrizes, liveMatchForTeam, ensureSeason } = await import('../src/services/league.js');
 const { calendarDay, tzParts, fromTz } = await import('../src/lib/time.js');
 
@@ -31,6 +33,7 @@ async function wipe() {
   const ids = olds.map((u) => u.id);
   if (!ids.length) return;
   await prisma.goal.deleteMany({ where: { userId: { in: ids } } });
+  await prisma.x1Match.deleteMany({ where: { OR: [{ aId: { in: ids } }, { bId: { in: ids } }] } });
   await prisma.activity.deleteMany({ where: { userId: { in: ids } } });
   await prisma.loginPass.deleteMany({ where: { userId: { in: ids } } });
   await prisma.shopLog.deleteMany({ where: { userId: { in: ids } } });
@@ -190,6 +193,25 @@ await sleep(1500);
   const n = await refreshPersonas([{ ...LIST[1], profile: 'assiduo' }]);
   const c = await prisma.user.findUnique({ where: { id: ids['tb-casual'] } });
   check(n === 1 && c.botJson.persona.profile === 'assiduo' && c.botJson.plan, 'persona regravada mantendo o plano');
+}
+
+// ── 7. X1 (dono, 20/09/2026): a volta do X1 manda UM bot em sessão ao X1; ele abre o desafio, espera e vai embora
+{
+  process.env.BOTS_X1_OFF = '0';
+  await prisma.user.update({ where: { id: ids['tb-assiduo'] }, data: { money: FUTPREGO.bet * 2 } });
+  const online = await prisma.user.findMany({ where: { id: { in: [ids['tb-assiduo'], ids['tb-casual']] } }, include: { team: true } });
+  // quem "topa": persona com x1 = 1 no assíduo; o casual com x1 = 0 nunca vai
+  for (const b of online) b.botJson = { ...b.botJson, persona: { ...b.botJson.persona, x1: b.nick === 'tb-assiduo' ? 1 : 0 } };
+  BOTS.x1.waitMin = [0.05, 0.05]; // 3 s de espera no teste (o desafio de verdade dura minutos)
+  const sent = await botsX1Round(online, Date.now());
+  check(sent?.bot === 'tb-assiduo', `a volta do X1 mandou o bot que topa (${sent?.bot})`);
+  await sleep(400);
+  check(x1BotsInside().some((b) => b.id === ids['tb-assiduo'] && b.waiting) && x1Status().open === 1, 'o bot está no X1 com o desafio aberto');
+  check((await botsX1Round(online, Date.now())) === null, 'com um bot lá dentro (concurrent = 1), a volta não manda outro');
+  const r = await sent.visit;
+  check(r.played === false && r.why === 'ninguem' && !x1BotsInside().length && x1Status().open === 0, `ninguém aceitou: o bot foi embora (${r.why}) e o desafio fechou`);
+  check((await botsX1Round(online, Date.now())) === null, 'depois de sair, o bot descansa e o intervalo entre bots vale: ninguém entra na hora');
+  process.env.BOTS_X1_OFF = '1';
 }
 
 await wipe();

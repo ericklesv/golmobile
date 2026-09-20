@@ -4,7 +4,7 @@ import { handle, notFound } from '../lib/errors.js';
 import { requireAdminKey } from '../lib/auth.js';
 import { settleDueRounds, ensureSeason, closePastHours } from '../services/league.js';
 import { LEVELS } from '../lib/rules.js';
-import { startX1Drain, cancelX1Matches, stopX1Drain, x1Status } from '../realtime/x1.js';
+import { startX1Drain, cancelX1Matches, stopX1Drain, x1Status, x1BotVisit, x1BotsInside } from '../realtime/x1.js';
 import { buildDailyReport, renderDailyChart, sendDailyReport } from '../services/dailyReport.js';
 
 export const admin = Router();
@@ -27,6 +27,18 @@ admin.post('/x1/drain', handle((req) => startX1Drain(Number(req.body?.seconds) |
 admin.post('/x1/cancel', handle(() => cancelX1Matches('atualizacao')));
 admin.post('/x1/resume', handle(() => stopX1Drain())); // deploy abortado: destrava sem reiniciar
 admin.get('/x1/status', handle(() => x1Status()));
+// Bots "quase reais" no X1 (dono, 20/09/2026): manda um bot ao X1 AGORA (fora do sorteio do motor — teste e
+// operação: `{nick, waitSec?, skill?}`) e mostra quem está lá. A visita corre sozinha; o resultado sai no log.
+admin.post('/x1/bot', handle(async (req) => {
+  const nick = String(req.body?.nick || '');
+  const bot = await prisma.user.findFirst({ where: { nickLower: nick.toLowerCase(), isBot: true, deletedAt: null }, include: { team: true } });
+  if (!bot) throw notFound('bot');
+  const opts = { skill: Math.max(0, Math.min(1, Number(req.body?.skill) || 0.4)), waitMs: Math.max(5, Number(req.body?.waitSec) || 300) * 1000 };
+  const visit = x1BotVisit(bot, opts);
+  visit.then((r) => console.log(`[x1] bot ${bot.nick} (admin):`, r)).catch((e) => console.error('[x1] bot (admin):', e));
+  return { started: true, nick: bot.nick, ...opts };
+}));
+admin.get('/x1/bots', handle(() => ({ inside: x1BotsInside() })));
 
 // Relatório diário do Telegram (services/dailyReport.js): manda agora o de `day` (AAAA-MM-DD; padrão ontem), de novo se
 // preciso (`force`); com `?ver=1` só devolve o PNG do gráfico (conferir sem mandar).

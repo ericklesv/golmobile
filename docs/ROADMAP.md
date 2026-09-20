@@ -2,6 +2,14 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## Bots no X1 (20/09/2026)
+Depois de flagrar o Xumbera jogando o X1 com um programa (521 conexões `node` no WebSocket num dia, 40V 9D desde
+então), o dono pediu: os bots "quase reais" passam a **procurar e jogar partidas de verdade no X1** — um por vez,
+espaçado, dentro da sessão de cada um, aceitando o desafio de quem está esperando ou abrindo o seu; 3–8 s para
+bater, skill sorteada (nem sempre ganha), provocações raras; a mesma pessoa só pega os bots 4x por dia e com 45 min
+de intervalo; prêmio do Ranking X1 pula bots. Regras em `BOTS.x1` (rules.js); detalhes no CLAUDE.md ("Bots no X1").
+Teste: `node scripts/test-bots-x1.js`.
+
 ## Publicado em 19/09/2026 04:38 (Brasília) — commit f0460cc
 Produção estava em 72a85f6 (de hoje, 03:26); sem migração de banco. Backup do dia: `/var/backups/brgol/daily/jogagol-2026-09-19.tar`.
 Subiu: a **tela de entrada com o jogo na frente** (botão Entrar no topo, jogo da rodada, artilheiros de hoje e

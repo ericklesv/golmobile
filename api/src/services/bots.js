@@ -14,16 +14,25 @@
  *    tempo sorteado (8 s a 4 min) antes de chutar; a trilha vai linha a linha com pausa entre elas.
  *  - Uma ação por bot por volta (20 s), disparada com atraso sorteado dentro da volta: nunca dois bots no
  *    mesmo segundo, nunca todos os chutes de um bot de uma vez.
- *  - Nunca conversa e nunca joga minigame (deixaria o rastro na cara). No X1 eles também não entram
- *    sozinhos; a ÚNICA exceção é o tutorial de boas-vindas: se o novato desafiar e ninguém aceitar em
- *    20 s, um bot aceita e joga valendo tudo (decisão do dono, 18/09/2026 — realtime/x1.js). Bots não entram na premiação
- *    (league.js calcula a artilharia premiada e o VIP do time campeão sem eles) nem no relatório diário.
- * Motor: `startBots()` no index.js (1 instância PM2 — estado "o que está pendente" em memória).
+ *  - Nunca conversa e nunca joga minigame (deixaria o rastro na cara).
+ *  - **X1 (dono, 20/09/2026)**: dentro da sessão, de vez em quando um bot VAI AO X1 (`botsX1Round` → x1BotVisit em
+ *    realtime/x1.js): aceita um desafio aberto de gente de outro time ou abre o dele e espera alguns minutos —
+ *    "para quase sempre ter alguém diferente no X1". Vale tudo (aposta, gol, gol a menos, lances, retrospecto);
+ *    só o prêmio do Ranking X1 pula os bots. Um bot por vez (BOTS.x1.concurrent), intervalo sorteado entre um e
+ *    outro, cada bot descansa 30–120 min depois de sair e joga no máximo 4 por dia; a MESMA pessoa só pega os
+ *    bots 4x em 24 h e com 45 min entre uma e outra ("não o tempo todo com o Xumbera"). Na partida o bot demora
+ *    3–8 s para bater, tem uma skill sorteada (nem sempre ganha) e provoca de vez em quando. O tutorial de
+ *    boas-vindas usa o mesmo bot (o novato desafia, ninguém aceita em 20 s, um bot entra — 18/09/2026).
+ *    Bots não entram na premiação (league.js calcula a artilharia premiada e o VIP do time campeão sem eles;
+ *    services/x1.js pula bots no prêmio do X1) nem no relatório diário.
+ * Motor: `startBots()` no index.js (1 instância PM2 — estado "o que está pendente" em memória). `BOTS_OFF=1`
+ * desliga tudo; `BOTS_X1_OFF=1` só a ida ao X1 (testes).
  */
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { prisma } from '../prisma.js';
-import { BOTS, cooldownFor, LAST_FIELD, skillPointsLeft, TRAIL_LINES, SKILL_FIELD, SKILL_STEPS } from '../lib/rules.js';
+import { BOTS, FUTPREGO, cooldownFor, LAST_FIELD, skillPointsLeft, TRAIL_LINES, SKILL_FIELD, SKILL_STEPS } from '../lib/rules.js';
+import { x1BotVisit, x1BotsInside } from '../realtime/x1.js';
 import { tzParts, fromTz, calendarDay } from '../lib/time.js';
 import { activeItemsWhere } from '../lib/items.js';
 import { autoKick, penalty, foul, trailPick } from './play.js';
@@ -173,6 +182,50 @@ function choose(bot, m, session, now) {
   return null;
 }
 
+// ─── X1 (dono, 20/09/2026) ────────────────────────────────────────────────────
+const x1 = { nextAt: 0 }; // quando o próximo bot pode entrar no X1 (intervalo sorteado depois de cada saída)
+/** Vontade de jogar X1 (0..1): `x1` na persona; sem ele, pelo perfil (BOTS.x1.appetite). */
+const x1Appetite = (bot) => { const p = bot.botJson?.persona || {}; return p.x1 ?? BOTS.x1.appetite[p.profile] ?? 0.4; };
+const x1Off = () => process.env.BOTS_X1_OFF === '1';
+
+/**
+ * Uma volta do X1: com vaga (BOTS.x1.concurrent) e passado o intervalo, sorteia um bot em sessão que está
+ * descansado, tem a aposta e "topa" (persona); confere no banco as partidas das últimas 24 h e o descanso desde a
+ * última (sobrevive ao reinício da API) e manda ele ao X1. A visita corre sozinha (x1BotVisit); ao voltar, ele
+ * descansa BOTS.x1.restMin e o intervalo até o próximo bot é sorteado de novo.
+ */
+export async function botsX1Round(online, now = Date.now()) {
+  const X = BOTS.x1;
+  if (x1Off() || x1BotsInside().length >= X.concurrent || now < x1.nextAt) return null;
+  const pool = online.filter((b) => (memOf(b.id).x1RestUntil ?? 0) <= now && x1Appetite(b) > 0 && b.money >= FUTPREGO.bet);
+  if (!pool.length) return null;
+  const bot = pick(pool), m = memOf(bot.id);
+  if (rnd() >= x1Appetite(bot)) { m.x1RestUntil = now + between(5, 15) * 60_000; return null; } // hoje não: chamado de novo mais tarde
+  const recent = await prisma.x1Match.findMany({
+    where: { status: 'FINISHED', finishedAt: { gte: new Date(now - 24 * 3600_000) }, OR: [{ aId: bot.id }, { bId: bot.id }] },
+    select: { finishedAt: true }, orderBy: { finishedAt: 'desc' },
+  });
+  if (recent.length >= X.maxDay) { m.x1RestUntil = now + 60 * 60_000; return null; }
+  const restMs = () => between(X.restMin[0], X.restMin[1]) * 60_000;
+  if (recent[0] && recent[0].finishedAt.getTime() > now - X.restMin[0] * 60_000) { m.x1RestUntil = recent[0].finishedAt.getTime() + restMs(); return null; }
+  const gapMs = () => between(X.gapMin[0], X.gapMin[1]) * 60_000;
+  m.x1RestUntil = now + 30 * 60_000; // enquanto a visita dura (acertado na volta)
+  x1.nextAt = now + gapMs();
+  const opts = { skill: between(X.skill[0], X.skill[1]), waitMs: between(X.waitMin[0], X.waitMin[1]) * 60_000 };
+  const visit = x1BotVisit(bot, opts).then((r) => {
+    m.x1RestUntil = Date.now() + restMs();
+    x1.nextAt = Math.max(x1.nextAt, Date.now() + gapMs());
+    if (r.played) console.log(`[bots] ${bot.nick} jogou X1 contra ${r.opponent}: ${r.won ? 'venceu' : r.draw ? 'empatou' : 'perdeu'} (${r.reason})`);
+    return r;
+  }).catch((e) => {
+    m.x1RestUntil = Date.now() + restMs();
+    console.error(`[bots] ${bot.nick} X1:`, e?.message || e);
+    tg.error(`Bots: ${tg.esc(bot.nick)} X1 — ${tg.esc(String(e?.message || e).slice(0, 200))}`, { key: 'bots-x1', every: 30 * 60_000 });
+    return { played: false, why: 'erro' };
+  });
+  return { bot: bot.nick, opts, visit };
+}
+
 // ─── Volta do motor ───────────────────────────────────────────────────────────
 let ticking = false;
 export async function botsTick(now = Date.now()) {
@@ -184,21 +237,26 @@ export async function botsTick(now = Date.now()) {
       where: { isBot: true, deletedAt: null, OR: [{ bannedUntil: null }, { bannedUntil: { lt: new Date(now) } }] },
       include: { team: true, items: activeItemsWhere(new Date(now)) },
     });
+    const online = [];
+    const inX1 = new Set(x1BotsInside().map((b) => b.id));
     for (const bot of bots) {
       const plan = await ensurePlan(bot, now);
       const session = inSession(plan, now);
       if (!session) continue;
       out.online++;
+      online.push(bot);
       const m = memOf(bot.id);
       // presença: lastSeenAt anda como o heartbeat do site (a cada ~50 s)
       if (new Date(bot.lastSeenAt).getTime() < now - BOTS.heartbeatSec * 1000) await prisma.user.update({ where: { id: bot.id }, data: { lastSeenAt: new Date(now) } });
-      if (m.busy) continue;
+      if (m.busy || inX1.has(bot.id)) continue; // no X1 não chuta (está na tela da partida)
       const what = choose(bot, m, session, now);
       if (!what) continue;
       m.busy = true;
       out.actions++;
       setTimeout(() => act(bot, m, what), between(500, BOTS.tickMs - 1500)); // espalhado dentro da volta
     }
+    out.x1 = inX1.size;
+    if (online.length) { const v = await botsX1Round(online, now); if (v) { out.x1++; out.x1Sent = v.bot; } }
   } catch (e) {
     console.error('[bots] volta:', e);
     tg.error(`Bots (motor): ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'bots-tick', every: 30 * 60_000 });
@@ -217,7 +275,7 @@ export function startBots() {
 
 // ─── Criação (scripts/bots.js) ────────────────────────────────────────────────
 /** Persona = os campos da lista que dizem COMO o bot joga (o resto é conta). */
-export const personaOf = (b) => ({ profile: b.profile, windows: b.windows, kinds: b.kinds || {}, skills: b.skills ?? null, pass: b.pass !== false });
+export const personaOf = (b) => ({ profile: b.profile, windows: b.windows, kinds: b.kinds || {}, skills: b.skills ?? null, pass: b.pass !== false, x1: b.x1 ?? null });
 
 /**
  * Cria as contas da lista que ainda não existem (nick em uso por conta de verdade = pulado com aviso).

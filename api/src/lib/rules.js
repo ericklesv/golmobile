@@ -719,8 +719,9 @@ export const COMMUNITY = {
 // quanto demora para chutar depois da recarga) e ganha um PLANO por dia: sessões de tantos minutos em horários
 // sorteados dentro das janelas dele — fora da sessão fica "offline". Dentro da sessão chuta pelos MESMOS
 // serviços do jogador (recarga, chance, trilha, lances ao vivo), resgata a Presença e gasta ponto de nível
-// nas habilidades. Nunca conversa no chat, nunca joga minigame nem X1 (deixaria o rastro na cara). Lista dos
-// bots em data/bots.js; motor em services/bots.js; criação com `node scripts/bots.js criar`.
+// nas habilidades. Nunca conversa no chat, nunca joga minigame (deixaria o rastro na cara). No X1 eles
+// ENTRAM (dono, 20/09/2026 — ver BOTS.x1 abaixo). Lista dos bots em data/bots.js; motor em services/bots.js;
+// criação com `node scripts/bots.js criar`.
 // Volume esperado (não-VIP, recarga de 10 min por chute): casual ~3–10 gols/dia, regular ~10–25, assíduo ~30–55
 // — de propósito abaixo do top 10 da rodada (quem fica lá faz 80+), e os bots NUNCA entram na premiação
 // (artilharia da rodada/temporada e VIP do time campeão são calculados sem eles — league.js).
@@ -754,4 +755,28 @@ export const BOTS = {
   trailStepSec: [4, 25], // entre uma linha e outra da trilha
   heartbeatSec: 50, // "online" enquanto a sessão dura (o site de verdade manda a cada 60 s)
   skillChance: 0.25, // por volta, com ponto de nível sobrando: gasta um na habilidade preferida
+  // ─── Bots no X1 (dono, 20/09/2026: "vamos colocar nossos bots para procurarem e jogarem partidas de verdade no
+  // X1", "para quase sempre ter alguém diferente no X1", "mas não o tempo todo com o Xumbera, faremos partidas mais
+  // espaçadas", "um toque de aleatoriedade… no tempo que ele passa pra bater na bola, de 3 a 8 segundos… e nem
+  // sempre ganhando", "vez ou outra, um pouco mais raro, pode usar provocações ou devolver provocações").
+  // O bot entra no X1 SÓ dentro da sessão dele (realtime/x1.js → x1BotVisit): aceita um desafio aberto de gente de
+  // outro time ou abre o dele e espera; jogou (ou ninguém veio), sai e DESCANSA. Tudo vale como partida de verdade
+  // (aposta, gol, gol a menos, lances ao vivo, retrospecto) — só o PRÊMIO do Ranking X1 pula os bots (services/x1.js).
+  x1: {
+    concurrent: 1,            // quantos bots ficam no X1 ao mesmo tempo (um de cada vez: "alguém diferente")
+    gapMin: [2, 12],          // saiu um bot → quanto tempo até o próximo entrar (espaçado e sorteado)
+    waitMin: [3, 8],          // abriu o desafio e ninguém veio: espera isto e vai embora (o desafio dura 5 min)
+    restMin: [30, 120],       // o MESMO bot só volta ao X1 depois disto (jogou ou não)
+    maxDay: 4,                // partidas de um bot em 24 h
+    afterMatchSec: [6, 25],   // acabou a partida: "lê o resultado" e sai
+    // contra a MESMA pessoa (somando todos os bots): intervalo mínimo e teto em 24 h — ninguém farma os bots
+    sameHumanMin: 45,
+    sameHumanDay: 4,
+    thinkSec: [3, 8],         // quanto demora para bater na bola (sorteado a cada jogada)
+    skill: [0.25, 0.55],      // chance de fazer o gol quando existe um gol na mesa (sorteada por bot ao entrar)
+    // provocar (só as 4 caras básicas — bot não é VIP): chance de responder uma provocação e de mandar sozinho
+    // (rindo quando faz gol, raiva/choro quando toma)
+    provocarReply: 0.35, provocarGoal: 0.2, provocarConceded: 0.15,
+    appetite: { casual: 0.3, regular: 0.5, assiduo: 0.7 }, // persona sem `x1`: chance de topar ir ao X1 quando chamado
+  },
 };

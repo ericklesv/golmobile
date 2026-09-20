@@ -380,9 +380,38 @@ depois que o novo estiver estável. Não instalar nada dele.
   em 30/12/5 % dos dias; senão 1–4 sessões de 12–130 min em horários sorteados nas janelas), gravado em `botJson.plan`
   (reiniciar a API NÃO sorteia de novo). Na sessão fica "online" (lastSeenAt anda) e chuta pelos **mesmos serviços do
   jogador** (`autoKick`/`penalty`/`foul`/`trailPick`), esperando 8 s–4 min depois da recarga, trilha linha a linha;
-  uma ação por bot por volta de 20 s, disparada com atraso sorteado (nunca todos no mesmo segundo). **Nunca** chat,
-  minigame nem X1. Volume: casual ~3–10 gols/dia, regular ~10–25, assíduo ~30–55 (abaixo do top 10 da rodada de
-  propósito). **Bots não recebem prêmio**: `topAndPrizes` em league.js tira os bots da lista premiada (artilharia da
+  uma ação por bot por volta de 20 s, disparada com atraso sorteado (nunca todos no mesmo segundo). **Nunca** chat
+  nem minigame. Volume: casual ~3–10 gols/dia, regular ~10–25, assíduo ~30–55 (abaixo do top 10 da rodada de
+  propósito).
+  **Bots no X1** (dono, 20/09/2026, depois de flagrar o Xumbera jogando o X1 com um programa: "vamos colocar nossos
+  bots para procurarem e jogarem partidas de verdade no X1", "para quase sempre ter alguém diferente no X1", "mas
+  não o tempo todo com o Xumbera, faremos partidas mais espaçadas", "toque de aleatoriedade… no tempo que ele passa
+  pra bater na bola, de 3 a 8 segundos… e nem sempre ganhando", "vez ou outra, um pouco mais raro, provocações";
+  números em `BOTS.x1` de rules.js; `botsX1Round` em bots.js → `x1BotVisit` em `realtime/x1.js`): a cada volta,
+  com vaga (`concurrent` = **1 bot por vez**) e passado o intervalo sorteado (`gapMin` 2–12 min desde a última
+  saída), o motor sorteia um bot **em sessão**, descansado (`restMin` 30–120 min desde a última visita), com a aposta
+  e que "topa" (`x1` na persona, 0 = nunca; sem o campo, `appetite` por perfil) e manda ele ao X1: **aceita um desafio
+  aberto de gente de OUTRO time** (o mais antigo) ou **abre o dele** e espera `waitMin` (3–8 min) — as telas com abas
+  recebem "Fulano está te desafiando" e a tela do X1 lista o desafio, **sem marca de bot** (`playerView.bot` é só do
+  treino). Jogou ou ninguém veio, sai (`afterMatchSec` 6–25 s "lendo o resultado") e descansa; no máximo `maxDay` = 4
+  partidas por bot em 24 h. **Vale tudo** (aposta, gol, gol a menos, lances ao vivo, retrospecto, Ranking X1) — só o
+  **prêmio** do Ranking X1 pula os bots (`x1Ranking`: `eligible` false e sem `need`, o prêmio vai para o próximo; o
+  bot aparece na lista). **Cota por pessoa** (`botQuotaOk` em x1.js, dentro de `compatible`): a MESMA pessoa joga com
+  os bots (todos somados, tutorial incluído — conta pelas `X1Match` com `bot:<id>` no IP) no máximo `sameHumanDay` =
+  4 vezes em 24 h e com `sameHumanMin` = 45 min entre uma e outra; fora da cota o desafio do bot **nem aparece** para
+  ela (nem o dela para o bot). Na partida o lado `ai` (bot quase real, tutorial incluído) **demora `thinkSec` = 3–8 s**
+  para bater (`aiDelayMs`; o bot de TREINO `bot` segue rápido), joga com uma **`skill` sorteada por visita** (0,25–0,55
+  = a chance de fazer o gol quando existe um na mesa — `botaoHumanMove` em botaoMatch.js; no FutPrego, a chance de
+  escolher a melhor das 4 tentativas; o do tutorial fica na faixa de baixo) e **provoca de vez em quando** (só as 4
+  caras básicas — bot não é VIP: devolve uma provocação em 35 % das vezes, ri do próprio gol em 20 %, raiva/choro do
+  gol que tomou em 15 %; `aiProvocar`/`aiReactsToGoal`). No X1 o bot não chuta (está "na tela da partida"). Enquanto
+  está lá, `x1BotsInside()`; `POST /api/admin/x1/bot {nick, waitSec?, skill?}` manda um bot ao X1 AGORA e
+  `GET /api/admin/x1/bots` mostra quem está (x-admin-key). Calibração de 20/09 (300 partidas por par, `botaoHumanMove` x
+  `botaoBotMove` no lib/botaoMatch.js): skill 0,4 x 0,4 = 50/50 com ~14 petelecos; contra o bot de treino (0,5) o quase
+  real de 0,25–0,55 vence 28–40 %. Ajustar `BOTS.x1.skill` pelos resultados de produção (`FutPregoMatch` com
+  `bot:` no IP). `BOTS_X1_OFF=1` desliga só a ida ao X1 (testes). **Mexeu? Rode `node scripts/test-bots-x1.js`**
+  (pasta api/, API local no ar com `X1_JOGO=BOTAO` e `ADMIN_KEY`, banco LOCAL; tem de dar "TUDO OK") e o
+  `test-bots.js` (passo 7 = a volta do X1 sem servidor). **Bots não recebem prêmio**: `topAndPrizes` em league.js tira os bots da lista premiada (artilharia da
   rodada/temporada; quem vem depois sobe de posição) numa consulta só com o quadro — duas consultas embaralhavam os
   empates —; o VIP do time campeão também pula bots. Fora do relatório diário do Telegram (contas e gols). O painel de
   admin mostra o selo **Bot** (e-mail `<nick>@bots.jogagol.com.br`); `isBot` NUNCA vai para o front público (views
@@ -832,6 +861,13 @@ servidos pelo próprio Express em `/api/uploads/`.
 ## Regras de trabalho (valem para todo mundo e toda IA no projeto)
 - **Commit + push em `main` a cada alteração concluída** (não acumular trabalho local): o
   outro colaborador precisa sempre ter a versão atual pelo git. Commits em PT-BR.
+- **SEMPRE avisar no grupo do Telegram o que foi ajustado/adicionado** (dono, 20/09/2026: "para todos sabermos,
+  tanto mudança nossa quanto mudança do Erickles" — vale para toda IA e todo colaborador): depois de publicar (ou de
+  concluir um ajuste no servidor/banco), mandar ao grupo "JogaGol - ADMIN" um resumo em PT-BR, curto e em linguagem
+  de jogador/dono (o que mudou, por que, onde ver), não a lista de commits — o "API subiu" automático já lista os
+  títulos dos commits, e não substitui o resumo. Como mandar, na VPS (pasta api/, com o .env):
+  `node -e "import('./src/lib/telegram.js').then(({tg}) => tg.raw('<b>Título</b>\n\ntexto em HTML'))"` — ou o
+  `tools/vps/tg-aviso.sh "<texto>"` (lê o token de `/etc/brgol-telegram.conf`).
 - **Publicar só uma parte do `main`** (usado em 15/09/2026): se o `main` tiver trabalho inacabado de alguém,
   criar um ramo `prod` a partir do commit que está em produção (`grep "commit " /var/log/brgol-deploy.log |
   tail -1` na VPS), cherry-pick do que vai subir e deploy com

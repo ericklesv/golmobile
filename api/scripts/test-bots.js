@@ -203,6 +203,7 @@ await sleep(1500);
   // quem "topa": persona com x1 = 1 no assíduo; o casual com x1 = 0 nunca vai
   for (const b of online) b.botJson = { ...b.botJson, persona: { ...b.botJson.persona, x1: b.nick === 'tb-assiduo' ? 1 : 0 } };
   BOTS.x1.waitMin = [0.05, 0.05]; // 3 s de espera no teste (o desafio de verdade dura minutos)
+  BOTS.x1.concurrent = 1;
   const sent = await botsX1Round(online, Date.now());
   check(sent?.bot === 'tb-assiduo', `a volta do X1 mandou o bot que topa (${sent?.bot})`);
   await sleep(400);

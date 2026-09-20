@@ -764,29 +764,34 @@ export const BOTS = {
   // X1", "para quase sempre ter alguém diferente no X1", "mas não o tempo todo com o Xumbera, faremos partidas mais
   // espaçadas", "um toque de aleatoriedade… no tempo que ele passa pra bater na bola, de 3 a 8 segundos… e nem
   // sempre ganhando", "vez ou outra, um pouco mais raro, pode usar provocações ou devolver provocações").
-  // O bot entra no X1 SÓ dentro da sessão dele (realtime/x1.js → x1BotVisit): aceita um desafio aberto de gente de
-  // outro time ou abre o dele e espera; jogou (ou ninguém veio), sai e DESCANSA. Tudo vale como partida de verdade
-  // (aposta, gol, gol a menos, lances ao vivo, retrospecto) — só o PRÊMIO do Ranking X1 pula os bots (services/x1.js).
+  // O bot vai ao X1 dentro da sessão dele OU fora dela, desde que a hora esteja numa JANELA da persona e o dia não
+  // seja folga (dono, 20/09/2026 à noite: "nenhum bot rodou X1 ainda… precisamos movimentar o jogo" — às 20h30 de
+  // domingo não havia NENHUM bot em sessão e 111 telas de gente no X1); na visita ele fica "online" (lastSeenAt).
+  // realtime/x1.js → x1BotVisit: aceita um desafio aberto de gente de outro time, ou o de OUTRO BOT (chance
+  // botVsBot — bot x bot também movimenta o placar, os lances e o ranking; o dono topou), ou abre o dele e espera;
+  // jogou (ou ninguém veio), sai e DESCANSA. Tudo vale como partida de verdade (aposta, gol, gol a menos, lances ao
+  // vivo, retrospecto) — só o PRÊMIO do Ranking X1 pula os bots (services/x1.js).
   x1: {
-    concurrent: 1,            // quantos bots ficam no X1 ao mesmo tempo (um de cada vez: "alguém diferente")
-    gapMin: [2, 12],          // saiu um bot → quanto tempo até o próximo entrar (espaçado e sorteado)
+    concurrent: 2,            // quantos bots ficam no X1 ao mesmo tempo
+    gapMin: [1, 6],           // saiu um bot → quanto tempo até o próximo entrar (espaçado e sorteado)
     waitMin: [3, 8],          // abriu o desafio e ninguém veio: espera isto e vai embora (o desafio dura 5 min)
-    restMin: [30, 120],       // o MESMO bot só volta ao X1 depois disto (jogou ou não)
-    maxDay: 4,                // partidas de um bot em 24 h
+    restMin: [15, 60],        // o MESMO bot só volta ao X1 depois disto (jogou ou não)
+    maxDay: 8,                // partidas de um bot em 24 h
     afterMatchSec: [6, 25],   // acabou a partida: "lê o resultado" e sai
+    botVsBot: 0.5,            // outro bot está esperando: chance de jogar com ele em vez de abrir o próprio desafio
     // contra a MESMA pessoa (somando todos os bots): intervalo mínimo e teto em 24 h — ninguém farma os bots
-    sameHumanMin: 45,
-    sameHumanDay: 4,
+    sameHumanMin: 30,
+    sameHumanDay: 6,
     // ACEITAR (dono, 20/09/2026: "coloque os bots ativos no momento com possibilidade de aceitar também os X1,
     // principalmente após os primeiros 5 s"): alguém de verdade abriu um desafio e ninguém pegou → passados
-    // acceptDelaySec, um bot EM SESSÃO (qualquer um, não só o que está visitando) aceita com chance acceptChance;
-    // o mesmo bot só aceita de novo depois de acceptRestMin. A cota por pessoa (sameHumanMin/Day) vale igual.
-    acceptChance: 0.8, acceptDelaySec: [5, 30], acceptRestMin: 10,
+    // acceptDelaySec, um bot disponível (na janela da persona; não só o que está visitando) aceita com chance
+    // acceptChance; o mesmo bot só aceita de novo depois de acceptRestMin. A cota por pessoa (sameHumanMin/Day) vale.
+    acceptChance: 0.9, acceptDelaySec: [5, 25], acceptRestMin: 5,
     thinkSec: [3, 8],         // quanto demora para bater na bola (sorteado a cada jogada)
     skill: [0.25, 0.55],      // chance de fazer o gol quando existe um gol na mesa (sorteada por bot ao entrar)
     // provocar (só as 4 caras básicas — bot não é VIP): chance de responder uma provocação e de mandar sozinho
     // (rindo quando faz gol, raiva/choro quando toma)
     provocarReply: 0.35, provocarGoal: 0.2, provocarConceded: 0.15,
-    appetite: { casual: 0.3, regular: 0.5, assiduo: 0.7 }, // persona sem `x1`: chance de topar ir ao X1 quando chamado
+    appetite: { casual: 0.5, regular: 0.7, assiduo: 0.9 }, // persona sem `x1`: chance de topar ir ao X1 quando chamado
   },
 };

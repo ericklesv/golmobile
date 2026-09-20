@@ -398,24 +398,30 @@ depois que o novo estiver estável. Não instalar nada dele.
   não o tempo todo com o Xumbera, faremos partidas mais espaçadas", "toque de aleatoriedade… no tempo que ele passa
   pra bater na bola, de 3 a 8 segundos… e nem sempre ganhando", "vez ou outra, um pouco mais raro, provocações";
   números em `BOTS.x1` de rules.js; `botsX1Round` em bots.js → `x1BotVisit` em `realtime/x1.js`): a cada volta,
-  com vaga (`concurrent` = **1 bot por vez**) e passado o intervalo sorteado (`gapMin` 2–12 min desde a última
-  saída), o motor sorteia um bot **em sessão**, descansado (`restMin` 30–120 min desde a última visita), com a aposta
-  e que "topa" (`x1` na persona, 0 = nunca; sem o campo, `appetite` por perfil) e manda ele ao X1: **aceita um desafio
-  aberto de gente de OUTRO time** (o mais antigo) ou **abre o dele** e espera `waitMin` (3–8 min). **E qualquer bot em
+  com vaga (`concurrent` = **2 bots**) e passado o intervalo sorteado (`gapMin` 1–6 min desde a última saída), o
+  motor sorteia um bot **disponível** (`x1Available`: em sessão OU, fora dela, numa hora que cabe na JANELA da persona
+  e sem ser dia de folga — dono, 20/09 à noite: "nenhum bot rodou X1 ainda… precisamos movimentar o jogo"; às 20h30
+  não havia bot em sessão e 111 telas de gente no X1; na visita ele fica "online", `lastSeenAt` a cada 50 s),
+  descansado (`restMin` 15–60 min desde a última visita), com a aposta e que "topa" (`x1` na persona, 0 = nunca; sem o
+  campo, `appetite` por perfil: 0,5/0,7/0,9) e manda ele ao X1: **aceita um desafio aberto de gente de OUTRO time** (o
+  mais antigo), **ou o de OUTRO BOT** (`botVsBot` = 50 % das vezes — bot x bot também movimenta placar, lances e
+  ranking, o dono topou: "mesmo que fiquem no ranking de X1, não tem problema"; senão `conn.avoidAi` e ele abre o
+  dele sem casar com o do outro bot) ou **abre o dele** e espera `waitMin` (3–8 min). **E qualquer bot em
   sessão pode ACEITAR** (dono, 20/09/2026: "os bots ativos no momento com possibilidade de aceitar também os X1,
   principalmente após os primeiros 5 s"): gente de verdade abriu um desafio e ninguém pegou em `acceptDelaySec` (5–30 s
   sorteados) → `botAceita` (x1.js) pede ao motor um bot (`pickX1Accepter` em bots.js, registrado com
-  `setX1BotPicker`: em sessão pelo plano do dia — lido do banco, não da volta —, de outro time, com a aposta, que
+  `setX1BotPicker`: disponível (`x1Available`, lido do banco, não da volta), de outro time, com a aposta, que
   topa, fora do X1, sem partida há `acceptRestMin` = 10 min e abaixo de `maxDay`; chance `acceptChance` = 0,8) e ele
   aceita (`x1BotVisit` com `acceptOnly`). A cota da pessoa vale igual (fora dela, ninguém aceita). O tutorial mantém
-  o dele (20 s, sempre) — as telas com abas
+  o dele (20 s, sempre). (Números de 20/09 à noite: `acceptChance` 0,9, `acceptDelaySec` 5–25, `acceptRestMin` 5;
+  candidatos por `x1Available`, não só em sessão.) — as telas com abas
   recebem "Fulano está te desafiando" e a tela do X1 lista o desafio, **sem marca de bot** (`playerView.bot` é só do
-  treino). Jogou ou ninguém veio, sai (`afterMatchSec` 6–25 s "lendo o resultado") e descansa; no máximo `maxDay` = 4
+  treino). Jogou ou ninguém veio, sai (`afterMatchSec` 6–25 s "lendo o resultado") e descansa; no máximo `maxDay` = 8
   partidas por bot em 24 h. **Vale tudo** (aposta, gol, gol a menos, lances ao vivo, retrospecto, Ranking X1) — só o
   **prêmio** do Ranking X1 pula os bots (`x1Ranking`: `eligible` false e sem `need`, o prêmio vai para o próximo; o
   bot aparece na lista). **Cota por pessoa** (`botQuotaOk` em x1.js, dentro de `compatible`): a MESMA pessoa joga com
   os bots (todos somados, tutorial incluído — conta pelas `X1Match` com `bot:<id>` no IP) no máximo `sameHumanDay` =
-  4 vezes em 24 h e com `sameHumanMin` = 45 min entre uma e outra; fora da cota o desafio do bot **nem aparece** para
+  6 vezes em 24 h e com `sameHumanMin` = 30 min entre uma e outra (eram 4 e 45 até a noite de 20/09); fora da cota o desafio do bot **nem aparece** para
   ela (nem o dela para o bot). Na partida o lado `ai` (bot quase real, tutorial incluído) **demora `thinkSec` = 3–8 s**
   para bater (`aiDelayMs`; o bot de TREINO `bot` segue rápido), joga com uma **`skill` sorteada por visita** (0,25–0,55
   = a chance de fazer o gol quando existe um na mesa — `botaoHumanMove` em botaoMatch.js; no FutPrego, a chance de

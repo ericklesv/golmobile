@@ -88,6 +88,23 @@ async function ensurePlan(bot, now) {
 }
 
 const inSession = (plan, now) => (plan?.sessions || []).find((s) => now >= s.from && now < s.to) || null;
+/** A hora de agora (Brasília) cai numa janela da persona? (sem janelas na persona = qualquer hora) */
+function inWindow(persona, now) {
+  const ws = (persona?.windows || []).filter((w) => BOTS.windows[w]);
+  if (!ws.length) return true;
+  const h = tzParts(new Date(now)).h;
+  return ws.some((w) => h >= BOTS.windows[w][0] && h < BOTS.windows[w][1]);
+}
+/**
+ * Pode ir ao X1 agora? Em sessão, ou fora dela numa hora que cabe na JANELA da persona e sem ser dia de folga
+ * (dono, 20/09/2026: "precisamos movimentar o jogo" — só as sessões de chute deixavam o X1 sem bot a noite inteira).
+ */
+export const x1Available = (bot, now) => {
+  const plan = bot.botJson?.plan;
+  if (inSession(plan, now)) return true;
+  if (plan?.day === calendarDay(new Date(now)) && plan.skip) return false; // folga: nem X1
+  return inWindow(bot.botJson?.persona, now);
+};
 
 // ─── Memória do motor (1 instância) ───────────────────────────────────────────
 // por bot: { react: { KIND: { readyAt, delay } }, busy, passDay, sessionFrom }
@@ -189,15 +206,15 @@ const x1Appetite = (bot) => { const p = bot.botJson?.persona || {}; return p.x1 
 const x1Off = () => process.env.BOTS_X1_OFF === '1';
 
 /**
- * Uma volta do X1: com vaga (BOTS.x1.concurrent) e passado o intervalo, sorteia um bot em sessão que está
- * descansado, tem a aposta e "topa" (persona); confere no banco as partidas das últimas 24 h e o descanso desde a
- * última (sobrevive ao reinício da API) e manda ele ao X1. A visita corre sozinha (x1BotVisit); ao voltar, ele
- * descansa BOTS.x1.restMin e o intervalo até o próximo bot é sorteado de novo.
+ * Uma volta do X1: com vaga (BOTS.x1.concurrent) e passado o intervalo, sorteia um bot DISPONÍVEL (x1Available:
+ * em sessão ou na janela da persona) que está descansado, tem a aposta e "topa" (persona); confere no banco as
+ * partidas das últimas 24 h e o descanso desde a última (sobrevive ao reinício da API) e manda ele ao X1. A visita
+ * corre sozinha (x1BotVisit); ao voltar, ele descansa BOTS.x1.restMin e o intervalo até o próximo bot é sorteado.
  */
-export async function botsX1Round(online, now = Date.now()) {
+export async function botsX1Round(bots, now = Date.now()) {
   const X = BOTS.x1;
   if (x1Off() || x1BotsInside().length >= X.concurrent || now < x1.nextAt) return null;
-  const pool = online.filter((b) => (memOf(b.id).x1RestUntil ?? 0) <= now && x1Appetite(b) > 0 && b.money >= FUTPREGO.bet);
+  const pool = bots.filter((b) => x1Available(b, now) && (memOf(b.id).x1RestUntil ?? 0) <= now && x1Appetite(b) > 0 && b.money >= FUTPREGO.bet);
   if (!pool.length) return null;
   const bot = pick(pool), m = memOf(bot.id);
   if (rnd() >= x1Appetite(bot)) { m.x1RestUntil = now + between(5, 15) * 60_000; return null; } // hoje não: chamado de novo mais tarde
@@ -241,7 +258,7 @@ export async function pickX1Accepter(human, now = Date.now()) {
     where: { isBot: true, deletedAt: null, money: { gte: FUTPREGO.bet }, teamId: { not: human.teamId }, OR: [{ bannedUntil: null }, { bannedUntil: { lt: new Date(now) } }] },
     include: { team: true },
   });
-  const pool = bots.filter((b) => !inX1.has(b.id) && inSession(b.botJson?.plan, now) && x1Appetite(b) > 0);
+  const pool = bots.filter((b) => !inX1.has(b.id) && x1Available(b, now) && x1Appetite(b) > 0);
   for (let tries = 0; tries < 3 && pool.length; tries++) {
     const i = Math.floor(rnd() * pool.length);
     const [bot] = pool.splice(i, 1);
@@ -292,7 +309,8 @@ export async function botsTick(now = Date.now()) {
       setTimeout(() => act(bot, m, what), between(500, BOTS.tickMs - 1500)); // espalhado dentro da volta
     }
     out.x1 = inX1.size;
-    if (online.length) { const v = await botsX1Round(online, now); if (v) { out.x1++; out.x1Sent = v.bot; } }
+    const v = await botsX1Round(bots, now); // (x1Available: em sessão OU na janela da persona)
+    if (v) { out.x1++; out.x1Sent = v.bot; }
   } catch (e) {
     console.error('[bots] volta:', e);
     tg.error(`Bots (motor): ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'bots-tick', every: 30 * 60_000 });

@@ -328,6 +328,7 @@ async function createChallenge(conn) {
   // de outro time (vale gol); só depois um colega de time (amistoso)
   const waitingNow = [...challenges.values()].filter((ch) => ch.game === game).sort((a, b) => sameTeamOf(a.from, conn) - sameTeamOf(b.from, conn) || a.at - b.at);
   for (const ch of waitingNow) {
+    if (conn.avoidAi && isAi(ch.from)) continue; // bot que decidiu abrir o próprio desafio em vez de jogar com outro bot
     if (await compatible(ch.from, conn)) return acceptChallenge(conn, ch.id);
   }
   const ch = { id: nextId++, game, from: conn, at: Date.now(), shownTo: new Set() };
@@ -868,14 +869,25 @@ export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000, accep
       if (challenges.has(acceptOnly)) await acceptChallenge(conn, acceptOnly);
       if (!conn.match) return { played: false, why: 'nao-casou' };
     } else {
-      const open = [...challenges.values()].filter((ch) => ch.game === game && !isAi(ch.from) && ch.from.user.teamId !== conn.user.teamId).sort((a, b) => a.at - b.at);
-      for (const ch of open) { if (challenges.has(ch.id) && (await compatible(ch.from, conn))) { await acceptChallenge(conn, ch.id); if (conn.match) break; } }
+      // gente de outro time esperando: aceita (o mais antigo). Outro BOT esperando: joga com ele em BX.botVsBot das
+      // vezes (bot x bot também movimenta placar, lances e ranking); senão abre o próprio desafio, sem casar com o dele
+      const open = [...challenges.values()].filter((ch) => ch.game === game && ch.from.user.teamId !== conn.user.teamId).sort((a, b) => isAi(a.from) - isAi(b.from) || a.at - b.at);
+      conn.avoidAi = Math.random() >= BX.botVsBot;
+      for (const ch of open) {
+        if (isAi(ch.from) && conn.avoidAi) continue;
+        if (challenges.has(ch.id) && (await compatible(ch.from, conn))) { await acceptChallenge(conn, ch.id); if (conn.match) break; }
+      }
       if (!conn.match && !conn.challenge) await createChallenge(conn); // (pode casar na hora com um desafio aberto)
       if (!conn.match && !conn.challenge) return { played: false, why: 'sem-desafio' }; // cooldown de 2 min, etc.
     }
+    // "online" enquanto está no X1 (fora da sessão de chutes o motor não anda o lastSeenAt)
+    const online = () => prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } }).catch(() => {});
+    await online();
+    let lastBeat = Date.now();
     const deadline = Date.now() + waitMs, hardStop = Date.now() + 20 * 60_000;
     while (Date.now() < hardStop) {
       await sleep(2000);
+      if (Date.now() - lastBeat > 50_000) { lastBeat = Date.now(); await online(); }
       if (conn.match) continue; // jogando: espera acabar
       if (conn.lastResult || !conn.challenge || Date.now() >= deadline) break; // acabou / o desafio caiu / cansou
     }

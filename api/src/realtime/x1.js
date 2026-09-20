@@ -594,16 +594,20 @@ function botPlay(m) {
   const t = targetOf(side);
   const base = Math.atan2(t.y - m.ball.y, t.x - m.ball.x);
   const tries = [];
-  for (let i = 0; i < 4; i++) {
+  // bot "quase real": olha mais jogadas (8) — com 4 e a skill 0,25–0,55 ele perdeu as 5 primeiras de FutPrego em
+  // produção (20/09), e perder sempre também entrega o bot (e vira gol de graça)
+  const ai = m.conns[side].ai;
+  for (let i = 0; i < (ai ? 8 : 4); i++) {
     const ang = base + ((randomInt(1000) / 1000) - 0.5) * 0.8;
     const pw = 0.45 + (randomInt(550) / 1000);
     const r = simulateFlick(m.ball, Math.cos(ang), Math.sin(ang), pw, m.board, { closedGoals: m.shots[0] + m.shots[1] === 0 });
     const s = scorerOf(r.goal);
     tries.push({ ang, pw, score: s === side ? 1000 : s !== null ? -1000 : -Math.hypot(r.end.x - t.x, r.end.y - t.y) });
   }
-  // treino: a melhor das 4 em 45% das vezes; bot "quase real": na `skill` dele (nem sempre ganha)
-  const best = m.conns[side].ai ? Math.random() < (m.conns[side].skill ?? 0.4) : randomInt(100) < 45;
-  const pick = best ? tries.sort((a, b) => b.score - a.score)[0] : tries[0];
+  // treino: a melhor das 4 em 45% das vezes; bot "quase real": a melhor das 8 em 0,35 + skill (0,6–0,9), senão a
+  // segunda melhor (nem sempre ganha, mas joga com intenção)
+  const sorted = [...tries].sort((a, b) => b.score - a.score);
+  const pick = ai ? (Math.random() < 0.35 + (m.conns[side].skill ?? 0.4) ? sorted[0] : sorted[1] ?? sorted[0]) : randomInt(100) < 45 ? sorted[0] : tries[0];
   playShot(m, side, Math.cos(pick.ang), Math.sin(pick.ang), pick.pw);
 }
 

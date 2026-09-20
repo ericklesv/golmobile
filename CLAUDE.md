@@ -424,8 +424,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   6 vezes em 24 h e com `sameHumanMin` = 30 min entre uma e outra (eram 4 e 45 até a noite de 20/09); fora da cota o desafio do bot **nem aparece** para
   ela (nem o dela para o bot). Na partida o lado `ai` (bot quase real, tutorial incluído) **demora `thinkSec` = 3–8 s**
   para bater (`aiDelayMs`; o bot de TREINO `bot` segue rápido), joga com uma **`skill` sorteada por visita** (0,25–0,55
-  = a chance de fazer o gol quando existe um na mesa — `botaoHumanMove` em botaoMatch.js; no FutPrego, a chance de
-  escolher a melhor das 4 tentativas; o do tutorial fica na faixa de baixo) e **provoca de vez em quando** (só as 4
+  = a chance de fazer o gol quando existe um na mesa — `botaoHumanMove` em botaoMatch.js; no FutPrego, olha 8
+  jogadas e pega a melhor em 0,35 + skill das vezes, senão a 2ª — com 4 jogadas e a skill crua ele perdeu as 5
+  primeiras de produção em 20/09; o do tutorial fica na faixa de baixo) e **provoca de vez em quando** (só as 4
   caras básicas — bot não é VIP: devolve uma provocação em 35 % das vezes, ri do próprio gol em 20 %, raiva/choro do
   gol que tomou em 15 %; `aiProvocar`/`aiReactsToGoal`). No X1 o bot não chuta (está "na tela da partida"). Enquanto
   está lá, `x1BotsInside()`; `POST /api/admin/x1/bot {nick, waitSec?, skill?}` manda um bot ao X1 AGORA e

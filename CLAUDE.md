@@ -325,6 +325,15 @@ depois que o novo estiver estável. Não instalar nada dele.
   `match` traz `oppXray`. **Não avisa no Telegram** (dono, 19/09/2026: "faça o bot do telegram parar de
   notificar o RAIO X" — virou enxurrada no grupo; quem precisa saber já vê o selo na tela). Contas comuns não
   veem nada. Nada no banco.
+  **Cliente automatizado = 1 partida a cada 20 min** (dono, 20/09/2026, depois de flagrar o Xumbera com um programa
+  em Node ligado direto no WebSocket da partida — UA "node", sem Origin, sem `device=`; 521 conexões num dia, 40V 9D:
+  "bloquear o bot dele e permitir apenas 1 partida a cada 20 min"; `automatedClient` em `realtime/x1.js`,
+  `FUTPREGO.autoClientGapMin`): em produção, conexão `mode=game` que não é navegador (UA de programa ou sem
+  `Mozilla/`, Origin diferente de `https://jogagol.com.br`, ou sem `device=` — todo navegador manda os três; o log
+  do nginx confirmou que só o `node` vinha sem `device=`) ganha `conn.auto`: desafiar E aceitar só passam se a última
+  partida terminada da conta tem 20+ min (`auto-cooldown`, com `until`); o navegador da MESMA conta segue normal
+  (a regra é do cliente). Aviso no Telegram (1 por conta a cada 6 h). No PC só o UA "node" marca (os testes usam a
+  lib `ws`, sem Origin). **Mexeu? `node scripts/test-x1-cliente-auto.js`** (pasta api/, API local no ar).
   **Trava de atualização — deploy sem partida travada** (pedido do dono, 15/09/2026: o `pm2 restart` derrubava as
   partidas no meio, a tela ficava "travada"): o `brgol-deploy.sh` (cópia em `tools/vps/brgol-deploy.sh`), quando a API
   muda, faz 1) `POST /api/admin/x1/drain {seconds}` (`startX1Drain` em `realtime/x1.js`: ninguém desafia/aceita/

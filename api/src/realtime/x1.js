@@ -33,6 +33,7 @@ import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
 import { takeSlot } from '../lib/security.js';
 import { deviceOf } from '../lib/device.js';
+import { tg } from '../lib/telegram.js';
 
 const F = FUTPREGO; // regras de convite, aposta, gol e travas (valem para todo o X1)
 const PROVOCAR_BY_KEY = new Map(PROVOCAR.list.map((e) => [e.key, e]));
@@ -134,13 +135,49 @@ function clientIp(req) {
   return ip.replace(/^::ffff:/, '');
 }
 
+/**
+ * Cliente AUTOMATIZADO (dono, 20/09/2026: o Xumbera jogou 521 partidas num dia com um programa em Node ligado
+ * direto neste WebSocket — User-Agent "node", sem Origin e sem o código do aparelho): não é navegador. Todo
+ * navegador manda `Origin` no WebSocket (o site é jogagol.com.br; o app da Play Store abre o mesmo site) e o site
+ * sempre manda `device=`. Em produção qualquer um dos três sinais marca; no PC/testes só o UA de programa (os
+ * testes usam a lib `ws`, que não manda Origin). Quem é marcado joga, mas só 1 partida a cada
+ * FUTPREGO.autoClientGapMin (desafiar e aceitar) — e o dono fica sabendo no Telegram.
+ */
+const PROGRAM_UA = /^(node|undici|python|curl|wget|go-http|okhttp|java|axios|got)\b|^$/i;
+function automatedClient(req, url) {
+  const ua = String(req.headers['user-agent'] || '');
+  if (process.env.NODE_ENV !== 'production') return ua === 'node';
+  const origin = String(req.headers.origin || '');
+  return PROGRAM_UA.test(ua) || !/Mozilla\//.test(ua) || !/^https:\/\/(www\.)?jogagol\.com\.br$/.test(origin) || !url.searchParams.get('device');
+}
+async function autoClientWaitUntil(user) {
+  const last = await prisma.x1Match.findFirst({
+    where: { status: 'FINISHED', finishedAt: { not: null }, OR: [{ aId: user.id }, { bId: user.id }] },
+    orderBy: { finishedAt: 'desc' }, select: { finishedAt: true },
+  });
+  const until = last ? last.finishedAt.getTime() + F.autoClientGapMin * 60_000 : 0;
+  return until > Date.now() ? until : null;
+}
+/** Desafiar/aceitar de um cliente automatizado: fora do intervalo, recusa (e a tela dele — se houver — sabe por quê). */
+async function autoClientBlocked(conn) {
+  if (!conn.auto) return false;
+  const until = await autoClientWaitUntil(conn.user);
+  if (!until) return false;
+  const s = Math.max(1, Math.ceil((until - Date.now()) / 1000));
+  send(conn.ws, { t: 'error', code: 'auto-cooldown', until, message: `Cliente fora do site: 1 partida a cada ${F.autoClientGapMin} min. Próxima em ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.` });
+  return true;
+}
+
 async function authenticate(req) {
   const url = new URL(req.url, 'http://x');
   const payload = jwt.verify(url.searchParams.get('token') || '', config.jwtSecret);
   const user = await prisma.user.findUnique({ where: { id: payload.uid }, include: { team: true } });
   if (!user || user.deletedAt || (user.bannedUntil && user.bannedUntil.getTime() > Date.now())) throw new Error('unauthorized');
   if (!user.isAdmin) takeSlot({ ip: clientIp(req), device: deviceOf(req) }, user.id, Date.now(), user.nick); // 3 contas ao mesmo tempo (lib/security.js)
-  return { user, mode: url.searchParams.get('mode') === 'game' ? 'game' : 'lobby' };
+  const mode = url.searchParams.get('mode') === 'game' ? 'game' : 'lobby';
+  const auto = mode === 'game' && automatedClient(req, url);
+  if (auto) tg.warn(`X1: cliente automatizado na conta <b>${tg.esc(user.nick)}</b> (UA "${tg.esc(String(req.headers['user-agent'] || '').slice(0, 40))}", ${tg.esc(clientIp(req))}) — limitado a 1 partida a cada ${F.autoClientGapMin} min.`, { key: `x1-auto:${user.id}`, every: 6 * 3600_000 });
+  return { user, mode, auto };
 }
 
 const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user.avatarUrl ?? null, team: teamView(c.user.team), bot: !!c.bot });
@@ -179,8 +216,8 @@ export function attachX1(server) {
     try { auth = await authenticate(req); } catch { socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); socket.destroy(); return; }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req, auth));
   });
-  wss.on('connection', (ws, req, { user, mode }) => {
-    const conn = { ws, user, ip: clientIp(req), mode, alive: true, match: null, side: -1, challenge: null, seen: new Set(), lastInviteAt: 0 };
+  wss.on('connection', (ws, req, { user, mode, auto }) => {
+    const conn = { ws, user, ip: clientIp(req), mode, auto: !!auto, alive: true, match: null, side: -1, challenge: null, seen: new Set(), lastInviteAt: 0 };
     if (mode === 'game') {
       // uma tela de jogo por jogador: a antiga cai, e uma partida em andamento passa para a nova
       for (const c of [...conns]) if (c.mode === 'game' && c.user.id === user.id) { c.replaced = true; send(c.ws, { t: 'kicked' }); c.ws.close(); takeOver(c, conn); }
@@ -283,6 +320,7 @@ async function createChallenge(conn) {
   // não é VIP e terminou uma partida há menos de 2 min: não desafia (aceitar pode)
   const until = await challengeCooldownUntil(conn.user);
   if (until) return send(conn.ws, { t: 'error', code: 'cooldown', until, message: cooldownText(until) });
+  if (await autoClientBlocked(conn)) return; // programa ligado direto no WebSocket: 1 partida a cada 20 min
   if (conn.match || conn.challenge || (conn.ws && conn.ws.readyState !== conn.ws.OPEN)) return; // (bot: sem tela)
   const game = x1Today().game;
   // alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora — primeiro quem é
@@ -362,6 +400,7 @@ async function acceptChallenge(conn, id) {
   if (conn.challenge) cancelChallenge(conn.challenge, 'aceitou-outro');
   const problem = await canPlay(conn);
   if (problem) return err(conn, 'no-money', problem);
+  if (await autoClientBlocked(conn)) return; // programa ligado direto no WebSocket: 1 partida a cada 20 min
   if (!challenges.has(id) || conn.match) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
   if (!(await compatible(ch.from, conn))) {
     if (isAi(ch.from)) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' }); // cota com os bots (lista velha)

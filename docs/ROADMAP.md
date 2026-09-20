@@ -8,7 +8,8 @@ então), o dono pediu: os bots "quase reais" passam a **procurar e jogar partida
 espaçado, dentro da sessão de cada um, aceitando o desafio de quem está esperando ou abrindo o seu; 3–8 s para
 bater, skill sorteada (nem sempre ganha), provocações raras; a mesma pessoa só pega os bots 4x por dia e com 45 min
 de intervalo; prêmio do Ranking X1 pula bots. Regras em `BOTS.x1` (rules.js); detalhes no CLAUDE.md ("Bots no X1").
-Teste: `node scripts/test-bots-x1.js`.
+Teste: `node scripts/test-bots-x1.js`. Na sequência (mesma noite): **cliente automatizado no X1 = 1 partida a cada
+20 min** (`FUTPREGO.autoClientGapMin`; o navegador da conta segue normal) — `test-x1-cliente-auto.js`.
 
 ## Publicado em 19/09/2026 04:38 (Brasília) — commit f0460cc
 Produção estava em 72a85f6 (de hoje, 03:26); sem migração de banco. Backup do dia: `/var/backups/brgol/daily/jogagol-2026-09-19.tar`.

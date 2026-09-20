@@ -332,7 +332,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   `Mozilla/`, Origin diferente de `https://jogagol.com.br`, ou sem `device=` — todo navegador manda os três; o log
   do nginx confirmou que só o `node` vinha sem `device=`) ganha `conn.auto`: desafiar E aceitar só passam se a última
   partida terminada da conta tem 20+ min (`auto-cooldown`, com `until`); o navegador da MESMA conta segue normal
-  (a regra é do cliente). Aviso no Telegram (1 por conta a cada 6 h). No PC só o UA "node" marca (os testes usam a
+  (a regra é do cliente). **Sem aviso no Telegram** (dono, 20/09: "vai virar um spam") — só 1 linha no log do pm2 por
+  conta. No PC só o UA "node" marca (os testes usam a
   lib `ws`, sem Origin). **Mexeu? `node scripts/test-x1-cliente-auto.js`** (pasta api/, API local no ar).
   **Trava de atualização — deploy sem partida travada** (pedido do dono, 15/09/2026: o `pm2 restart` derrubava as
   partidas no meio, a tela ficava "travada"): o `brgol-deploy.sh` (cópia em `tools/vps/brgol-deploy.sh`), quando a API

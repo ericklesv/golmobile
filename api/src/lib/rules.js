@@ -525,7 +525,7 @@ export const FUTPREGO = {
   // Cliente AUTOMATIZADO no X1 (dono, 20/09/2026, depois de flagrar o Xumbera jogando com um programa em Node —
   // 521 partidas num dia): quem conecta no WebSocket da partida sem ser navegador (sem Origin, UA de programa ou
   // sem o código do aparelho) pode jogar, mas só 1 partida a cada `autoClientGapMin` minutos (desafiar e aceitar;
-  // conta pela última partida terminada da conta). Aviso no Telegram. realtime/x1.js → automatedClient.
+  // conta pela última partida terminada da conta). Sem aviso no Telegram (spam). realtime/x1.js → automatedClient.
   autoClientGapMin: 20,
   // Ranking X1 (decisão do dono, 15/09/2026): 3 por vitória, 1 por empate, −2 por derrota (pode ficar negativo).
   // Conta as partidas dos dois jogos do X1 (FutPrego e Futebol de Botão).

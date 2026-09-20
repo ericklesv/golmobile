@@ -33,7 +33,6 @@ import { dayNumberAt, nextResetAt, nextHourStart } from '../lib/time.js';
 import { h2hOf, rivalryLine } from '../lib/rivalidade.js';
 import { takeSlot } from '../lib/security.js';
 import { deviceOf } from '../lib/device.js';
-import { tg } from '../lib/telegram.js';
 
 const F = FUTPREGO; // regras de convite, aposta, gol e travas (valem para todo o X1)
 const PROVOCAR_BY_KEY = new Map(PROVOCAR.list.map((e) => [e.key, e]));
@@ -141,7 +140,7 @@ function clientIp(req) {
  * navegador manda `Origin` no WebSocket (o site é jogagol.com.br; o app da Play Store abre o mesmo site) e o site
  * sempre manda `device=`. Em produção qualquer um dos três sinais marca; no PC/testes só o UA de programa (os
  * testes usam a lib `ws`, que não manda Origin). Quem é marcado joga, mas só 1 partida a cada
- * FUTPREGO.autoClientGapMin (desafiar e aceitar) — e o dono fica sabendo no Telegram.
+ * FUTPREGO.autoClientGapMin (desafiar e aceitar). Sem aviso no Telegram (viraria spam): só uma linha no log por conta.
  */
 const PROGRAM_UA = /^(node|undici|python|curl|wget|go-http|okhttp|java|axios|got)\b|^$/i;
 function automatedClient(req, url) {
@@ -150,6 +149,7 @@ function automatedClient(req, url) {
   const origin = String(req.headers.origin || '');
   return PROGRAM_UA.test(ua) || !/Mozilla\//.test(ua) || !/^https:\/\/(www\.)?jogagol\.com\.br$/.test(origin) || !url.searchParams.get('device');
 }
+const autoSeen = new Set(); // contas com cliente automatizado já anotadas no log (por processo)
 async function autoClientWaitUntil(user) {
   const last = await prisma.x1Match.findFirst({
     where: { status: 'FINISHED', finishedAt: { not: null }, OR: [{ aId: user.id }, { bId: user.id }] },
@@ -176,7 +176,8 @@ async function authenticate(req) {
   if (!user.isAdmin) takeSlot({ ip: clientIp(req), device: deviceOf(req) }, user.id, Date.now(), user.nick); // 3 contas ao mesmo tempo (lib/security.js)
   const mode = url.searchParams.get('mode') === 'game' ? 'game' : 'lobby';
   const auto = mode === 'game' && automatedClient(req, url);
-  if (auto) tg.warn(`X1: cliente automatizado na conta <b>${tg.esc(user.nick)}</b> (UA "${tg.esc(String(req.headers['user-agent'] || '').slice(0, 40))}", ${tg.esc(clientIp(req))}) — limitado a 1 partida a cada ${F.autoClientGapMin} min.`, { key: `x1-auto:${user.id}`, every: 6 * 3600_000 });
+  // sem aviso no Telegram (dono, 20/09/2026: "vai virar um spam") — fica só no log do pm2, 1 linha por conta
+  if (auto && !autoSeen.has(user.id)) { autoSeen.add(user.id); console.log(`[x1] cliente automatizado na conta ${user.nick} (UA "${String(req.headers['user-agent'] || '').slice(0, 40)}", ${clientIp(req)}): 1 partida a cada ${F.autoClientGapMin} min`); }
   return { user, mode, auto };
 }
 

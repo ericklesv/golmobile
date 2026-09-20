@@ -9,6 +9,8 @@
  *  4. A partida fecha (FINISHED, vencedor, dinheiro) e o bot vai embora (ninguém mais no X1).
  *  5. Cota: a MESMA pessoa não pega os bots de novo em seguida (o desafio novo do bot não aparece para ela).
  *  6. Ranking X1: o bot aparece, mas nunca é `eligible` para prêmio (e não recebe `need`).
+ *  7. Bot EM SESSÃO aceita o desafio de gente sozinho, passados os primeiros 5 s (dono, 20/09/2026) — e não aceita
+ *     de quem está fora da cota.
  *
  * Uso (na pasta api/, com a API local no ar):
  *   node scripts/test-bots-x1.js   → "TUDO OK".
@@ -23,6 +25,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 const { prisma } = await import('../src/prisma.js');
 const { FUTPREGO: F, BOTS } = await import('../src/lib/rules.js');
+const { calendarDay } = await import('../src/lib/time.js');
 const { config } = await import('../src/config.js');
 
 const API = process.env.TX_API || 'http://localhost:4320';
@@ -159,13 +162,51 @@ try {
   check(!!linhaBot, 'o bot aparece no Ranking X1 da rodada');
   check(!linhaBot || (linhaBot.fp.eligible === false && linhaBot.fp.need === undefined && !linhaBot.fp.prize), 'o bot nunca é elegível a prêmio (e sem "faltam N partidas")');
   check(!('isBot' in (linhaBot || {})), 'isBot não vai para a tela');
-
   eu.ws.close(); lobby.ws.close();
+
+  // ── 7. bot EM SESSÃO aceita sozinho o desafio de gente (passados os primeiros 5 s); fora da cota, não
+  for (let i = 0; i < 40; i++) { const d = await admin('/x1/bots'); if (!d.inside?.length) break; await sleep(1000); } // a visita do passo 5 acaba (30 s)
+  // a partida do passo 2 foi há pouco: "volta" ela no tempo para o bot já ter descansado (acceptRestMin) e a cota
+  // do `gente` continuar estourada (sameHumanMin) — o `outro` nunca jogou com bot
+  await prisma.x1Match.updateMany({ where: { OR: [{ aId: bot.id }, { bId: bot.id }] }, data: { finishedAt: new Date(Date.now() - (BOTS.x1.acceptRestMin + 1) * 60_000), createdAt: new Date(Date.now() - (BOTS.x1.acceptRestMin + 2) * 60_000) } });
+  const hoje = calendarDay(new Date());
+  await prisma.user.update({ where: { id: bot.id }, data: { botJson: { persona: { profile: 'regular', x1: 1 }, plan: { day: hoje, skip: false, sessions: [{ from: Date.now() - 60_000, to: Date.now() + 30 * 60_000 }] } } } });
+  const ac = BOTS.x1.acceptChance; // com 0,8 de chance, o sorteio pode falhar: o teste tenta até 3 desafios
+  let casou = null, abriuEm = 0;
+  const og = tela(outro, 'game', '198.51.100.9');
+  await og.espera((m) => m.t === 'hello', 5);
+  for (let tentativa = 0; tentativa < 3 && !casou; tentativa++) {
+    og.msgs.length = 0;
+    og.send({ t: 'challenge' });
+    const w = await og.espera((m) => m.t === 'waiting', 5);
+    abriuEm = w?._at ?? Date.now();
+    casou = await og.espera((m) => m.t === 'match', BOTS.x1.acceptDelaySec[1] + 12);
+    if (!casou) { og.send({ t: 'cancel' }); await sleep(800); }
+  }
+  check(!!casou, `um bot em sessão aceitou o desafio de ${outro.nick} sozinho (chance ${ac} por desafio; até 3 desafios)`);
+  if (casou) {
+    const demorou = (casou._at - abriuEm) / 1000;
+    check(demorou >= BOTS.x1.acceptDelaySec[0] - 0.5, `aceitou depois dos primeiros 5 s (levou ${demorou.toFixed(1)} s)`);
+    const adv = casou.players[1 - casou.you];
+    const advRow = await prisma.user.findUnique({ where: { id: adv.id }, select: { isBot: true } });
+    check(advRow?.isBot === true && adv.bot === false, `quem aceitou é um bot (${adv.nick}), sem marca de bot na tela`);
+    og.send({ t: 'giveup' }); // acaba logo (derrota do outro; a partida conta)
+    await og.espera((m) => m.t === 'over', 10);
+  }
+  og.ws.close();
+  // `gente` está fora da cota (jogou com bot há pouco): o desafio dele fica sem bot
+  const eg = tela(gente, 'game', '198.51.100.77');
+  await eg.espera((m) => m.t === 'hello', 5);
+  eg.send({ t: 'challenge' });
+  await eg.espera((m) => m.t === 'waiting', 5);
+  const naoCasou = await eg.espera((m) => m.t === 'match', BOTS.x1.acceptDelaySec[1] + 5);
+  check(!naoCasou, 'quem está fora da cota fica esperando: nenhum bot aceita');
+  eg.send({ t: 'cancel' }); eg.ws.close();
 } finally {
   await sleep(500);
   await prisma.activity.deleteMany({ where: { userId: { in: [bot.id, gente.id, outro.id] } } }).catch(() => {});
-  await prisma.x1Match.deleteMany({ where: { OR: [{ aId: bot.id }, { bId: bot.id }] } }).catch(() => {});
-  await prisma.goal.deleteMany({ where: { userId: { in: [bot.id, gente.id] } } }).catch(() => {});
+  await prisma.x1Match.deleteMany({ where: { OR: [{ aId: { in: [bot.id, gente.id, outro.id] } }, { bId: { in: [bot.id, gente.id, outro.id] } }] } }).catch(() => {});
+  await prisma.goal.deleteMany({ where: { userId: { in: [bot.id, gente.id, outro.id] } } }).catch(() => {});
   await prisma.user.deleteMany({ where: { id: { in: [bot.id, gente.id, outro.id] } } }).catch((e) => console.error('limpeza:', e.message));
 }
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');

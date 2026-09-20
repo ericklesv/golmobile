@@ -26,13 +26,13 @@
  *    Bots não entram na premiação (league.js calcula a artilharia premiada e o VIP do time campeão sem eles;
  *    services/x1.js pula bots no prêmio do X1) nem no relatório diário.
  * Motor: `startBots()` no index.js (1 instância PM2 — estado "o que está pendente" em memória). `BOTS_OFF=1`
- * desliga tudo; `BOTS_X1_OFF=1` só a ida ao X1 (testes).
+ * desliga as voltas (chutes e visitas ao X1); `BOTS_X1_OFF=1` desliga tudo do X1 — visitas E aceites (testes).
  */
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { BOTS, FUTPREGO, cooldownFor, LAST_FIELD, skillPointsLeft, TRAIL_LINES, SKILL_FIELD, SKILL_STEPS } from '../lib/rules.js';
-import { x1BotVisit, x1BotsInside } from '../realtime/x1.js';
+import { x1BotVisit, x1BotsInside, setX1BotPicker } from '../realtime/x1.js';
 import { tzParts, fromTz, calendarDay } from '../lib/time.js';
 import { activeItemsWhere } from '../lib/items.js';
 import { autoKick, penalty, foul, trailPick } from './play.js';
@@ -225,6 +225,42 @@ export async function botsX1Round(online, now = Date.now()) {
   });
   return { bot: bot.nick, opts, visit };
 }
+
+/**
+ * Bot que ACEITA o desafio de gente (dono, 20/09/2026: "os bots ativos no momento com possibilidade de aceitar
+ * também os X1, principalmente após os primeiros 5 s"; chamado por realtime/x1.js → botAceita, passados
+ * BOTS.x1.acceptDelaySec sem ninguém pegar). Candidatos: bots EM SESSÃO agora (pelo plano do dia, direto do banco —
+ * não depende da volta do motor), de outro time, com a aposta, que "topam" (persona), fora do X1, sem partida nos
+ * últimos acceptRestMin e abaixo de maxDay. Chance acceptChance; sorteia um. Devolve { user, skill, done }.
+ */
+export async function pickX1Accepter(human, now = Date.now()) {
+  const X = BOTS.x1;
+  if (x1Off() || rnd() >= X.acceptChance) return null; // (BOTS_OFF desliga as voltas; o aceite só sai com BOTS_X1_OFF)
+  const inX1 = new Set(x1BotsInside().map((b) => b.id));
+  const bots = await prisma.user.findMany({
+    where: { isBot: true, deletedAt: null, money: { gte: FUTPREGO.bet }, teamId: { not: human.teamId }, OR: [{ bannedUntil: null }, { bannedUntil: { lt: new Date(now) } }] },
+    include: { team: true },
+  });
+  const pool = bots.filter((b) => !inX1.has(b.id) && inSession(b.botJson?.plan, now) && x1Appetite(b) > 0);
+  for (let tries = 0; tries < 3 && pool.length; tries++) {
+    const i = Math.floor(rnd() * pool.length);
+    const [bot] = pool.splice(i, 1);
+    const recent = await prisma.x1Match.findMany({
+      where: { status: 'FINISHED', finishedAt: { gte: new Date(now - 24 * 3600_000) }, OR: [{ aId: bot.id }, { bId: bot.id }] },
+      select: { finishedAt: true }, orderBy: { finishedAt: 'desc' },
+    });
+    if (recent.length >= X.maxDay || (recent[0] && recent[0].finishedAt.getTime() > now - X.acceptRestMin * 60_000)) continue;
+    const m = memOf(bot.id);
+    return {
+      user: bot, skill: between(X.skill[0], X.skill[1]),
+      done: (r) => {
+        if (r?.played) { m.x1RestUntil = Date.now() + between(X.restMin[0], X.restMin[1]) * 60_000; console.log(`[bots] ${bot.nick} aceitou X1 de ${r.opponent}: ${r.won ? 'venceu' : r.draw ? 'empatou' : 'perdeu'} (${r.reason})`); }
+      },
+    };
+  }
+  return null;
+}
+setX1BotPicker(pickX1Accepter);
 
 // ─── Volta do motor ───────────────────────────────────────────────────────────
 let ticking = false;

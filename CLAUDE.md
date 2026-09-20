@@ -400,7 +400,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   com vaga (`concurrent` = **1 bot por vez**) e passado o intervalo sorteado (`gapMin` 2–12 min desde a última
   saída), o motor sorteia um bot **em sessão**, descansado (`restMin` 30–120 min desde a última visita), com a aposta
   e que "topa" (`x1` na persona, 0 = nunca; sem o campo, `appetite` por perfil) e manda ele ao X1: **aceita um desafio
-  aberto de gente de OUTRO time** (o mais antigo) ou **abre o dele** e espera `waitMin` (3–8 min) — as telas com abas
+  aberto de gente de OUTRO time** (o mais antigo) ou **abre o dele** e espera `waitMin` (3–8 min). **E qualquer bot em
+  sessão pode ACEITAR** (dono, 20/09/2026: "os bots ativos no momento com possibilidade de aceitar também os X1,
+  principalmente após os primeiros 5 s"): gente de verdade abriu um desafio e ninguém pegou em `acceptDelaySec` (5–30 s
+  sorteados) → `botAceita` (x1.js) pede ao motor um bot (`pickX1Accepter` em bots.js, registrado com
+  `setX1BotPicker`: em sessão pelo plano do dia — lido do banco, não da volta —, de outro time, com a aposta, que
+  topa, fora do X1, sem partida há `acceptRestMin` = 10 min e abaixo de `maxDay`; chance `acceptChance` = 0,8) e ele
+  aceita (`x1BotVisit` com `acceptOnly`). A cota da pessoa vale igual (fora dela, ninguém aceita). O tutorial mantém
+  o dele (20 s, sempre) — as telas com abas
   recebem "Fulano está te desafiando" e a tela do X1 lista o desafio, **sem marca de bot** (`playerView.bot` é só do
   treino). Jogou ou ninguém veio, sai (`afterMatchSec` 6–25 s "lendo o resultado") e descansa; no máximo `maxDay` = 4
   partidas por bot em 24 h. **Vale tudo** (aposta, gol, gol a menos, lances ao vivo, retrospecto, Ranking X1) — só o
@@ -418,7 +425,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   `GET /api/admin/x1/bots` mostra quem está (x-admin-key). Calibração de 20/09 (300 partidas por par, `botaoHumanMove` x
   `botaoBotMove` no lib/botaoMatch.js): skill 0,4 x 0,4 = 50/50 com ~14 petelecos; contra o bot de treino (0,5) o quase
   real de 0,25–0,55 vence 28–40 %. Ajustar `BOTS.x1.skill` pelos resultados de produção (`FutPregoMatch` com
-  `bot:` no IP). `BOTS_X1_OFF=1` desliga só a ida ao X1 (testes). **Mexeu? Rode `node scripts/test-bots-x1.js`**
+  `bot:` no IP). `BOTS_OFF=1` desliga as voltas (chutes e visitas); `BOTS_X1_OFF=1` desliga tudo do X1, visitas E aceites (testes).
+  **Mexeu? Rode `node scripts/test-bots-x1.js`**
   (pasta api/, API local no ar com `X1_JOGO=BOTAO` e `ADMIN_KEY`, banco LOCAL; tem de dar "TUDO OK") e o
   `test-bots.js` (passo 7 = a volta do X1 sem servidor). **Bots não recebem prêmio**: `topAndPrizes` em league.js tira os bots da lista premiada (artilharia da
   rodada/temporada; quem vem depois sobe de posição) numa consulta só com o quadro — duas consultas embaralhavam os

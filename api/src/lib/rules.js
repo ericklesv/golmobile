@@ -777,6 +777,11 @@ export const BOTS = {
     // contra a MESMA pessoa (somando todos os bots): intervalo mínimo e teto em 24 h — ninguém farma os bots
     sameHumanMin: 45,
     sameHumanDay: 4,
+    // ACEITAR (dono, 20/09/2026: "coloque os bots ativos no momento com possibilidade de aceitar também os X1,
+    // principalmente após os primeiros 5 s"): alguém de verdade abriu um desafio e ninguém pegou → passados
+    // acceptDelaySec, um bot EM SESSÃO (qualquer um, não só o que está visitando) aceita com chance acceptChance;
+    // o mesmo bot só aceita de novo depois de acceptRestMin. A cota por pessoa (sameHumanMin/Day) vale igual.
+    acceptChance: 0.8, acceptDelaySec: [5, 30], acceptRestMin: 10,
     thinkSec: [3, 8],         // quanto demora para bater na bola (sorteado a cada jogada)
     skill: [0.25, 0.55],      // chance de fazer o gol quando existe um gol na mesa (sorteada por bot ao entrar)
     // provocar (só as 4 caras básicas — bot não é VIP): chance de responder uma provocação e de mandar sozinho

@@ -337,6 +337,8 @@ async function createChallenge(conn) {
   if (await noPassoDoX1(conn.user.id).catch(() => false)) {
     ch.tutorTimer = setTimeout(() => botDoTutorialAceita(ch).catch((e) => console.error('[x1] bot do tutorial:', e.message)), TUTORIAL.botAcceptSec * 1000);
   }
+  // Gente de verdade esperando: passados 5–30 s sem ninguém, um bot em sessão pode aceitar (dono, 20/09/2026)
+  if (!isAi(conn) && botPicker) ch.botAcceptTimer = setTimeout(() => botAceita(ch).catch((e) => console.error('[x1] bot aceitando:', e.message)), betweenMs(BX.acceptDelaySec));
   challenges.set(ch.id, ch);
   conn.challenge = ch;
   send(conn.ws, { t: 'waiting', id: ch.id, game, gameName: X1.names[game], at: ch.at, botAt: ch.at + F.botAfterSec * 1000, until: ch.at + F.challengeMaxSec * 1000 });
@@ -347,7 +349,7 @@ async function createChallenge(conn) {
 function cancelChallenge(ch, _why) {
   if (!challenges.has(ch.id)) return;
   challenges.delete(ch.id);
-  clearTimeout(ch.botTimer); clearTimeout(ch.expireTimer); clearTimeout(ch.tutorTimer);
+  clearTimeout(ch.botTimer); clearTimeout(ch.expireTimer); clearTimeout(ch.tutorTimer); clearTimeout(ch.botAcceptTimer);
   if (ch.from.challenge === ch) ch.from.challenge = null;
   for (const c of ch.shownTo) send(c.ws, { t: 'invite-close', id: ch.id });
   refreshOpenLists().catch(() => {});
@@ -824,6 +826,24 @@ async function botQuotaOk(humanId) {
 }
 
 const botVisits = new Map(); // userId -> conn do bot que está no X1 agora (motor: services/bots.js)
+
+/**
+ * Quem escolhe o bot que ACEITA um desafio de gente (dono, 20/09/2026): o motor (services/bots.js) registra aqui
+ * uma função `(human) => { user, skill, done(result) } | null` — ele sabe quem está em sessão, quem descansou e quem
+ * "topa". Sem motor registrado (testes sem bots), ninguém aceita.
+ */
+let botPicker = null;
+export function setX1BotPicker(fn) { botPicker = fn; }
+
+/** Passou o tempo e o desafio de gente segue aberto: um bot em sessão aceita (se a cota da pessoa deixar). */
+async function botAceita(ch) {
+  if (!challenges.has(ch.id) || ch.from.match || x1Drain() || !botPicker) return;
+  if (!(await botQuotaOk(ch.from.user.id))) return; // já jogou com os bots o bastante por hoje / há pouco
+  const picked = await botPicker(ch.from.user);
+  if (!picked || !challenges.has(ch.id) || ch.from.match) return;
+  const r = await x1BotVisit(picked.user, { skill: picked.skill, acceptOnly: ch.id });
+  picked.done?.(r);
+}
 /** Quem está no X1 agora pelo motor (para o motor não passar de BOTS.x1.concurrent e para o status). */
 export const x1BotsInside = () => [...botVisits.values()].map((c) => ({ id: c.user.id, nick: c.user.nick, since: c.since, playing: !!c.match, waiting: !!c.challenge }));
 
@@ -834,7 +854,7 @@ export const x1BotsInside = () => [...botVisits.values()].map((c) => ({ id: c.us
  * lances, retrospecto) ou cansou de esperar, sai. Devolve o que aconteceu: `{ played, won, draw, opponent,
  * matchId }` ou `{ played: false, why }`. Uma visita por bot; o motor escolhe quem e quando.
  */
-export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000 } = {}) {
+export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000, acceptOnly = null } = {}) {
   if (botVisits.has(user.id) || busyUser(user.id)) return { played: false, why: 'ocupado' };
   if (x1Drain()) return { played: false, why: 'atualizacao' };
   const conn = { ws: null, ai: true, engine: true, user, ip: `bot:${user.id}`, mode: 'game', alive: true, match: null, side: -1, challenge: null, seen: new Set(), lastInviteAt: 0, skill, since: Date.now() };
@@ -843,10 +863,15 @@ export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000 } = {}
   conns.add(conn); botVisits.set(user.id, conn);
   try {
     const game = x1Today().game;
-    const open = [...challenges.values()].filter((ch) => ch.game === game && !isAi(ch.from) && ch.from.user.teamId !== conn.user.teamId).sort((a, b) => a.at - b.at);
-    for (const ch of open) { if (challenges.has(ch.id) && (await compatible(ch.from, conn))) { await acceptChallenge(conn, ch.id); if (conn.match) break; } }
-    if (!conn.match && !conn.challenge) await createChallenge(conn); // (pode casar na hora com um desafio aberto)
-    if (!conn.match && !conn.challenge) return { played: false, why: 'sem-desafio' }; // cooldown de 2 min, etc.
+    if (acceptOnly) { // veio só para ACEITAR este desafio (botAceita): casou ou vai embora
+      if (challenges.has(acceptOnly)) await acceptChallenge(conn, acceptOnly);
+      if (!conn.match) return { played: false, why: 'nao-casou' };
+    } else {
+      const open = [...challenges.values()].filter((ch) => ch.game === game && !isAi(ch.from) && ch.from.user.teamId !== conn.user.teamId).sort((a, b) => a.at - b.at);
+      for (const ch of open) { if (challenges.has(ch.id) && (await compatible(ch.from, conn))) { await acceptChallenge(conn, ch.id); if (conn.match) break; } }
+      if (!conn.match && !conn.challenge) await createChallenge(conn); // (pode casar na hora com um desafio aberto)
+      if (!conn.match && !conn.challenge) return { played: false, why: 'sem-desafio' }; // cooldown de 2 min, etc.
+    }
     const deadline = Date.now() + waitMs, hardStop = Date.now() + 20 * 60_000;
     while (Date.now() < hardStop) {
       await sleep(2000);

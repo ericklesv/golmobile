@@ -93,8 +93,16 @@ depois que o novo estiver estável. Não instalar nada dele.
   `swapEmptySerieA` em `league.js`, número em `SERIE_A_SWAP` de `rules.js`, via `/api/meta.serieASwap`): no
   fechamento de cada rodada — menos a ÚLTIMA da temporada, que já tem o sobe-e-desce —, DEPOIS da tabela e ANTES
   de sortear a próxima (na mesma transação: a rodada nova já sai com as séries novas), time da A que não marcou
-  nenhum gol na rodada (gols que os jogadores MARCARAM, `Goal.roundId` — gol tirado no X1 não conta como "sem
-  gol") troca com quem mais marcou fora da A, **com pelo menos 50 gols na rodada** (empate: o melhor da tabela).
+  nenhum gol na rodada troca com quem mais marcou fora da A, **com pelo menos 50 gols na rodada** (empate: o melhor
+  da tabela). **Gol de BOT não conta nesta regra** (dono, 21/09/2026; `Goal.roundId` com `user.isBot = false`, dos
+  DOIS lados: time da A que só teve gol de bot conta como sem gol e pode cair; time de fora não chega aos 50 com gol
+  de bot): os bots foram criados para os times vazios da A não ficarem sem gols, mas, contando aqui, seguravam
+  justamente esses times na A para sempre e nenhum time com gente de verdade subia — na rodada 8 da temporada 1,
+  Flamengo, Bahia, XV de Piracicaba e Brasiliense fecharam a rodada SÓ com gol de bot, e o Athletico-PR (com jogador
+  de verdade) ficou na B. Gol tirado no X1 continua não contando como "sem gol" (conta o que o time MARCOU, não o
+  placar). Como o time que cai pode ter gols de bot no placar, a mensagem da caixa só diz "não marcou nenhum gol"
+  quando o time zerou de verdade (senão entregaria os bots); o Telegram mostra os dois números e o bot não recebe
+  mensagem.
   Vários da A sem gol: o pior da tabela troca primeiro; faltou candidato, o resto fica. O da A cai SEMPRE para a B
   (decisão do dono, como em 14/09); se quem subiu veio da C, desce para a C o time da B com menos gols na rodada
   (empate: o pior da tabela; nunca um que acabou de trocar). Muda `Team.serie` E `Standing.serie`; pontos e gols
@@ -438,7 +446,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   (pasta api/, API local no ar com `X1_JOGO=BOTAO` e `ADMIN_KEY`, banco LOCAL; tem de dar "TUDO OK") e o
   `test-bots.js` (passo 7 = a volta do X1 sem servidor). **Bots não recebem prêmio**: `topAndPrizes` em league.js tira os bots da lista premiada (artilharia da
   rodada/temporada; quem vem depois sobe de posição) numa consulta só com o quadro — duas consultas embaralhavam os
-  empates —; o VIP do time campeão também pula bots. Fora do relatório diário do Telegram (contas e gols). O painel de
+  empates —; o VIP do time campeão também pula bots. O **recorde** de gols (hora, rodada e temporada) sai da
+  mesma lista SEM bots — o da rodada paga 20 VIP e ia para o bot que liderasse (corrigido em 21/09/2026) —, e **gol de
+  bot não conta na troca automática da Série A** (ver a regra lá em cima). Fora do relatório diário do Telegram (contas e gols). O painel de
   admin mostra o selo **Bot** (e-mail `<nick>@bots.jogagol.com.br`); `isBot` NUNCA vai para o front público (views
   projetam campos). Operação (pasta api/, na VPS com o .env): `node scripts/bots.js listar|criar|status|persona`
   (`criar` é idempotente e pula nick de jogador de verdade; `persona` regrava o jeito de jogar pela lista).

@@ -7,7 +7,8 @@
  *   R2: 2 times da A sem gol e 1 candidato só (o de 55, da C) → sobe no lugar do PIOR da tabela; o outro fica; como
  *       veio da C, desce para a C o time da B com menos gols — nunca o que acabou de cair da A (0 gols).
  *   R3: todos da A marcaram → ninguém troca, mesmo com candidato de 60.
- *   R4–R29: rodadas sem gol nenhum (nenhum candidato) → nada muda.
+ *   R4: gol de BOT não conta (dono, 21/09/2026): time da A só com gol de bot cai; time de fora com 60 gols de bot NÃO sobe.
+ *   R5–R29: rodadas sem gol nenhum (nenhum candidato) → nada muda.
  *   R30 (última): time da A sem gol + candidato de 60 → NÃO troca (a temporada fecha com o sobe-e-desce normal).
  * Em toda rodada: Team.serie = Standing.serie, 16 por série, cada time 1 jogo e na série dele, tabela = soma das partidas.
  *
@@ -42,16 +43,17 @@ const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`)
 // um jogador por time (quem marca os gols do time) + um parado em cada (recebe a mensagem, nunca marca)
 const teams = await prisma.team.findMany({ orderBy: { id: 'asc' } });
 const name = new Map(teams.map((t) => [t.id, t.name]));
-const scorer = new Map(), idle = new Map();
+const scorer = new Map(), idle = new Map(), bot = new Map();
 for (const t of teams) {
   scorer.set(t.id, await prisma.user.create({ data: { nick: `tr${t.id}`, nickLower: `tr${t.id}`, email: `tr${t.id}@sim.test`, passwordHash: 'x', teamId: t.id } }));
   idle.set(t.id, await prisma.user.create({ data: { nick: `tp${t.id}`, nickLower: `tp${t.id}`, email: `tp${t.id}@sim.test`, passwordHash: 'x', teamId: t.id } }));
+  bot.set(t.id, await prisma.user.create({ data: { nick: `tb${t.id}`, nickLower: `tb${t.id}`, email: `tb${t.id}@sim.test`, passwordHash: 'x', teamId: t.id, isBot: true } })); // gol dele NÃO conta na troca
 }
 
-async function score(teamId, k, at) {
+async function score(teamId, k, at, from = scorer) {
   for (let i = 0; i < k; i++) {
     await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: scorer.get(teamId).id }, include: { team: true } });
+      const user = await tx.user.findUnique({ where: { id: from.get(teamId).id }, include: { team: true } });
       const match = await L.liveMatchForTeam(user.teamId, tx);
       await applyResult(tx, user, { kind: 'AUTO', goal: true, now: at, match, phrase: 'sim', money: 0 });
     });
@@ -62,10 +64,11 @@ const inSerie = (map, s) => [...map].filter(([, v]) => v === s).map(([id]) => id
 const live = () => prisma.round.findFirst({ where: { status: 'LIVE' }, include: { season: true } });
 
 /** Marca os gols pedidos ({teamId: gols}) na rodada viva e fecha; devolve o que o settleDueRounds devolveu. */
-async function playRound(plan) {
+async function playRound(plan, planBot = new Map()) {
   const round = await live();
   const at = new Date(round.startsAt.getTime() + 60_000);
   for (const [teamId, k] of plan) await score(teamId, k, at);
+  for (const [teamId, k] of planBot) await score(teamId, k, at, bot);
   const settled = await L.settleDueRounds(new Date(round.endsAt.getTime() + 10_000));
   return { round, r: settled[0] };
 }
@@ -147,13 +150,38 @@ const A1 = A[1], A2 = A[2], Bw = B[2];
   await invariants('R3');
 }
 
-// ── R4–R29: rodadas sem gol nenhum (nenhum candidato) ──────────────────────────
+// ── R4: gol de BOT não conta (dono, 21/09/2026) ────────────────────────────────
+// Ab (Série A) só marca com bot → conta como sem gol e cai; Bb (fora da A) faz 60 SÓ com bot → não sobe;
+// quem sobe é Bh, com MIN gols de gente de verdade. O bot do time que caiu não recebe mensagem.
+{
+  const S = await serieNow();
+  const Ab = inSerie(S, 'A')[0], Bb = inSerie(S, 'B')[0], Bh = inSerie(S, 'B')[1];
+  const plan = new Map(teams.map((t) => [t.id, 1]));
+  plan.set(Ab, 0); plan.set(Bb, 0); plan.set(Bh, MIN);
+  const { r } = await playRound(plan, new Map([[Ab, 10], [Bb, 60]]));
+  const S4 = await serieNow();
+  check(r.swaps?.length === 1 && r.swaps[0].up.id === Bh && r.swaps[0].down.id === Ab && r.swaps[0].goals === MIN,
+    `R4: ${name.get(Ab)} (10 gols, todos de bot) conta como sem gol e ${name.get(Bh)} (${MIN} de gente de verdade) sobe`);
+  check(S4.get(Bb) === 'B', `R4: ${name.get(Bb)} fez 60 gols SÓ com bot e NÃO sobe`);
+  check(S4.get(Bh) === 'A' && S4.get(Ab) === 'B', `R4: ${name.get(Bh)} na A e ${name.get(Ab)} na B`);
+  check(r.swaps[0].downBotGoals === 10, 'R4: a troca guarda quantos gols de bot o time que caiu tinha (para o Telegram)');
+  const down = await msgs(idle.get(Ab).id), up = await msgs(idle.get(Bh).id);
+  const last = down[down.length - 1], lastUp = up[up.length - 1];
+  check(last?.title === 'Seu time caiu para a Série B' && !last.text.includes('não marcou nenhum gol'),
+    'R4: o time tinha gols de bot no placar — a mensagem não diz "não marcou nenhum gol"');
+  check(lastUp?.title === 'Seu time subiu para a Série A!' && lastUp.text.includes(name.get(Ab)) && !lastUp.text.includes('não marcou nenhum gol'),
+    'R4: a mensagem de quem subiu também não afirma que o outro zerou');
+  check((await msgs(bot.get(Ab).id)).length === 0 && (await msgs(bot.get(Bh).id)).length === 0, 'R4: bot não recebe mensagem na caixa');
+  await invariants('R4');
+}
+
+// ── R5–R29: rodadas sem gol nenhum (nenhum candidato) ──────────────────────────
 {
   const before = await serieNow();
   let swaps = 0;
   for (let cur = await live(); cur.number < cur.season.totalRounds; cur = await live()) { const { r } = await playRound(new Map()); swaps += (r.swaps ?? []).length; }
   const after = await serieNow();
-  check(swaps === 0 && [...after].every(([id, s]) => before.get(id) === s), 'R4–R29: sem candidato com o mínimo de gols, nada muda (a A inteira sem gol)');
+  check(swaps === 0 && [...after].every(([id, s]) => before.get(id) === s), 'R5–R29: sem candidato com o mínimo de gols, nada muda (a A inteira sem gol)');
   await invariants('R29');
 }
 

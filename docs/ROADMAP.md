@@ -11,6 +11,16 @@ de intervalo; prêmio do Ranking X1 pula bots. Regras em `BOTS.x1` (rules.js); d
 Teste: `node scripts/test-bots-x1.js`. Na sequência (mesma noite): **cliente automatizado no X1 = 1 partida a cada
 20 min** (`FUTPREGO.autoClientGapMin`; o navegador da conta segue normal) — `test-x1-cliente-auto.js`. E **qualquer bot em
 sessão pode aceitar o desafio de gente** passados 5–30 s sem ninguém (`BOTS.x1.acceptChance/acceptDelaySec`).
+## Gol de bot não conta na troca de série (21/09/2026) — AINDA NÃO PUBLICADO
+Pedido do Erickles depois do caso do Athletico-PR: na troca automática da Série A, os gols dos bots contavam, e
+os times vazios da A (que só têm bot) nunca ficavam "sem gols" — então nenhum time com jogador de verdade subia.
+Medido na rodada 8 da temporada 1: Flamengo (13), Bahia (34), XV de Piracicaba (34) e Brasiliense (25) fecharam
+a rodada SÓ com gol de bot. Agora `swapEmptySerieA` conta só `Goal` de quem não é bot, dos dois lados (time da A
+só com gol de bot pode cair; ninguém chega aos 50 com gol de bot); a mensagem da caixa não afirma "não marcou
+nenhum gol" quando havia gol de bot no placar (entregaria os bots) e o bot não recebe mensagem. Junto: o
+**recorde** de gols da hora/rodada/temporada passou a sair da lista SEM bots — o da rodada paga 20 VIP e teria
+ido para um bot que liderasse. `scripts/test-troca-serie-a.js` ganhou o passo R4 (gol de bot não conta);
+`sim-liga.js` 7293/0 e `test-troca-serie-a.js` TUDO OK.
 
 ## Publicado em 19/09/2026 04:38 (Brasília) — commit f0460cc
 Produção estava em 72a85f6 (de hoje, 03:26); sem migração de banco. Backup do dia: `/var/backups/brgol/daily/jogagol-2026-09-19.tar`.

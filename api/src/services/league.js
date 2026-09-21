@@ -204,17 +204,25 @@ function outcome(h, a) {
 // ─── Troca automática na Série A (SERIE_A_SWAP em rules.js; dono, 15/09/2026) ─
 /**
  * Roda no fechamento da rodada, DEPOIS da tabela e ANTES de criar a rodada seguinte (que já sai com as séries novas),
- * na mesma transação. "Gols na rodada" = gols que os jogadores MARCARAM pelo time nela (`Goal.roundId`; gol tirado no
- * X1 não apaga o que o time marcou). Time da A com 0 gols (o pior da tabela primeiro) troca com quem mais marcou fora
- * da A, com pelo menos `minGoals` (empate: o melhor da tabela); faltou candidato, o resto fica. O da A vai para a B; se
- * quem subiu veio da C, o time da B com menos gols na rodada (empate: o pior da tabela; nunca um que já trocou agora)
- * desce para a C. A série mora em DOIS lugares — `Team.serie` (sorteio da rodada) e `Standing.serie` (tabela, título,
- * acesso) — e muda nos dois; pontos e gols vão junto (como na troca de 14/09). Os jogadores dos times que trocaram
- * recebem uma mensagem na caixa. Devolve as trocas (vão para o Telegram depois do commit).
+ * na mesma transação. "Gols na rodada" = gols que os JOGADORES DE VERDADE marcaram pelo time nela (`Goal.roundId`
+ * com `user.isBot = false`; gol tirado no X1 não apaga o que o time marcou). **Gol de bot NÃO conta aqui** (dono,
+ * 21/09/2026): os bots (services/bots.js) foram criados para os times vazios da Série A não ficarem sem gols, mas,
+ * contando nesta regra, eles seguravam justamente esses times na A para sempre e nenhum time com gente de verdade
+ * subia — na rodada 8 da temporada 1, Flamengo, Bahia, XV de Piracicaba e Brasiliense fecharam a rodada SÓ com gol
+ * de bot. Vale dos DOIS lados: time da A que só teve gol de bot conta como sem gol (pode cair) e time de fora da A
+ * não chega ao mínimo com gol de bot.
+ * Time da A com 0 gols (o pior da tabela primeiro) troca com quem mais marcou fora da A, com pelo menos `minGoals`
+ * (empate: o melhor da tabela); faltou candidato, o resto fica. O da A vai para a B; se quem subiu veio da C, o time
+ * da B com menos gols na rodada (empate: o pior da tabela; nunca um que já trocou agora) desce para a C. A série mora
+ * em DOIS lugares — `Team.serie` (sorteio da rodada) e `Standing.serie` (tabela, título, acesso) — e muda nos dois;
+ * pontos e gols vão junto (como na troca de 14/09). Os jogadores dos times que trocaram recebem uma mensagem na
+ * caixa (bot não recebe). Devolve as trocas (vão para o Telegram depois do commit).
  */
 async function swapEmptySerieA(tx, season, round) {
   const rows = await tx.standing.findMany({ where: { seasonId: season.id }, include: { team: true } });
-  const scored = new Map((await tx.goal.groupBy({ by: ['teamId'], where: { roundId: round.id }, _count: { _all: true } })).map((x) => [x.teamId, x._count._all]));
+  const count = async (extra) => new Map((await tx.goal.groupBy({ by: ['teamId'], where: { roundId: round.id, ...extra }, _count: { _all: true } })).map((x) => [x.teamId, x._count._all]));
+  const scored = await count({ user: { isBot: false } }); // o que DECIDE a troca: só gol de gente de verdade
+  const total = await count({}); // com os bots: só para o texto das mensagens e para o log do Telegram
   const goals = (s) => scored.get(s.teamId) ?? 0;
   const worstFirst = (x, y) => standingOrder(y, x);
   const emptyA = rows.filter((s) => s.serie === 'A' && goals(s) === 0).sort(worstFirst);
@@ -239,21 +247,26 @@ async function swapEmptySerieA(tx, season, round) {
     await setSerie(down, 'B');
     if (drop) await setSerie(drop, 'C');
     const brief = (s) => ({ id: s.teamId, name: s.team.name }); // o resultado vai para o log do scheduler
-    swaps.push({ up: brief(up), down: brief(down), from, goals: goals(up), drop: drop ? brief(drop) : null, dropGoals: drop ? goals(drop) : null });
+    swaps.push({ up: brief(up), down: brief(down), from, goals: goals(up), drop: drop ? brief(drop) : null, dropGoals: drop ? goals(drop) : null, downBotGoals: total.get(down.teamId) ?? 0 });
   }
   if (!swaps.length) return swaps;
 
-  // caixa de mensagens dos jogadores dos times que trocaram de série
+  // caixa de mensagens dos jogadores dos times que trocaram de série (bot não recebe)
   const n = round.number;
   const plural = (k) => (k === 1 ? '1 gol' : `${k} gols`);
+  // Time com gol de BOT tem no placar um número que esta regra não conta. Nesse caso a mensagem não fala em gols
+  // (dizer "não marcou nenhum gol" seria mentira para quem viu o placar, e entregaria os bots): fala só da troca.
+  const semBot = (id) => (total.get(id) ?? 0) === (scored.get(id) ?? 0);
   const notes = [];
   for (const w of swaps) {
     // sem artigo antes do nome ("a Chapecoense", "o Náutico"): o nome do time abre a frase
-    notes.push({ teamId: w.up.id, icon: '/ui/ico-trophy_gold.png', title: 'Seu time subiu para a Série A!', text: `${w.up.name} fez ${plural(w.goals)} na rodada ${n} e subiu da Série ${w.from} para a Série A no lugar de ${w.down.name}, que não marcou nenhum gol. Os pontos e gols da temporada vão junto.` });
-    notes.push({ teamId: w.down.id, icon: '/ui/pi-bell.png', title: 'Seu time caiu para a Série B', text: `${w.down.name} não marcou nenhum gol na rodada ${n} e foi para a Série B. Quem subiu para a Série A foi ${w.up.name}, com ${plural(w.goals)}. Os pontos e gols da temporada vão junto: marque gols para o time voltar!` });
-    if (w.drop) notes.push({ teamId: w.drop.id, icon: '/ui/pi-bell.png', title: 'Seu time foi para a Série C', text: `${w.up.name} subiu da Série C direto para a Série A e ${w.down.name} caiu da A para a B. Para as séries ficarem do mesmo tamanho, desceu para a C o time da Série B com menos gols na rodada ${n}: ${w.drop.name} (${plural(w.dropGoals)}). Os pontos e gols da temporada vão junto.` });
+    notes.push({ teamId: w.up.id, icon: '/ui/ico-trophy_gold.png', title: 'Seu time subiu para a Série A!', text: `${w.up.name} fez ${plural(w.goals)} na rodada ${n} e subiu da Série ${w.from} para a Série A no lugar de ${w.down.name}${semBot(w.down.id) ? ', que não marcou nenhum gol' : ''}. Os pontos e gols da temporada vão junto.` });
+    notes.push({ teamId: w.down.id, icon: '/ui/pi-bell.png', title: 'Seu time caiu para a Série B', text: semBot(w.down.id)
+      ? `${w.down.name} não marcou nenhum gol na rodada ${n} e foi para a Série B. Quem subiu para a Série A foi ${w.up.name}, com ${plural(w.goals)}. Os pontos e gols da temporada vão junto: marque gols para o time voltar!`
+      : `${w.down.name} foi para a Série B na troca da rodada ${n}. Quem subiu para a Série A foi ${w.up.name}, com ${plural(w.goals)}. Os pontos e gols da temporada vão junto: marque gols para o time voltar!` });
+    if (w.drop) notes.push({ teamId: w.drop.id, icon: '/ui/pi-bell.png', title: 'Seu time foi para a Série C', text: `${w.up.name} subiu da Série C direto para a Série A e ${w.down.name} caiu da A para a B. Para as séries ficarem do mesmo tamanho, desceu para a C o time da Série B com menos gols na rodada ${n}: ${w.drop.name}${semBot(w.drop.id) ? ` (${plural(w.dropGoals)})` : ''}. Os pontos e gols da temporada vão junto.` });
   }
-  const players = await tx.user.findMany({ where: { teamId: { in: notes.map((x) => x.teamId) }, deletedAt: null }, select: { id: true, teamId: true } });
+  const players = await tx.user.findMany({ where: { teamId: { in: notes.map((x) => x.teamId) }, deletedAt: null, isBot: false }, select: { id: true, teamId: true } });
   const data = [];
   for (const note of notes) for (const u of players) if (u.teamId === note.teamId) data.push({ userId: u.id, kind: 'AVISO', title: note.title, text: note.text, icon: note.icon });
   if (data.length) await tx.message.createMany({ data });
@@ -271,7 +284,7 @@ export async function settleDueRounds(now = new Date()) {
     const r = await prisma.$transaction(async (tx) => settleRound(tx, round, now), { timeout: 60_000 });
     results.push(r);
     for (const w of r.swaps ?? []) {
-      tg.info(`🔁 Série A, rodada ${r.round}: <b>${tg.esc(w.up.name)}</b> (Série ${w.from}, ${w.goals} gols) subiu no lugar de <b>${tg.esc(w.down.name)}</b> (0 gols), que foi para a B${w.drop ? `; <b>${tg.esc(w.drop.name)}</b> (${w.dropGoals} gols na B) desceu para a C` : ''}.`);
+      tg.info(`🔁 Série A, rodada ${r.round}: <b>${tg.esc(w.up.name)}</b> (Série ${w.from}, ${w.goals} gols) subiu no lugar de <b>${tg.esc(w.down.name)}</b> (0 gols de jogadores${w.downBotGoals ? `, ${w.downBotGoals} de bot` : ''}), que foi para a B${w.drop ? `; <b>${tg.esc(w.drop.name)}</b> (${w.dropGoals} gols na B) desceu para a C` : ''}.`);
     }
     // Ranking X1 (services/x1.js): transação própria e idempotente, DEPOIS da liga — um erro aqui não segura
     // o fechamento da rodada (que já está gravado), só fica no log e o prêmio sai na próxima volta do scheduler.
@@ -315,7 +328,7 @@ async function settleRound(tx, round, now) {
   // Artilharia da rodada: prêmios + recorde
   const { top, prizes } = await topAndPrizes({ roundId: round.id }, 10, tx); // o quadro com todo mundo; a premiação SEM os bots
   await payPrizes(tx, prizes, PRIZES.round, { scope: 'rodada', number: round.number });
-  const rec = await applyRecord(tx, 'ROUND', season.id, top);
+  const rec = await applyRecord(tx, 'ROUND', season.id, prizes); // SEM bots: bot não bate recorde nem leva os VIP
   if (rec) {
     await tx.user.update({ where: { id: rec.userId }, data: { vipDays: { increment: PRIZES.roundRecord.vip } } });
     await notify.roundRecord(rec.userId, { number: round.number, goals: rec.goals, vip: PRIZES.roundRecord.vip }, tx).catch((e) => console.error('[inbox] recorde da rodada:', e.message));
@@ -374,7 +387,7 @@ async function finishSeason(tx, season, now) {
   // Artilharia da temporada: prêmios + recorde
   const { top, prizes } = await topAndPrizes({ seasonId: season.id }, 10, tx); // premiação SEM os bots
   await payPrizes(tx, prizes, PRIZES.season, { scope: 'temporada', number: season.number });
-  await applyRecord(tx, 'SEASON', season.id, top);
+  await applyRecord(tx, 'SEASON', season.id, prizes); // SEM bots (como o prêmio da artilharia)
   // top 10 congelado (igual Round.topJson / HourResult.topJson) — estatísticas de top 10 do perfil
   await tx.season.update({ where: { id: season.id }, data: { status: 'FINISHED', endsAt: now, topJson: top } });
 }
@@ -385,12 +398,12 @@ export async function closePastHours(now = new Date()) {
   const exists = await prisma.hourResult.findUnique({ where: { hourKey: prev } });
   if (exists) return null;
   return prisma.$transaction(async (tx) => {
-    const top = await topScorers({ hourKey: prev }, 10, tx);
+    const { top, prizes } = await topAndPrizes({ hourKey: prev }, 10, tx); // o quadro da hora com todo mundo; o recorde SEM bots
     const season = await tx.season.findFirst({ where: { status: 'ACTIVE' } });
     await tx.hourResult.create({
       data: { hourKey: prev, winnerUserId: top[0]?.userId ?? null, winnerGoals: top[0]?.goals ?? 0, topJson: top },
     });
-    if (season) await applyRecord(tx, 'HOUR', season.id, top);
+    if (season) await applyRecord(tx, 'HOUR', season.id, prizes);
     return { hourKey: prev, winner: top[0]?.nick ?? null };
   });
 }

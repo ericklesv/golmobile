@@ -10,6 +10,12 @@
  * sentido na API; no fim do pedido (`finish`) olha o status e diz o RESULTADO:
  *   🛡️ BARRADA (4xx) · ✅ SEM EFEITO (2xx numa injeção de SQL: as consultas são parametrizadas, virou texto comum)
  *   · ⚠️ PASSOU (2xx no resto — conferir) · 💥 QUEBROU (5xx — a API caiu nesse pedido, corrigir).
+ * **Só vai para o grupo o IP que tem CONTA no jogo** (dono, 22/09/2026: "pode ficar mandando no grupo apenas os
+ * ips que tem conta criada junto"): robô da internet varrendo /wp-admin e /.env o dia inteiro não interessa —
+ * quem interessa é jogador (ou quem criou conta) testando o jogo por baixo. Sem conta, fica só a linha no log do
+ * pm2 e o fail2ban cuida do bloqueio. "Tem conta" = pedido com login OU o IP aparece em `User.lastIp`/`createdIp`
+ * (`temContas`, cache de 5 min; negativo só 1 min porque o scanner costuma criar a conta no meio da varredura —
+ * foi o que o 107.150.41.226 fez em 17/09 —, e o resumo reconsulta antes de sair).
  * Aviso por IP: a PRIMEIRA gracinha sai na hora, com quem é (IP, cidade/VPN, aparelho, conta logada e as outras
  * contas desse IP); as seguintes juntam por 10 min e saem num RESUMO (quantas, resultado, tipos, as que passaram).
  * Tudo em memória, nada no banco. O chat e o texto pessoal têm o próprio aviso (🧪, com o nick, em routes/chat.js
@@ -51,6 +57,8 @@ const RE_CHAVE_ID = /^(id|.*Id|page|index|i|n|qtd|day|slot|limit|after|choice|pa
 const RE_CORPO_PROPRIO = /^\/api\/(chat\/|me\/bio$|events$)/;
 /** Campos que NUNCA vão para o aviso (senha com aspas não é gracinha — e não pode vazar no Telegram). */
 const RE_CHAVE_SECRETA = /password|senha|token|secret|captcha|authorization/i;
+
+const MIN_JANELA = Math.max(1, Math.round(JANELA_MS / 60_000)); // texto do aviso (a janela curta dos testes não vira "0 min")
 
 const decodificar = (s) => { try { return decodeURIComponent(String(s)); } catch { return String(s); } };
 const numeroGigante = (s) => /^\d{10,}$/.test(s) && Number(s) > MAX_ID;
@@ -146,41 +154,69 @@ function contar(ip, campo, now) {
 
 const geoTexto = (g) => (g ? [[g.city, g.country].filter(Boolean).join(', '), g.proxy || g.hosting ? 'VPN/datacenter' : g.mobile ? 'celular' : null].filter(Boolean).join(' · ') : 'sem geolocalização');
 
+/**
+ * Vai para o grupo do Telegram? Só IP com conta no jogo (dono, 22/09/2026) — pedido com login OU o IP com conta
+ * em `lastIp`/`createdIp`. Puro: é o que o scripts/test-gracinha.js confere.
+ */
+export const vaiParaOGrupo = ({ contas = [], nick = null } = {}) => !!nick || contas.length > 0;
+
+const contasCache = new Map(); // ip -> { until, contas }
+/** As contas vivas (sem bots) já vistas neste IP, as mais recentes primeiro. Cache: 5 min com conta, 1 min sem. */
+async function temContas(ip, { fresco = false } = {}) {
+  const hit = contasCache.get(ip);
+  if (!fresco && hit && hit.until > Date.now()) return hit.contas;
+  let contas = [];
+  try {
+    const rows = await prisma.user.findMany({ where: { deletedAt: null, isBot: false, OR: [{ lastIp: ip }, { createdIp: ip }] }, orderBy: { lastSeenAt: 'desc' }, take: 6, select: { nick: true, bannedUntil: true } });
+    contas = rows.map((u) => `${u.nick}${u.bannedUntil && u.bannedUntil.getTime() > Date.now() ? ' (suspensa)' : ''}`);
+  } catch { return []; } // banco fora: não avisa nem guarda (a próxima tenta de novo)
+  contasCache.set(ip, { until: Date.now() + (contas.length ? 5 * 60_000 : 60_000), contas });
+  if (contasCache.size > 5000) for (const [k, v] of contasCache) if (v.until < Date.now()) contasCache.delete(k);
+  return contas;
+}
+
 /** Quem é o IP: geolocalização, aparelho e as contas vistas nele (o painel tem o mesmo cruzamento). */
 async function identidade(ip, req) {
   const partes = [];
   try { partes.push(geoTexto(await geoForIp(ip))); } catch { /* sem geo */ }
   try { partes.push(deviceOf(req).label); } catch { /* sem aparelho */ }
-  let contas = [];
-  try {
-    contas = await prisma.user.findMany({ where: { deletedAt: null, OR: [{ lastIp: ip }, { createdIp: ip }] }, orderBy: { lastSeenAt: 'desc' }, take: 6, select: { nick: true, bannedUntil: true, isBot: true } });
-  } catch { /* banco fora: fica sem */ }
-  return { quem: partes.join(' · '), contas: contas.filter((u) => !u.isBot).map((u) => `${u.nick}${u.bannedUntil && u.bannedUntil.getTime() > Date.now() ? ' (suspensa)' : ''}`) };
+  return { quem: partes.join(' · '), contas: await temContas(ip) };
 }
 
-async function avisoImediato(ip, req, tipos, r, exemplo, nick) {
+async function avisoImediato(ip, req, tipos, r, exemplo, nick, g) {
   const { quem, contas } = await identidade(ip, req);
+  if (!vaiParaOGrupo({ contas, nick })) { // robô da internet sem conta aqui: só o log; o resumo reconsulta
+    if (g) g.mudo = true;
+    return console.warn(`[gracinha] ${ip} sem conta no jogo: não avisei no grupo`);
+  }
+  if (g) g.mudo = false;
   const outras = contas.filter((c) => c.split(' ')[0] !== nick);
   const linhas = [
     `🕵️ Gracinha — <b>${tg.esc(tipos.map((t) => TIPOS[t]).join(' + '))}</b>: ${r.txt}`,
     `<code>${tg.esc(exemplo)}</code>`,
     `Quem: IP <code>${tg.esc(ip)}</code>${quem ? ` · ${tg.esc(quem)}` : ''}`,
     nick ? `Conta: <b>${tg.esc(nick)}</b>${outras.length ? ` · outras neste IP: ${tg.esc(outras.join(', '))}` : ''}` : contas.length ? `Sem login · contas deste IP: ${tg.esc(contas.join(', '))}` : 'Sem login · nenhuma conta conhecida neste IP',
-    `<i>As próximas deste IP juntam num resumo em ${Math.round(JANELA_MS / 60_000)} min.</i>`,
+    `<i>As próximas deste IP juntam num resumo em ${MIN_JANELA} min.</i>`,
   ];
   tg.warn(linhas.join('\n'));
 }
 
-function resumo(ip) {
+async function resumo(ip) {
   const g = abertas.get(ip);
   abertas.delete(ip);
-  if (!g || g.n <= 1) return; // só a primeira: já foi avisada na hora
-  const tipos = [...g.tipos.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => `${TIPOS[t]} ${n}`).join(' · ');
+  if (!g) return;
   const nicks = [...g.nicks];
+  // o IP pode ter CRIADO conta no meio da varredura (foi o que o 107.150.41.226 fez em 17/09): reconsulta
+  const contas = nicks.length ? nicks : await temContas(ip, { fresco: true }).catch(() => []); // sem cache: pode ter criado agora
+  if (!vaiParaOGrupo({ contas, nick: nicks[0] ?? null })) return console.warn(`[gracinha] ${ip}: ${g.n} gracinha(s) em ${MIN_JANELA} min, sem conta no jogo — não avisei no grupo`);
+  if (g.n <= 1 && !g.mudo) return; // só a primeira e ela já saiu na hora
+  const tipos = [...g.tipos.entries()].sort((a, b) => b[1] - a[1]).map(([t, n]) => `${TIPOS[t]} ${n}`).join(' · ');
+  const quem = nicks.length ? nicks : contas;
   const linhas = [
-    `🕵️ Resumo de ${Math.round(JANELA_MS / 60_000)} min — IP <code>${tg.esc(ip)}</code>${nicks.length ? ` (${tg.esc(nicks.join(', '))})` : ''}: <b>${g.n} gracinhas</b> — 🛡️ ${g.res.barrada} barradas · ✅ ${g.res.semEfeito} sem efeito · ⚠️ <b>${g.res.passou} passaram</b> · 💥 ${g.res.quebrou} quebraram`,
+    `🕵️ Resumo de ${MIN_JANELA} min — IP <code>${tg.esc(ip)}</code>${quem.length ? ` (${tg.esc(quem.join(', '))})` : ''}: <b>${g.n} gracinha${g.n > 1 ? 's' : ''}</b> — 🛡️ ${g.res.barrada} barradas · ✅ ${g.res.semEfeito} sem efeito · ⚠️ <b>${g.res.passou} passaram</b> · 💥 ${g.res.quebrou} quebraram`,
     `Tipos: ${tg.esc(tipos)}`,
   ];
+  if (g.mudo) linhas.push('<i>Conta criada neste IP depois da 1ª tentativa — por isso o aviso vem só agora.</i>');
   if (g.passaram.length) linhas.push(`Passaram/quebraram (conferir): ${g.passaram.map((p) => `<code>${tg.esc(p)}</code>`).join(' · ')}`);
   tg.warn(linhas.join('\n'));
 }
@@ -196,11 +232,11 @@ function registrar(ip, req, res, achados, now = Date.now()) {
   let g = abertas.get(ip);
   const primeira = !g;
   if (!g) {
-    g = { since: now, n: 0, tipos: new Map(), res: { barrada: 0, semEfeito: 0, passou: 0, quebrou: 0 }, passaram: [], nicks: new Set(), timer: null };
-    g.timer = setTimeout(() => resumo(ip), JANELA_MS);
+    g = { since: now, n: 0, tipos: new Map(), res: { barrada: 0, semEfeito: 0, passou: 0, quebrou: 0 }, passaram: [], nicks: new Set(), mudo: false, timer: null };
+    g.timer = setTimeout(() => resumo(ip).catch((e) => console.warn('[gracinha] resumo:', e.message)), JANELA_MS);
     g.timer.unref?.();
     abertas.set(ip, g);
-    if (abertas.size > 2000) { const [k, v] = abertas.entries().next().value; clearTimeout(v.timer); resumo(k); }
+    if (abertas.size > 2000) { const [k, v] = abertas.entries().next().value; clearTimeout(v.timer); resumo(k).catch(() => {}); }
   }
   g.n += 1;
   for (const t of tipos) g.tipos.set(t, (g.tipos.get(t) ?? 0) + 1);
@@ -208,7 +244,7 @@ function registrar(ip, req, res, achados, now = Date.now()) {
   if ((r.k === 'passou' || r.k === 'quebrou') && g.passaram.length < 8) g.passaram.push(`${exemplo.slice(0, 90)} (HTTP ${res.statusCode})`);
   if (nick) g.nicks.add(nick);
   console.warn(`[gracinha] ${ip}${nick ? ` (${nick})` : ''} ${tipos.join('+')} ${r.k} HTTP ${res.statusCode}: ${exemplo.slice(0, 200)}`);
-  if (primeira) avisoImediato(ip, req, tipos, r, exemplo, nick).catch((e) => console.warn('[gracinha] aviso:', e.message));
+  if (primeira) avisoImediato(ip, req, tipos, r, exemplo, nick, g).catch((e) => console.warn('[gracinha] aviso:', e.message));
 }
 
 /** Middleware (index.js): inspeciona o pedido agora e a resposta no `finish`. Nunca lança, nunca segura o pedido. */
@@ -232,4 +268,4 @@ export function gracinha(req, res, next) {
 }
 
 /** Para os testes: zera janelas e contadores. */
-export function _zerar() { for (const g of abertas.values()) clearTimeout(g.timer); abertas.clear(); contadores.clear(); }
+export function _zerar() { for (const g of abertas.values()) clearTimeout(g.timer); abertas.clear(); contadores.clear(); contasCache.clear(); }

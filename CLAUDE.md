@@ -675,7 +675,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   **Veredito pelo status**: 🛡️ BARRADA (4xx) · ✅ SEM EFEITO (2xx numa injeção de SQL/NoSQL — Prisma parametriza) ·
   ⚠️ PASSOU (2xx no resto — conferir) · 💥 QUEBROU (5xx). A 1ª do IP avisa na hora (IP + cidade/VPN via `geoForIp` +
   aparelho + conta logada/`jwtNick` + outras contas do IP); as seguintes juntam por 10 min num resumo (quantas, por
-  resultado, por tipo, as que passaram). Senha/token nunca vão no aviso; chat, bio e `/api/events` têm filtro próprio
+  resultado, por tipo, as que passaram). **Só vai para o grupo IP que tem CONTA no jogo** (dono, 22/09/2026: "pode
+  ficar mandando no grupo apenas os ips que tem conta criada junto") — robô da internet varrendo /wp-admin e /.env
+  fica só no log do pm2, com o fail2ban bloqueando; "tem conta" = pedido com login OU o IP em `User.lastIp`/
+  `createdIp` (`temContas`, cache 5 min com conta e 1 min sem, e o resumo RELÊ sem cache porque o scanner costuma
+  criar a conta no meio da varredura — foi o que o 107.150.41.226 fez em 17/09; nesse caso o resumo avisa e diz por
+  que veio atrasado). Senha/token nunca vão no aviso; chat, bio e `/api/events` têm filtro próprio
   (🧪) e o corpo deles não é olhado aqui. **Mexeu? `node scripts/test-gracinha.js`** (pasta api/, sem banco; tem de
   dar "TUDO OK" — inclui os pedidos reais da varredura e o tráfego normal, que NÃO pode virar aviso).
   **Borda — nginx + fail2ban** (`tools/vps/nginx-varredura.conf`, `tools/vps/fail2ban/`): `/.env`, `/.git/*`, `*.sql`,

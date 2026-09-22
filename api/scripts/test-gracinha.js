@@ -5,8 +5,9 @@
  * 2) O tráfego normal do jogo (heartbeat, busca com aspas, senha com SQL, relógio do cadastro, foto apagada…)
  *    NÃO pode virar aviso — alarme falso no Telegram é pior que nenhum.
  * 3) O veredito (barrada / sem efeito / passou / quebrou) segue o status.
+ * 4) Só vai para o grupo o IP que tem conta no jogo (dono, 22/09/2026).
  */
-import { inspecionarPedido, inspecionarResposta, resultado, LIMITE_404, LIMITE_LOGIN, TIPOS } from '../src/lib/gracinha.js';
+import { inspecionarPedido, inspecionarResposta, resultado, vaiParaOGrupo, LIMITE_404, LIMITE_LOGIN, TIPOS } from '../src/lib/gracinha.js';
 
 let fails = 0;
 const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`); if (!ok) fails++; };
@@ -89,6 +90,13 @@ check(resultado(500, ['numero']).k === 'quebrou', '500 → quebrou');
 check(resultado(200, ['sql']).k === 'semEfeito' && resultado(200, ['nosql']).k === 'semEfeito', '200 numa injeção de SQL/NoSQL → sem efeito (parametrizada)');
 check(resultado(200, ['xss']).k === 'passou' && resultado(200, ['numero']).k === 'passou' && resultado(200, ['sql', 'xss']).k === 'passou', '200 no resto → PASSOU (conferir)');
 check(Object.keys(TIPOS).length === 12, 'os 12 tipos têm texto');
+
+console.log('— 5) só IP com conta vai para o grupo');
+check(vaiParaOGrupo({ contas: [], nick: 'Fulano' }) === true, 'pedido com login (nick) → avisa');
+check(vaiParaOGrupo({ contas: ['gol36930', 'jogador22276'], nick: null }) === true, 'sem login, mas o IP tem contas → avisa');
+check(vaiParaOGrupo({ contas: ['dino (suspensa)'], nick: null }) === true, 'conta suspensa também conta');
+check(vaiParaOGrupo({ contas: [], nick: null }) === false, 'robô da internet sem conta no IP → só log, nada no grupo');
+check(vaiParaOGrupo({}) === false && vaiParaOGrupo() === false, 'sem dados → não avisa');
 
 console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');
 process.exit(fails ? 1 : 0);

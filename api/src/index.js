@@ -36,6 +36,7 @@ import { startBots } from './services/bots.js';
 import { attachCabecao, cabecaoStatus } from './realtime/cabecao.js';
 import { attachX1, x1Status } from './realtime/x1.js';
 import { novidades, textoDaSubida } from './lib/versao.js';
+import { gracinha } from './lib/gracinha.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -55,6 +56,7 @@ app.use((err, _req, res, next) => {
   }
   return next(err);
 });
+app.use(gracinha); // quem tenta alguma gracinha (SQL, XSS, id gigante, varredura…) → aviso no Telegram com o resultado (lib/gracinha.js)
 app.use(rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false,
   message: { error: 'rate-limit', message: 'Calma, craque! Muitas requisições.' } }));
 

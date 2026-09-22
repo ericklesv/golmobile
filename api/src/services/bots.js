@@ -30,7 +30,7 @@
  */
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
-import { prisma } from '../prisma.js';
+import { prisma, dbDropped, avisarDbDropped } from '../prisma.js';
 import { BOTS, FUTPREGO, cooldownFor, LAST_FIELD, skillPointsLeft, TRAIL_LINES, SKILL_FIELD, SKILL_STEPS } from '../lib/rules.js';
 import { x1BotVisit, x1BotsInside, setX1BotPicker } from '../realtime/x1.js';
 import { tzParts, fromTz, calendarDay } from '../lib/time.js';
@@ -153,6 +153,7 @@ async function act(bot, m, what) {
   } catch (e) {
     if (e?.code === 'cooldown') return; // já saiu (volta anterior ainda no ar) — ignora
     console.error(`[bots] ${bot.nick} ${what}:`, e?.message || e);
+    if (dbDropped(e)) return avisarDbDropped(`bots (${bot.nick} ${what})`, e);
     tg.error(`Bots: ${tg.esc(bot.nick)} ${what} — ${tg.esc(String(e?.message || e).slice(0, 200))}`, { key: 'bots', every: 30 * 60_000 });
   } finally {
     m.busy = false;
@@ -237,6 +238,7 @@ export async function botsX1Round(bots, now = Date.now()) {
   }).catch((e) => {
     m.x1RestUntil = Date.now() + restMs();
     console.error(`[bots] ${bot.nick} X1:`, e?.message || e);
+    if (dbDropped(e)) return avisarDbDropped(`bots (${bot.nick} no X1)`, e);
     tg.error(`Bots: ${tg.esc(bot.nick)} X1 — ${tg.esc(String(e?.message || e).slice(0, 200))}`, { key: 'bots-x1', every: 30 * 60_000 });
     return { played: false, why: 'erro' };
   });
@@ -312,8 +314,8 @@ export async function botsTick(now = Date.now()) {
     const v = await botsX1Round(bots, now); // (x1Available: em sessão OU na janela da persona)
     if (v) { out.x1++; out.x1Sent = v.bot; }
   } catch (e) {
-    console.error('[bots] volta:', e);
-    tg.error(`Bots (motor): ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'bots-tick', every: 30 * 60_000 });
+    if (dbDropped(e)) avisarDbDropped('a volta dos bots', e); // Postgres reiniciou: a próxima volta (20 s) já funciona
+    else { console.error('[bots] volta:', e); tg.error(`Bots (motor): ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'bots-tick', every: 30 * 60_000 }); }
   } finally {
     ticking = false;
   }

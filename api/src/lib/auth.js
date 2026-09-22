@@ -18,9 +18,12 @@ export async function requireAuth(req, res, next) {
     let payload;
     try {
       payload = jwt.verify(m[1], config.jwtSecret);
-    } catch {
+    } catch (e) {
+      // Vencido é normal (30 dias). Assinatura errada = alguém montou/alterou o token: gracinha (lib/gracinha.js).
+      if (e?.name !== 'TokenExpiredError' && /signature|algorithm/i.test(String(e?.message))) res.locals.gracinha = { tipo: 'token', valor: e.message };
       throw unauthorized('Sessão inválida. Entre novamente.');
     }
+    res.locals.jwtNick = payload.nick; // para o aviso de gracinha, mesmo se a conta estiver suspensa
     const user = await prisma.user.findUnique({ where: { id: payload.uid } });
     if (!user || user.deletedAt) throw unauthorized('Conta não encontrada.');
     if (user.bannedUntil && user.bannedUntil.getTime() > Date.now()) {

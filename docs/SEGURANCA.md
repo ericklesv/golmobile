@@ -99,9 +99,22 @@ O que está na VPS (conferido de fora depois de aplicar):
   X-Frame-Options SAMEORIGIN, Referrer-Policy, Permissions-Policy) incluídos no server e nos
   `location` que têm `add_header` próprio (senão o nginx não herda). Backup do site antes da edição em
   `/root/brgol.nginx.bak-<data>`. Bônus: `manifest.webmanifest` agora sai como `application/manifest+json`.
-- **fail2ban** — `/etc/fail2ban/jail.d/brgol.conf`: `sshd` (5 erros → 1 h), `nginx-limit-req` (30
-  estouros/min → 10 min), `nginx-botsearch` (10 buscas de arquivos suspeitos → 10 min). Ver:
-  `fail2ban-client status nginx-limit-req`.
+- **fail2ban** — `/etc/fail2ban/jail.d/brgol.conf` (cópia em `tools/vps/fail2ban/`): `sshd` (5 erros → 1 h),
+  `nginx-limit-req` (30 estouros/min → 10 min), `nginx-botsearch` (10 buscas de phpMyAdmin/WordPress → 10 min) e,
+  desde 22/09/2026, **`brgol-probes`** (`filter.d/brgol-probes.conf`: /.env, /.git, *.sql, *.zip, *.key, package.json,
+  /api/swagger|graphql… — 4 em 5 min → 1 h). Ver: `fail2ban-client status brgol-probes`.
+  **Consertos de 22/09** (uma semana depois de ligar, nada tinha funcionado): 1) as jaulas do nginx liam o journal do
+  systemd (`backend = systemd`, padrão do Ubuntu) e o nginx grava em arquivo → `backend = auto` nas três (conferir com
+  `fail2ban-client status <jaula>` → "File list" tem de mostrar o log); 2) o `action.d/brgol-telegram.conf` estava com
+  token e chat vazios → agora chama `/usr/local/bin/brgol-f2b-aviso.sh <ip> <jaula> <n> <s>`, que explica a jaula em
+  português e diz que nada passou. Testar sem prejudicar ninguém: `fail2ban-client set brgol-probes banip 203.0.113.9`
+  (IP de documentação) → aviso no grupo → `unbanip`. Testar o filtro: `fail2ban-regex /var/log/nginx/access.log
+  /etc/fail2ban/filter.d/brgol-probes.conf` (varredura de 17/09: 29 de 582 linhas; tráfego normal: 0).
+- **nginx: 404 seco para arquivos sensíveis** (22/09/2026, `tools/vps/nginx-varredura.conf`, no `server` de
+  jogagol.com.br logo abaixo do include dos bloqueados): `/.env`, `/.git/config`, `/dump.sql`, `/jwt.key`,
+  `/package.json`, `/docker-compose.yml`… na raiz respondem 404 em vez do index.html do SPA (200 — o robô achava que
+  tinha encontrado). Só raiz e dotfiles: `/tv/`, `/assets/`, `/escudos/` e `/.well-known/` (certbot) não são tocados.
+  Backup de antes: `/root/brgol-nginx-antes-varredura-2026-09-22.conf`.
 - **SSH só por chave** — `/etc/ssh/sshd_config.d/00-brgol-hardening.conf` (`PasswordAuthentication no`,
   `PermitRootLogin prohibit-password`, `MaxAuthTries 4`). O `00-` é de propósito: no sshd vale o primeiro
   valor lido e o `50-cloud-init.conf` da imagem ligava a senha. Quem precisar entrar (ericklesv) tem de
@@ -139,11 +152,16 @@ privado). `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` no `api/.env` da VPS e em `/
   🛒 PIX gerado · 💰 **VIP pago** (nick, dias, valor) · Efí com problema · 🚩 denúncia (com o texto) ·
   🗑️ conta excluída · 🛡️ toda ação do painel de admin · 🔴 erro 500 (rota + mensagem, 1 por rota a
   cada 5 min) · scheduler com erro · exceção não tratada · 🚀 API subiu (todo restart do PM2 avisa —
-  restart sem deploy = suspeito). Fila de 1 msg/s; rajada vira uma mensagem só.
+  restart sem deploy = suspeito) · **🕵️ gracinha** (22/09/2026, `lib/gracinha.js`: injeção de SQL, XSS, id
+  gigante, varredura de endereços, chave de admin errada, token forjado, rajada de senhas — com o veredito
+  🛡️ BARRADA / ✅ SEM EFEITO / ⚠️ PASSOU / 💥 QUEBROU, quem é o IP e as contas dele; a 1ª na hora, o resto num
+  resumo de 10 min) · **🗄️ Postgres reiniciou** (conexão caiu no meio de uma consulta — atualização automática do
+  sistema entre 3h e 4h; a API reconecta sozinha). Fila de 1 msg/s; rajada vira uma mensagem só.
 - **VPS**: `brgol-watchdog.sh` (`tools/vps/`) a cada 2 min → 🔴 "API fora do ar" quando `/api/health`
   para de responder e ✅ "voltou" com o tempo fora; 09h → resumo do dia (disco, último backup, reinícios
   do PM2, bans do fail2ban) e ⚠️ se o disco passar de 85 % ou o backup não tiver rodado em 26 h.
-  **fail2ban** manda 🚫 a cada ban (SSH, limit_req do nginx, varredura de arquivos) — `action.d/brgol-telegram.conf`.
+  **fail2ban** manda 🚫 BLOQUEADO a cada ban (SSH, limit_req do nginx, phpMyAdmin/WordPress, arquivos sensíveis) —
+  `action.d/brgol-telegram.conf` → `brgol-f2b-aviso.sh` (consertado em 22/09: antes saía mudo).
 - O que este esquema NÃO pega: a VPS inteira fora do ar (o vigia mora nela). Para isso, quando quiser:
   https://uptimerobot.com → monitor em `https://jogagol.com.br/api/health` com alerta por Telegram
   (integração nativa deles) — precisa da conta do dono.

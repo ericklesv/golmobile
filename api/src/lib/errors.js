@@ -1,4 +1,5 @@
 import { tg } from './telegram.js';
+import { dbDropped, avisarDbDropped } from '../prisma.js';
 export class GameError extends Error {
   constructor(status, code, message, extra = {}) {
     super(message);
@@ -49,6 +50,10 @@ export function handle(fn) {
         res.status(e.status).json({ error: e.code, message: e.message, ...e.extra });
       } else if (e?.name === 'ZodError') {
         res.status(400).json({ error: 'validation', message: e.issues?.[0]?.message || 'Dados inválidos.' });
+      } else if (dbDropped(e)) {
+        // Postgres reiniciando (2 s): o jogador tenta de novo e funciona — não é erro 500 do jogo
+        avisarDbDropped(`${req.method} ${req.originalUrl?.split('?')[0]}`, e);
+        res.status(503).json({ error: 'db-restart', message: 'O banco está reiniciando. Tente de novo em instantes.' });
       } else {
         console.error(e);
         tg.error(`Erro 500 em <code>${tg.esc(req.method)} ${tg.esc(req.originalUrl?.split('?')[0])}</code>${req.user ? ` (${tg.esc(req.user.nick)})` : ''}: ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: `500:${req.method} ${req.route?.path || req.path}`, every: 5 * 60_000 });

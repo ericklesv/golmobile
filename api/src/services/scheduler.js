@@ -1,4 +1,4 @@
-import { prisma } from '../prisma.js';
+import { prisma, dbDropped, avisarDbDropped } from '../prisma.js';
 import { settleDueRounds, closePastHours, ensureSeason, refreshLiveRound } from './league.js';
 import { dailyReportTick } from './dailyReport.js';
 import { vipOfflineAutoKicks } from './play.js';
@@ -50,8 +50,9 @@ async function tick() {
       if (count) console.log('[eventos] apagados (90+ dias):', count);
     }
     // relatório diário no Telegram (08:00 de Brasília, o dia anterior) — um erro aqui não segura o resto
-    await dailyReportTick().catch((e) => { console.error('[relatorio] erro:', e); tg.error(`Relatório diário: ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'relatorio', every: 60 * 60_000 }); });
+    await dailyReportTick().catch((e) => { if (dbDropped(e)) return avisarDbDropped('o relatório diário', e); console.error('[relatorio] erro:', e); tg.error(`Relatório diário: ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'relatorio', every: 60 * 60_000 }); });
   } catch (e) {
+    if (dbDropped(e)) { avisarDbDropped('o scheduler', e); return; } // Postgres reiniciou: a volta seguinte (30 s) refaz o que faltou
     console.error('[scheduler] erro:', e);
     tg.error(`Scheduler (liga/hora/rodada): ${tg.esc(String(e?.message || e).slice(0, 300))}`, { key: 'scheduler', every: 10 * 60_000 });
   } finally {

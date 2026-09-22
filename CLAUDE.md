@@ -663,6 +663,36 @@ depois que o novo estiver estável. Não instalar nada dele.
   nicks (tocar abre o perfil), card X1 AO VIVO com as partidas, os outros números, **Atividade dos jogadores** (os
   últimos eventos, que ficavam no fim), gols por hora, retenção, funil, onde somem.
   **Mexeu? Rode `node scripts/test-eventos.js`** (pasta api/, API local no ar, banco LOCAL; tem de dar "TUDO OK").
+- **Gracinhas → Telegram** (pedido do dono, 22/09/2026, depois da varredura de 17/09 do IP 107.150.41.226 — Kansas City,
+  VPN/datacenter; contas gol36930 e jogador22276, @pm.me —: 582 pedidos em 8 min: /.env, /.git/config, /dump.sql,
+  injeção de SQL na busca, id gigante, 15 senhas, chat/bio com código; "precisamos de aviso no telegram sempre que
+  alguém tentar alguma gracinha e explicar no aviso se passou ou conseguiu bloquear"). Duas camadas:
+  **API — `lib/gracinha.js`**, middleware de todo pedido (index.js, antes do rate limit): olha rota, query e corpo com
+  o filtro do chat (`lib/codigo.js`) + operador NoSQL, número acima do INT4, `__proto__`, `../`; no `finish` olha o
+  status: 404 em endereço de descoberta (`/api/swagger.json`, `.env`…) ou 6+ 404s em 10 min = varredura, 403 em
+  `/api/admin` = chave errada, 403 no painel com login = jogador no painel, 10+ senhas erradas do IP em 10 min =
+  rajada, e `res.locals.gracinha` marcado por `lib/auth.js` = token com assinatura forjada (vencido é normal).
+  **Veredito pelo status**: 🛡️ BARRADA (4xx) · ✅ SEM EFEITO (2xx numa injeção de SQL/NoSQL — Prisma parametriza) ·
+  ⚠️ PASSOU (2xx no resto — conferir) · 💥 QUEBROU (5xx). A 1ª do IP avisa na hora (IP + cidade/VPN via `geoForIp` +
+  aparelho + conta logada/`jwtNick` + outras contas do IP); as seguintes juntam por 10 min num resumo (quantas, por
+  resultado, por tipo, as que passaram). Senha/token nunca vão no aviso; chat, bio e `/api/events` têm filtro próprio
+  (🧪) e o corpo deles não é olhado aqui. **Mexeu? `node scripts/test-gracinha.js`** (pasta api/, sem banco; tem de
+  dar "TUDO OK" — inclui os pedidos reais da varredura e o tráfego normal, que NÃO pode virar aviso).
+  **Borda — nginx + fail2ban** (`tools/vps/nginx-varredura.conf`, `tools/vps/fail2ban/`): `/.env`, `/.git/*`, `*.sql`,
+  `*.zip`, `*.key`, `package.json`… na raiz respondem **404 seco** (antes o SPA devolvia o index.html com 200 e o robô
+  achava que tinha encontrado); a jaula **`brgol-probes`** (4 em 5 min = 1 h fora) conta isso e os `/api/swagger|
+  graphql|.env`. **Achados de 22/09 nas jaulas de 15/09:** o `action.d/brgol-telegram.conf` estava com token/chat
+  VAZIOS (nunca avisou) — agora chama `/usr/local/bin/brgol-f2b-aviso.sh`, que explica a jaula em português
+  ("🚫 BLOQUEADO o IP X por 60 min: procurou 4 arquivos sensíveis… Nada passou"); e as jaulas do nginx liam o
+  JOURNAL (`backend = systemd`, padrão do Ubuntu) em vez dos arquivos — `backend = auto` nas três. Conferir filtro:
+  `fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/brgol-probes.conf` (0 no tráfego normal).
+- **Postgres reiniciou** (22/09/2026 às 03:23: o unattended-upgrades trocou a libxml2 e o `needrestart` reiniciou o
+  `postgresql@17-main` — 2 s fora, todas as conexões do pool caíram com 57P01, a volta dos bots falhou e o Telegram
+  recebeu "🔴 Bots (motor)"; ninguém viu erro, o Prisma reconecta sozinho): `dbDropped(e)`/`avisarDbDropped(onde, e)`
+  em `src/prisma.js` — scheduler, bots e o handler de 500 (`lib/errors.js`, que responde **503** "banco reiniciando")
+  mandam um único "🗄️ Postgres reiniciou" a cada 10 min em vez do erro vermelho. Decisão: manter o reinício
+  automático (a janela do apt é 3h–4h de Brasília, a mais vazia) — travar o needrestart deixaria o banco com
+  biblioteca velha até alguém lembrar.
 - **Banir IP** (primeira vez em 17/09/2026, pedido do dono): o CÓDIGO não tem ban por IP — o bloqueio é no nginx,
   em `/etc/nginx/snippets/brgol-bloqueados.conf` (um `deny <ip>;` por linha, com data e motivo), incluído no
   bloco `server` de jogagol.com.br (linha logo abaixo do `brgol-headers.conf`). Mexeu? `nginx -t` e
@@ -681,7 +711,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   `pm2 restart`) sai só com o commit — a lista só aparece se a publicação foi nos últimos 10 min e o commit
   bate com o que está rodando. `{ key, every }`
   agrupa repetidos. Evento novo importante para o dono = chamar `tg.*` (com `tg.esc()` em dado de usuário).
-  Na VPS: `brgol-watchdog.sh` (API caiu/voltou a cada 2 min; resumo 09h) e fail2ban → Telegram.
+  Na VPS: `brgol-watchdog.sh` (API caiu/voltou a cada 2 min; resumo 09h) e fail2ban → Telegram (🚫 BLOQUEADO, via
+  `brgol-f2b-aviso.sh` — consertado em 22/09, ver "Gracinhas"). 🕵️ gracinha (SQL/XSS/varredura…, com o veredito) e
+  🗄️ Postgres reiniciou também são `tg.warn`.
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de
   `GET /api/play/captcha` (senão HTTP 428 `{error:'captcha'}`). Desafios em memória (1 instância).

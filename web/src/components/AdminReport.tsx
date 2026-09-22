@@ -2,12 +2,15 @@
  * Relatório AO VIVO do admin (pedido do dono, 18/09/2026: "métricas de tudo e em tempo real"): o miolo que o menu
  * flutuante da esquerda (AdminDock) e a aba Relatório do /admin mostram. Lê `GET /api/painel/relatorio?dias=`
  * (api/src/services/report.js) a cada 15 s enquanto a aba está visível.
- * Blocos: agora (online, gols, contas, X1, PIX, chat, bots + gols por hora), retenção dos últimos 7 dias, funil
- * dos novatos pelos eventos (lib/track.ts), onde somem (última tela + tempo de sessão) e os últimos eventos.
+ * Blocos, nesta ordem (dono, 22/09/2026: "precisamos ver essas infos primeiro e não ter que rolar"): agora — QUEM
+ * está online (sem bots) e QUEM está jogando o X1 ao vivo, depois gols, contas, PIX, chat, bots —, a atividade
+ * dos jogadores (últimos eventos), gols por hora, retenção dos últimos 7 dias, funil dos novatos pelos eventos
+ * (lib/track.ts) e onde somem (última tela + tempo de sessão).
  */
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
-import type { AdminReport as Report } from '../lib/types';
+import type { AdminReport as Report, AdminX1Live } from '../lib/types';
 
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 const hm = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -24,6 +27,65 @@ const eventLabel = (e: Report['eventos'][number]) => {
   if (e.name === 'erro.tela') return `${base}: ${String(d.msg ?? '').slice(0, 40)}`;
   return base;
 };
+
+const X1_GAME: Record<AdminX1Live['game'], string> = { FUTPREGO: 'FutPrego', BOTAO: 'Botão' };
+/** "há 40 s" / "há 3 min" a partir do relógio do servidor (r.at), não do aparelho. */
+const ago = (ms: number) => (ms < 60_000 ? `há ${Math.max(0, Math.round(ms / 1000))} s` : `há ${Math.round(ms / 60_000)} min`);
+
+/** Nick que abre o perfil (a lista é só de admin: a marca de bot não sai daqui). */
+function Nick({ nick, abbr, tag, vip }: { nick: string; abbr: string | null; tag?: string; vip?: boolean }) {
+  return (
+    <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+      <Link to={`/jogador/${encodeURIComponent(nick)}`} className={`font-extrabold hover:underline ${vip ? 'text-sky-light' : 'text-white'}`}>{nick}</Link>
+      {abbr && <span className="text-[9px] font-bold text-white/50">{abbr}</span>}
+      {tag && <span className="rounded bg-orange/80 px-1 text-[9px] font-extrabold uppercase text-white">{tag}</span>}
+    </span>
+  );
+}
+
+/** Card largo de ONLINE: o número e quem é (sem bots), o visto há menos tempo primeiro. */
+function OnlineCard({ a }: { a: Report['agora'] }) {
+  const resto = a.online - a.onlineList.length;
+  return (
+    <div className="rounded-xl bg-white/[0.07] px-2.5 py-2">
+      <div className="flex items-baseline justify-between">
+        <span><span className="t-display text-[22px] leading-none text-gold">{a.online}</span><span className="ml-1.5 text-[11px] font-extrabold uppercase text-white/90">online</span></span>
+        <span className="text-[10px] font-bold text-white/55">{a.active24} ativos 24 h · sem bots</span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1 text-[11px] leading-tight">
+        {a.onlineList.length ? a.onlineList.map((u) => <Nick key={u.id} nick={u.nick} abbr={u.abbr} vip={u.vip} />) : <span className="font-bold text-white/60">ninguém agora</span>}
+        {resto > 0 && <span className="font-bold text-white/50">e mais {resto}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Card largo do X1 AO VIVO: o número e, partida a partida, quem está jogando (bots marcados — só o admin vê). */
+function X1Card({ a, now }: { a: Report['agora']; now: number }) {
+  return (
+    <div className="rounded-xl bg-white/[0.07] px-2.5 py-2">
+      <div className="flex items-baseline justify-between">
+        <span><span className={`t-display text-[22px] leading-none ${a.x1AoVivo ? 'text-green-400' : 'text-gold'}`}>{a.x1AoVivo}</span><span className="ml-1.5 text-[11px] font-extrabold uppercase text-white/90">X1 ao vivo</span></span>
+        <span className="text-[10px] font-bold text-white/55">{a.x1Hoje} partidas hoje</span>
+      </div>
+      {a.x1Partidas.length > 0 && (
+        <div className="mt-1.5 flex flex-col gap-1">
+          {a.x1Partidas.map((m) => {
+            const [p, q] = m.players;
+            const tag = (x: AdminX1Live['players'][number]) => (x.bot ? 'treino' : x.ai ? 'bot' : undefined);
+            const extra = m.training ? 'treino c/ bot' : m.freeplay ? 'mesma internet' : m.sameTeam ? 'amistoso' : null;
+            return (
+              <div key={m.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-t border-white/5 pt-1 text-[11px] leading-tight">
+                <span className="min-w-0 flex-1"><Nick nick={p.nick} abbr={p.abbr} tag={tag(p)} /> <span className="text-white/45">×</span> {q ? <Nick nick={q.nick} abbr={q.abbr} tag={tag(q)} /> : <span className="text-white/60">…</span>}</span>
+                <span className="shrink-0 tabular-nums text-white/60">{X1_GAME[m.game]}{m.score ? ` ${m.score[0]}–${m.score[1]}` : ''} · {m.turns} jog. · {ago(now - m.since)}{extra ? ` · ${extra}` : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Tile({ v, l, s, warn }: { v: string | number; l: string; s?: string; warn?: boolean }) {
   return (
@@ -87,16 +149,28 @@ export function AdminReport({ compact = false }: { compact?: boolean }) {
       </div>
 
       <H>Agora</H>
-      <div className={tiles}>
-        <Tile v={a.online} l="online" s={`${a.active24} ativos 24 h`} />
+      <div className="flex flex-col gap-1.5">
+        <OnlineCard a={a} />
+        <X1Card a={a} now={r.at} />
+      </div>
+      <div className={`mt-1.5 ${tiles}`}>
         <Tile v={a.golsHora} l="gols nesta hora" s={`${a.marcaramHoje} marcaram hoje`} />
         <Tile v={a.golsHoje} l="gols hoje" s={delta(a.golsHoje, a.golsOntem)} />
         <Tile v={a.contasHoje} l="contas hoje" s={delta(a.contasHoje, a.contasOntem)} warn={a.contasHoje === 0} />
-        <Tile v={`${a.x1AoVivo}`} l="X1 ao vivo" s={`${a.x1Hoje} partidas hoje`} />
         <Tile v={a.pixHoje.n} l="PIX hoje" s={brl(a.pixHoje.cents)} />
         <Tile v={a.chatHoje} l="msgs no chat" s="hoje" />
         <Tile v={a.botsOnline} l="bots online" s={`${a.botsGolsHoje} gols de bot hoje`} />
         <Tile v={`${pct(a.marcaramHoje, a.active24)}%`} l="dos ativos marcaram" s={`${a.marcaramOntem} ontem`} />
+      </div>
+
+      <H>Atividade dos jogadores</H>
+      <div className="max-h-[260px] overflow-y-auto rounded-xl bg-white/[0.05] px-2 py-1">
+        {r.eventos.length ? r.eventos.map((e) => (
+          <div key={e.id} className="flex gap-2 border-b border-white/5 py-0.5 text-[11px] leading-snug last:border-0">
+            <span className="shrink-0 tabular-nums text-white/45">{hm(e.at).slice(0, 5)}</span>
+            <span className="min-w-0 truncate"><b className={e.nick ? 'text-sky-light' : 'text-white/60'}>{e.nick ?? 'visitante'}</b> <span className={e.name === 'cadastro.ok' ? 'text-gold' : e.name === 'erro.tela' ? 'text-orange' : 'text-white/85'}>{eventLabel(e)}</span></span>
+          </div>
+        )) : <div className="py-1 text-[11px] font-bold text-white/60">nenhum evento ainda</div>}
       </div>
       <div className="mt-2 rounded-xl bg-white/[0.05] px-2 pt-1"><div className="text-[10px] font-bold text-white/55">Gols por hora · últimas 24 h (sem bots)</div><Spark data={a.porHora} /></div>
 
@@ -124,15 +198,6 @@ export function AdminReport({ compact = false }: { compact?: boolean }) {
         Sessões dos novatos ({o.sessao.n}): mediana <span className="text-gold">{Math.round(o.sessao.medianaSeg / 60)} min</span> · até 1 min {o.sessao.ate1min} · 1–5 min {o.sessao.ate5min} · 5–15 min {o.sessao.ate15min} · 15+ min {o.sessao.mais15}
       </div>
 
-      <H>Últimos eventos</H>
-      <div className="max-h-[220px] overflow-y-auto rounded-xl bg-white/[0.05] px-2 py-1">
-        {r.eventos.length ? r.eventos.map((e) => (
-          <div key={e.id} className="flex gap-2 border-b border-white/5 py-0.5 text-[11px] leading-snug last:border-0">
-            <span className="shrink-0 tabular-nums text-white/45">{hm(e.at).slice(0, 5)}</span>
-            <span className="min-w-0 truncate"><b className={e.nick ? 'text-sky-light' : 'text-white/60'}>{e.nick ?? 'visitante'}</b> <span className={e.name === 'cadastro.ok' ? 'text-gold' : e.name === 'erro.tela' ? 'text-orange' : 'text-white/85'}>{eventLabel(e)}</span></span>
-          </div>
-        )) : <div className="py-1 text-[11px] font-bold text-white/60">nenhum evento ainda</div>}
-      </div>
     </div>
   );
 }

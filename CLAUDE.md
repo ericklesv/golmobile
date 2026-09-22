@@ -651,12 +651,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   com `useLocation`), `cadastro.ok` (store/auth), `recarga.vista` (Home: os 4 chutes em recarga), `slider.visto`
   (MinigameSlider) e `erro.tela` (ErrorBoundary). Evento novo = `track('nome.x', {…})` — nome `[a-z][a-z0-9_.:-]`.
   Apagados com 90+ dias (scheduler, 6 h) e na exclusão da conta. **Relatório**: `GET /api/painel/relatorio?dias=1|7|30`
-  (`services/report.js`, cache 10 s): agora (online, gols nesta hora/hoje×ontem, contas, X1, PIX, chat, bots, gols por
-  hora 24 h), retenção dos últimos 7 dias (`services/retention.js`, o mesmo miolo do script do Telegram), funil dos
+  (`services/report.js`, cache 10 s): agora (online **com a lista de QUEM está online, sem bots** — `onlineList`, até
+  120, o visto há menos tempo primeiro —, gols nesta hora/hoje×ontem, contas, **X1 ao vivo com QUEM está jogando em
+  cada partida** — `x1Partidas` via `x1LiveMatches()` em `realtime/x1.js`: nicks, sigla, placar, jogadas, desde
+  quando, marca de bot de treino/`ai` —, PIX, chat, bots, gols por hora 24 h), retenção dos últimos 7 dias (`services/retention.js`, o mesmo miolo do script do Telegram), funil dos
   novatos pelos eventos (conta → viu a home → chutou → viu a recarga → viu os minigames → abriu minigame/X1/chat/Loja →
   voltou), "onde somem" (última tela de quem nunca voltou + sessões `app.saiu.seg`) e os últimos 20 eventos. Tela:
   `components/AdminReport.tsx` (miolo) dentro do **`AdminDock.tsx`** — fixo à esquerda, só admin, só em tela ≥ 1240 px
   (montado no App, aparece em TODAS as telas; recolher/abrir fica no aparelho) — e na aba **Relatório** do /admin (celular).
+  **Ordem na tela** (dono, 22/09/2026: "precisamos ver essas infos primeiro e não ter que rolar"): card ONLINE com os
+  nicks (tocar abre o perfil), card X1 AO VIVO com as partidas, os outros números, **Atividade dos jogadores** (os
+  últimos eventos, que ficavam no fim), gols por hora, retenção, funil, onde somem.
   **Mexeu? Rode `node scripts/test-eventos.js`** (pasta api/, API local no ar, banco LOCAL; tem de dar "TUDO OK").
 - **Banir IP** (primeira vez em 17/09/2026, pedido do dono): o CÓDIGO não tem ban por IP — o bloqueio é no nginx,
   em `/etc/nginx/snippets/brgol-bloqueados.conf` (um `deny <ip>;` por linha, com data e motivo), incluído no

@@ -439,11 +439,18 @@ export interface AdminMultiRow { ip: string; count: number; lastSeenAt: string; 
 export interface AdminMultiPage { page: number; pages: number; total: number; ips: number; accounts: number; rows: AdminMultiRow[] }
 
 /** Relatório ao vivo do painel (GET /api/painel/relatorio?dias= — api/src/services/report.js). */
+/** Quem está online agora (sem bots), o visto há menos tempo primeiro. */
+export interface AdminOnlineUser { id: number; nick: string; abbr: string | null; vip: boolean; seenAgoSec: number }
+/** Partida do X1 em andamento, com quem joga: `bot` = bot de treino, `ai` = bot "quase real" (valendo). */
+export interface AdminX1Live {
+  id: number; game: X1Game; since: number; training: boolean; sameTeam: boolean; freeplay: boolean; score: [number, number] | null; turns: number;
+  players: { id: number; nick: string; abbr: string | null; bot: boolean; ai: boolean }[];
+}
 export interface AdminReport {
   at: number; dias: number;
   agora: {
-    online: number; active24: number; botsOnline: number; golsHora: number; golsHoje: number; golsOntem: number; botsGolsHoje: number;
-    contasHoje: number; contasOntem: number; marcaramHoje: number; marcaramOntem: number; x1AoVivo: number; x1Hoje: number;
+    online: number; onlineList: AdminOnlineUser[]; active24: number; botsOnline: number; golsHora: number; golsHoje: number; golsOntem: number; botsGolsHoje: number;
+    contasHoje: number; contasOntem: number; marcaramHoje: number; marcaramOntem: number; x1AoVivo: number; x1Partidas: AdminX1Live[]; x1Hoje: number;
     pixHoje: { n: number; cents: number }; chatHoje: number; porHora: { h: number; n: number }[];
   };
   retencao: { base: number; d1: number; base3: number; d3: number; ativos48: number; porDia: { day: number; label: string; n: number; d1: number | null; kicked: number }[] };

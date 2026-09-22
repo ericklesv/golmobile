@@ -3,8 +3,10 @@
  * flutuante à esquerda da tela — web/src/components/AdminDock.tsx). `GET /api/painel/relatorio?dias=7`.
  *
  * Blocos:
- *  - agora: online, gols nesta hora, hoje × ontem (gols, contas, quem marcou), X1 ao vivo/hoje, PIX, chat, bots;
- *    gols por hora nas últimas 24 h (sparkline).
+ *  - agora: online (com QUEM está online — sem bots), gols nesta hora, hoje × ontem (gols, contas, quem marcou),
+ *    X1 ao vivo (com QUEM está jogando em cada partida)/hoje, PIX, chat, bots; gols por hora nas últimas 24 h
+ *    (sparkline). Quem está online e quem joga o X1: pedido do dono, 22/09/2026 — "precisamos ver essas infos
+ *    primeiro".
  *  - retencao: contas dos últimos 7 dias inteiros — voltaram (d1), 3+ dias (d3), ativos 48 h; por dia de cadastro.
  *  - funil dos novatos no período (`dias`), pelos EVENTOS (tabela Event, routes/events.js): cadastrou → viu a home
  *    → chutou → viu a recarga → viu o slider → abriu minigame → abriu X1 → abriu o chat → voltou outro dia.
@@ -16,7 +18,7 @@ import { prisma } from '../prisma.js';
 import { hourKey } from '../lib/time.js';
 import { dayOf } from './dailyReport.js';
 import { retentionRows, pct, median, dm } from './retention.js';
-import { x1Status } from '../realtime/x1.js';
+import { x1Status, x1LiveMatches } from '../realtime/x1.js';
 
 const DAY = 24 * 3600_000;
 /** Telas de minigame (nome da rota) — "abriu minigame" no funil. */
@@ -38,8 +40,11 @@ async function build(days, now) {
   const t = now.getTime();
   const today = dayOf(0, now), yesterday = dayOf(-1, now);
   const human = { isBot: false };
-  const [online, active24, botsOnline, golsHora, golsHoje, golsOntem, botsGolsHoje, contasHoje, contasOntem, marcaramHoje, marcaramOntem, x1Hoje, pixHoje, chatHoje, porHoraRows, recentes] = await Promise.all([
-    prisma.user.count({ where: { ...human, deletedAt: null, lastSeenAt: { gt: new Date(t - 2 * 60_000) } } }),
+  const onlineWhere = { ...human, deletedAt: null, lastSeenAt: { gt: new Date(t - 2 * 60_000) } };
+  const [online, onlineRows, active24, botsOnline, golsHora, golsHoje, golsOntem, botsGolsHoje, contasHoje, contasOntem, marcaramHoje, marcaramOntem, x1Hoje, pixHoje, chatHoje, porHoraRows, recentes] = await Promise.all([
+    prisma.user.count({ where: onlineWhere }),
+    // quem está online (sem bots), o visto há menos tempo primeiro — até 120 nomes (o painel lista todos)
+    prisma.user.findMany({ where: onlineWhere, orderBy: { lastSeenAt: 'desc' }, take: 120, select: { id: true, nick: true, lastSeenAt: true, vipUntil: true, team: { select: { abbr: true } } } }),
     prisma.user.count({ where: { ...human, deletedAt: null, lastSeenAt: { gt: new Date(t - DAY) } } }),
     prisma.user.count({ where: { isBot: true, lastSeenAt: { gt: new Date(t - 2 * 60_000) } } }),
     prisma.goal.count({ where: { hourKey: hourKey(now), user: human } }),
@@ -61,10 +66,11 @@ async function build(days, now) {
   const porHora = [];
   for (let i = 23; i >= 0; i--) { const hk = hourKey(new Date(t - i * 3600_000)); porHora.push({ h: Number(hk.slice(-2)), n: byHour.get(hk) ?? 0 }); }
   const x1 = x1Status();
+  const onlineList = onlineRows.map((u) => ({ id: u.id, nick: u.nick, abbr: u.team?.abbr ?? null, vip: !!(u.vipUntil && u.vipUntil.getTime() > t), seenAgoSec: Math.max(0, Math.round((t - u.lastSeenAt.getTime()) / 1000)) }));
   const agora = {
-    online, active24, botsOnline, golsHora, golsHoje, golsOntem, botsGolsHoje, contasHoje, contasOntem,
+    online, onlineList, active24, botsOnline, golsHora, golsHoje, golsOntem, botsGolsHoje, contasHoje, contasOntem,
     marcaramHoje: marcaramHoje.length, marcaramOntem: marcaramOntem.length,
-    x1AoVivo: x1.matches, x1Hoje, pixHoje: { n: pixHoje._count._all, cents: pixHoje._sum.amountCents ?? 0 }, chatHoje, porHora,
+    x1AoVivo: x1.matches, x1Partidas: x1LiveMatches(), x1Hoje, pixHoje: { n: pixHoje._count._all, cents: pixHoje._sum.amountCents ?? 0 }, chatHoje, porHora,
   };
 
   // ── retenção (contas dos últimos 7 dias inteiros + o período pedido, para o funil)

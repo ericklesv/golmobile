@@ -92,6 +92,19 @@ export function x1Status() {
   return { open: challenges.size, playing: [...matches.values()].reduce((n, m) => n + (m.bot ? 1 : 2), 0), matches: matches.size, today: x1Today(), drain: x1Drain()?.until ?? null };
 }
 
+/**
+ * As partidas em andamento, com QUEM está jogando — só para o relatório do admin (services/report.js; pedido do
+ * dono, 22/09/2026: "quando tiver X1 ao vivo, mostrar quem está jogando"). `bot` = treino contra o bot de treino,
+ * `ai` = bot "quase real" (jogando valendo); no front público nada disso aparece. A mais antiga primeiro.
+ */
+export function x1LiveMatches() {
+  return [...matches.values()].sort((a, b) => a.startedAt - b.startedAt).map((m) => ({
+    id: m.id, game: m.game, since: m.startedAt, training: !!m.bot, sameTeam: !!m.sameTeam, freeplay: !!m.freeplay,
+    score: m.bs?.score ?? null, turns: m.turns[0] + m.turns[1],
+    players: m.conns.map((c) => ({ id: c.user.id, nick: c.user.nick, abbr: c.user.team?.abbr ?? null, bot: !!c.bot, ai: !!c.ai })),
+  }));
+}
+
 // ─── Trava de atualização — deploy sem partida travada (pedido do dono, 15/09/2026) ─────────────────────────
 // O `pm2 restart` do deploy derrubava as partidas em andamento no meio (o estado é em memória): a tela ficava
 // "travada" e a aposta só voltava no reinício (refundStale). Agora o brgol-deploy.sh faz em 3 passos, pelas rotas

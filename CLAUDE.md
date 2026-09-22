@@ -691,6 +691,16 @@ depois que o novo estiver estável. Não instalar nada dele.
   ("🚫 BLOQUEADO o IP X por 60 min: procurou 4 arquivos sensíveis… Nada passou"); e as jaulas do nginx liam o
   JOURNAL (`backend = systemd`, padrão do Ubuntu) em vez dos arquivos — `backend = auto` nas três. Conferir filtro:
   `fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/brgol-probes.conf` (0 no tráfego normal).
+  **ADMIN NUNCA é bloqueado** (dono, 22/09/2026: "vai banir o admin? espero que não"): `ignorecommand` =
+  `tools/vps/fail2ban/brgol-admin-ip.sh`, que pergunta ao BANCO se o IP é de conta com `isAdmin` (`lastIp`/
+  `createdIp` — acompanha o IP de casa mudando; banco fora = bloqueia normal). **E toda jaula de web tem
+  `port = http,https`**: sem isso o padrão do fail2ban é `0:65535` e o bloqueio derruba o **SSH** — foi o que me
+  aconteceu em 22/09 testando a varredura do meu próprio IP (1 h sem site e sem servidor). Mudou a porta? Precisa de
+  `systemctl restart fail2ban` (o `reload` não refaz a regra) e `nft list table inet f2b-table` tem de mostrar
+  `tcp dport { 80, 443 }`. Bloqueado sem querer: `/usr/local/bin/brgol-liberar.sh <ip>`. Para testar varredura sem
+  se bloquear, bater direto na API de dentro da VPS (`curl -H "X-Real-IP: …" http://127.0.0.1:4310/…`): não passa
+  pelo nginx, não conta no fail2ban. **O aviso de gracinha NUNCA bloqueia ninguém** — quem bloqueia é o fail2ban, e
+  só nos padrões de varredura de arquivo; `/api/matches/<número gigante>` e injeção de SQL não bloqueiam nada.
 - **Postgres reiniciou** (22/09/2026 às 03:23: o unattended-upgrades trocou a libxml2 e o `needrestart` reiniciou o
   `postgresql@17-main` — 2 s fora, todas as conexões do pool caíram com 57P01, a volta dos bots falhou e o Telegram
   recebeu "🔴 Bots (motor)"; ninguém viu erro, o Prisma reconecta sozinho): `dbDropped(e)`/`avisarDbDropped(onde, e)`

@@ -107,7 +107,20 @@ O que está na VPS (conferido de fora depois de aplicar):
   systemd (`backend = systemd`, padrão do Ubuntu) e o nginx grava em arquivo → `backend = auto` nas três (conferir com
   `fail2ban-client status <jaula>` → "File list" tem de mostrar o log); 2) o `action.d/brgol-telegram.conf` estava com
   token e chat vazios → agora chama `/usr/local/bin/brgol-f2b-aviso.sh <ip> <jaula> <n> <s>`, que explica a jaula em
-  português e diz que nada passou. Testar sem prejudicar ninguém: `fail2ban-client set brgol-probes banip 203.0.113.9`
+  português e diz que nada passou; 3) **`port = http,https` em TODA jaula de web**: sem isso o padrão é `0:65535` e o
+  bloqueio derruba também o **SSH** — foi o que aconteceu comigo em 22/09 (testei a varredura do meu IP e fiquei 1 h
+  sem site E sem servidor). Mudar a porta exige `systemctl restart fail2ban`: o `reload` não refaz a regra do
+  firewall (conferir com `nft list table inet f2b-table` → tem de ser `tcp dport { 80, 443 }`).
+- **Admin NUNCA é bloqueado** (dono, 22/09/2026: "vai banir o admin? espero que não"): `ignorecommand =
+  /usr/local/bin/brgol-admin-ip.sh <ip>` no `[DEFAULT]` das nossas jaulas — o script pergunta ao banco se o IP é de
+  uma conta com `isAdmin` (`User.lastIp`, gravado a cada login/heartbeat, ou `createdIp`), então acompanha o IP de
+  casa mudando. Banco fora do ar = bloqueia normal (segurança primeiro). `ignoreip` cobre localhost e o IP público da
+  VPS. Conferir: `/usr/local/bin/brgol-admin-ip.sh <ip>` (sai 0 = admin) e `journalctl -t brgol-f2b`. Testado em
+  22/09 com uma jaula de mentira (`action = dummy`, log em /tmp): 5 varreduras do IP do dono = 5 "ignorando", 5 de um
+  IP comum = bloqueado.
+- **Me bloqueei sem querer?** `/usr/local/bin/brgol-liberar.sh <ip>` tira o IP de todas as jaulas e avisa se ele
+  também está na lista manual do nginx. Testar varredura SEM se bloquear: de dentro da VPS, na API direto
+  (`curl -H "X-Real-IP: 198.51.100.77" http://127.0.0.1:4310/…`) — não passa pelo nginx, logo não conta no fail2ban. Testar sem prejudicar ninguém: `fail2ban-client set brgol-probes banip 203.0.113.9`
   (IP de documentação) → aviso no grupo → `unbanip`. Testar o filtro: `fail2ban-regex /var/log/nginx/access.log
   /etc/fail2ban/filter.d/brgol-probes.conf` (varredura de 17/09: 29 de 582 linhas; tráfego normal: 0).
 - **nginx: 404 seco para arquivos sensíveis** (22/09/2026, `tools/vps/nginx-varredura.conf`, no `server` de

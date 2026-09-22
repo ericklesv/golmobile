@@ -2,13 +2,14 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## Uniforme reserva no X1 quando os times se confundem (22/09/2026)
+## Uniforme reserva no X1 quando os times se confundem (22/09/2026) — publicado em 22/09 18:01 (commit 1145ccb)
 Um jogador reclamou que no Futebol de Botão o Flamengo e o Athletico-PR ficavam com as peças idênticas (o print era de
 Flamengo x Vitória, mesmo caso: vermelho e preto dos dois lados). Só o amistoso tinha reserva. Agora `matchPaints`
 (`web/src/lib/paint.ts`) compara as peças como a tela pinta e, se se confundem, quem aceitou o desafio joga de
 reserva — vale no Botão e no FutPrego. Medido com os 48 times de produção: 188 dos 1.128 confrontos trocavam de
 uniforme (todos os preto e branco entre si, os verde e branco, os vermelho e preto, azul x azul…) e nenhum continua
-confuso. Conferência: `/debug-x1-kits?confrontos=1`. Só front, sem migração.
+confuso. Conferência: `/debug-x1-kits?confrontos=1`. Só front, sem migração (a API nem reiniciou). Aviso mandado ao
+grupo do Telegram em 22/09 18:05.
 
 ## Bots no X1 (20/09/2026)
 Depois de flagrar o Xumbera jogando o X1 com um programa (521 conexões `node` no WebSocket num dia, 40V 9D desde

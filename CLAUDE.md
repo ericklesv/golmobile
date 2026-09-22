@@ -964,7 +964,8 @@ servidos pelo próprio Express em `/api/uploads/`.
   concluir um ajuste no servidor/banco), mandar ao grupo "JogaGol - ADMIN" um resumo em PT-BR, curto e em linguagem
   de jogador/dono (o que mudou, por que, onde ver), não a lista de commits — o "API subiu" automático já lista os
   títulos dos commits, e não substitui o resumo. Como mandar, na VPS (pasta api/, com o .env):
-  `node -e "import('./src/lib/telegram.js').then(({tg}) => tg.raw('<b>Título</b>\n\ntexto em HTML'))"` — ou o
+  `set -a && . ./.env && set +a && node -e "import('./src/lib/telegram.js').then(({tg}) => tg.raw('<b>Título</b>\n\ntexto em HTML').then(console.log))"`
+  (sem carregar o `.env` o token fica vazio e o `tg.raw` devolve `false` CALADO — nada chega ao grupo; confira o `true`) — ou o
   `tools/vps/tg-aviso.sh "<texto>"` (lê o token de `/etc/brgol-telegram.conf`).
 - **Publicar só uma parte do `main`** (usado em 15/09/2026): se o `main` tiver trabalho inacabado de alguém,
   criar um ramo `prod` a partir do commit que está em produção (`grep "commit " /var/log/brgol-deploy.log |

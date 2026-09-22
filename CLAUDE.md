@@ -379,12 +379,23 @@ depois que o novo estiver estável. Não instalar nada dele.
   `FUTPREGO` ou `BOTAO`) em `settle()` — vitória com gol (via `applyResult`, + linha do perdedor), vitória sem gol
   (limite de 10 por hora / revanche repetida, com o motivo), empate; `how` acrescenta "por W.O." / "(ele desistiu)" /
   "(gol contra dele)".
-  **Amistoso (mesmo time) = uniforme reserva** (dono, 15/09/2026: os dois ficavam com peças iguais): na tela, o lado 1
-  (quem aceitou) joga de reserva — `reservePaint` em `lib/paint.ts`: time de cor escura → reserva BRANCA com a cor do
-  time no detalhe (a 3ª cor sai; só invertendo, o Santa Cruz tricolor ficava parecido demais); time de cor clara
-  (Corinthians, Santos…) → cores invertidas, base na secundária; mesmo desenho. O rodapé diz quem está de reserva. Só
-  na pintura das peças (Prego e Botão), nada no servidor. **Conferir por print: rota oculta `/debug-x1-kits?so=botao|
-  prego&times=santa-cruz,flamengo`** (sem login; sem `times`, todos os times).
+  **Uniforme reserva quando os times se confundem** (amistoso: dono, 15/09/2026; todo confronto: pedido do Erickles,
+  22/09/2026, depois de um jogador reclamar de Flamengo x Athletico-PR idênticos no Botão): `matchPaints` em
+  `lib/paint.ts` decide as cores das peças da partida. `kitClash` compara as duas peças como a tela pinta (miolo ~72 %
+  + aro, com o desenho do uniforme; diferença de cor em CIELAB) e diz que se confundem quando o conjunto é parecido
+  (vermelho e preto x vermelho e preto…), quando o MIOLO é da mesma cor e só o aro muda (Flamengo x Internacional) ou
+  quando as duas são quase todas da mesma cor (Sport, com a faixa preta na diagonal, x São Paulo) — números em
+  `KIT_CLASH`. Aí o lado 1 (quem aceitou) veste a reserva — `reservePaint`: time de cor escura → reserva BRANCA com a
+  cor do time no detalhe (a 3ª cor sai; só invertendo, o Santa Cruz tricolor ficava parecido demais); time de cor clara
+  (Santos, CRB…) → cores invertidas, base na secundária; mesmo desenho. Se a reserva também se confundir, o lado 0 veste
+  a dele; senão, o lado 1 vai de 3º uniforme (`THIRD`). Com os 48 times de hoje: **188 dos 1.128 confrontos** trocam e
+  **nenhum** continua confuso (nem precisou de lado 0 ou 3º uniforme). Amistoso cai aqui sozinho (peças iguais). O
+  rodapé diz quem está de reserva. As "fotos" do X1 (começo da tela e `X1GameSwitch`) usam `previewPaints` (o
+  adversário genérico branco troca se confundir com o seu time, ex.: Santos). Só na pintura das peças (Prego e Botão),
+  nada no servidor: depende só dos dois times e do lado, então os dois aparelhos pintam igual. Time/cor/desenho novo
+  ou mexeu no `KIT_CLASH`? **Conferir por print: rota oculta `/debug-x1-kits?confrontos=1`** (sem login; todos os
+  confrontos que se confundem, antes e agora; `&times=a,b,c` = só entre esses, `&todos=1` = também os que não se
+  confundem, `&so=prego` = FutPrego). `/debug-x1-kits?times=santa-cruz,flamengo` segue mostrando titular x reserva.
   **3ª cor do time** (`Team.colorTertiary`, migração 0029; `c3` em `data/teams.js`; só Santa Cruz = branco por
   enquanto, pedido da torcida 15/09/2026): no X1 a peça fica listrada na horizontal primária · terciária · secundária
   (prego em `PregoBoard`, botão em `BotaoField` com o aro na 3ª cor) — a 3ª cor no meio separa as outras ("sem o

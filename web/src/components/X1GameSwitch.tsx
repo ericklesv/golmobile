@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../store/auth';
 import { passSettled } from './Pass';
 import { seriesNoticeSettled } from './SeriesNotice';
-import { PregoBoard, type TeamPaint } from './PregoBoard';
+import { PregoBoard } from './PregoBoard';
+import { previewPaints } from '../lib/paint';
 import { BotaoField, BotaoDisc } from './BotaoField';
 import { TriondaBall } from './TriondaBall';
 import { money as fmt } from '../lib/format';
@@ -102,8 +103,7 @@ export function X1GameSwitchWatcher({ gate = true }: { gate?: boolean }) {
 
 /** A "foto" do jogo: a tábua do FutPrego ou o campo do Botão com os botões na saída, nas cores do time do jogador. */
 function GamePreview({ game, team, meta }: { game: X1Game; team: { colorPrimary: string; colorSecondary: string; colorTertiary?: string | null; kitDesign?: string | null }; meta: NonNullable<ReturnType<typeof useAuth.getState>['meta']> }) {
-  const mine: TeamPaint = { primary: team.colorPrimary, secondary: team.colorSecondary, tertiary: team.colorTertiary ?? null, design: team.kitDesign ?? null };
-  const rival: TeamPaint = { primary: '#FFFFFF', secondary: '#123C8A' };
+  const [mine, rival] = previewPaints({ primary: team.colorPrimary, secondary: team.colorSecondary, tertiary: team.colorTertiary ?? null, design: team.kitDesign ?? null });
   const board = meta.futprego?.board, field = meta.x1?.field, kickoff = meta.x1?.kickoff;
   if (game === 'BOTAO') {
     if (!field || !kickoff) return null;

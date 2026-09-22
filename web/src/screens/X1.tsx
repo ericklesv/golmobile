@@ -9,14 +9,14 @@ import { GoalOverlay } from '../components/GoalOverlay';
 import { RivalryResult } from '../components/Rivalry';
 import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
-import { PregoBoard, type PregoBoardData, type TeamPaint } from '../components/PregoBoard';
+import { PregoBoard, type PregoBoardData } from '../components/PregoBoard';
 import { BotaoField, BotaoDisc, type BotaoFieldData, type BotaoPiece } from '../components/BotaoField';
 import { TriondaBall, type TriondaApi } from '../components/TriondaBall';
 import { toast } from '../components/Toast';
 import { X1GameSwitchWatcher } from '../components/X1GameSwitch';
 import { sound } from '../lib/sound';
 import { money as fmt, timeLeft } from '../lib/format';
-import { paintOf, reservePaint } from '../lib/paint';
+import { paintOf, matchPaints, previewPaints } from '../lib/paint';
 
 /**
  * X1 — jogos 1x1 ao vivo, um por dia (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar
@@ -74,7 +74,7 @@ const MAX_PULL_BOTAO = 110; // Botão: idem, puxando o botão
 const XRAY_NICKS = ['MVGIC', 'ericklesv']; // Raio-X (tecla R): quem pode usar — e quem fica sabendo quando o outro usa
 const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
 const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
-// paintOf / reservePaint (uniforme reserva do amistoso): lib/paint.ts
+// paintOf / matchPaints (uniforme reserva quando os dois times se confundem, amistoso incluído): lib/paint.ts
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
 
 /** Botões que `side` pode tocar agora (no death match os goleiros já saíram). */
@@ -518,7 +518,7 @@ export function X1Screen() {
   );
   else if (phase === 'match' && match) {
     const you = match.you, opp = (1 - you) as Side;
-    const paint: [TeamPaint, TeamPaint] = [paintOf(match.players[0].team), match.sameTeam ? reservePaint(paintOf(match.players[1].team)) : paintOf(match.players[1].team)];
+    const { paint, reserve: reserveSide } = matchPaints(paintOf(match.players[0].team), paintOf(match.players[1].team));
     const h2hOn = !match.training && !!match.h2h;
     const bigOverlay = (
       <AnimatePresence>
@@ -541,7 +541,7 @@ export function X1Screen() {
     );
 
     let center: React.ReactNode, oppLabel: string | null, meLabel: string | null, oppActive: boolean, meActive: boolean, left: number, total: number, extraH = 0, foot = '';
-    const reserve = match.sameTeam ? (you === 1 ? ' · você de uniforme reserva (cores invertidas)' : ' · o adversário de uniforme reserva (cores invertidas)') : '';
+    const reserve = reserveSide === null ? '' : reserveSide === you ? ' · você de uniforme reserva' : ' · o adversário de uniforme reserva';
     if (match.game === 'FUTPREGO') {
       left = Math.max(0, Math.ceil((match.turnEndsAt - now()) / 1000)); total = match.turnSec;
       oppActive = match.turn === opp && !animating; meActive = myTurn;
@@ -685,7 +685,7 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
 }) {
   const game: X1Game = today?.game ?? 'FUTPREGO';
   const t = rulesText(game, rules);
-  const mine = paintOf(me.team), rival: TeamPaint = { primary: '#FFFFFF', secondary: '#123C8A' };
+  const [mine, rival] = previewPaints(paintOf(me.team));
   const preview = game === 'BOTAO'
     ? field && kickoff && (
       <BotaoField field={field} className="w-full drop-shadow-[0_5px_0_rgba(0,0,0,0.25)]">

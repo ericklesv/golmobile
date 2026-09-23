@@ -423,9 +423,17 @@ depois que o novo estiver estável. Não instalar nada dele.
   não havia bot em sessão e 111 telas de gente no X1; na visita ele fica "online", `lastSeenAt` a cada 50 s),
   descansado (`restMin` 15–60 min desde a última visita), com a aposta e que "topa" (`x1` na persona, 0 = nunca; sem o
   campo, `appetite` por perfil: 0,5/0,7/0,9) e manda ele ao X1: **aceita um desafio aberto de gente de OUTRO time** (o
-  mais antigo), **ou o de OUTRO BOT** (`botVsBot` = 50 % das vezes — bot x bot também movimenta placar, lances e
-  ranking, o dono topou: "mesmo que fiquem no ranking de X1, não tem problema"; senão `conn.avoidAi` e ele abre o
-  dele sem casar com o do outro bot) ou **abre o dele** e espera `waitMin` (3–8 min). **E qualquer bot em
+  mais antigo), **ou o de OUTRO BOT** — SEMPRE (dono, 23/09/2026, com print de Vilao e Loudete desafiando juntos:
+  "quando um bot está desafiando, criar um desafio devia cair contra esse bot e não ficar 2 desafios abertos"; até
+  ali era 50 %, `botVsBot`/`avoidAi`, e na outra metade ele abria o dele; bot x bot movimenta placar, lances e
+  ranking, o dono topou: "mesmo que fiquem no ranking de X1, não tem problema") — ou **abre o dele** e espera
+  `waitMin` (3–8 min). **Nunca ficam dois desafios abertos por causa de bot** (`casaOuAbre` em realtime/x1.js): o
+  bot não abre o seu se sobrou alguém esperando que ele não pode enfrentar (pessoa fora da cota, bloqueio) — vai
+  embora —, e a pessoa fora da cota que abre o dela com bot esperando faz o bot desistir do dele. Desafiar e
+  aceitar passam por uma **fila única** (`naFila`): entre olhar a lista e registrar o desafio há idas ao banco, e dois
+  "Desafiar" no mesmo instante abriam dois desafios em vez de se enfrentarem. **Nada dentro da fila pode esperar algo
+  que entra nela** (trava tudo) — por isso o `createChallenge(a)` do "b sem dinheiro" em `acceptChallenge` não é
+  esperado. **E qualquer bot em
   sessão pode ACEITAR** (dono, 20/09/2026: "os bots ativos no momento com possibilidade de aceitar também os X1,
   principalmente após os primeiros 5 s"): gente de verdade abriu um desafio e ninguém pegou em `acceptDelaySec` (5–30 s
   sorteados) → `botAceita` (x1.js) pede ao motor um bot (`pickX1Accepter` em bots.js, registrado com
@@ -454,8 +462,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   real de 0,25–0,55 vence 28–40 %. Ajustar `BOTS.x1.skill` pelos resultados de produção (`FutPregoMatch` com
   `bot:` no IP). `BOTS_OFF=1` desliga as voltas (chutes e visitas); `BOTS_X1_OFF=1` desliga tudo do X1, visitas E aceites (testes).
   **Mexeu? Rode `node scripts/test-bots-x1.js`**
-  (pasta api/, API local no ar com `X1_JOGO=BOTAO` e `ADMIN_KEY`, banco LOCAL; tem de dar "TUDO OK") e o
-  `test-bots.js` (passo 7 = a volta do X1 sem servidor). **Bots não recebem prêmio**: `topAndPrizes` em league.js tira os bots da lista premiada (artilharia da
+  (pasta api/, API local no ar com `X1_JOGO=BOTAO` e `ADMIN_KEY`, banco LOCAL; tem de dar "TUDO OK"), o
+  `test-bots.js` (passo 7 = a volta do X1 sem servidor) e o **`test-x1-um-desafio.js`** (API local com
+  `BOTS_X1_OFF=1`; bot x bot, dois "Desafiar" juntos e a cota — no código de antes de 23/09 ele dá 4 falhas). **Bots não recebem prêmio**: `topAndPrizes` em league.js tira os bots da lista premiada (artilharia da
   rodada/temporada; quem vem depois sobe de posição) numa consulta só com o quadro — duas consultas embaralhavam os
   empates —; o VIP do time campeão também pula bots. O **recorde** de gols (hora, rodada e temporada) sai da
   mesma lista SEM bots — o da rodada paga 20 VIP e ia para o bot que liderasse (corrigido em 21/09/2026) —, e **gol de

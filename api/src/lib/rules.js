@@ -767,10 +767,11 @@ export const BOTS = {
   // O bot vai ao X1 dentro da sessão dele OU fora dela, desde que a hora esteja numa JANELA da persona e o dia não
   // seja folga (dono, 20/09/2026 à noite: "nenhum bot rodou X1 ainda… precisamos movimentar o jogo" — às 20h30 de
   // domingo não havia NENHUM bot em sessão e 111 telas de gente no X1); na visita ele fica "online" (lastSeenAt).
-  // realtime/x1.js → x1BotVisit: aceita um desafio aberto de gente de outro time, ou o de OUTRO BOT (chance
-  // botVsBot — bot x bot também movimenta o placar, os lances e o ranking; o dono topou), ou abre o dele e espera;
-  // jogou (ou ninguém veio), sai e DESCANSA. Tudo vale como partida de verdade (aposta, gol, gol a menos, lances ao
-  // vivo, retrospecto) — só o PRÊMIO do Ranking X1 pula os bots (services/x1.js).
+  // realtime/x1.js → x1BotVisit: aceita um desafio aberto de gente de outro time, ou o de OUTRO BOT (sempre — dono,
+  // 23/09/2026: bot esperando e outro chegando não pode virar dois desafios abertos; bot x bot também movimenta o
+  // placar, os lances e o ranking), ou abre o dele e espera; jogou (ou ninguém veio), sai e DESCANSA. Tudo vale
+  // como partida de verdade (aposta, gol, gol a menos, lances ao vivo, retrospecto) — só o PRÊMIO do Ranking X1
+  // pula os bots (services/x1.js).
   x1: {
     concurrent: 2,            // quantos bots ficam no X1 ao mesmo tempo
     gapMin: [1, 6],           // saiu um bot → quanto tempo até o próximo entrar (espaçado e sorteado)
@@ -778,7 +779,6 @@ export const BOTS = {
     restMin: [15, 60],        // o MESMO bot só volta ao X1 depois disto (jogou ou não)
     maxDay: 8,                // partidas de um bot em 24 h
     afterMatchSec: [6, 25],   // acabou a partida: "lê o resultado" e sai
-    botVsBot: 0.5,            // outro bot está esperando: chance de jogar com ele em vez de abrir o próprio desafio
     // contra a MESMA pessoa (somando todos os bots): intervalo mínimo e teto em 24 h — ninguém farma os bots
     sameHumanMin: 30,
     sameHumanDay: 6,

@@ -269,7 +269,7 @@ async function onMessage(conn, m) {
   if (conn.mode !== 'game') return;
   if (m.t === 'challenge') return createChallenge(conn);
   if (m.t === 'cancel') { if (conn.challenge) cancelChallenge(conn.challenge, 'cancelou'); return send(conn.ws, { t: 'canceled' }); }
-  if (m.t === 'accept') return acceptChallenge(conn, Number(m.id));
+  if (m.t === 'accept') return naFila(() => acceptChallenge(conn, Number(m.id)));
   if (m.t === 'bot') return startBot(conn);
   if (m.t === 'flick') return onFlick(conn, m);
   if (m.t === 'snap') return onSnap(conn, m);
@@ -325,6 +325,21 @@ const challengeView = (ch) => ({ id: ch.id, game: ch.game, gameName: X1.names[ch
 
 const drainErr = (conn) => send(conn.ws, { t: 'error', code: 'atualizacao', until: drain.until, message: DRAIN_TEXT });
 
+/**
+ * Uma criação/aceite de desafio por vez (dono, 23/09/2026: "quando um bot está desafiando, criar um desafio devia
+ * cair contra esse bot e não ficar 2 desafios abertos"). Entre olhar quem está esperando e registrar o desafio novo
+ * há várias idas ao banco: dois "desafiar" no mesmo instante viam a lista vazia e abriam DOIS desafios em vez de
+ * se enfrentarem (e dois aceites no mesmo desafio davam "já começou" a um deles). Na fila, o segundo espera o
+ * primeiro terminar e já vê o desafio dele. **Nada dentro da fila pode esperar outra coisa que entra nela** (trava
+ * para sempre): por isso o `createChallenge(a)` do "b ficou sem dinheiro" em acceptChallenge não é esperado.
+ */
+let fila = Promise.resolve();
+function naFila(fn) {
+  const run = fila.then(fn);
+  fila = run.catch(() => {});
+  return run;
+}
+
 async function createChallenge(conn) {
   if (conn.match || conn.challenge) return;
   if (x1Drain()) return drainErr(conn);
@@ -335,30 +350,50 @@ async function createChallenge(conn) {
   const until = await challengeCooldownUntil(conn.user);
   if (until) return send(conn.ws, { t: 'error', code: 'cooldown', until, message: cooldownText(until) });
   if (await autoClientBlocked(conn)) return; // programa ligado direto no WebSocket: 1 partida a cada 20 min
-  if (conn.match || conn.challenge || (conn.ws && conn.ws.readyState !== conn.ws.OPEN)) return; // (bot: sem tela)
+  const ch = await naFila(() => casaOuAbre(conn));
+  if (!ch) return;
+  send(conn.ws, { t: 'waiting', id: ch.id, game: ch.game, gameName: X1.names[ch.game], at: ch.at, botAt: ch.at + F.botAfterSec * 1000, until: ch.at + F.challengeMaxSec * 1000 });
+  await broadcastInvite(ch);
+  await refreshOpenLists();
+}
+
+/**
+ * (Na fila.) Alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora — primeiro
+ * quem é de outro time (vale gol), só depois um colega de time (amistoso); o bot do motor pega gente antes de
+ * outro bot. **Nunca ficam dois desafios abertos por causa de bot** (dono, 23/09/2026): bot esperando e outro bot
+ * chegando = os dois jogam (antes, em metade das vezes, o segundo abria o dele); o que ainda sobra esperando é
+ * quem não pode enfrentar — pessoa fora da cota dos bots (`botQuotaOk`) ou bloqueio —, e aí o bot não abre um
+ * segundo desafio e, se quem abriu é gente, o bot que esperava desiste do dele.
+ * Devolve o desafio aberto, ou null (casou, ou não abriu).
+ */
+async function casaOuAbre(conn) {
+  if (conn.match || conn.challenge || (conn.ws && conn.ws.readyState !== conn.ws.OPEN)) return null; // (bot: sem tela)
+  if (x1Drain()) { drainErr(conn); return null; }
   const game = x1Today().game;
-  // alguém já está desafiando no jogo de hoje e dá para jogar com ele: vira partida na hora — primeiro quem é
-  // de outro time (vale gol); só depois um colega de time (amistoso)
-  const waitingNow = [...challenges.values()].filter((ch) => ch.game === game).sort((a, b) => sameTeamOf(a.from, conn) - sameTeamOf(b.from, conn) || a.at - b.at);
+  const waitingNow = [...challenges.values()].filter((ch) => ch.game === game)
+    .sort((a, b) => sameTeamOf(a.from, conn) - sameTeamOf(b.from, conn) || (isAi(conn) ? isAi(a.from) - isAi(b.from) : 0) || a.at - b.at);
   for (const ch of waitingNow) {
-    if (conn.avoidAi && isAi(ch.from)) continue; // bot que decidiu abrir o próprio desafio em vez de jogar com outro bot
-    if (await compatible(ch.from, conn)) return acceptChallenge(conn, ch.id);
+    if (!challenges.has(ch.id)) continue;
+    if (await compatible(ch.from, conn)) { await acceptChallenge(conn, ch.id); return null; }
   }
+  if (conn.engine && [...challenges.values()].some((ch) => ch.game === game)) return null; // bot não abre o segundo
+  const tutorial = await noPassoDoX1(conn.user.id).catch(() => false);
+  if (conn.match || conn.challenge || x1Drain()) return null; // (mudou durante a espera)
   const ch = { id: nextId++, game, from: conn, at: Date.now(), shownTo: new Set() };
   ch.botTimer = setTimeout(() => send(conn.ws, { t: 'bot-offer' }), F.botAfterSec * 1000);
   ch.expireTimer = setTimeout(() => { if (challenges.has(ch.id)) { send(conn.ws, { t: 'expired', message: 'Ninguém aceitou o desafio. Tente de novo mais tarde.' }); cancelChallenge(ch, 'expirou'); } }, F.challengeMaxSec * 1000);
   // Tutorial, etapa do X1: ninguém aceitou em TUTORIAL.botAcceptSec → um bot aceita e joga como gente
   // (dono, 18/09/2026; vale gol, dinheiro e ranking como partida de verdade, e SÓ aqui no tutorial).
-  if (await noPassoDoX1(conn.user.id).catch(() => false)) {
+  if (tutorial) {
     ch.tutorTimer = setTimeout(() => botDoTutorialAceita(ch).catch((e) => console.error('[x1] bot do tutorial:', e.message)), TUTORIAL.botAcceptSec * 1000);
   }
   // Gente de verdade esperando: passados 5–30 s sem ninguém, um bot em sessão pode aceitar (dono, 20/09/2026)
   if (!isAi(conn) && botPicker) ch.botAcceptTimer = setTimeout(() => botAceita(ch).catch((e) => console.error('[x1] bot aceitando:', e.message)), betweenMs(BX.acceptDelaySec));
   challenges.set(ch.id, ch);
   conn.challenge = ch;
-  send(conn.ws, { t: 'waiting', id: ch.id, game, gameName: X1.names[game], at: ch.at, botAt: ch.at + F.botAfterSec * 1000, until: ch.at + F.challengeMaxSec * 1000 });
-  await broadcastInvite(ch);
-  await refreshOpenLists();
+  // gente abriu e ficou bot esperando (é um que ela não podia enfrentar): o bot desiste, para não ficarem dois
+  if (!isAi(conn)) for (const o of [...challenges.values()]) if (o !== ch && o.game === game && o.from.engine && !o.from.match) cancelChallenge(o, 'gente-esperando');
+  return ch;
 }
 
 function cancelChallenge(ch, _why) {
@@ -441,7 +476,11 @@ async function acceptChallenge(conn, id) {
     });
   } catch (e) {
     if (e.who === 'a') { err(a, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`); return send(b.ws, { t: 'taken', message: `${a.user.nick} ficou sem dinheiro para jogar.` }); }
-    if (e.who === 'b') { err(b, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`); return createChallenge(a); } // o desafio dele volta
+    if (e.who === 'b') { // o desafio de quem esperava volta — sem esperar: estamos na fila e createChallenge entra nela
+      err(b, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`);
+      createChallenge(a).catch((e2) => console.error('[x1] desafio de volta:', e2.message));
+      return;
+    }
     throw e;
   }
   const h2h = await headToHead(a.user.id, b.user.id).catch((e) => { console.error('[x1] retrospecto:', e.message); return null; });
@@ -881,21 +920,14 @@ export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000, accep
   if (problem) return { played: false, why: problem };
   conns.add(conn); botVisits.set(user.id, conn);
   try {
-    const game = x1Today().game;
     if (acceptOnly) { // veio só para ACEITAR este desafio (botAceita): casou ou vai embora
-      if (challenges.has(acceptOnly)) await acceptChallenge(conn, acceptOnly);
+      await naFila(() => (challenges.has(acceptOnly) ? acceptChallenge(conn, acceptOnly) : null));
       if (!conn.match) return { played: false, why: 'nao-casou' };
     } else {
-      // gente de outro time esperando: aceita (o mais antigo). Outro BOT esperando: joga com ele em BX.botVsBot das
-      // vezes (bot x bot também movimenta placar, lances e ranking); senão abre o próprio desafio, sem casar com o dele
-      const open = [...challenges.values()].filter((ch) => ch.game === game && ch.from.user.teamId !== conn.user.teamId).sort((a, b) => isAi(a.from) - isAi(b.from) || a.at - b.at);
-      conn.avoidAi = Math.random() >= BX.botVsBot;
-      for (const ch of open) {
-        if (isAi(ch.from) && conn.avoidAi) continue;
-        if (challenges.has(ch.id) && (await compatible(ch.from, conn))) { await acceptChallenge(conn, ch.id); if (conn.match) break; }
-      }
-      if (!conn.match && !conn.challenge) await createChallenge(conn); // (pode casar na hora com um desafio aberto)
-      if (!conn.match && !conn.challenge) return { played: false, why: 'sem-desafio' }; // cooldown de 2 min, etc.
+      // quem está esperando (gente de outro time primeiro, depois outro bot, por último colega de time) casa com ele
+      // na hora; ninguém = abre o dele. Sobrou alguém que ele não pode enfrentar: vai embora sem abrir (casaOuAbre)
+      await createChallenge(conn);
+      if (!conn.match && !conn.challenge) return { played: false, why: 'sem-desafio' }; // cooldown de 2 min, já tem desafio etc.
     }
     // "online" enquanto está no X1 (fora da sessão de chutes o motor não anda o lastSeenAt)
     const online = () => prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } }).catch(() => {});

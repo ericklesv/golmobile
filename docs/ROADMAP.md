@@ -2,6 +2,16 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## X1: nunca dois desafios abertos por causa de bot (23/09/2026) — publicado em 23/09 19:25 de Brasília (commit 6bc7418)
+O dono mandou print da lista do X1 com dois bots desafiando ao mesmo tempo (Vilao e Loudete): "quando um bot está
+desafiando, criar um desafio devia cair contra esse bot e não ficar 2 desafios abertos". Causa: o bot que chegava com
+outro esperando só jogava com ele em 50 % das vezes (`botVsBot`/`avoidAi`); na outra metade abria o dele. Agora
+(`casaOuAbre` em `realtime/x1.js`): bot x bot joga sempre; bot não abre um 2º desafio se sobrou alguém que ele não
+pode enfrentar (pessoa fora da cota dos bots); pessoa fora da cota que abre com bot esperando faz o bot desistir; e
+desafiar/aceitar passam por uma fila única — dois "Desafiar" no mesmo segundo abriam dois desafios em vez de se
+enfrentarem. Teste novo `scripts/test-x1-um-desafio.js` (4 falhas no código antigo, TUDO OK no novo) + regressão do X1
+inteira OK. Aviso mandado ao grupo do Telegram em 23/09 19:28.
+
 ## Uniforme reserva no X1 quando os times se confundem (22/09/2026) — publicado em 22/09 18:01 (commit 1145ccb)
 Um jogador reclamou que no Futebol de Botão o Flamengo e o Athletico-PR ficavam com as peças idênticas (o print era de
 Flamengo x Vitória, mesmo caso: vermelho e preto dos dois lados). Só o amistoso tinha reserva. Agora `matchPaints`

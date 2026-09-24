@@ -775,7 +775,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   07/10, conta do Google Ads do Guilherme): tag do Google `AW-17439857189` em **`web/src/lib/ads.ts`** — carregada SÓ no site
   jogagol.com.br e SÓ para quem abre sem login (nunca no app da Play Store/TWA, cuja ficha diz "sem anúncios"; nunca no PC),
   sem remarketing (`allow_ad_personalization_signals: false`). Conversão "Cadastro JogaGol" = `adsSignup()` no cadastro que
-  deu certo (`store/auth.ts`; precisa do rótulo em `SIGNUP_LABEL`). A origem do clique (`utm_*`/`gclid` da URL de entrada,
+  deu certo (`store/auth.ts`; rótulo `gPYbCL_3kYQdEKW0_PtA` em `SIGNUP_LABEL`, meta "Inscrição" — a campanha usa metas
+  específicas dela, só Inscrição, porque a conta é de outro negócio e a meta padrão é "Contatos"). A origem do clique (`utm_*`/`gclid` da URL de entrada,
   guardada 30 dias no aparelho) vai no `app.abriu` e no `cadastro.ok` como `origem` (`lib/track.ts`) — é por ela que o banco diz
   quantos do anúncio criaram conta e voltaram; o relatório ao vivo do admin mostra "· anúncio google (brgol)". A campanha usa o
   sufixo `utm_source=google&utm_medium=cpc&utm_campaign=teste-set26&utm_term={keyword}`. A Política de Privacidade

@@ -13,7 +13,7 @@ import { isTwa } from './twa';
 
 const AW_ID = 'AW-17439857189';
 /** Rótulo da ação de conversão "Cadastro JogaGol": o que vem depois da barra no `send_to` do snippet de evento. */
-const SIGNUP_LABEL = '';
+const SIGNUP_LABEL = 'gPYbCL_3kYQdEKW0_PtA';
 
 declare global {
   interface Window { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void }

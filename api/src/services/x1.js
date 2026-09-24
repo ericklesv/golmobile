@@ -61,7 +61,7 @@ const order = (x, y) => y.points - x.points || y.wins - x.wins || y.best - x.bes
 export async function x1Record(userId, { season = null, round = null } = {}, db = prisma) {
   const rows = await db.x1Match.findMany({ where: { ...X1_COUNTED, OR: [{ aId: userId }, { bId: userId }] }, orderBy: { id: 'asc' }, select: { aId: true, bId: true, winnerId: true, game: true } });
   const pick = (s) => (s ? { wins: s.wins, losses: s.losses, draws: s.draws, points: s.points, streak: s.streak, best: s.best } : { wins: 0, losses: 0, draws: 0, points: 0, streak: 0, best: 0 });
-  const games = Object.fromEntries(X1.games.map((g) => [g, pick(x1Tally(rows.filter((r) => r.game === g)).get(userId))]));
+  const games = Object.fromEntries(Object.keys(X1.names).map((g) => [g, pick(x1Tally(rows.filter((r) => r.game === g)).get(userId))])); // (o jogo em teste também)
   // posição num recorte (mesma ordem da aba; conta excluída não ocupa lugar): temporada, rodada e geral
   const standing = async (from) => {
     const prow = await db.x1Match.findMany({ where: { ...X1_COUNTED, ...x1Period(from) }, orderBy: { id: 'asc' }, select: { aId: true, bId: true, winnerId: true } });

@@ -2,14 +2,17 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## Futgolf — 3º jogo do X1 (23–24/09/2026)
+## Futgolf — 3º jogo do X1 (23–24/09/2026) — EM TESTE: só MVGIC e ericklesv, contra bots
 Aprovado pelo dono a partir das telas de exemplo (canvas "X1 Várzea e Footgolf"), com os pedidos: campo maior, powerups
 (setas de boost, molas que devolvem a bola), mais formas e nada óbvio. Golfe de chute visto de cima, os dois chutando ao
 mesmo tempo no mesmo buraco; quem embocar primeiro vence, empate vai para o desempate (mais perto do buraco). 8 buracos
 (Tabelinha, Bifurcação, Ilha, Fliperama, Zigue-zague, Slalom, Rotatória, Bueiros) × espelhado = 16 variações, com lagoa,
-terrão, mato, placas, molas, setas e bueiros. Entra no rodízio do X1 (agora com 3 jogos, âncora em `X1.anchor`) e estreia
-às 19h de 24/09. Bots jogam (treino, tutorial e os "quase reais"). Testes: `scripts/futgolf-balance.js` (par e física) e
-`scripts/test-futgolf.js` (partida ponta a ponta); toda a regressão do X1 passou. Detalhes no CLAUDE.md.
+terrão, mato, placas, molas, setas e bueiros. Bots jogam (treino, tutorial e os "quase reais"). Testes:
+`scripts/futgolf-balance.js` (par e física), `scripts/test-futgolf.js` (partida ponta a ponta) e
+`scripts/test-futgolf-teste.js` (o modo de teste). Detalhes no CLAUDE.md.
+Publicado em 24/09 para estrear no rodízio às 19h, mas o dono pediu para testar antes (24/09): saiu do rodízio e ficou
+só para MVGIC e ericklesv (`X1.test`), com um bot aceitando em 5 s; ninguém mais vê o desafio.
+- [ ] Liberar para todos quando o dono aprovar: `FUTGOLF` em `X1.games` + acertar `X1.anchor` (e avisar no grupo).
 - [ ] Depois da estreia: olhar as partidas de verdade (quantos chutes por buraco, quanto desempate) e acertar pares/buracos.
 - [ ] Próximo: os ajustes do Várzea (o dono pediu depois do Futgolf).
 

@@ -406,7 +406,7 @@ export const MINIGAMES = [
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-target.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: premio('ALVO', 'até 30 de nível') },
   { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: premio('HATTRICK', 'a cada gol, + até 30 de nível') },
   { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: premio('FALTAPRO', 'até 20 de nível + R$ 50 por alvo') },
-  { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego, Futebol de Botão ou Futgolf. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
+  { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
   { id: 'GOLEADA', name: 'PenalCup', unlock: 3, daily: true, route: '/penalcup', icon: '/ui/ico-ball.png', desc: 'Emende gols seguidos: a cada 3, um gol do seu time. A cada gol o goleiro fica melhor.', reward: premio('GOLEADA', 'a cada 3 seguidos, até 3 no dia, + até 30 de nível') },
   { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: premio('GANHAPERDE', '5 de nível a cada acerto') },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
@@ -549,11 +549,17 @@ export const FUTPREGO = {
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
 export const X1 = {
-  games: ['FUTPREGO', 'BOTAO', 'FUTGOLF'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão', FUTGOLF: 'Futgolf' }, switchHour: 19,
+  games: ['FUTPREGO', 'BOTAO'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão', FUTGOLF: 'Futgolf' }, switchHour: 19,
   // O rodízio parte deste dia (dayNumberAt(19) de lib/time.js) com este jogo. Serve para jogo NOVO entrar sem mudar o
-  // de hoje: antes era `dia % 2`, e passar para `% 3` trocaria o jogo no meio do dia. O Futgolf entrou em 23/09/2026
-  // (dia 13 = Botão) e estreia na troca seguinte, às 19h do dia 24.
+  // de hoje (com `dia % n`, mudar n trocaria o jogo no meio do dia): ao pôr um jogo em `games`, acerte a âncora para
+  // o dia de hoje e o jogo de hoje. Dia 13 = Botão é o mesmo rodízio de antes (par = FutPrego).
   anchor: { day: 13, game: 'BOTAO' },
+  // Jogo em TESTE, fora do rodízio (dono, 24/09/2026: "Quero testar o futgolf. Libere apenas para as contas MVGIC e
+  // ericklesv. Os adversários precisam ser bots, aceitando em 5 s se nem mvgic nem ericklesv aceitarem… não mostre o
+  // aviso, ainda, para outros usuários"): só estas contas desafiam nele; o desafio só aparece (lista, convite) e só pode
+  // ser aceito por elas e pelos bots; ninguém delas aceitou em `botAcceptSec`, um bot aceita e joga valendo. Liberar
+  // para todos = pôr o jogo em `games` (acertando a âncora) — aí o teste deixa de valer sozinho.
+  test: { game: 'FUTGOLF', nicks: ['MVGIC', 'ericklesv'], botAcceptSec: 5 },
 };
 /** O jogo do X1 no dia `day` (dayNumberAt(X1.switchHour) de lib/time.js: o dia vira às 19h, com a rodada). */
 export const x1GameOf = (day) => {

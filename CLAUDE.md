@@ -236,10 +236,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   **atenção ao histórico**: o dono pediu 19h em 15/09, o Guilherme reverteu na mesma noite anotando "confirmado
   20h" (commit 02dd9d4) e o dono pediu 19h DE NOVO em 16/09 — se for mudar, combine entre vocês antes;
   `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez), **Futebol de Botão**
-  (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes) e, desde
-  24/09/2026, **Futgolf** (ver o item dele logo abaixo). **O rodízio tem âncora** (`X1.anchor` em rules.js: um dia e o
-  jogo daquele dia) — com 3 jogos, `dia % n` trocaria o jogo de hoje no meio do dia; jogo novo = entra em `X1.games` e
-  a âncora é acertada para o jogo de hoje não mudar. A tela recebe `order` + `names` no `x1Today` e anda o rodízio com
+  (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes); o
+  **Futgolf** está pronto mas EM TESTE, fora do rodízio (ver o item dele logo abaixo). **O rodízio tem âncora**
+  (`X1.anchor` em rules.js: um dia e o jogo daquele dia) — com `dia % n`, mudar o número de jogos trocaria o jogo de hoje
+  no meio do dia; jogo novo = entra em `X1.games` e a âncora é acertada para o dia de hoje e o jogo de hoje. A tela recebe `order` + `names` no `x1Today` e anda o rodízio com
   `advanceX1Today` (components/X1GameSwitch.tsx) — "inverter hoje e amanhã" só servia para 2 jogos. Regras de
   dinheiro e travas iguais para todos (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva
   R$ 400 + 1 gol e o time do outro perde 1 gol na rodada; **só as 10 PRIMEIRAS PARTIDAS válidas de cada jogador em
@@ -406,7 +406,16 @@ depois que o novo estiver estável. Não instalar nada dele.
   preto tocar no vermelho").
 - **Futgolf — 3º jogo do X1** (aprovado pelo dono em 23/09/2026 a partir das telas de exemplo; pedidos dele: "campo
   maior", "powerups na pista, como as setinhas de boost, coisas para bater e receber bump como uma mola", "mais shapes e
-  nada tão óbvio"; estreia no rodízio às 19h de 24/09/2026). Golfe de chute visto de cima, com a bola ROLANDO (física de
+  nada tão óbvio"). **EM TESTE desde 24/09/2026, fora do rodízio** (dono: "Quero testar o futgolf. Libere apenas para as
+  contas MVGIC e ericklesv. Os adversários precisam ser bots, aceitando em 5 s se nem mvgic nem ericklesv aceitarem… não
+  mostre o aviso, ainda, para outros usuários"): `X1.test` em rules.js (`game`, `nicks`, `botAcceptSec` = 5). Para essas
+  contas o X1 É o Futgolf (`gameFor`/`todayFor` em realtime/x1.js; a `hello` traz `today.test`); o desafio delas só
+  aparece (lista, convite) e só pode ser aceito por elas e pelos bots (`canSee`); ninguém delas aceitou em 5 s, um bot
+  livre de outro time aceita e joga valendo, sem cota nem sorteio (`botEntraNoDesafio`, o mesmo do tutorial). O perfil
+  só mostra a linha do jogo fora do rodízio para quem já jogou. **Liberar para todos = pôr `FUTGOLF` em `X1.games` e
+  acertar `X1.anchor`** (o teste deixa de valer sozinho, `inTest`). Mexeu no teste? **`node scripts/test-futgolf-teste.js`**
+  (pasta api/, API local com `X1_JOGO=BOTAO`, `X1_TESTERS=fgteste1,fgteste2`, `BOTS_OFF=1` e `BOTS_X1_OFF=1`;
+  `X1_TESTERS` só vale fora de produção). Golfe de chute visto de cima, com a bola ROLANDO (física de
   chão, tipo minigolfe — o vento do mockup saiu, não faz sentido para bola rolando). **`lib/futgolf.js`** = física pura e
   determinística + os **8 buracos** (`HOLES`: Tabelinha, Bifurcação, Ilha, Fliperama, Zigue-zague, Slalom, Rotatória,
   Bueiros; cada um sorteado e espelhado ou não = 16 variações): corredor (linha central com larguras, Catmull-Rom,
@@ -1030,7 +1039,9 @@ servidos pelo próprio Express em `/api/uploads/`.
   VPS. Não há CI: push no GitHub não dispara nada.
 - **Banco local para os testes** (15/09/2026): Postgres 17 do PC, banco `brgol`, `api/.env` local (gitignored) com
   `DATABASE_URL`, `JWT_SECRET=dev-secret`, `PORT=4320`, `ADMIN_KEY=dev-admin`, `X1_JOGO=…`, `FUTPREGO_MESMO_IP=1`.
-  Os scripts `test-*.js` só rodam com `localhost` no `DATABASE_URL`; a API local sobe com
+  Os scripts `test-*.js` só rodam com `localhost` no `DATABASE_URL`; o `test-botao.js` e o `test-futprego.js` NÃO
+  apagam os jogadores que criam (`bt…`/`fp…`, e-mail `@local.test`): depois de muitas rodadas o Ranking X1 do banco local
+  passa de 100 nomes e a checagem de ranking do test-botao falha (a rota corta em 100) — é o banco, não o código; a API local sobe com
   `set -a && . ./.env && set +a && node src/index.js` (pasta api/).
 - Antes de qualquer comando na VPS: mostrar o comando e pedir autorização.
 - Verificação visual = build (`cd web && npm run build`) + screenshot de produção com Edge

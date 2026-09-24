@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../store/auth';
 import { Panel } from './ui';
 import { TopHistory, X1Now } from './Badges';
 import type { TopScope, TopTally, X1Game, X1Record as Rec, X1Tally } from '../lib/types';
@@ -37,6 +38,8 @@ function X1Medals({ record, history }: { record: Rec; history?: Record<TopScope,
 }
 
 export function X1Record({ record, history, isMe = false }: { record?: Rec; history?: Record<TopScope, TopTally>; isMe?: boolean }) {
+  // jogo fora do rodízio (em teste) só aparece para quem já jogou — senão entregaria o jogo antes da hora
+  const rotation: X1Game[] = useAuth((st) => st.meta?.x1?.today?.order) ?? ['FUTPREGO', 'BOTAO'];
   if (!record) return null;
   const { wins, losses, draws } = record;
   const games = wins + losses + draws;
@@ -63,7 +66,7 @@ export function X1Record({ record, history, isMe = false }: { record?: Rec; hist
             <b className={record.points < 0 ? 'text-danger' : 'text-grass-deep'}>{pts(record.points)}</b> no Ranking X1 geral · sem perder: máx. {record.best}{record.streak > 0 ? ` (agora ${record.streak})` : ''}
           </p>
           <ul className="mt-2 flex flex-col gap-1">
-            {GAMES.map((g) => {
+            {GAMES.filter((g) => rotation.includes(g.id) || ((record.games?.[g.id]?.wins ?? 0) + (record.games?.[g.id]?.draws ?? 0) + (record.games?.[g.id]?.losses ?? 0)) > 0).map((g) => {
               const t = record.games?.[g.id];
               return (
                 <li key={g.id} className="flex items-center justify-between rounded-xl bg-sky/10 px-2 py-1">

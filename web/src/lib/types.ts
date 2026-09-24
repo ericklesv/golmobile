@@ -297,7 +297,7 @@ export interface MinigameCard {
 // ─── X1 (jogos 1x1 ao vivo, um por dia) ─────────────────────────────────────
 export type X1Game = 'FUTPREGO' | 'BOTAO' | 'FUTGOLF';
 /** O jogo do X1 agora e o próximo. `order` = o rodízio (para saber o que vem depois do próximo; null = jogo forçado no PC). */
-export interface X1Today { game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number; switchHour?: number; order?: X1Game[] | null; names?: Record<X1Game, string> }
+export interface X1Today { game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number; switchHour?: number; order?: X1Game[] | null; names?: Record<X1Game, string>; /** jogo em teste (só as contas de teste) */ test?: boolean }
 /** V/E/D, pontos do Ranking X1 (3·V + 1·E − 2·D) e sequência sem perder (`streak` = a atual, `best` = a maior). */
 export interface X1Tally { wins: number; losses: number; draws: number; points: number; streak: number; best: number }
 /** Posição num recorte do Ranking X1 (mesma ordem da aba); `eligible` = tem o mínimo de partidas para o prêmio. */

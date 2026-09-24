@@ -940,11 +940,15 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
         <div className="min-w-0 flex-1">
           <div className="text-[12px] font-extrabold text-muted">Hoje no X1</div>
           <div className="t-display text-[26px] leading-[1.05]">{today?.name ?? GAME_NAME[game]}</div>
-          {today && (
+          {today && (today.test ? (
+            <p className="mt-1.5 text-[12px] font-bold leading-snug text-muted">
+              Jogo em teste: só as contas de teste desafiam nele. Se ninguém aceitar em 5 s, um bot aceita.
+            </p>
+          ) : (
             <p className="mt-1.5 text-[12px] font-bold leading-snug text-muted">
               Às {today.switchHour ?? 19}h troca para <b className="text-navy-ink">{today.nextName}</b>{today.switchAt > now ? `, daqui a ${timeLeft(today.switchAt - now)}` : ''}.
             </p>
-          )}
+          ))}
           <Link to="/rankings?aba=x1" className="mt-2 inline-flex items-center gap-1 text-[12px] font-extrabold text-sky-deep underline decoration-2 underline-offset-2">Ranking X1 (com prêmios)</Link>
         </div>
       </div>

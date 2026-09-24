@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { token } from '../lib/api';
 import { deviceQuery } from '../lib/device';
+import { X1_CLIENT_V } from '../lib/x1client';
 import { useAuth } from '../store/auth';
 import type { Team } from '../lib/types';
 import { Avatar } from './Avatar';
@@ -29,7 +30,7 @@ export function X1InviteWatcher() {
     let closed = false, tries = 0, timer: number | undefined, ws: WebSocket | null = null;
     const connect = () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      ws = new WebSocket(`${proto}://${location.host}/api/ws/x1?mode=lobby&token=${encodeURIComponent(token.get() ?? '')}${deviceQuery()}`);
+      ws = new WebSocket(`${proto}://${location.host}/api/ws/x1?mode=lobby&token=${encodeURIComponent(token.get() ?? '')}${deviceQuery()}&v=${X1_CLIENT_V}`);
       ws.onopen = () => { tries = 0; };
       ws.onmessage = (ev) => {
         let m: any; try { m = JSON.parse(ev.data); } catch { return; }

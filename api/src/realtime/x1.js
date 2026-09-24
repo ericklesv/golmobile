@@ -208,6 +208,22 @@ async function autoClientBlocked(conn) {
   return true;
 }
 
+/**
+ * Versão da tela do X1 (24/09/2026, na estreia do Futgolf no rodízio): o PWA guarda o site antigo até o jogador tocar em
+ * "Nova versão", e a tela de antes do Futgolf desenhava qualquer jogo que não conhecia como FutPrego — quebrava na hora
+ * ("Cannot read properties of undefined (reading '0')") e o jogador perdia por W.O. (nossila x ericklesv, 19:02 de 24/09).
+ * A tela manda `v=` no WebSocket (web/src/lib/x1client.ts); jogo que exige tela nova recusa desafiar, aceitar e treinar
+ * de quem tem a antiga, com o aviso de atualizar. Só em produção (os testes usam a lib `ws`, sem `v`). Jogo novo que
+ * a tela de hoje não sabe desenhar = sobe X1_CLIENT_V lá e põe o jogo aqui com o número novo.
+ */
+const CLIENT_MIN = { FUTGOLF: 1 };
+function oldClient(conn, game) {
+  if (process.env.NODE_ENV !== 'production') return false;
+  if ((conn.v || 0) >= (CLIENT_MIN[game] || 0)) return false;
+  send(conn.ws, { t: 'error', code: 'versao', message: `Seu JogaGol está desatualizado e não roda o ${X1.names[game] ?? game}. Volte ao início e toque na faixa laranja "Nova versão" (ou feche todas as abas do jogo e abra de novo).` });
+  return true;
+}
+
 async function authenticate(req) {
   const url = new URL(req.url, 'http://x');
   const payload = jwt.verify(url.searchParams.get('token') || '', config.jwtSecret);
@@ -218,7 +234,7 @@ async function authenticate(req) {
   const auto = mode === 'game' && automatedClient(req, url);
   // sem aviso no Telegram (dono, 20/09/2026: "vai virar um spam") — fica só no log do pm2, 1 linha por conta
   if (auto && !autoSeen.has(user.id)) { autoSeen.add(user.id); console.log(`[x1] cliente automatizado na conta ${user.nick} (UA "${String(req.headers['user-agent'] || '').slice(0, 40)}", ${clientIp(req)}): 1 partida a cada ${F.autoClientGapMin} min`); }
-  return { user, mode, auto };
+  return { user, mode, auto, v: Number(url.searchParams.get('v')) || 0 };
 }
 
 const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user.avatarUrl ?? null, team: teamView(c.user.team), bot: !!c.bot });
@@ -258,8 +274,8 @@ export function attachX1(server) {
     try { auth = await authenticate(req); } catch { socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); socket.destroy(); return; }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req, auth));
   });
-  wss.on('connection', (ws, req, { user, mode, auto }) => {
-    const conn = { ws, user, ip: clientIp(req), mode, auto: !!auto, alive: true, match: null, side: -1, challenge: null, seen: new Set(), lastInviteAt: 0 };
+  wss.on('connection', (ws, req, { user, mode, auto, v }) => {
+    const conn = { ws, user, ip: clientIp(req), mode, auto: !!auto, v, alive: true, match: null, side: -1, challenge: null, seen: new Set(), lastInviteAt: 0 };
     if (mode === 'game') {
       // uma tela de jogo por jogador: a antiga cai, e uma partida em andamento passa para a nova
       for (const c of [...conns]) if (c.mode === 'game' && c.user.id === user.id) { c.replaced = true; send(c.ws, { t: 'kicked' }); c.ws.close(); takeOver(c, conn); }
@@ -299,13 +315,15 @@ async function onMessage(conn, m) {
     // "Testar FutGolf" (só admins, enquanto o jogo está em teste): o desafio é no jogo pedido, não no do dia
     if (m.game && m.game !== gameFor()) {
       if (!(m.game in X1.names) || !inTest(m.game) || !isTester(conn)) return err(conn, 'jogo', 'Esse jogo não está no X1 agora.');
+      if (oldClient(conn, m.game)) return;
       return createChallenge(conn, m.game);
     }
+    if (oldClient(conn, gameFor())) return;
     return createChallenge(conn);
   }
   if (m.t === 'cancel') { if (conn.challenge) cancelChallenge(conn.challenge, 'cancelou'); return send(conn.ws, { t: 'canceled' }); }
-  if (m.t === 'accept') return naFila(() => acceptChallenge(conn, Number(m.id)));
-  if (m.t === 'bot') return startBot(conn);
+  if (m.t === 'accept') { const ch = challenges.get(Number(m.id)); if (ch && oldClient(conn, ch.game)) return; return naFila(() => acceptChallenge(conn, Number(m.id))); }
+  if (m.t === 'bot') { if (oldClient(conn, conn.challenge?.game ?? gameFor())) return; return startBot(conn); }
   if (m.t === 'flick') return onFlick(conn, m);
   if (m.t === 'snap') return onSnap(conn, m);
   if (m.t === 'gkick') return onGolfKick(conn, m);

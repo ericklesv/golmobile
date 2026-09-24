@@ -341,6 +341,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   `match` traz `oppXray`. **Não avisa no Telegram** (dono, 19/09/2026: "faça o bot do telegram parar de
   notificar o RAIO X" — virou enxurrada no grupo; quem precisa saber já vê o selo na tela). Contas comuns não
   veem nada. Nada no banco.
+  **Versão da tela do X1** (24/09/2026, estreia do Futgolf no rodízio): o PWA guarda o site antigo até o jogador tocar
+  em "Nova versão", e a tela de antes do Futgolf desenhava jogo desconhecido como FutPrego — quebrou na partida
+  ("reading '0'") e o jogador perdeu por W.O. (nossila, 19:02). A tela manda `v=` no WebSocket (`web/src/lib/x1client.ts`,
+  `X1_CLIENT_V`); em produção o servidor recusa desafiar/aceitar/treinar um jogo de `CLIENT_MIN` (realtime/x1.js) para
+  `v` menor, com o erro `versao` ("Seu JogaGol está desatualizado… toque em Nova versão"). **Jogo novo no X1 = sobe o
+  `X1_CLIENT_V` e põe o jogo no `CLIENT_MIN` com o número novo** — senão quem está com a tela velha quebra na estreia.
   **Cliente automatizado = 1 partida a cada 20 min** (dono, 20/09/2026, depois de flagrar o Xumbera com um programa
   em Node ligado direto no WebSocket da partida — UA "node", sem Origin, sem `device=`; 521 conexões num dia, 40V 9D:
   "bloquear o bot dele e permitir apenas 1 partida a cada 20 min"; `automatedClient` em `realtime/x1.js`,

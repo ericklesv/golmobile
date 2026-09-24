@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import { api, token } from '../lib/api';
 import { deviceQuery } from '../lib/device';
+import { X1_CLIENT_V } from '../lib/x1client';
 import { useAuth } from '../store/auth';
 import type { PublicPlayer, Team, X1Game, X1Today } from '../lib/types';
 import { GoalOverlay } from '../components/GoalOverlay';
@@ -236,7 +237,7 @@ export function X1Screen() {
     let closed = false, tries = 0, timer: number | undefined;
     const connect = () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const ws = new WebSocket(`${proto}://${location.host}/api/ws/x1?mode=game&token=${encodeURIComponent(token.get() ?? '')}${deviceQuery()}`);
+      const ws = new WebSocket(`${proto}://${location.host}/api/ws/x1?mode=game&token=${encodeURIComponent(token.get() ?? '')}${deviceQuery()}&v=${X1_CLIENT_V}`);
       wsRef.current = ws;
       ws.onopen = () => { tries = 0; };
       ws.onmessage = (ev) => { try { onMessage(JSON.parse(ev.data)); } catch (e) { console.error(e); } };

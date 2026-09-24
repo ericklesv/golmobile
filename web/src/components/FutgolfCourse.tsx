@@ -4,9 +4,10 @@ import { courseBox, dirOf, polyPath, scenery, type FgCourse } from '../lib/futgo
 /**
  * O campo do Futgolf (X1), visto de cima, em coordenadas do servidor (api/src/lib/futgolf.js). Desenha: o mato e as
  * árvores em volta, o gramado listrado, a lagoa, a ilha/ponte (`seco`), o terrão, o mato alto, as placas de
- * publicidade (contorno, ilhas e placas soltas), as setas de velocidade (piscando no sentido), os bueiros (a entrada
- * e a saída com a mesma cor e número), as molas (fliperama), cones e jogadores de barreira, a saída e o buraco com a
- * bandeira de escanteio. As bolas e a mira entram por fora (`children`).
+ * publicidade (contorno, ilhas e placas soltas), as setas de velocidade (piscando no sentido), as rampas (tábua de
+ * madeira que sobe no sentido da seta, com a sombra na ponta alta), os bueiros (a entrada e a saída com a mesma cor e
+ * número; o de duas saídas tem "?" e as duas saídas), as molas (fliperama), cones e jogadores de barreira, a saída e
+ * o buraco com a bandeira de escanteio. As bolas e a mira entram por fora (`children`).
  *
  * `view` = a janela da câmera (viewBox); sem ela, o campo inteiro. A tela do X1 mexe no viewBox direto no DOM
  * enquanto a bola anda (sem re-render a cada quadro) e só passa `view` nova quando a câmera para.
@@ -16,12 +17,12 @@ export const TUNNEL_COLORS = ['#FFD54A', '#5EE0FF', '#FF7AD9', '#9BFF6B'];
 
 type Props = {
   course: FgCourse; view?: { x: number; y: number; w: number; h: number } | null; children?: ReactNode; className?: string;
-  bumps?: Record<number, number>; tiebreak?: boolean; still?: boolean;
+  bumps?: Record<number, number>; tiebreak?: boolean; still?: boolean; wind?: { ang: number; str: number } | null;
   onPointerDown?: (e: React.PointerEvent<SVGSVGElement>) => void; onPointerMove?: (e: React.PointerEvent<SVGSVGElement>) => void;
   onPointerUp?: (e: React.PointerEvent<SVGSVGElement>) => void; onPointerCancel?: (e: React.PointerEvent<SVGSVGElement>) => void;
 };
 
-export const FutgolfCourse = forwardRef<SVGSVGElement, Props>(function FutgolfCourse({ course: c, view, children, className = '', bumps, tiebreak = false, still = false, ...handlers }, ref) {
+export const FutgolfCourse = forwardRef<SVGSVGElement, Props>(function FutgolfCourse({ course: c, view, children, className = '', bumps, tiebreak = false, still = false, wind = null, ...handlers }, ref) {
   const uid = useId().replace(/:/g, '');
   const box = courseBox(c);
   const vb = view ?? box;
@@ -45,6 +46,13 @@ export const FutgolfCourse = forwardRef<SVGSVGElement, Props>(function FutgolfCo
         <radialGradient id={`fg-hedge-${uid}`} cx="0.4" cy="0.35" r="0.8">
           <stop offset="0" stopColor="#3E9A3B" /><stop offset="1" stopColor="#1F6123" />
         </radialGradient>
+        {/* rampa: mais escura embaixo (onde a bola entra), clara na ponta alta */}
+        <linearGradient id={`fg-ramp-${uid}`} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#8A5A2E" /><stop offset="1" stopColor="#E8B874" />
+        </linearGradient>
+        <linearGradient id={`fg-rampsh-${uid}`} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#000" stopOpacity="0.34" /><stop offset="1" stopColor="#000" stopOpacity="0" />
+        </linearGradient>
       </defs>
 
       {/* fora do campo: mato baixo e árvores */}
@@ -113,24 +121,44 @@ export const FutgolfCourse = forwardRef<SVGSVGElement, Props>(function FutgolfCo
         </g>
       ))}
 
-      {/* bueiros: entrada (grade) e saída (seta), com a mesma cor e número */}
+      {/* rampas: tábua que sobe no sentido da seta (a ponta alta é a de cima, no desenho sem girar) */}
+      {(c.rampas ?? []).map((r, i) => (
+        <g key={`r${i}`} transform={`translate(${r.x} ${r.y}) rotate(${r.ang})`}>
+          <path d={`M${-r.wid / 2} ${-r.len / 2} L${r.wid / 2} ${-r.len / 2} L${r.wid / 2 - 4} ${-r.len / 2 - 15} L${-r.wid / 2 + 4} ${-r.len / 2 - 15} Z`} fill={`url(#fg-rampsh-${uid})`} />
+          <rect x={-r.wid / 2} y={-r.len / 2} width={r.wid} height={r.len} rx="3" fill={`url(#fg-ramp-${uid})`} stroke="#5A3616" strokeWidth="2" />
+          {Array.from({ length: Math.floor(r.len / 8) }, (_, k) => <line key={k} x1={-r.wid / 2 + 3} x2={r.wid / 2 - 3} y1={r.len / 2 - 8 * (k + 1)} y2={r.len / 2 - 8 * (k + 1)} stroke="#6B4320" strokeWidth="1" opacity="0.55" />)}
+          <rect x={-r.wid / 2} y={-r.len / 2} width="4" height={r.len} fill="#5A3616" opacity="0.7" />
+          <rect x={r.wid / 2 - 4} y={-r.len / 2} width="4" height={r.len} fill="#5A3616" opacity="0.7" />
+          <line x1={-r.wid / 2} x2={r.wid / 2} y1={-r.len / 2 + 1} y2={-r.len / 2 + 1} stroke="#FFF3D6" strokeWidth="2.5" />
+          <path d={`M-8 ${r.len * 0.12} L0 ${-r.len * 0.12} L8 ${r.len * 0.12}`} fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+        </g>
+      ))}
+
+      {/* bueiros: entrada (grade) e saída (seta), com a mesma cor e número; o de duas saídas leva "?" */}
       {c.tuneis.map((t, i) => {
         const col = TUNNEL_COLORS[i % TUNNEL_COLORS.length];
-        const [ux, uy] = dirOf(t.out);
+        const label = t.alt ? `${i + 1}?` : `${i + 1}`;
+        const exit = (b: { x: number; y: number }, out: number, key: string) => {
+          const [ux, uy] = dirOf(out);
+          return (
+            <g key={key} transform={`translate(${b.x} ${b.y})`}>
+              <circle r="15" fill="none" stroke={col} strokeWidth="3" strokeDasharray="4 3" />
+              <circle r="11" fill="#34393F" stroke="#9AA3AB" strokeWidth="2" />
+              <path d={`M${-ux * 5 - uy * 5} ${-uy * 5 + ux * 5} L${ux * 6} ${uy * 6} L${-ux * 5 + uy * 5} ${-uy * 5 - ux * 5}`} fill="none" stroke={col} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+              <text y="-17" textAnchor="middle" fontFamily="'Lilita One', Impact, sans-serif" fontSize="11" fill={col} stroke="#0B2D6B" strokeWidth="2.5" paintOrder="stroke">{label}</text>
+            </g>
+          );
+        };
         return (
           <g key={`t${i}`}>
             <g transform={`translate(${t.a.x} ${t.a.y})`}>
               <circle r="17" fill="none" stroke={col} strokeWidth="3" opacity="0.9" />
               <circle r="13.5" fill="#34393F" stroke="#9AA3AB" strokeWidth="2" />
               {[-6, -2, 2, 6].map((y) => <rect key={y} x="-8" y={y - 0.9} width="16" height="1.8" rx="0.9" fill="#15181B" />)}
-              <text y="-19" textAnchor="middle" fontFamily="'Lilita One', Impact, sans-serif" fontSize="11" fill={col} stroke="#0B2D6B" strokeWidth="2.5" paintOrder="stroke">{i + 1}</text>
+              <text y="-19" textAnchor="middle" fontFamily="'Lilita One', Impact, sans-serif" fontSize="11" fill={col} stroke="#0B2D6B" strokeWidth="2.5" paintOrder="stroke">{label}</text>
             </g>
-            <g transform={`translate(${t.b.x} ${t.b.y})`}>
-              <circle r="15" fill="none" stroke={col} strokeWidth="3" strokeDasharray="4 3" />
-              <circle r="11" fill="#34393F" stroke="#9AA3AB" strokeWidth="2" />
-              <path d={`M${-ux * 5 - uy * 5} ${-uy * 5 + ux * 5} L${ux * 6} ${uy * 6} L${-ux * 5 + uy * 5} ${-uy * 5 - ux * 5}`} fill="none" stroke={col} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
-              <text y="-17" textAnchor="middle" fontFamily="'Lilita One', Impact, sans-serif" fontSize="11" fill={col} stroke="#0B2D6B" strokeWidth="2.5" paintOrder="stroke">{i + 1}</text>
-            </g>
+            {exit(t.b, t.out, 'b')}
+            {t.alt && exit(t.alt.b, t.alt.out, 'alt')}
           </g>
         );
       })}
@@ -188,8 +216,11 @@ export const FutgolfCourse = forwardRef<SVGSVGElement, Props>(function FutgolfCo
         <circle r={c.cupR - 3} fill="#050505" />
         <path d="M1 0 L16 14" stroke="#000" strokeWidth="2.5" opacity="0.22" strokeLinecap="round" />
         <path d="M0 0 L3 -44" stroke="#F4F6F8" strokeWidth="2.6" strokeLinecap="round" />
-        <path d="M3 -44 L25 -38 L3 -31 Z" fill="#FFD54A" stroke="#0B2D6B" strokeWidth="1.2" strokeLinejoin="round" />
-        <path d="M3 -44 L14 -41 L14 -34.5 L3 -31 Z" fill="#E53935" />
+        {/* a bandeira aponta para onde o vento sopra (sem vento, cai para a direita) */}
+        <g transform={wind && wind.str > 0 ? `rotate(${wind.ang - 90} 3 -38)` : undefined}>
+          <path d="M3 -44 L25 -38 L3 -31 Z" fill="#FFD54A" stroke="#0B2D6B" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M3 -44 L14 -41 L14 -34.5 L3 -31 Z" fill="#E53935" />
+        </g>
       </g>
 
       {children}

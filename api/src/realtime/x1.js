@@ -601,6 +601,7 @@ function startMatch(a, b, dbId, game, h2h = null, sameTeam = false, freeplay = f
   else { m.board = BOARDS[randomInt(BOARDS.length)]; m.ball = { ...m.board.center }; } // FutPrego: um desenho de tábua por partida (ninguém decora a jogada)
   a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo no campo do servidor
   matches.set(m.id, m);
+  for (const c of m.conns) if (c.ai && !isAi(m.conns[1 - c.side])) planAiProvocar(m, c.side); // bot "quase real" contra gente
   if (game === 'BOTAO') scheduleSnap(m, 1500, false); else if (game === 'FUTGOLF') scheduleGolf(m, 1500, false); else scheduleTurn(m, 1500, false);
   for (const c of m.conns) sendMatch(c, false);
 }
@@ -807,14 +808,17 @@ function closeGolfRound(m) {
   clearTimeout(m.turnTimer); for (const t of m.botTimers ?? []) clearTimeout(t);
   m.botTimers = [];
   const wait = Math.max(0, (m.golfAnimEnd ?? 0) - Date.now());
-  const r = golfCloseRound(m.fg);
+  const r = golfCloseRound(m.fg, rnd01);
   if (r.t === 'over') {
     // resultado decidido: fica pendente até a animação acabar — desistir/cair nesse meio-tempo não escapa dele
     m.pending = { winner: r.winner, reason: r.reason };
     m.turnTimer = setTimeout(() => finish(m, m.pending), wait + 1200);
     return;
   }
-  scheduleGolf(m, wait + (r.t === 'tiebreak' ? 1800 : 700), true, r.t === 'tiebreak' ? { tiebreak: true } : {});
+  // do 2º desempate em diante o campo muda (campo do desempate): a tela recebe o campo novo junto com a rodada
+  const course = m.fg.courseChanged ? { course: m.fg.course } : {};
+  m.fg.courseChanged = false;
+  scheduleGolf(m, wait + (r.t === 'tiebreak' ? 1800 : 700), true, r.t === 'tiebreak' ? { tiebreak: true, ...course } : {});
 }
 
 /** Acabou o tempo: quem não chutou perde o chute (conta 1 sem sair do lugar); 3 vezes seguidas = W.O. */
@@ -901,7 +905,7 @@ function onPreview(conn, msg) {
     piece = sim.frames.map((f) => f[idx + 1]); // o caminho do botão que leva o peteleco
   } else if (m.game === 'FUTGOLF') {
     if (!golfActive(m.fg, conn.side) || m.fg.kicked[conn.side]) return;
-    const r = simulateGolf(m.fg.course, m.fg.balls[conn.side], dx, dy, Math.max(0.03, Math.min(1, power)), Math.max(-1, Math.min(1, Math.round(Number(msg.spin) || 0))));
+    const r = simulateGolf(m.fg.course, m.fg.balls[conn.side], dx, dy, Math.max(0.03, Math.min(1, power)), Math.max(-1, Math.min(1, Math.round(Number(msg.spin) || 0))), m.fg.wind);
     path = r.frames; goal = r.holed ? 'buraco' : null;
   } else {
     if (m.turn !== conn.side) return;
@@ -954,29 +958,42 @@ async function onProvocar(conn, msg) {
       const r = PROVOCAR.list[randomInt(PROVOCAR.list.length)];
       for (const c of m.conns) send(c.ws, { t: 'provocar', side: 1 - conn.side, key: r.key, at: Date.now() });
     }, 1200 + randomInt(900));
-  } else if (opp.ai && Math.random() < BX.provocarReply) { // bot "quase real": às vezes devolve, sem pressa, só as caras básicas
+  } else if (opp.ai && Math.random() < BX.provocar.reply) { // bot "quase real": de vez em quando devolve, sem pressa
     clearTimeout(m.provocarTimer);
-    m.provocarTimer = setTimeout(() => aiProvocar(m, opp.side), 1500 + randomInt(3500));
+    m.provocarTimer = setTimeout(() => aiProvocar(m, opp.side), betweenMs(BX.provocar.replySec));
   }
 }
 
 // ─── Bots "quase reais" no X1 (dono, 20/09/2026) ────────────────────────────
 
-/** Só as 4 caras básicas (bot não é VIP — mandar frase de VIP entregaria o bot). */
-const AI_PROVOCAR = PROVOCAR.list.filter((e) => !e.vip);
-function aiProvocar(m, side, keys = null) {
+/**
+ * Uma provocação do bot "quase real": careta ou (às vezes) frase, sorteada — nunca "a certa para o momento".
+ * Sem VIP e com BOTS.x1.provocar.vipOnly, só as 4 caras básicas. Respeita o ritmo de gente (2 s entre uma e outra).
+ */
+function aiProvocar(m, side) {
   if (m.done) return;
-  const pool = keys ? AI_PROVOCAR.filter((e) => keys.includes(e.key)) : AI_PROVOCAR;
-  const r = pool[randomInt(pool.length)] ?? AI_PROVOCAR[0];
-  for (const c of m.conns) send(c.ws, { t: 'provocar', side, key: r.key, at: Date.now() });
+  const c = m.conns[side], now = Date.now();
+  if (!c || now - (c.provocarLast ?? 0) < PROVOCAR.gapMs) return;
+  const pool = PROVOCAR.list.filter((e) => !e.vip || !BX.provocar.vipOnly || isVip(c.user));
+  const frases = pool.filter((e) => e.text), caras = pool.filter((e) => !e.text);
+  const list = frases.length && Math.random() < BX.provocar.phrase ? frases : caras;
+  const r = list[randomInt(list.length)];
+  c.provocarLast = now;
+  for (const k of m.conns) send(k.ws, { t: 'provocar', side, key: r.key, at: now });
 }
-/** Saiu gol: o bot "quase real" às vezes ri do gol dele, ou faz raiva/choro do gol que tomou (mais raro). */
-function aiReactsToGoal(m, scorer, animMs) {
+/** No começo da partida: quantas provocações soltas o bot vai mandar (0 a 3) e em que segundos (sorteados). */
+function planAiProvocar(m, side) {
+  const P = BX.provocar;
+  let n = 0;
+  for (let u = Math.random(), acc = 0; n < P.perMatch.length; n++) { acc += P.perMatch[n]; if (u < acc) break; }
+  m.chatTimers = m.chatTimers ?? [];
+  for (let k = 0; k < n; k++) m.chatTimers.push(setTimeout(() => aiProvocar(m, side), betweenMs(P.atSec)));
+}
+/** Saiu gol: bem de vez em quando o bot reage — com uma careta qualquer e alguns segundos depois (nada previsível). */
+function aiReactsToGoal(m, _scorer, animMs) {
   for (const c of m.conns) {
-    if (!c.ai) continue;
-    const scored = c.side === scorer;
-    if (Math.random() >= (scored ? BX.provocarGoal : BX.provocarConceded)) continue;
-    setTimeout(() => aiProvocar(m, c.side, scored ? ['risada'] : ['raiva', 'choro']), Math.max(600, animMs - 400) + randomInt(1200));
+    if (!c.ai || isAi(m.conns[1 - c.side]) || Math.random() >= BX.provocar.goal) continue;
+    (m.chatTimers = m.chatTimers ?? []).push(setTimeout(() => aiProvocar(m, c.side), animMs + betweenMs(BX.provocar.goalSec)));
   }
 }
 
@@ -1071,7 +1088,7 @@ export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000, accep
 async function cancelMatch(m, reason) {
   if (m.done) return;
   m.done = true;
-  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer); for (const t of m.botTimers ?? []) clearTimeout(t);
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer); for (const t of [...(m.botTimers ?? []), ...(m.chatTimers ?? [])]) clearTimeout(t);
   for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
   if (!m.bot && m.dbId) {
@@ -1096,7 +1113,7 @@ async function cancelMatch(m, reason) {
 async function finish(m, result) {
   if (m.done) return;
   m.done = true;
-  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer); for (const t of m.botTimers ?? []) clearTimeout(t);
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer); for (const t of [...(m.botTimers ?? []), ...(m.chatTimers ?? [])]) clearTimeout(t);
   for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
   let info = null, h2h = null;
@@ -1114,7 +1131,7 @@ async function finish(m, result) {
     const cd = !m.bot && info && !info.error ? { cooldownUntil: isVip(c.user) ? null : Date.now() + F.challengeCooldownSec * 1000 } : {};
     const msg = {
       t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView),
-      score: m.bs?.score ?? null, golf: m.fg ? { ...futgolfView(m.fg), hole: m.fg.course.name } : undefined,
+      score: m.bs?.score ?? null, golf: m.fg ? futgolfView(m.fg) : undefined,
       ...personal(info, m, c.side, result), ...rivalry(h2h, m, c), ...cd,
     };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
@@ -1192,7 +1209,7 @@ async function settle(m, result) {
     const w = m.conns[result.winner], l = m.conns[1 - result.winner];
     const pot = F.bet * 2;
     const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)', desempate: ' no desempate' }[result.reason]
-      ?? (m.fg && result.reason === 'buraco' ? ` no buraco ${m.fg.course.name} (${m.fg.strokes[result.winner]} chute${m.fg.strokes[result.winner] === 1 ? '' : 's'})` : '');
+      ?? (m.fg && result.reason === 'buraco' ? ` no buraco ${m.fg.hole.name} (${m.fg.strokes[result.winner]} chute${m.fg.strokes[result.winner] === 1 ? '' : 's'})` : '');
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
     await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
     if (m.sameTeam) {

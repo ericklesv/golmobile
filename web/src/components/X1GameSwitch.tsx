@@ -83,7 +83,7 @@ export function X1GameSwitchWatcher({ gate = true }: { gate?: boolean }) {
   const bet = meta.futprego?.bet ?? 200, b = meta.x1?.botao, maxTurns = meta.futprego?.maxTurns ?? 10;
   const botao = today.game === 'BOTAO', golf = today.game === 'FUTGOLF';
   const how = golf
-    ? `Golfe de chute 1x1: os dois chutam ao mesmo tempo no mesmo buraco. Puxe a bola e solte, use o efeito, aproveite as setas e as molas e fuja da lagoa. Quem embocar primeiro vence; os dois juntos, desempate: mais perto do buraco.`
+    ? `Golfe de chute 1x1: os dois chutam ao mesmo tempo no mesmo buraco. Puxe a bola e solte, use o efeito, leia o vento, aproveite as setas e as molas e fuja da lagoa. Quem embocar primeiro vence; os dois juntos, desempate: mais perto do buraco.`
     : botao
     ? `Futebol de botão 1x1. Na sua vez, dê ${b?.snapsPerTurn ?? 2} petelecos num botão seu (quem começa dá ${b?.firstTurnSnaps ?? 1}): toque no botão, puxe para trás e solte. O primeiro gol acaba a partida; sem gol em ${b?.maxTurns ?? 9} vezes, vai para os pênaltis.`
     : `Futebol de prego 1x1, uma vez de cada: puxe a bola para trás e solte, e ela desvia nos pregos da tábua. Quem fizer o primeiro gol vence; sem gol em ${maxTurns} jogadas de cada, o dinheiro volta.`;

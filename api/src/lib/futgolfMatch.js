@@ -3,32 +3,47 @@
  *
  * - Um buraco por partida, sorteado entre os de lib/futgolf.js (e espelhado ou não). Os dois saem do mesmo lugar.
  * - Os dois chutam AO MESMO TEMPO, uma rodada por vez (FUTGOLF.kickSec para chutar); na tela a bola do outro
- *   aparece como fantasma. Cada chute conta 1; caiu na lagoa, conta mais 1 e a bola volta de onde saiu.
- * - **Quem embocar vence.** Se os dois embocam na mesma rodada, vence quem gastou menos chutes (a lagoa pode fazer
- *   diferença); empatou → DESEMPATE: um chute de cada, do mesmo lugar (`tb` do buraco), e vence quem deixar a bola
+ *   aparece como fantasma. Cada chute conta 1 — na lagoa também: a bola volta de onde saiu e o chute foi perdido, mas
+ *   NÃO conta um a mais (dono, 24/09/2026: "se alguém terminar em 3 tacadas e o outro ainda estiver na segunda, precisa
+ *   esperar ele dar a 3ª" — com a lagoa valendo 2, o outro "chegava a 3" com 2 chutes e perdia sem dar o 3º). Assim
+ *   os dois têm sempre o mesmo número de chutes no fim de cada rodada.
+ * - Vento: muda a cada rodada (windShift), igual para os dois; só empurra a bola que rola (lib/futgolf.js).
+ * - Bueiro de duas saídas (o 3 do Bueiros): a saída sai de `s.luck`, uma sequência guardada só no servidor e que só
+ *   anda quando alguma bola passa por ele (a tela não tem como saber antes).
+ * - **Quem embocar vence.** Se os dois embocam na mesma rodada, empatou → DESEMPATE: um chute de cada, do mesmo lugar (`tb` do buraco), e vence quem deixar a bola
  *   mais perto do buraco (embocar = 0). Igual (os dois embocaram, por exemplo) = outro desempate, até
- *   FUTGOLF.tiebreaks vezes; depois disso é empate de verdade (a aposta volta).
+ *   FUTGOLF.tiebreaks vezes — do 2º em diante no CAMPO DO DESEMPATE (TIEBREAK_HOLE em lib/futgolf.js: difícil
+ *   embocar de primeira); depois disso é empate de verdade (a aposta volta).
  * - Quem já embocou com N chutes vence na hora se o outro já tem N ou mais sem embocar (não dá mais para empatar).
  * - Limite: par + FUTGOLF.overPar chutes sem embocar = "pegou a bola" (conta como limite + 1).
  * - Perdeu o tempo = chute sem sair do lugar (conta 1; no desempate, a bola fica "longe"). 3 seguidas = W.O. (x1.js).
  */
-import { HOLES, FG_PHYS, courseOf, simulateKick, distanceField, surfaceAt } from './futgolf.js';
+import { HOLES, FG_PHYS, TIEBREAK_HOLE, courseOf, simulateKick, distanceField, surfaceAt, windRoll, windShift } from './futgolf.js';
 import { FUTGOLF } from './rules.js';
 
 export function newFutgolfMatch(rnd = Math.random, holeId = null) {
   const spec = (holeId && HOLES.find((h) => h.id === holeId)) || HOLES[Math.floor(rnd() * HOLES.length)];
   const course = courseOf(spec.id, rnd() < 0.5);
   return {
-    course, phase: 'play', round: 1, cap: course.par + FUTGOLF.overPar,
+    course, hole: course, phase: 'play', round: 1, cap: course.par + FUTGOLF.overPar, // `hole` = o buraco sorteado; `course` = onde se joga agora (o desempate muda)
     balls: [{ ...course.tee }, { ...course.tee }], strokes: [0, 0], holed: [false, false], out: [false, false],
-    kicked: [false, false], tbDist: [null, null], tbCount: 0, over: null,
+    kicked: [false, false], tbDist: [null, null], tbCount: 0, over: null, wind: windRoll(rnd),
+    luck: 1 + Math.floor(rnd() * 2147483645), // sorteio dos bueiros de duas saídas (nunca vai para a tela)
   };
+}
+
+/** O próximo sorteio de bueiro da partida (0..1). */
+function nextLuck(s) {
+  s.luck = ((s.luck || 1) * 48271) % 2147483647;
+  return s.luck / 2147483647;
 }
 
 /** O que as telas recebem do andamento (o buraco em si vai uma vez só, na `match`). */
 export const futgolfView = (s) => ({
+  hole: s.hole?.name ?? s.course.name, courseId: s.course.id,
   phase: s.phase, round: s.round, tbCount: s.tbCount, par: s.course.par, cap: s.cap, balls: s.balls.map((b) => ({ ...b })), strokes: [...s.strokes],
   holed: [...s.holed], out: [...s.out], kicked: [...s.kicked], tbDist: s.tbDist.map((d) => (d === null ? null : Number.isFinite(d) ? Math.round(d * 10) / 10 : -1)),
+  wind: s.wind ? { ...s.wind } : { ang: 0, str: 0 },
 });
 
 /** Este lado ainda chuta nesta partida/rodada? */
@@ -40,14 +55,14 @@ export const golfRoundDone = (s) => !s.over && [0, 1].every((side) => !golfActiv
 export function golfKick(s, side, dx, dy, power, spin = 0) {
   if (!golfActive(s, side) || s.kicked[side]) return null;
   const from = s.balls[side];
-  const sim = simulateKick(s.course, from, dx, dy, Math.max(0.03, Math.min(1, power)), Math.max(-1, Math.min(1, spin)));
+  const sim = simulateKick(s.course, from, dx, dy, Math.max(0.03, Math.min(1, power)), Math.max(-1, Math.min(1, spin)), s.wind, () => nextLuck(s));
   s.kicked[side] = true;
   if (s.phase === 'tiebreak') {
     s.tbDist[side] = sim.holed ? 0 : sim.water ? Infinity : Math.hypot(sim.end.x - s.course.cup.x, sim.end.y - s.course.cup.y);
     s.balls[side] = sim.water ? { ...from } : { ...sim.end };
     return { sim };
   }
-  s.strokes[side] += sim.water ? 2 : 1;
+  s.strokes[side] += 1; // (na lagoa também 1: a bola volta e o chute foi perdido)
   s.balls[side] = { ...sim.end };
   if (sim.holed) s.holed[side] = true;
   else if (s.strokes[side] >= s.cap) s.out[side] = true;
@@ -65,16 +80,19 @@ export function golfSkip(s, side) {
 }
 
 /**
- * Fecha a rodada (todos chutaram): decide se acabou, se vai para o desempate ou se começa a próxima.
- * Devolve { t: 'over', winner, reason } | { t: 'tiebreak' } | { t: 'round' }.
+ * Fecha a rodada (todos chutaram): decide se acabou, se vai para o desempate ou se começa a próxima (com o vento
+ * virando um pouco). Devolve { t: 'over', winner, reason } | { t: 'tiebreak' } | { t: 'round' }.
  */
-export function golfCloseRound(s) {
+export function golfCloseRound(s, rnd = Math.random) {
   if (s.phase === 'tiebreak') {
     const [a, b] = s.tbDist;
     const igual = a === b || Math.abs(a - b) < 0.5;
-    if (igual && s.tbCount < FUTGOLF.tiebreaks) { // os dois embocaram (ou ficaram iguais): mais um, do mesmo lugar
+    if (igual && s.tbCount < FUTGOLF.tiebreaks) { // os dois embocaram (ou ficaram iguais): mais um
       s.tbCount += 1; s.round += 1; s.kicked = [false, false]; s.tbDist = [null, null];
+      // do 2º desempate em diante, no CAMPO DO DESEMPATE (feito para ser difícil embocar de primeira)
+      if (s.tbCount >= 2 && s.course.id !== TIEBREAK_HOLE.id) { s.course = courseOf(TIEBREAK_HOLE.id); s.courseChanged = true; }
       s.balls = [{ ...s.course.tb }, { ...s.course.tb }];
+      s.wind = windShift(s.wind, rnd);
       return { t: 'tiebreak' };
     }
     s.over = igual ? { winner: null, reason: 'empate' } : { winner: a < b ? 0 : 1, reason: 'desempate' };
@@ -91,10 +109,12 @@ export function golfCloseRound(s) {
     if (f0 !== f1) { s.over = { winner: f0 < f1 ? 0 : 1, reason: 'buraco' }; return { t: 'over', ...s.over }; }
     s.phase = 'tiebreak'; s.tbCount = 1; s.kicked = [false, false]; s.tbDist = [null, null]; s.round += 1;
     s.balls = [{ ...s.course.tb }, { ...s.course.tb }];
+    s.wind = windShift(s.wind, rnd);
     return { t: 'tiebreak' };
   }
   s.round += 1;
   s.kicked = [false, false];
+  s.wind = windShift(s.wind, rnd);
   return { t: 'round' };
 }
 
@@ -137,7 +157,18 @@ export function futgolfAiKick(s, side, { skill = 0.4, rnd = Math.random } = {}) 
   const need = powerFor(Math.max(20, Math.min(field.at(from.x, from.y), Math.hypot(c.cup.x - from.x, c.cup.y - from.y) * 1.6)));
   const powers = [...new Set([0.7, 0.85, 1, 1.15, 1.35].map((k) => Math.round(Math.min(1, need * k) * 100) / 100).concat(need > 0.6 ? [1] : []))];
   const cands = [];
-  const tryK = (ang, pw, spin) => { const r = simulateKick(c, from, Math.cos(ang), Math.sin(ang), pw, spin); cands.push({ ang, pw, spin, sc: score(r) }); };
+  // bueiro de duas saídas: o bot pesa as duas, mas 30% das vezes arrisca como gente (conta só com a sorte)
+  const arrisca = rnd() < 0.3;
+  const tryK = (ang, pw, spin) => {
+    const r = simulateKick(c, from, Math.cos(ang), Math.sin(ang), pw, spin, s.wind);
+    let sc = score(r);
+    if (!arrisca && r.events.some((e) => e.azar === false)) { // passou num bueiro de duas saídas: pesa as duas (embocar vale um bom chute, não "tudo")
+      const bad = simulateKick(c, from, Math.cos(ang), Math.sin(ang), pw, spin, s.wind, () => 0.999);
+      const val = (x) => (x.holed ? 300 : score(x));
+      sc = FG_PHYS.tunnelLuck * val(r) + (1 - FG_PHYS.tunnelLuck) * val(bad);
+    }
+    cands.push({ ang, pw, spin, sc });
+  };
   const centers = Math.abs(((base - direct + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < 0.05 ? [base] : [base, direct];
   for (const cen of centers) for (let k = -5; k <= 5; k++) for (const pw of powers) tryK(cen + k * 0.12, pw, 0);
   for (let k = 0; k < 8; k++) tryK(rnd() * 2 * Math.PI, 0.55 + rnd() * 0.45, 0); // tabelas que o leque não vê

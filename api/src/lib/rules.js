@@ -813,9 +813,19 @@ export const BOTS = {
     acceptChance: 0.9, acceptDelaySec: [5, 25], acceptRestMin: 5,
     thinkSec: [3, 8],         // quanto demora para bater na bola (sorteado a cada jogada)
     skill: [0.25, 0.55],      // chance de fazer o gol quando existe um gol na mesa (sorteada por bot ao entrar)
-    // provocar (só as 4 caras básicas — bot não é VIP): chance de responder uma provocação e de mandar sozinho
-    // (rindo quando faz gol, raiva/choro quando toma)
-    provocarReply: 0.35, provocarGoal: 0.2, provocarConceded: 0.15,
+    // PROVOCAR (dono, 24/09/2026: "estão muito na cara que são bots pelo uso dos emojis… em momentos mais aleatórios
+    // e não sempre em momentos que alguém faz um gol… podem usar frases também, de forma aleatória e meio rara"):
+    // antes o bot ria do próprio gol e fazia raiva/choro do gol que tomou — dava para prever. Agora a provocação
+    // é SOLTA: 0 a 3 por partida (`perMatch` = chance de 0, 1, 2, 3), cada uma num segundo sorteado de `atSec` desde o
+    // começo, sem ligar para o que acontece (partida que acaba antes leva menos). `phrase` = chance de ser frase.
+    // Responder quem provocou e reagir a gol ficaram raros e sem pressa. Só contra gente (bot x bot ninguém vê).
+    // `vipOnly` false = todo bot usa o catálogo inteiro (caretas e frases do VIP); true = só o bot com VIP ativo
+    // (quem olha o perfil de um bot sem VIP e o viu mandar frase pode desconfiar — decisão do dono).
+    provocar: {
+      perMatch: [0.45, 0.33, 0.16, 0.06], atSec: [4, 150], phrase: 0.3,
+      reply: 0.12, replySec: [3, 12], goal: 0.04, goalSec: [3, 10],
+      vipOnly: false,
+    },
     appetite: { casual: 0.5, regular: 0.7, assiduo: 0.9 }, // persona sem `x1`: chance de topar ir ao X1 quando chamado
   },
 };

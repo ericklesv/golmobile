@@ -416,17 +416,42 @@ depois que o novo estiver estável. Não instalar nada dele.
   acertar `X1.anchor`** (o teste deixa de valer sozinho, `inTest`). Mexeu no teste? **`node scripts/test-futgolf-teste.js`**
   (pasta api/, API local com `X1_JOGO=BOTAO`, `X1_TESTERS=fgteste1,fgteste2`, `BOTS_OFF=1` e `BOTS_X1_OFF=1`;
   `X1_TESTERS` só vale fora de produção). Golfe de chute visto de cima, com a bola ROLANDO (física de
-  chão, tipo minigolfe — o vento do mockup saiu, não faz sentido para bola rolando). **`lib/futgolf.js`** = física pura e
+  chão, tipo minigolfe). **`lib/futgolf.js`** = física pura e
   determinística + os **8 buracos** (`HOLES`: Tabelinha, Bifurcação, Ilha, Fliperama, Zigue-zague, Slalom, Rotatória,
   Bueiros; cada um sorteado e espelhado ou não = 16 variações): corredor (linha central com larguras, Catmull-Rom,
-  pontas arredondadas) fechado por placas + ilhas sólidas, placas soltas, zonas (`agua` = +1 chute e a bola volta de onde
-  saiu; `areia` = terrão, segura muito; `mato`; `seco` = terra firme por cima da água: ilha e ponte), **molas**
-  (devolvem com força extra), postes (cone, jogador de barreira), **setas** (boost enquanto a bola passa) e **bueiros**
-  (entra num, sai no outro). Campo de 400 de largura e 900–1.250 de altura (~2 telas): a **câmera segue a bola** e
-  "Ver o campo" mostra tudo. **`lib/futgolfMatch.js`** = regras puras: os dois **chutam AO MESMO TEMPO** (`FUTGOLF.kickSec`
+  pontas arredondadas) fechado por placas + ilhas sólidas, placas soltas, zonas (`agua` = a bola volta de onde saiu e o
+  chute conta 1 — NÃO 2: dono, 24/09/2026, "se alguém terminar em 3 e o outro estiver na 2ª, precisa esperar ele dar a
+  3ª"; com +2 o outro "chegava a 3" com 2 chutes; `areia` = terrão, segura muito; `mato`; `seco` = terra firme por cima
+  da água: ilha e ponte), **molas** (devolvem com força extra), postes (cone, jogador de barreira), **setas** (boost
+  enquanto a bola passa), **bueiros** (entra num, sai no outro) e **rampas** (24/09: a bola que sobe rápida e no sentido
+  dela DECOLA — no ar passa por cima de lagoa, terrão, mato, cones, molas, setas e bueiros, sente mais o vento e só bate
+  nas placas; `FG_PHYS.ramp`; os quadros no ar são `[x, y, altura]` e a tela sobe/aumenta a bola com sombra no chão).
+  **VENTO** (dono, 24/09/2026: "fator importante… atuando de fato como vento, só com a bola em curso, jamais parada"):
+  sorteado no começo (`windRoll`: direção de 15 em 15°, força 0–5), vira um pouco a cada rodada (`windShift`: até 45° e
+  ±1), igual para os dois; empurra só a bola que anda (proporcional à velocidade até `vRef`; no ar, ×1,8). A tela mostra
+  a seta + força no canto e a bandeira do buraco aponta para onde ele sopra. **Buraco exigente na força** (dono,
+  24/09/2026: "está muito fácil embocar… batendo forte e está embocando… a tacada tem que ser mais certeira em força"):
+  só cai quem passa pelo MEIO abaixo de `cupV` = 200 (era 330: caía bola que ainda rolaria ~200; agora ~105), e fora do
+  meio menos ainda (`cupV × (1 − (d/raio)²)^¼`); rápida demais passa por cima e, se pegou a borda, **tira tinta**
+  (evento `beirada`: perde 15% e desvia); o buraco só puxa bola lenta bem na beirada. A janela de força que emboca caiu
+  pela metade (0,44–0,75 → 0,44–0,61 num putt reto). **Cada mapa tem uma ASSINATURA** (ideia do dono, 24/09/2026, "como
+  nos mapas do Valorant"): o Bueiros é o do teleporte — o **bueiro 3** (no meio dos cones) tem DUAS saídas sorteadas na
+  hora, metade das vezes perto do buraco, metade lá atrás perto da saída (`tuneis[k][5]` = a saída do azar,
+  `FG_PHYS.tunnelLuck` = 0,5; o sorteio vem de `s.luck`, sequência só do servidor que anda a cada passagem; o `tunel`
+  traz `azar` e a tela avisa "Sorte!"/"Azar!"; o `distanceField` NÃO trata esse bueiro como atalho e o bot pesa as duas
+  saídas, arriscando como gente 30% das vezes). A Bifurcação e a Ilha têm rampa. Campo de 400 de largura e 900–1.250 de
+  altura (~2 telas): a **câmera segue a bola** e "Ver o campo" mostra tudo. **A câmera escreve o viewBox direto no DOM**
+  (`golfPan` desliza até a bola): só mudando o estado, voltar da lagoa não mexia — a bola volta EXATAMENTE para onde
+  estava, a câmera "nova" era igual à última que o React desenhou e ele não tocava no viewBox (bug de 24/09/2026). **`lib/futgolfMatch.js`** = regras puras: os dois **chutam AO MESMO TEMPO** (`FUTGOLF.kickSec`
   = 20 s por rodada; a bola do outro é um fantasma na tela), **quem embocar primeiro vence** (os dois na mesma rodada:
   menos chutes; empatou = **desempate**: um chute de cada do ponto `tb`, mais perto do buraco vence; iguais de novo, até
-  `FUTGOLF.tiebreaks` = 3 vezes, depois empate com a aposta de volta); par + `FUTGOLF.overPar` (4) sem embocar = pegou a
+  `FUTGOLF.tiebreaks` = 3 vezes, depois empate com a aposta de volta). **Do 2º desempate em diante, no CAMPO DO
+  DESEMPATE** (`TIEBREAK_HOLE`, dono 24/09/2026: "campo diferente, específico para desempates, com menor probabilidade de
+  hole-in-one"): buraco dentro de uma coroa de cones aberta só por trás, terrão na frente — o balance confere que quase
+  nunca cai de primeira; `s.hole` = o buraco sorteado, `s.course` = onde se joga agora; a `ground` traz `course` quando
+  o campo muda. **Desempate decidido na DISTÂNCIA** (ninguém embocou): antes da janela do fim, a tela mostra as duas
+  medidas em VERMELHO crescendo do buraco até cada bola, em ordem sorteada, e "MAIS PERTO!" no fim — 6,3 s
+  (`components/FutgolfDrama.tsx`; dono: "dramática… totalmente aleatória… não mais que 7 s"; 1 unidade ≈ 1,6 cm); par + `FUTGOLF.overPar` (4) sem embocar = pegou a
   bola; perdeu o tempo = chute que não sai do lugar (3 seguidas = W.O.). Efeito: 3 botões (curva −1/0/+1). Dinheiro,
   gol, travas por hora, Ranking X1, retrospecto, provocar, Raio-X e trava de deploy = os mesmos dos outros jogos (settle;
   o placar gravado em `scoreA/scoreB` são os CHUTES). Gol e lances usam `KickKind` FUTGOLF (migração 0044).
@@ -434,7 +459,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   `ground` chega ANTES de a rodada abrir (`turnEndsAt − kickSec`), e chute antes disso é ignorado (a tela espera; teste
   que chuta na hora recebe "ignorado" — foi o que quebrou o 1º desempate do test-futgolf.js); `gshot` vai na hora para
   as duas telas (quadros + eventos com o quadro `f`: `mola`, `seta`, `tunel` — a tela NÃO interpola entre a entrada e a
-  saída do bueiro —, `agua`, `buraco`, `bate`); `gskip` = tempo esgotado. **Bots** (treino, tutorial e os "quase reais"):
+  saída do bueiro —, `rampa`, `pouso`, `agua`, `buraco`, `beirada`, `bate`); `gskip` = tempo esgotado. **Bots** (treino, tutorial e os "quase reais"):
   `futgolfAiKick` procura a jogada simulando com a mesma física, guiado por um **mapa de distância** (`distanceField`:
   Dijkstra que contorna placas/ilhas/água e conhece os bueiros; ATENÇÃO: `Float64Array` — com Float32 o arredondamento
   parava a busca), e erra pela `skill` (~20–40 ms por jogada). Tela: `components/FutgolfCourse.tsx` (placas de
@@ -442,9 +467,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   `scenery`) + o ramo FUTGOLF de `screens/X1.tsx` (câmera no viewBox direto no DOM enquanto a bola anda, duas animações
   ao mesmo tempo, `GolfStrip`, `SpinPicker`); a "foto" do começo e da janela do jogo do dia é um recorte
   (`previewView`) do buraco `meta.x1.futgolf.preview`. **Conferir buracos: rota oculta `/debug-futgolf`** (sem login;
-  `?buraco=ilha&espelho=1&camera=1`), que lê `GET /api/x1/futgolf/buracos`. **Mexeu nos buracos ou na física? Rode
+  `?buraco=ilha&espelho=1&camera=1`; `?buraco=desempate&drama=168,318;246,196` mostra as medidas do desempate), que lê
+  `GET /api/x1/futgolf/buracos` (os 8 + o campo do desempate). **Mexeu nos buracos ou na física? Rode
   `node scripts/futgolf-balance.js`** (pasta api/, sem banco: chutes para embocar por nível de bot — tem de ficar perto
-  do par —, determinismo e nenhuma bola fora do campo; foi ele que achou a bola escapando pela ponta de baixo); **mexeu
+  do par —, determinismo, nenhuma bola fora do campo, toda saída de bueiro dentro dele, as DUAS rotas da Bifurcação
+  equilibradas — dono: "não faz sentido ir pela direita" —, o bueiro 3 do Bueiros e o campo do desempate; foi ele que
+  achou a bola escapando pela ponta de baixo e a saída do bueiro da Ilha em cima da placa); **mexeu
   na partida? `node scripts/test-futgolf.js`** (pasta api/, banco LOCAL, API no ar com `X1_JOGO=FUTGOLF`,
   `FUTGOLF_CHUTE_SEG=4` e `BOTS_X1_OFF=1`; `FUTGOLF_CHUTE_SEG` só vale fora de produção). Buraco novo = entrada em
   `HOLES` com `par` que o balance confirme e um `tb` de desempate longe do buraco (perto demais os dois embocam).
@@ -501,9 +529,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   para bater (`aiDelayMs`; o bot de TREINO `bot` segue rápido), joga com uma **`skill` sorteada por visita** (0,25–0,55
   = a chance de fazer o gol quando existe um na mesa — `botaoHumanMove` em botaoMatch.js; no FutPrego, olha 8
   jogadas e pega a melhor em 0,35 + skill das vezes, senão a 2ª — com 4 jogadas e a skill crua ele perdeu as 5
-  primeiras de produção em 20/09; o do tutorial fica na faixa de baixo) e **provoca de vez em quando** (só as 4
-  caras básicas — bot não é VIP: devolve uma provocação em 35 % das vezes, ri do próprio gol em 20 %, raiva/choro do
-  gol que tomou em 15 %; `aiProvocar`/`aiReactsToGoal`). No X1 o bot não chuta (está "na tela da partida"). Enquanto
+  primeiras de produção em 20/09; o do tutorial fica na faixa de baixo) e **provoca de vez em quando, SEM hora
+  previsível** (dono, 24/09/2026: "estão muito na cara que são bots pelo uso dos emojis… em momentos mais aleatórios e
+  não sempre quando alguém faz gol… frases também, de forma aleatória e meio rara"; `BOTS.x1.provocar`): 0 a 3
+  provocações soltas por partida em segundos sorteados (`planAiProvocar`, só contra gente), 30% delas frase; responder
+  quem provocou (12%) e reagir a gol (4%) ficaram raros e com alguns segundos de atraso. `vipOnly` false = todo bot usa
+  o catálogo inteiro (caretas e frases do VIP) — true volta a limitar os sem VIP às 4 caras básicas. No X1 o bot não chuta (está "na tela da partida"). Enquanto
   está lá, `x1BotsInside()`; `POST /api/admin/x1/bot {nick, waitSec?, skill?}` manda um bot ao X1 AGORA e
   `GET /api/admin/x1/bots` mostra quem está (x-admin-key). Calibração de 20/09 (300 partidas por par, `botaoHumanMove` x
   `botaoBotMove` no lib/botaoMatch.js): skill 0,4 x 0,4 = 50/50 com ~14 petelecos; contra o bot de treino (0,5) o quase

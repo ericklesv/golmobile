@@ -12,6 +12,13 @@ terrão, mato, placas, molas, setas e bueiros. Bots jogam (treino, tutorial e os
 `scripts/test-futgolf-teste.js` (o modo de teste). Detalhes no CLAUDE.md.
 Publicado em 24/09 para estrear no rodízio às 19h, mas o dono pediu para testar antes (24/09): saiu do rodízio e ficou
 só para MVGIC e ericklesv (`X1.test`), com um bot aceitando em 5 s; ninguém mais vê o desafio.
+Ajustes do teste (24/09, pedidos do dono jogando): setas do efeito na mira estavam invertidas; lagoa conta 1 chute (o
+outro sempre dá o mesmo número de chutes antes de alguém vencer); **vento** (só na bola andando; seta + bandeira);
+**rampas** (Bifurcação e Ilha; a bola voa por cima de tudo); Bifurcação refeita com as duas rotas equilibradas;
+**campo do desempate** do 2º desempate em diante; **medidas dramáticas** do desempate decidido na distância; **buraco
+exigente na força** (bola forte tira tinta); câmera volta da lagoa; **Bueiros com assinatura**: o bueiro 3 sorteia a
+saída (perto do buraco ou lá atrás). Ideia do dono: cada mapa com uma assinatura própria, como no Valorant.
+- [ ] Dar uma assinatura a cada mapa (dono, 24/09): o Bueiros é o teleporte; rampas na Bifurcação/Ilha; faltam os outros.
 - [ ] Liberar para todos quando o dono aprovar: `FUTGOLF` em `X1.games` + acertar `X1.anchor` (e avisar no grupo).
 - [ ] Depois da estreia: olhar as partidas de verdade (quantos chutes por buraco, quanto desempate) e acertar pares/buracos.
 - [ ] Próximo: os ajustes do Várzea (o dono pediu depois do Futgolf).

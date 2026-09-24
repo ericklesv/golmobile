@@ -77,7 +77,7 @@ game.get('/meta', cached(10000), handle(async () => {
 }));
 
 // Futgolf: os buracos montados (a rota oculta /debug-futgolf desenha para conferir; `?espelho=1` = espelhados)
-game.get('/x1/futgolf/buracos', cached(60000), handle(async (req) => ({ holes: FUTGOLF_HOLES.map((h) => futgolfCourse(h.id, req.query.espelho === '1')) })));
+game.get('/x1/futgolf/buracos', cached(60000), handle(async (req) => ({ holes: [...FUTGOLF_HOLES.map((h) => futgolfCourse(h.id, req.query.espelho === '1')), futgolfCourse('desempate')] }))); // (+ o campo do desempate)
 
 game.get('/home', cached(5000), handle(async (req) => {
   const now = new Date();

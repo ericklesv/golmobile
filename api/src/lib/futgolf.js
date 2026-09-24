@@ -11,12 +11,20 @@
  * Um buraco = um corredor (linha central com larguras, suavizada) fechado por placas + o que tem dentro:
  *  - ilhas: blocos sólidos (canteiro, ferradura, chafariz) — a bola bate e volta;
  *  - placas: paredes finas soltas no campo;
- *  - zonas: `agua` (lagoa: +1 chute e a bola volta de onde saiu), `areia` (terrão: segura muito), `mato` (segura),
+ *  - zonas: `agua` (lagoa: a bola volta de onde saiu — o chute foi perdido), `areia` (terrão: segura muito), `mato` (segura),
  *    `seco` (grama por cima da água: ilha e ponte);
  *  - molas: batem e DEVOLVEM com força extra (bumper de fliperama);
  *  - postes: obstáculos redondos (cone, jogador da barreira);
  *  - setas (boost): enquanto a bola passa por cima, ganha velocidade na direção da seta;
- *  - bueiros (túnel): a bola cai num e sai no outro, na direção marcada.
+ *  - bueiros (túnel): a bola cai num e sai no outro, na direção marcada. Um bueiro pode ter DUAS saídas, sorteadas na
+ *    hora (dono, 24/09/2026, no Bueiros: "um teleporte péssimo, jogando o usuário para trás, e o outro o atual"):
+ *    `tunnelLuck` de chance de sair na boa; o sorteio vem de fora (`luck`), para a partida ser a mesma no replay;
+ *  - RAMPAS (dono, 24/09/2026: "adicionar novas plataformas… como rampa"): a bola que sobe a rampa rápida e no sentido
+ *    dela DECOLA — no ar passa por cima da lagoa, do terrão, do mato, dos cones, das molas, das setas e dos bueiros,
+ *    sente mais o vento e não tem atrito de chão; bate nas placas; ao pousar perde um pouco e segue rolando.
+ * E o VENTO (dono, 24/09/2026: "que o vento fosse um fator importante… atuando de fato como vento, apenas quando a bola
+ * estiver em curso, jamais nela parada"): muda a cada rodada (windRoll/windShift) e empurra a bola que rola na direção
+ * dele, mais forte com a bola rápida; a bola devagar quase não sente, então parada ela nunca anda.
  */
 
 export const FG = { W: 400, ball: 7, cup: 11 };
@@ -31,10 +39,34 @@ export const FG_PHYS = {
   mola: { e: 0.9, kick: 330 },           // mola: devolve quase tudo e ainda empurra
   boost: { acc: 2100 },
   spin: { acc: 95, tau: 1.6 },           // efeito: curva a bola (some aos poucos)
-  cupV: 330, cupPull: 150,               // embocar: passar pelo buraco abaixo desta velocidade
+  // embocar (dono, 24/09/2026: "está muito fácil embocar… batendo forte e está embocando… a tacada tem que ser mais
+  // certeira em força"): passar pelo MEIO do buraco abaixo de cupV (antes 330: a bola que ainda rolaria ~200 caía;
+  // agora ~105, uns 5 buracos); fora do meio, menos ainda — cupV × (1 − (d/raio)²)^¼, d = quanto passou do centro.
+  // Rápida demais, a bola passa por cima: se pegou na borda, "tira tinta" — perde lipKeep e desvia até lipTurn rad.
+  // O buraco só puxa a bola que chega devagar (pullV × cupV) bem na beirada.
+  cupV: 200, cupPull: 90, pullV: 0.6, lipKeep: 0.85, lipTurn: 0.35,
   tunnelKeep: 0.95, tunnelMin: 190, tunnelR: 14,
+  tunnelLuck: 0.5,                       // bueiro de duas saídas: chance de sair na BOA (a outra joga a bola para trás)
   stop: 5,
+  // vento: força 0..max; acelera acc × força com a bola a vRef ou mais rápida, proporcional abaixo disso (a 50 de
+  // velocidade, o vento máximo empurra menos do que o atrito segura: a bola sempre para). Vento 5 de lado desvia um
+  // chute cheio em ~100; vento 2, ~40.
+  wind: { acc: 28, vRef: 300, max: 5, airMult: 1.8 }, // no ar, o vento pega quase o dobro
+  // rampa: decola se passar a mais de minV no sentido dela; fica no ar k × velocidade (até maxT s), sem atrito de chão
+  // (só airDamp), e pousa com `land` da velocidade. `height` é só para a tela desenhar o salto.
+  ramp: { minV: 220, k: 0.0014, maxT: 1.1, land: 0.82, airDamp: 0.25, height: 55 },
 };
+
+/** O vento da primeira rodada: força 0..5 e direção em graus (0 = para cima), de 15 em 15. */
+export function windRoll(rnd = Math.random) {
+  return { ang: Math.floor(rnd() * 24) * 15, str: Math.floor(rnd() * (FG_PHYS.wind.max + 1)) };
+}
+/** O vento da rodada seguinte: vira até 45° e muda até 1 de força (não salta de um lado para o outro). */
+export function windShift(w, rnd = Math.random) {
+  const ang = ((((w?.ang ?? 0) + Math.round((rnd() - 0.5) * 6) * 15) % 360) + 360) % 360;
+  const str = Math.max(0, Math.min(FG_PHYS.wind.max, (w?.str ?? 0) + Math.round((rnd() - 0.5) * 2.6)));
+  return { ang, str };
+}
 
 // ─── formas ─────────────────────────────────────────────────────────────────
 
@@ -175,13 +207,17 @@ export const HOLES = [
     path: [[200, 1000, 170], [200, 830, 220], [200, 640, 330], [200, 420, 330], [200, 262, 226], [200, 112, 196]],
     tee: [200, 975], cup: [206, 120], tb: [200, 790],
     islands: [[[200, 706], [252, 626], [264, 524], [252, 426], [200, 346], [148, 426], [136, 524], [148, 626]]],
+    // dono, 24/09/2026: "só tem prejuízos no lado direito enquanto o lado esquerdo está numa boa… não faz sentido ir
+    // pela direita". Agora: ESQUERDA = as setas (rápida), com a lagoa comprida colada nelas; DIREITA = uma rampa que
+    // salta o terrão (sem lagoa: pede força certa). As duas saem perto do par (futgolf-balance.js, rotas).
     zones: [
-      { t: 'agua', poly: ellipse(58, 540, 21, 66) },
-      { t: 'mato', poly: blob(334, 520, 34, 5, 18, 0.2, 2.2) },
+      { t: 'agua', poly: ellipse(64, 528, 28, 104) },
+      { t: 'areia', poly: blob(314, 470, 36, 5, 18, 0.18, 1.9) },
       { t: 'areia', poly: blob(128, 196, 30, 11, 16, 0.3, 0.8) },
     ],
-    boosts: [[118, 640, 0, 70], [118, 470, 0, 70]],
-    molas: [[318, 612, 14], [292, 470, 13], [330, 400, 12]],
+    boosts: [[114, 640, 0, 70], [114, 470, 0, 70]],
+    rampas: [[314, 640, 0, 46]],
+    molas: [[340, 360, 12]],
   },
   {
     id: 'ilha', name: 'Ilha', par: 3, H: 1180,
@@ -194,7 +230,10 @@ export const HOLES = [
     ],
     postes: [[156, 532, 8, 'cone'], [244, 532, 8, 'cone']],
     boosts: [[200, 470, 0, 56]],
-    tuneis: [[92, 730, 344, 70, -100]],
+    rampas: [[96, 596, 16, 46]], // salto direto para a ilha: força certa pousa nela, fraca cai na lagoa, forte passa
+    // a saída ficava em (344, 70), em cima da placa do fundo: a bola batia nela e escapava do campo (achado pelo
+    // futgolf-balance.js, que agora confere toda saída de bueiro)
+    tuneis: [[92, 730, 296, 96, -100]],
   },
   {
     id: 'fliperama', name: 'Fliperama', par: 4, H: 980,
@@ -235,12 +274,32 @@ export const HOLES = [
     id: 'bueiros', name: 'Bueiros', par: 3, H: 1000,
     path: [[200, 965, 180], [200, 780, 300], [122, 575, 300], [232, 385, 300], [200, 210, 222], [200, 112, 200]],
     tee: [200, 940], cup: [200, 124], tb: [150, 520],
-    tuneis: [[106, 720, 332, 290, 0], [292, 700, 92, 520, 30], [194, 612, 272, 200, -60]],
+    // o bueiro 3 (no meio dos cones) é a ASSINATURA do Bueiros: metade das vezes sai perto do buraco, metade volta lá
+    // para trás, perto da saída (a 6ª posição é a saída do azar)
+    tuneis: [[106, 720, 332, 290, 0], [292, 700, 92, 520, 30], [194, 612, 272, 200, -60, [128, 884, 180]]],
     postes: [[194, 590, 8, 'cone'], [175, 622, 8, 'cone'], [213, 622, 8, 'cone']],
     zones: [{ t: 'agua', poly: blob(70, 430, 30, 29, 18, 0.2, 1.5) }, { t: 'mato', poly: blob(336, 310, 36, 31, 16, 0.2, 1.4) }, { t: 'areia', poly: blob(268, 190, 26, 37, 16, 0.25, 0.9) }],
     molas: [[330, 520, 14]],
   },
 ];
+
+/** Anel de cones em volta de (cx, cy), nos ângulos da tela (0 = direita, 90 = baixo). */
+const coneRing = (cx, cy, r, degs) => degs.map((d) => [cx + r * Math.cos(rad(d)), cy + r * Math.sin(rad(d)), 8, 'cone']);
+
+/**
+ * Campo do DESEMPATE, do 2º desempate em diante (dono, 24/09/2026: "o segundo desempate precisa ser em um campo
+ * diferente, novo, específico para desempates, com menor probabilidade de ser um hole-in-one"): o buraco no meio de uma
+ * coroa de cones aberta só POR TRÁS, com terrão na frente — de frente a bola bate nos cones e fica perto; para embocar
+ * de primeira é preciso contornar (efeito, vento ou tabela na placa do fundo). Vence quem deixar a bola mais perto.
+ */
+export const TIEBREAK_HOLE = {
+  id: 'desempate', name: 'Desempate', par: 1, H: 700,
+  path: [[200, 670, 220], [200, 540, 340], [200, 300, 360], [200, 150, 300]],
+  tee: [200, 640], cup: [200, 250], tb: [200, 640],
+  postes: coneRing(200, 250, 36, [0, 40, 80, 120, 160, 200, 340]),
+  molas: [[92, 262, 13], [308, 262, 13]],
+  zones: [{ t: 'areia', poly: blob(200, 336, 46, 41, 18, 0.15, 0.55) }],
+};
 
 /**
  * Monta o buraco do jogo (`mirror` = espelhado na horizontal). É o que vai para as telas: contorno, ilhas, zonas e
@@ -266,7 +325,11 @@ export function buildCourse(spec, mirror = false) {
     molas: (spec.molas ?? []).map(([x, y, r]) => ({ x: mx(x), y, r })),
     postes: (spec.postes ?? []).map(([x, y, r, kind]) => ({ x: mx(x), y, r, kind: kind ?? 'cone' })),
     boosts: (spec.boosts ?? []).map(([x, y, ang, len]) => ({ x: mx(x), y, ang: ma(ang), len, wid: 34 })),
-    tuneis: (spec.tuneis ?? []).map(([ax, ay, bx, by, out]) => ({ a: { x: mx(ax), y: ay }, b: { x: mx(bx), y: by }, out: ma(out) })),
+    rampas: (spec.rampas ?? []).map(([x, y, ang, len]) => ({ x: mx(x), y, ang: ma(ang), len: len ?? 46, wid: 40 })),
+    tuneis: (spec.tuneis ?? []).map(([ax, ay, bx, by, out, alt]) => ({
+      a: { x: mx(ax), y: ay }, b: { x: mx(bx), y: by }, out: ma(out),
+      ...(alt ? { alt: { b: { x: mx(alt[0]), y: alt[1] }, out: ma(alt[2]) } } : {}), // 2ª saída (a do azar)
+    })),
   };
 }
 
@@ -274,7 +337,7 @@ const built = new Map();
 /** O buraco montado (o mesmo objeto para o mesmo id/espelho: a física e o mapa dos bots ficam guardados nele). */
 export function courseOf(id, mirror = false) {
   const key = `${id}:${mirror ? 1 : 0}`;
-  if (!built.has(key)) built.set(key, buildCourse(HOLES.find((h) => h.id === id) ?? HOLES[0], mirror));
+  if (!built.has(key)) built.set(key, buildCourse(id === TIEBREAK_HOLE.id ? TIEBREAK_HOLE : HOLES.find((h) => h.id === id) ?? HOLES[0], mirror));
   return built.get(key);
 }
 
@@ -327,19 +390,30 @@ const r1 = (v) => Math.round(v * 2) / 2;
 
 /**
  * Um chute: a bola sai de `from` na direção (dx, dy) com força 0..1 e efeito −1..1 (+1 curva para a direita de quem
- * chuta). Simula até parar, embocar ou cair na água. Devolve os quadros ([x, y] a cada 1/30 s), os eventos (com o
- * quadro `f` em que acontecem: `mola`, `seta`, `tunel`, `agua`, `buraco`, `bate`), onde a bola ficou (`end` — na
- * água ela volta para `from`) e se embocou.
+ * chuta), com o vento `wind` ({ang, str}) da rodada. Simula até parar, embocar ou cair na água. Devolve os quadros
+ * ([x, y] a cada 1/30 s; [x, y, z] com a bola no ar, z = altura para a tela), os eventos (com o quadro `f` em que
+ * acontecem: `mola`, `seta`, `tunel`, `rampa`, `pouso`, `agua`, `buraco`, `beirada`, `bate`), onde a bola ficou (`end` — na água
+ * ela volta para `from`) e se embocou. `luck` = sorteio dos bueiros de duas saídas (função que devolve 0..1 a cada
+ * passagem; sem ela, sempre a saída boa); o `tunel` desses bueiros traz `azar` (true = saiu na ruim).
  */
-export function simulateKick(course, from, dx, dy, power, spin = 0) {
+export function simulateKick(course, from, dx, dy, power, spin = 0, wind = null, luck = null) {
   const P = FG_PHYS, C = physOf(course), R = FG.ball;
   const len = Math.hypot(dx, dy) || 1;
   const speed0 = P.vMin + Math.max(0, Math.min(1, power)) * (P.vMax - P.vMin);
   let x = from.x, y = from.y, vx = (dx / len) * speed0, vy = (dy / len) * speed0;
   let sp = Math.max(-1, Math.min(1, spin || 0));
+  const [wux, wuy] = wind && wind.str > 0 ? dirOf(wind.ang) : [0, 0];
+  const wStr = wind && wind.str > 0 ? Math.min(P.wind.max, wind.str) : 0;
   const frames = [[r1(x), r1(y)]], events = [];
-  const onPad = new Set();
+  const onPad = new Set(), onRamp = new Set();
+  let air = 0, airT = 0; // no ar: quanto falta e quanto dura este salto
+  const frame = () => {
+    if (air <= 0) return [r1(x), r1(y)];
+    const t = 1 - air / airT, h = Math.min(P.ramp.height, airT * P.ramp.height);
+    return [r1(x), r1(y), Math.round(4 * h * t * (1 - t) * 2) / 2];
+  };
   let tunnelCool = 0, holed = false, water = false, lastBate = -1;
+  let cupMin = Infinity; // passando por cima do buraco: o mais perto do centro que chegou (Infinity = fora dele)
   const stamp = new Int32Array(C.segs.length);
   let stampN = 0;
   const steps = Math.round(P.maxSec / P.dt);
@@ -353,8 +427,25 @@ export function simulateKick(course, from, dx, dy, power, spin = 0) {
       sp *= Math.exp(-P.dt / P.spin.tau);
       if (Math.abs(sp) < 0.01) sp = 0;
     }
-    // setas: empurram na direção delas enquanto a bola está em cima
-    course.boosts.forEach((b, k) => {
+    // vento: só com a bola rolando, e mais com ela rápida (devagar, o atrito ganha e ela para)
+    if (wStr && (v > P.stop || air > 0)) {
+      const a = P.wind.acc * wStr * Math.min(1, v / P.wind.vRef) * (air > 0 ? P.wind.airMult : 1);
+      vx += wux * a * P.dt; vy += wuy * a * P.dt;
+    }
+    // rampas: subiu rápido e no sentido dela = decola (uma vez por passagem: tem de sair da rampa para decolar de novo)
+    if (air <= 0 && course.rampas.length) course.rampas.forEach((rp, k) => {
+      const [ux, uy] = dirOf(rp.ang);
+      const rx = x - rp.x, ry = y - rp.y;
+      const along = rx * ux + ry * uy, across = rx * -uy + ry * ux;
+      if (Math.abs(along) > rp.len / 2 || Math.abs(across) > rp.wid / 2) { onRamp.delete(k); return; }
+      const vv = Math.hypot(vx, vy);
+      if (onRamp.has(k) || air > 0 || along < -rp.len * 0.2 || vv < P.ramp.minV || (vx * ux + vy * uy) < 0.6 * vv) return;
+      onRamp.add(k);
+      airT = Math.min(P.ramp.maxT, vv * P.ramp.k); air = airT;
+      events.push({ t: 'rampa', i: k, f: frames.length });
+    });
+    // setas: empurram na direção delas enquanto a bola está em cima (no ar, passa por cima)
+    if (air <= 0) course.boosts.forEach((b, k) => {
       const [ux, uy] = dirOf(b.ang);
       const rx = x - b.x, ry = y - b.y;
       const along = rx * ux + ry * uy, across = rx * -uy + ry * ux;
@@ -388,8 +479,8 @@ export function simulateKick(course, from, dx, dy, power, spin = 0) {
         }
       }
     }
-    // postes e molas (redondos)
-    for (const [list, kind] of [[course.postes, 'poste'], [course.molas, 'mola']]) {
+    // postes e molas (redondos) — no ar, a bola passa por cima
+    if (air <= 0) for (const [list, kind] of [[course.postes, 'poste'], [course.molas, 'mola']]) {
       for (let k = 0; k < list.length; k++) {
         const o = list[k];
         const ddx = x - o.x, ddy = y - o.y, d = Math.hypot(ddx, ddy), rr = R + o.r;
@@ -406,20 +497,31 @@ export function simulateKick(course, from, dx, dy, power, spin = 0) {
     }
     // bueiros: cai num, sai no outro
     if (tunnelCool > 0) tunnelCool -= P.dt;
-    else {
+    else if (air <= 0) {
       for (let k = 0; k < course.tuneis.length; k++) {
         const tn = course.tuneis[k];
         if (Math.hypot(x - tn.a.x, y - tn.a.y) >= P.tunnelR) continue;
-        const [ux, uy] = dirOf(tn.out);
+        const azar = tn.alt ? (luck ? luck() : 0) >= P.tunnelLuck : false;
+        const sai = azar ? tn.alt : tn;
+        const [ux, uy] = dirOf(sai.out);
         const out = Math.max(P.tunnelMin, Math.hypot(vx, vy) * P.tunnelKeep);
         frames.push([r1(tn.a.x), r1(tn.a.y)]);
-        x = tn.b.x + ux * (P.tunnelR + R + 3); y = tn.b.y + uy * (P.tunnelR + R + 3);
+        x = sai.b.x + ux * (P.tunnelR + R + 3); y = sai.b.y + uy * (P.tunnelR + R + 3);
         vx = ux * out; vy = uy * out;
-        events.push({ t: 'tunel', i: k, f: frames.length }); // o quadro seguinte já é na saída: não interpolar
+        events.push({ t: 'tunel', i: k, f: frames.length, ...(tn.alt ? { azar } : {}) }); // o quadro seguinte já é na saída: não interpolar
         frames.push([r1(x), r1(y)]);
         tunnelCool = 0.35;
         break;
       }
+    }
+    // no ar: só o arrasto do ar; ao pousar, perde um pouco e volta a rolar (e aí vale o chão de onde caiu)
+    if (air > 0) {
+      air -= P.dt;
+      const va = Math.hypot(vx, vy), na = Math.max(0, va - P.ramp.airDamp * va * P.dt);
+      if (va > 0) { vx *= na / va; vy *= na / va; }
+      if (air <= 0) { air = 0; vx *= P.ramp.land; vy *= P.ramp.land; events.push({ t: 'pouso', f: frames.length }); }
+      if (i % P.frameEvery === 0) frames.push(frame());
+      continue;
     }
     // chão
     const chao = surfaceAt(course, x, y);
@@ -429,16 +531,28 @@ export function simulateKick(course, from, dx, dy, power, spin = 0) {
       events.push({ t: 'agua', f: frames.length - 1 });
       break;
     }
-    // buraco: passou devagar por cima = embocou; perto e devagar, o buraco puxa
+    // buraco: passou devagar por cima = embocou (quanto mais fora do centro, mais devagar precisa); rápida demais,
+    // passa — e se passou pela borda, tira tinta; bem na beirada e devagar, o buraco puxa
     let v2 = Math.hypot(vx, vy);
     const dcx = course.cup.x - x, dcy = course.cup.y - y, dc = Math.hypot(dcx, dcy);
-    if (dc < FG.cup - 2 && v2 < P.cupV) {
+    if (dc < FG.cup - 2 && v2 < P.cupV * Math.pow(1 - (dc / FG.cup) ** 2, 0.25)) {
       holed = true; x = course.cup.x; y = course.cup.y;
       frames.push([r1(x), r1(y)]);
       events.push({ t: 'buraco', f: frames.length - 1 });
       break;
     }
-    if (dc < FG.cup + 8 && dc > 0.5 && v2 < P.cupV * 1.2) { vx += (dcx / dc) * P.cupPull * P.dt; vy += (dcy / dc) * P.cupPull * P.dt; }
+    if (dc < FG.cup) cupMin = Math.min(cupMin, dc);
+    else if (cupMin < Infinity) { // saiu de cima do buraco sem cair
+      if (cupMin > FG.cup * 0.35 && v2 > 0) {
+        const ox = -dcx, oy = -dcy, side = vx * oy - vy * ox >= 0 ? 1 : -1; // para o lado em que passou do centro
+        const t = Math.tan(P.lipTurn * (cupMin / FG.cup)), px = (-vy / v2) * side, py = (vx / v2) * side;
+        const nx = vx / v2 + px * t, ny = vy / v2 + py * t, nn = Math.hypot(nx, ny), keep = v2 * P.lipKeep;
+        vx = (nx / nn) * keep; vy = (ny / nn) * keep; v2 = keep;
+        events.push({ t: 'beirada', f: frames.length });
+      }
+      cupMin = Infinity;
+    }
+    if (dc < FG.cup + 4 && dc > 0.5 && v2 < P.cupV * P.pullV) { vx += (dcx / dc) * P.cupPull * P.dt; vy += (dcy / dc) * P.cupPull * P.dt; }
     // atrito
     v2 = Math.hypot(vx, vy);
     if (v2 > P.vCap) { vx *= P.vCap / v2; vy *= P.vCap / v2; v2 = P.vCap; }
@@ -446,7 +560,7 @@ export function simulateKick(course, from, dx, dy, power, spin = 0) {
     const nv = Math.max(0, v2 - (P.roll + P.damp * v2) * k * P.dt);
     let end = i === steps;
     if (nv < P.stop) { vx = 0; vy = 0; end = true; } else { vx *= nv / v2; vy *= nv / v2; }
-    if (i % P.frameEvery === 0 || end) frames.push([r1(x), r1(y)]);
+    if (i % P.frameEvery === 0 || end) frames.push(frame());
     if (end) break;
   }
   const end = water ? { x: from.x, y: from.y } : { x: r1(x), y: r1(y) };
@@ -486,9 +600,10 @@ export function distanceField(course) {
   const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
   const start = cellOf(course.cup.x, course.cup.y);
   dist[start] = 0; push(start, 0);
-  // bueiros ao contrário: chegar na SAÍDA vale o mesmo que chegar na entrada
+  // bueiros ao contrário: chegar na SAÍDA vale o mesmo que chegar na entrada (o de duas saídas não é atalho garantido:
+  // fica de fora — o bot pesa as duas saídas quando simula o chute, em futgolfAiKick)
   const tunnelFrom = new Map();
-  for (const t of course.tuneis) {
+  for (const t of course.tuneis.filter((tn) => !tn.alt)) {
     const [ux, uy] = dirOf(t.out);
     const exit = cellOf(t.b.x + ux * 30, t.b.y + uy * 30), entry = cellOf(t.a.x, t.a.y);
     if (!tunnelFrom.has(exit)) tunnelFrom.set(exit, []);

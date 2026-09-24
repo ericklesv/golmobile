@@ -13,16 +13,27 @@ export interface FgCourse {
   molas: { x: number; y: number; r: number }[];
   postes: { x: number; y: number; r: number; kind: string }[];
   boosts: { x: number; y: number; ang: number; len: number; wid: number }[];
-  tuneis: { a: FgPoint; b: FgPoint; out: number }[];
+  /** Rampas: a bola que sobe rápida e no sentido delas decola (passa por cima de tudo, menos das placas). */
+  rampas?: { x: number; y: number; ang: number; len: number; wid: number }[];
+  /** `alt` = 2ª saída, sorteada na hora (o bueiro 3 do Bueiros: uma leva para perto do buraco, a outra para trás). */
+  tuneis: { a: FgPoint; b: FgPoint; out: number; alt?: { b: FgPoint; out: number } }[];
 }
 /** O andamento da partida (futgolfView no servidor). `tbDist` −1 = caiu na água / perdeu o tempo no desempate. */
 export interface FgView {
+  /** O buraco sorteado e o campo em que se joga agora (do 2º desempate em diante, o campo do desempate). */
+  hole?: string; courseId?: string;
   phase: 'play' | 'tiebreak'; round: number; tbCount: number; par: number; cap: number;
   balls: [FgPoint, FgPoint]; strokes: [number, number]; holed: [boolean, boolean]; out: [boolean, boolean]; kicked: [boolean, boolean];
   tbDist: (number | null)[];
+  /** Vento da rodada: direção em graus (0 = para cima, para onde ele SOPRA) e força 0..5. */
+  wind: { ang: number; str: number };
 }
-/** Evento de um chute, no quadro `f` em que acontece. */
-export interface FgEvent { t: 'mola' | 'seta' | 'tunel' | 'agua' | 'buraco' | 'bate'; i?: number; f: number }
+/** Evento de um chute, no quadro `f` em que acontece. `azar` = no bueiro de duas saídas, saiu na ruim. */
+export interface FgEvent { t: 'mola' | 'seta' | 'tunel' | 'rampa' | 'pouso' | 'agua' | 'buraco' | 'beirada' | 'bate'; i?: number; f: number; azar?: boolean }
+/** Um quadro do voo (30 por segundo): [x, y] no chão, [x, y, altura] no ar (depois de uma rampa). */
+export type FgFrame = [number, number] | [number, number, number];
+/** Distância do desempate na tela: 1 unidade do campo ≈ 1,6 cm (a bola tem 14 unidades ≈ 22 cm). */
+export const cmOf = (units: number) => Math.round(units * 1.6);
 
 /** Direção de um ângulo das peças (graus: 0 = para cima, 90 = para a direita). */
 export const dirOf = (deg: number): [number, number] => [Math.sin((deg * Math.PI) / 180), -Math.cos((deg * Math.PI) / 180)];

@@ -84,9 +84,9 @@ async function pair(ipA, ipB) {
   const [ma, mb] = await Promise.all([pa.wait('match'), pb.wait('match')]);
   return { A, B, pa, pb, ma, mb };
 }
-/** Um chute bom (o mesmo bot do servidor, mira quase perfeita) a partir da bola de `side`. */
+/** Um chute bom (o mesmo bot do servidor, mira quase perfeita, com o vento da rodada) a partir da bola de `side`. */
 function goodKick(course, fg, side, rnd) {
-  return futgolfAiKick({ course, balls: fg.balls, phase: fg.phase }, side, { skill: 0.95, rnd });
+  return futgolfAiKick({ course, balls: fg.balls, phase: fg.phase, wind: fg.wind }, side, { skill: 0.95, rnd });
 }
 let seed = 777;
 const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
@@ -177,7 +177,7 @@ try {
 
   // ── 6: desempate — os dois chutam exatamente igual
   const t = await pair('198.51.100.65', '198.51.100.66');
-  const ct = courseOf(t.ma.course.id, t.ma.course.mirror);
+  let ct = courseOf(t.ma.course.id, t.ma.course.mirror), tbCourse = null;
   await sleep(Math.max(0, t.ma.turnEndsAt - t.ma.kickSec * 1000 - Date.now()) + 200);
   let fgt = t.ma.fg, tbSeen = 0, tOver = null;
   for (let r = 0; r < 20 && !tOver; r++) {
@@ -188,14 +188,23 @@ try {
     const nx = await nextRound(t.pa);
     if (!nx) break;
     if (nx.t === 'over') tOver = nx;
-    else { fgt = nx.fg; if (nx.tiebreak) tbSeen++; }
+    else {
+      fgt = nx.fg; if (nx.tiebreak) tbSeen++;
+      if (nx.course) { tbCourse = nx.course; ct = courseOf(nx.course.id, nx.course.mirror); } // 2º desempate: campo novo
+    }
   }
-  check(tbSeen >= 1, `os dois embocaram juntos: foi para o desempate (${tbSeen} desempate${tbSeen === 1 ? '' : 's'})`);
-  check(!!tOver && tOver.winner === null && tOver.reason === 'empate', 'iguais em todos os desempates: empate');
+  // no Bueiros o bueiro de duas saídas sorteia uma saída para cada bola: o mesmo chute pode separar os dois
+  const sorteio = t.ma.course.id === 'bueiros';
+  if (sorteio) console.log('  (buraco Bueiros: o bueiro de duas saídas pode separar chutes iguais — empate não garantido)');
+  check(tbSeen >= 1 || sorteio, `os dois embocaram juntos: foi para o desempate (${tbSeen} desempate${tbSeen === 1 ? '' : 's'})`);
+  if (tbSeen >= 2) check(tbCourse?.id === 'desempate' && fgt.courseId === 'desempate', `do 2º desempate em diante, no campo do desempate (${tbCourse?.name})`);
+  check(!!tOver && (sorteio || (tOver.winner === null && tOver.reason === 'empate')), 'iguais em todos os desempates: empate');
   await sleep(600);
-  check((await money(t.A)) === 1000 && (await money(t.B)) === 1000, 'no empate a aposta voltou para os dois');
-  const lanceE = await prisma.activity.findFirst({ where: { userId: t.A.id, kind: 'FUTGOLF' }, orderBy: { id: 'desc' } });
-  check(!!lanceE && /empataram no Futgolf/.test(lanceE.text), `lance do empate: "${lanceE?.text}"`);
+  if (!sorteio || tOver?.winner === null) {
+    check((await money(t.A)) === 1000 && (await money(t.B)) === 1000, 'no empate a aposta voltou para os dois');
+    const lanceE = await prisma.activity.findFirst({ where: { userId: t.A.id, kind: 'FUTGOLF' }, orderBy: { id: 'desc' } });
+    check(!!lanceE && /empataram no Futgolf/.test(lanceE.text), `lance do empate: "${lanceE?.text}"`);
+  }
   t.pa.close(); t.pb.close();
 
   // ── 7: treino com bot

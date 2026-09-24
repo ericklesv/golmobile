@@ -9,7 +9,7 @@ import type { TopScope, TopTally, X1Game, X1Record as Rec, X1Tally } from '../li
  * o total de sempre — vitórias, derrotas, empates, aproveitamento, pontos e a maior sequência sem perder — e
  * cada jogo. Sem partidas: no próprio perfil, convite para jogar.
  */
-const GAMES: { id: X1Game; name: string }[] = [{ id: 'FUTPREGO', name: 'FutPrego' }, { id: 'BOTAO', name: 'Futebol de Botão' }];
+const GAMES: { id: X1Game; name: string }[] = [{ id: 'FUTPREGO', name: 'FutPrego' }, { id: 'BOTAO', name: 'Futebol de Botão' }, { id: 'FUTGOLF', name: 'Futgolf' }];
 const pts = (n: number) => `${n} ${Math.abs(n) === 1 ? 'ponto' : 'pontos'}`;
 
 /** Medalhas do X1 (pedido do dono, 15/09/2026): posição de agora na rodada, na temporada e no geral (caveira no

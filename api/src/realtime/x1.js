@@ -1,6 +1,6 @@
 /**
  * X1 — jogos 1x1 ao vivo, um por dia (dono, 15/09/2026: "jogos X1 rotativos, cada dia 1 jogo para não
- * ficar enjoativo"): FutPrego e Futebol de Botão se alternando (x1GameOf em lib/rules.js). WebSocket em
+ * ficar enjoativo"): FutPrego, Futebol de Botão e Futgolf em rodízio (x1GameOf em lib/rules.js). WebSocket em
  * `/api/ws/x1?token=<jwt>&mode=lobby|game` (o endereço antigo /api/ws/futprego continua valendo).
  *
  * - mode=lobby: aberto pelas telas com as abas (Layout). Só recebe o convite pequeno ("Fulano está te
@@ -23,7 +23,9 @@ import { prisma } from '../prisma.js';
 import { BOARDS, simulateFlick, scorerOf, targetOf } from '../lib/futprego.js';
 import { BOTAO_FIELD, simulateSnap } from '../lib/botao.js';
 import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove, botaoHumanMove, movablePieces } from '../lib/botaoMatch.js';
-import { FUTPREGO, BOTAO, X1, PROVOCAR, TUTORIAL, BOTS, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
+import { simulateKick as simulateGolf } from '../lib/futgolf.js';
+import { newFutgolfMatch, futgolfView, golfKick, golfSkip, golfCloseRound, golfRoundDone, golfActive, futgolfAiKick } from '../lib/futgolfMatch.js';
+import { FUTPREGO, BOTAO, FUTGOLF, X1, PROVOCAR, TUTORIAL, BOTS, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
 import { noPassoDoX1 } from '../services/tutorial.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
@@ -69,7 +71,8 @@ export function x1Today(now = new Date()) {
   const day = dayNumberAt(X1.switchHour, now);
   const game = forcedGame() ?? x1GameOf(day);
   const next = forcedGame() ? X1.games.find((g) => g !== game) : x1GameOf(day + 1); // forçado: o "próximo" mostra o outro
-  return { game, name: X1.names[game], next, nextName: X1.names[next], switchAt: nextResetAt(X1.switchHour, now).getTime(), switchHour: X1.switchHour };
+  // order + names: a tela sabe qual vem depois do próximo (com 3 jogos, "inverter hoje e amanhã" não serve mais)
+  return { game, name: X1.names[game], next, nextName: X1.names[next], switchAt: nextResetAt(X1.switchHour, now).getTime(), switchHour: X1.switchHour, order: forcedGame() ? null : X1.games, names: X1.names };
 }
 
 /** Início da hora cheia de Brasília em que `now` está (a trava de gols do X1 conta por hora, como a artilharia da hora). */
@@ -100,7 +103,7 @@ export function x1Status() {
 export function x1LiveMatches() {
   return [...matches.values()].sort((a, b) => a.startedAt - b.startedAt).map((m) => ({
     id: m.id, game: m.game, since: m.startedAt, training: !!m.bot, sameTeam: !!m.sameTeam, freeplay: !!m.freeplay,
-    score: m.bs?.score ?? null, turns: m.turns[0] + m.turns[1],
+    score: m.bs?.score ?? (m.fg ? [...m.fg.strokes] : null), turns: m.turns[0] + m.turns[1],
     players: m.conns.map((c) => ({ id: c.user.id, nick: c.user.nick, abbr: c.user.team?.abbr ?? null, bot: !!c.bot, ai: !!c.ai })),
   }));
 }
@@ -198,6 +201,7 @@ const playerView = (c) => ({ id: c.user.id, nick: c.user.nick, avatarUrl: c.user
 const rulesView = () => ({
   bet: F.bet, turnSec: F.turnSec, maxTurns: F.maxTurns, inviteSec: F.inviteSec, botAfterSec: F.botAfterSec, maxGoalsPerHour: F.maxGoalsPerHour, challengeCooldownSec: F.challengeCooldownSec,
   botao: { snapsPerTurn: BOTAO.snapsPerTurn, firstTurnSnaps: BOTAO.firstTurnSnaps, snapSec: BOTAO.snapSec, goalsToWin: BOTAO.goalsToWin, maxTurns: BOTAO.maxTurns, death: BOTAO.death },
+  futgolf: { kickSec: FUTGOLF.kickSec, overPar: FUTGOLF.overPar, tiebreaks: FUTGOLF.tiebreaks },
   provocar: PROVOCAR, // caretas e frases prontas (a tela não duplica o catálogo)
 });
 /** Jogador ocupado: numa partida ou com desafio aberto (em qualquer conexão). */
@@ -273,6 +277,7 @@ async function onMessage(conn, m) {
   if (m.t === 'bot') return startBot(conn);
   if (m.t === 'flick') return onFlick(conn, m);
   if (m.t === 'snap') return onSnap(conn, m);
+  if (m.t === 'gkick') return onGolfKick(conn, m);
   if (m.t === 'provocar') return onProvocar(conn, m);
   if (m.t === 'preview') return onPreview(conn, m);
   if (m.t === 'xray') return onXray(conn, m);
@@ -560,10 +565,11 @@ function startMatch(a, b, dbId, game, h2h = null, sameTeam = false, freeplay = f
   const first = randomInt(2);
   const m = { id: nextId++, dbId, game, conns: [a, b], bot: !!b.bot, sameTeam, freeplay, turn: first, turns: [0, 0], shots: [0, 0], timeouts: [0, 0], done: false, startedAt: Date.now(), busyUntil: 0, h2h };
   if (game === 'BOTAO') m.bs = newBotaoMatch(first);
+  else if (game === 'FUTGOLF') m.fg = newFutgolfMatch(rnd01); // um buraco sorteado (e espelhado ou não) por partida
   else { m.board = BOARDS[randomInt(BOARDS.length)]; m.ball = { ...m.board.center }; } // FutPrego: um desenho de tábua por partida (ninguém decora a jogada)
   a.match = m; a.side = 0; b.match = m; b.side = 1; // quem desafiou fica embaixo no campo do servidor
   matches.set(m.id, m);
-  if (game === 'BOTAO') scheduleSnap(m, 1500, false); else scheduleTurn(m, 1500, false);
+  if (game === 'BOTAO') scheduleSnap(m, 1500, false); else if (game === 'FUTGOLF') scheduleGolf(m, 1500, false); else scheduleTurn(m, 1500, false);
   for (const c of m.conns) sendMatch(c, false);
 }
 
@@ -576,6 +582,7 @@ function sendMatch(c, resumed) {
     h2h: m.h2h ? h2hOf(m.h2h, c.user.id) : null,
   };
   if (m.game === 'BOTAO') send(c.ws, { ...base, field: BOTAO_FIELD, botao: botaoView(m.bs), turn: m.bs.turn, snapSec: BOTAO.snapSec });
+  else if (m.game === 'FUTGOLF') send(c.ws, { ...base, course: m.fg.course, fg: futgolfView(m.fg), kickSec: FUTGOLF.kickSec });
   else send(c.ws, { ...base, board: m.board, ball: m.ball, turn: m.turn, turns: m.turns, maxTurns: F.maxTurns, turnSec: F.turnSec });
 }
 
@@ -725,7 +732,80 @@ function botSnap(m) {
   playSnap(m, m.bs.turn, mv.idx, mv.dx, mv.dy, mv.power);
 }
 
-// ─── Queda, fim e dinheiro (iguais nos dois jogos) ──────────────────────────
+// ─── Futgolf: os dois chutam ao mesmo tempo, uma rodada por vez ─────────────
+
+/**
+ * Abre a rodada depois de `delayMs` (a animação dos chutes da anterior): cada um que ainda joga tem FUTGOLF.kickSec
+ * para chutar. Chute que chega antes de a rodada abrir é ignorado. Os bots (treino ou "quase reais") chutam depois
+ * do tempo de pensar deles; quem já embocou não joga mais.
+ */
+function scheduleGolf(m, delayMs, announce = true, extra = {}) {
+  clearTimeout(m.turnTimer); for (const t of m.botTimers ?? []) clearTimeout(t);
+  m.botTimers = [];
+  m.golfOpenAt = Date.now() + delayMs;
+  m.turnEndsAt = m.golfOpenAt + FUTGOLF.kickSec * 1000;
+  if (announce) for (const c of m.conns) send(c.ws, { t: 'ground', fg: futgolfView(m.fg), turnEndsAt: m.turnEndsAt, ...extra });
+  m.turnTimer = setTimeout(() => timeoutGolf(m), delayMs + FUTGOLF.kickSec * 1000 + 800); // 0,8 s de folga para a internet
+  for (const side of [0, 1]) if (isAi(m.conns[side]) && golfActive(m.fg, side)) m.botTimers.push(setTimeout(() => botGolf(m, side), delayMs + aiDelayMs(m.conns[side])));
+}
+
+function onGolfKick(conn, msg) {
+  const m = conn.match;
+  if (!m || m.done || m.game !== 'FUTGOLF' || Date.now() < (m.golfOpenAt ?? 0) - 300) return; // (a internet pode adiantar um pouco)
+  const dx = Number(msg.dx), dy = Number(msg.dy), power = Number(msg.power), spin = Number(msg.spin ?? 0);
+  if (![dx, dy, power, spin].every(Number.isFinite) || Math.hypot(dx, dy) < 1e-6) return;
+  playGolf(m, conn.side, dx, dy, power, Math.max(-1, Math.min(1, Math.round(spin)))); // efeito: só os três botões
+}
+
+/** O chute vai na hora para as duas telas (quem chutou vê a bola andar; o outro vê o fantasma). */
+function playGolf(m, side, dx, dy, power, spin) {
+  const res = golfKick(m.fg, side, dx, dy, power, spin);
+  if (!res) return; // já chutou nesta rodada, já embocou etc.
+  m.shots[side]++; m.timeouts[side] = 0;
+  m.turns = [m.shots[0], m.shots[1]];
+  const animMs = Math.round((res.sim.frames.length * 1000) / 30);
+  m.golfAnimEnd = Math.max(m.golfAnimEnd ?? 0, Date.now() + animMs);
+  for (const c of m.conns) send(c.ws, { t: 'gshot', side, frames: res.sim.frames, events: res.sim.events, holed: res.sim.holed, water: res.sim.water, fg: futgolfView(m.fg) });
+  if (res.sim.holed && m.fg.phase === 'play') aiReactsToGoal(m, side, animMs); // o bot ri quando emboca, fica bravo quando o outro emboca
+  if (golfRoundDone(m.fg)) closeGolfRound(m);
+}
+
+/** Todos chutaram (ou o tempo acabou): fim, desempate ou próxima rodada — sempre depois da animação. */
+function closeGolfRound(m) {
+  clearTimeout(m.turnTimer); for (const t of m.botTimers ?? []) clearTimeout(t);
+  m.botTimers = [];
+  const wait = Math.max(0, (m.golfAnimEnd ?? 0) - Date.now());
+  const r = golfCloseRound(m.fg);
+  if (r.t === 'over') {
+    // resultado decidido: fica pendente até a animação acabar — desistir/cair nesse meio-tempo não escapa dele
+    m.pending = { winner: r.winner, reason: r.reason };
+    m.turnTimer = setTimeout(() => finish(m, m.pending), wait + 1200);
+    return;
+  }
+  scheduleGolf(m, wait + (r.t === 'tiebreak' ? 1800 : 700), true, r.t === 'tiebreak' ? { tiebreak: true } : {});
+}
+
+/** Acabou o tempo: quem não chutou perde o chute (conta 1 sem sair do lugar); 3 vezes seguidas = W.O. */
+function timeoutGolf(m) {
+  if (m.done) return;
+  for (const side of [0, 1]) {
+    if (!golfSkip(m.fg, side)) continue;
+    m.timeouts[side]++;
+    for (const c of m.conns) send(c.ws, { t: 'gskip', side, fg: futgolfView(m.fg) });
+    if (m.timeouts[side] >= MAX_TIMEOUTS) return finish(m, { winner: 1 - side, reason: 'wo' });
+  }
+  closeGolfRound(m);
+}
+
+/** O lado do servidor chuta: treino joga bem (0,5); o bot "quase real" com a skill sorteada na visita. */
+function botGolf(m, side) {
+  const c = m.conns[side];
+  if (m.done || !isAi(c) || !golfActive(m.fg, side) || m.fg.kicked[side]) return;
+  const k = futgolfAiKick(m.fg, side, { skill: c.ai ? (c.skill ?? 0.4) : 0.5, rnd: rnd01 });
+  playGolf(m, side, k.dx, k.dy, k.power, k.spin);
+}
+
+// ─── Queda, fim e dinheiro (iguais nos três jogos) ──────────────────────────
 
 function takeOver(from, to) {
   to.xray = from.xray;
@@ -787,6 +867,10 @@ function onPreview(conn, msg) {
     const sim = simulateSnap(m.bs, idx, dx, dy, Math.max(0.05, Math.min(1, power)));
     path = sim.frames.map((f) => f[0]); goal = sim.goal;
     piece = sim.frames.map((f) => f[idx + 1]); // o caminho do botão que leva o peteleco
+  } else if (m.game === 'FUTGOLF') {
+    if (!golfActive(m.fg, conn.side) || m.fg.kicked[conn.side]) return;
+    const r = simulateGolf(m.fg.course, m.fg.balls[conn.side], dx, dy, Math.max(0.03, Math.min(1, power)), Math.max(-1, Math.min(1, Math.round(Number(msg.spin) || 0))));
+    path = r.frames; goal = r.holed ? 'buraco' : null;
   } else {
     if (m.turn !== conn.side) return;
     const r = simulateFlick(m.ball, dx, dy, power, m.board, { closedGoals: m.shots[0] + m.shots[1] === 0 });
@@ -955,7 +1039,7 @@ export async function x1BotVisit(user, { skill = 0.4, waitMs = 5 * 60_000, accep
 async function cancelMatch(m, reason) {
   if (m.done) return;
   m.done = true;
-  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer);
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer); for (const t of m.botTimers ?? []) clearTimeout(t);
   for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
   if (!m.bot && m.dbId) {
@@ -980,7 +1064,7 @@ async function cancelMatch(m, reason) {
 async function finish(m, result) {
   if (m.done) return;
   m.done = true;
-  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer);
+  clearTimeout(m.turnTimer); clearTimeout(m.botTimer); clearTimeout(m.provocarTimer); for (const t of m.botTimers ?? []) clearTimeout(t);
   for (const c of m.conns) clearTimeout(c.dropTimer);
   matches.delete(m.id);
   let info = null, h2h = null;
@@ -998,7 +1082,8 @@ async function finish(m, result) {
     const cd = !m.bot && info && !info.error ? { cooldownUntil: isVip(c.user) ? null : Date.now() + F.challengeCooldownSec * 1000 } : {};
     const msg = {
       t: 'over', game: m.game, winner: result.winner, reason: result.reason, you: c.side, training: m.bot, players: m.conns.map(playerView),
-      score: m.bs?.score ?? null, ...personal(info, m, c.side, result), ...rivalry(h2h, m, c), ...cd,
+      score: m.bs?.score ?? null, golf: m.fg ? { ...futgolfView(m.fg), hole: m.fg.course.name } : undefined,
+      ...personal(info, m, c.side, result), ...rivalry(h2h, m, c), ...cd,
     };
     if (c.ws && c.ws.readyState === c.ws.OPEN) send(c.ws, msg); else lastOver.set(c.user.id, { at: Date.now(), msg });
     c.match = null; c.side = -1;
@@ -1051,7 +1136,9 @@ async function settle(m, result) {
   const [a, b] = m.conns;
   const now = new Date();
   const label = X1.names[m.game];
-  const score = m.bs ? { scoreA: m.bs.score[0], scoreB: m.bs.score[1] } : { scoreA: result.winner === 0 ? 1 : 0, scoreB: result.winner === 1 ? 1 : 0 };
+  const score = m.bs ? { scoreA: m.bs.score[0], scoreB: m.bs.score[1] }
+    : m.fg ? { scoreA: m.fg.strokes[0], scoreB: m.fg.strokes[1] } // Futgolf: chutes de cada um
+      : { scoreA: result.winner === 0 ? 1 : 0, scoreB: result.winner === 1 ? 1 : 0 };
   return prisma.$transaction(async (tx) => {
     const closed = await tx.x1Match.updateMany({ where: { id: m.dbId, status: 'PLAYING' }, data: { status: 'FINISHED', finishedAt: now, turns: m.shots[0] + m.shots[1], reason: result.reason, ...score } });
     if (!closed.count) return { error: true };
@@ -1065,12 +1152,15 @@ async function settle(m, result) {
       await tx.user.updateMany({ where: { id: { in: [a.user.id, b.user.id] } }, data: { money: { increment: F.bet } } });
       await feed(a.user, m.game === 'BOTAO'
         ? `${a.user.nick} e ${b.user.nick} empataram no ${label}, até nos pênaltis: aposta devolvida.`
-        : `${a.user.nick} e ${b.user.nick} empataram no ${label}: ninguém marcou em ${F.maxTurns} jogadas, aposta devolvida.`);
+        : m.game === 'FUTGOLF'
+          ? `${a.user.nick} e ${b.user.nick} empataram no ${label}, até nos desempates: aposta devolvida.`
+          : `${a.user.nick} e ${b.user.nick} empataram no ${label}: ninguém marcou em ${F.maxTurns} jogadas, aposta devolvida.`);
       return { refund: true, why: 'empate' };
     }
     const w = m.conns[result.winner], l = m.conns[1 - result.winner];
     const pot = F.bet * 2;
-    const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)' }[result.reason] ?? '';
+    const how = { 'gol-contra': ' (gol contra dele)', wo: ' por W.O.', desistiu: ' (ele desistiu)', desempate: ' no desempate' }[result.reason]
+      ?? (m.fg && result.reason === 'buraco' ? ` no buraco ${m.fg.course.name} (${m.fg.strokes[result.winner]} chute${m.fg.strokes[result.winner] === 1 ? '' : 's'})` : '');
     await tx.user.update({ where: { id: w.user.id }, data: { money: { increment: pot } } });
     await tx.x1Match.update({ where: { id: m.dbId }, data: { winnerId: w.user.id } });
     if (m.sameTeam) {

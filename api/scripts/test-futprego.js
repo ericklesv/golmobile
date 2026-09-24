@@ -292,6 +292,9 @@ if (bef8b.c !== null && bef8b.b !== null) check((await teamScore(C.teamId)) === 
 gC.close();
 
 // 10) sem VIP: espera challengeCooldownSec depois de cada partida para DESAFIAR; aceitar pode na hora; VIP não espera
+// (B chega aqui com o saldo que sobrou das partidas de antes — quem vence depende da tábua sorteada — e às vezes com menos
+// de R$ 200: o aceite dava "sem dinheiro" e o passo falhava de vez em quando. Recarrega para o passo testar a espera.)
+await prisma.user.update({ where: { id: B.id }, data: { money: 1000 } });
 const E = await mkUser('fortaleza', 1000, { vip: false });
 const gE = phone(E, 'game', '10.0.0.5'); await gE.open;
 const cd0 = await gE.wait('cooldown', 3000);

@@ -37,6 +37,7 @@ enum KickKind {
   FUTPREGO
   BOTAO
   GOLEADA
+  FUTGOLF
 }
 
 enum SeasonStatus {

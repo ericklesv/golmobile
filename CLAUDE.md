@@ -235,9 +235,13 @@ depois que o novo estiver estável. Não instalar nada dele.
   ir e voltar entre 19h e 20h no dia 15 — não mudar de novo sem ele pedir; `X1.switchHour`, `x1GameOf(dayNumberAt(19))` em `rules.js`/`x1.js`,
   **atenção ao histórico**: o dono pediu 19h em 15/09, o Guilherme reverteu na mesma noite anotando "confirmado
   20h" (commit 02dd9d4) e o dono pediu 19h DE NOVO em 16/09 — se for mudar, combine entre vocês antes;
-  `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez) e **Futebol de Botão**
-  (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes). Regras de
-  dinheiro e travas iguais para os dois (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva
+  `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez), **Futebol de Botão**
+  (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes) e, desde
+  24/09/2026, **Futgolf** (ver o item dele logo abaixo). **O rodízio tem âncora** (`X1.anchor` em rules.js: um dia e o
+  jogo daquele dia) — com 3 jogos, `dia % n` trocaria o jogo de hoje no meio do dia; jogo novo = entra em `X1.games` e
+  a âncora é acertada para o jogo de hoje não mudar. A tela recebe `order` + `names` no `x1Today` e anda o rodízio com
+  `advanceX1Today` (components/X1GameSwitch.tsx) — "inverter hoje e amanhã" só servia para 2 jogos. Regras de
+  dinheiro e travas iguais para todos (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva
   R$ 400 + 1 gol e o time do outro perde 1 gol na rodada; **só as 10 PRIMEIRAS PARTIDAS válidas de cada jogador em
   cada hora cheia de Brasília mexem no placar** (dono, 15/09/2026; `FUTPREGO.maxGoalsPerHour` — o nome ficou): empate
   gasta uma das 10; revanche repetida (`X1Match.repeated`, migração 0035) e amistoso não; cada um conta as suas —
@@ -400,6 +404,41 @@ depois que o novo estiver estável. Não instalar nada dele.
   enquanto, pedido da torcida 15/09/2026): no X1 a peça fica listrada na horizontal primária · terciária · secundária
   (prego em `PregoBoard`, botão em `BotaoField` com o aro na 3ª cor) — a 3ª cor no meio separa as outras ("sem o
   preto tocar no vermelho").
+- **Futgolf — 3º jogo do X1** (aprovado pelo dono em 23/09/2026 a partir das telas de exemplo; pedidos dele: "campo
+  maior", "powerups na pista, como as setinhas de boost, coisas para bater e receber bump como uma mola", "mais shapes e
+  nada tão óbvio"; estreia no rodízio às 19h de 24/09/2026). Golfe de chute visto de cima, com a bola ROLANDO (física de
+  chão, tipo minigolfe — o vento do mockup saiu, não faz sentido para bola rolando). **`lib/futgolf.js`** = física pura e
+  determinística + os **8 buracos** (`HOLES`: Tabelinha, Bifurcação, Ilha, Fliperama, Zigue-zague, Slalom, Rotatória,
+  Bueiros; cada um sorteado e espelhado ou não = 16 variações): corredor (linha central com larguras, Catmull-Rom,
+  pontas arredondadas) fechado por placas + ilhas sólidas, placas soltas, zonas (`agua` = +1 chute e a bola volta de onde
+  saiu; `areia` = terrão, segura muito; `mato`; `seco` = terra firme por cima da água: ilha e ponte), **molas**
+  (devolvem com força extra), postes (cone, jogador de barreira), **setas** (boost enquanto a bola passa) e **bueiros**
+  (entra num, sai no outro). Campo de 400 de largura e 900–1.250 de altura (~2 telas): a **câmera segue a bola** e
+  "Ver o campo" mostra tudo. **`lib/futgolfMatch.js`** = regras puras: os dois **chutam AO MESMO TEMPO** (`FUTGOLF.kickSec`
+  = 20 s por rodada; a bola do outro é um fantasma na tela), **quem embocar primeiro vence** (os dois na mesma rodada:
+  menos chutes; empatou = **desempate**: um chute de cada do ponto `tb`, mais perto do buraco vence; iguais de novo, até
+  `FUTGOLF.tiebreaks` = 3 vezes, depois empate com a aposta de volta); par + `FUTGOLF.overPar` (4) sem embocar = pegou a
+  bola; perdeu o tempo = chute que não sai do lugar (3 seguidas = W.O.). Efeito: 3 botões (curva −1/0/+1). Dinheiro,
+  gol, travas por hora, Ranking X1, retrospecto, provocar, Raio-X e trava de deploy = os mesmos dos outros jogos (settle;
+  o placar gravado em `scoreA/scoreB` são os CHUTES). Gol e lances usam `KickKind` FUTGOLF (migração 0044).
+  No servidor (`realtime/x1.js`): `scheduleGolf` abre a rodada **depois** da animação dos chutes da anterior — a mensagem
+  `ground` chega ANTES de a rodada abrir (`turnEndsAt − kickSec`), e chute antes disso é ignorado (a tela espera; teste
+  que chuta na hora recebe "ignorado" — foi o que quebrou o 1º desempate do test-futgolf.js); `gshot` vai na hora para
+  as duas telas (quadros + eventos com o quadro `f`: `mola`, `seta`, `tunel` — a tela NÃO interpola entre a entrada e a
+  saída do bueiro —, `agua`, `buraco`, `bate`); `gskip` = tempo esgotado. **Bots** (treino, tutorial e os "quase reais"):
+  `futgolfAiKick` procura a jogada simulando com a mesma física, guiado por um **mapa de distância** (`distanceField`:
+  Dijkstra que contorna placas/ilhas/água e conhece os bueiros; ATENÇÃO: `Float64Array` — com Float32 o arredondamento
+  parava a busca), e erra pela `skill` (~20–40 ms por jogada). Tela: `components/FutgolfCourse.tsx` (placas de
+  publicidade no contorno, setas piscando, bueiros com cor e número, bandeira de escanteio no buraco, árvores por
+  `scenery`) + o ramo FUTGOLF de `screens/X1.tsx` (câmera no viewBox direto no DOM enquanto a bola anda, duas animações
+  ao mesmo tempo, `GolfStrip`, `SpinPicker`); a "foto" do começo e da janela do jogo do dia é um recorte
+  (`previewView`) do buraco `meta.x1.futgolf.preview`. **Conferir buracos: rota oculta `/debug-futgolf`** (sem login;
+  `?buraco=ilha&espelho=1&camera=1`), que lê `GET /api/x1/futgolf/buracos`. **Mexeu nos buracos ou na física? Rode
+  `node scripts/futgolf-balance.js`** (pasta api/, sem banco: chutes para embocar por nível de bot — tem de ficar perto
+  do par —, determinismo e nenhuma bola fora do campo; foi ele que achou a bola escapando pela ponta de baixo); **mexeu
+  na partida? `node scripts/test-futgolf.js`** (pasta api/, banco LOCAL, API no ar com `X1_JOGO=FUTGOLF`,
+  `FUTGOLF_CHUTE_SEG=4` e `BOTS_X1_OFF=1`; `FUTGOLF_CHUTE_SEG` só vale fora de produção). Buraco novo = entrada em
+  `HOLES` com `par` que o balance confirme e um `tb` de desempate longe do buraco (perto demais os dois embocam).
 - **Bots "quase reais"** (pedido do dono, 18/09/2026: "preencher os times que estão sem ninguém na Série A", com nomes
   reais, gols espalhados pelo dia, "não podem ficar na cara que são bots"; `services/bots.js`, lista em `data/bots.js`
   — **os nicks precisam do OK do dono antes do `criar`** (pedido dele; os 27 primeiros foram validados e criados

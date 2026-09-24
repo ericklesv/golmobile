@@ -8,7 +8,8 @@
  *
  * Também confere que a partida é DE VERDADE (aposta cobrada, sem cara de treino), como o dono decidiu.
  *
- * Uso (na pasta api/, com a API local no ar e X1_JOGO=FUTPREGO no .env dela):
+ * Uso (na pasta api/, com a API local no ar e X1_JOGO=FUTPREGO — ou FUTGOLF, em que os dois chutam juntos e
+ * a gente espera o chute do bot — no .env dela):
  *   node scripts/test-tutorial-x1.js   → "TUDO OK".
  */
 import 'dotenv/config';
@@ -19,7 +20,7 @@ if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.te
 import WebSocket from 'ws';
 import jwt from 'jsonwebtoken';
 const { prisma } = await import('../src/prisma.js');
-const { FUTPREGO: F, TUTORIAL } = await import('../src/lib/rules.js');
+const { FUTPREGO: F, FUTGOLF, TUTORIAL } = await import('../src/lib/rules.js');
 const { config } = await import('../src/config.js');
 
 const API = process.env.TX_API || 'http://localhost:4320';
@@ -75,6 +76,11 @@ if (partida) {
   check(!!linha && linha.bet === F.bet, 'a partida foi gravada no histórico do X1, como qualquer outra');
 
   // ── O QUE FALTAVA: o bot tem de JOGAR, não perder a vez
+  if (partida.game === 'FUTGOLF') { // os dois chutam ao mesmo tempo: o chute do bot chega sozinho na 1ª rodada
+    const chute = await espera('gshot', FUTGOLF.kickSec + 14);
+    check(!!chute, 'o bot chutou na rodada (não deixou o tempo acabar)');
+    check(!!chute && chute.side === 1 - partida.you, 'e o chute saiu do lado dele mesmo');
+  } else {
   const minhaVez = partida.turn === partida.you;
   const jogada = await espera('shot', minhaVez ? 5 : F.turnSec + 12);
   if (minhaVez) {
@@ -86,6 +92,7 @@ if (partida) {
   } else {
     check(!!jogada, 'o bot jogou quando chegou a vez dele (não deixou o tempo acabar)');
     check(!!jogada && jogada.side === 1 - partida.you, 'e o peteleco saiu do lado dele mesmo');
+  }
   }
 }
 

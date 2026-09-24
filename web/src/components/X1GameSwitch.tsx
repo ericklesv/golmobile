@@ -8,6 +8,8 @@ import { PregoBoard } from './PregoBoard';
 import { previewPaints } from '../lib/paint';
 import { BotaoField, BotaoDisc } from './BotaoField';
 import { TriondaBall } from './TriondaBall';
+import { FutgolfCourse } from './FutgolfCourse';
+import { previewView } from '../lib/futgolf';
 import { money as fmt } from '../lib/format';
 import type { X1Game, X1Today } from '../lib/types';
 
@@ -24,10 +26,21 @@ const seen = (id: number) => { try { return Number(localStorage.getItem(KEY(id))
 const mark = (id: number, at: number) => { try { localStorage.setItem(KEY(id), String(at)); } catch {} };
 const DAY = 86_400_000;
 
-/** O jogo de AGORA a partir da meta (que pode estar velha): a cada troca já passada, inverte hoje/amanhã. */
+/**
+ * Um dia de jogo à frente: o próximo vira o de hoje e o seguinte sai da ordem do rodízio (`order`, vinda do
+ * servidor). Sem ordem (jogo forçado no PC, ou meta antiga de dois jogos) inverte hoje e amanhã, como antes.
+ */
+export function advanceX1Today(t: X1Today): X1Today {
+  const order = t.order;
+  if (!order || order.length < 2) return { ...t, game: t.next, name: t.nextName, next: t.game, nextName: t.name, switchAt: t.switchAt + DAY };
+  const next = order[(order.indexOf(t.next) + 1) % order.length];
+  return { ...t, game: t.next, name: t.nextName, next, nextName: t.names?.[next] ?? next, switchAt: t.switchAt + DAY };
+}
+
+/** O jogo de AGORA a partir da meta (que pode estar velha): anda um dia de jogo a cada troca já passada. */
 export function effectiveToday(t: X1Today, now: number): X1Today {
   let cur = t;
-  for (let i = 0; i < 400 && cur.switchAt <= now; i++) cur = { ...cur, game: cur.next, name: cur.nextName, next: cur.game, nextName: cur.name, switchAt: cur.switchAt + DAY };
+  for (let i = 0; i < 400 && cur.switchAt <= now; i++) cur = advanceX1Today(cur);
   return cur;
 }
 
@@ -68,8 +81,10 @@ export function X1GameSwitchWatcher({ gate = true }: { gate?: boolean }) {
   if (!open || !me || !meta) return null;
   const { today, switched } = open;
   const bet = meta.futprego?.bet ?? 200, b = meta.x1?.botao, maxTurns = meta.futprego?.maxTurns ?? 10;
-  const botao = today.game === 'BOTAO';
-  const how = botao
+  const botao = today.game === 'BOTAO', golf = today.game === 'FUTGOLF';
+  const how = golf
+    ? `Golfe de chute 1x1: os dois chutam ao mesmo tempo no mesmo buraco. Puxe a bola e solte, use o efeito, aproveite as setas e as molas e fuja da lagoa. Quem embocar primeiro vence; os dois juntos, desempate: mais perto do buraco.`
+    : botao
     ? `Futebol de botão 1x1. Na sua vez, dê ${b?.snapsPerTurn ?? 2} petelecos num botão seu (quem começa dá ${b?.firstTurnSnaps ?? 1}): toque no botão, puxe para trás e solte. O primeiro gol acaba a partida; sem gol em ${b?.maxTurns ?? 9} vezes, vai para os pênaltis.`
     : `Futebol de prego 1x1, uma vez de cada: puxe a bola para trás e solte, e ela desvia nos pregos da tábua. Quem fizer o primeiro gol vence; sem gol em ${maxTurns} jogadas de cada, o dinheiro volta.`;
   return (
@@ -105,6 +120,10 @@ export function X1GameSwitchWatcher({ gate = true }: { gate?: boolean }) {
 function GamePreview({ game, team, meta }: { game: X1Game; team: { colorPrimary: string; colorSecondary: string; colorTertiary?: string | null; kitDesign?: string | null }; meta: NonNullable<ReturnType<typeof useAuth.getState>['meta']> }) {
   const [mine, rival] = previewPaints({ primary: team.colorPrimary, secondary: team.colorSecondary, tertiary: team.colorTertiary ?? null, design: team.kitDesign ?? null });
   const board = meta.futprego?.board, field = meta.x1?.field, kickoff = meta.x1?.kickoff;
+  if (game === 'FUTGOLF') {
+    const c = meta.x1?.futgolf?.preview;
+    return c ? <FutgolfCourse course={c} view={previewView(c)} still className="w-full drop-shadow-[0_5px_0_rgba(0,0,0,0.25)]" /> : null;
+  }
   if (game === 'BOTAO') {
     if (!field || !kickoff) return null;
     return (

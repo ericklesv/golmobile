@@ -192,3 +192,7 @@ img { -webkit-user-drag: none; }
 .nick-marrom { color: #8B5A2B; }
 .nick-preto { color: #1E1E1E; }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+
+/* Futgolf (X1): a mola dá um pulo quando a bola bate (components/FutgolfCourse.tsx) */
+@keyframes fgBump { 0% { transform: scale(1); } 35% { transform: scale(1.32); } 100% { transform: scale(1); } }
+.fg-bump { animation: fgBump 0.38s ease-out; transform-box: fill-box; transform-origin: center; }

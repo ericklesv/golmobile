@@ -11,17 +11,20 @@ import { Avatar } from '../components/Avatar';
 import { Shield } from '../components/Shield';
 import { PregoBoard, type PregoBoardData } from '../components/PregoBoard';
 import { BotaoField, BotaoDisc, type BotaoFieldData, type BotaoPiece } from '../components/BotaoField';
+import { FutgolfCourse } from '../components/FutgolfCourse';
+import { golfActive, previewView, type FgCourse, type FgEvent, type FgPoint, type FgView } from '../lib/futgolf';
 import { TriondaBall, type TriondaApi } from '../components/TriondaBall';
 import { toast } from '../components/Toast';
-import { X1GameSwitchWatcher } from '../components/X1GameSwitch';
+import { X1GameSwitchWatcher, advanceX1Today } from '../components/X1GameSwitch';
 import { sound } from '../lib/sound';
 import { money as fmt, timeLeft } from '../lib/format';
 import { paintOf, matchPaints, previewPaints } from '../lib/paint';
 
 /**
  * X1 — jogos 1x1 ao vivo, um por dia (pedido do dono, 15/09/2026: "cada dia 1 jogo para não ficar
- * enjoativo"): FutPrego (futebol de prego, uma vez de cada) e Futebol de Botão (2 petelecos num botão seu
- * por vez; o 1º gol acaba; empate no fim vira DEATH MATCH). Tudo passa pelo WebSocket /api/ws/x1?mode=game
+ * enjoativo"): FutPrego (futebol de prego, uma vez de cada), Futebol de Botão (2 petelecos num botão seu
+ * por vez; o 1º gol acaba; empate no fim vira DEATH MATCH) e Futgolf (os dois chutam AO MESMO TEMPO no mesmo
+ * buraco; quem embocar primeiro vence — a câmera segue a sua bola, a do outro é um fantasma). Tudo passa pelo WebSocket /api/ws/x1?mode=game
  * (realtime/x1.js na API): desafiar, aceitar, petelecos e o fim. O servidor calcula tudo; esta tela só mostra
  * os quadros e manda direção + força. Quem joga do lado de cima vê o campo girado: sempre ataca para cima.
  * Estilingue: puxa para trás e solta (a bola / o botão vai para a frente).
@@ -35,6 +38,7 @@ interface Provocar { gapMs: number; burst: number; burstMs: number; punishMs: nu
 interface Rules {
   bet: number; turnSec: number; maxTurns: number; inviteSec: number; botAfterSec: number; maxGoalsPerHour: number; challengeCooldownSec?: number;
   botao?: { snapsPerTurn: number; firstTurnSnaps: number; snapSec: number; goalsToWin: number; maxTurns: number; death: { snapsPerTurn: number; drawAfter1v1: number } };
+  futgolf?: { kickSec: number; overPar: number; tiebreaks: number };
   provocar?: Provocar;
 }
 interface Bubble { item: ProvocarItem; id: number }
@@ -54,11 +58,16 @@ interface BotaoView {
   death: { left: [number, number]; rounds1v1: number; drawAfter: number } | null;
 }
 interface BotaoMatch extends MatchBase { game: 'BOTAO'; field: BotaoFieldData; bv: BotaoView; snapSec: number }
-type Match = PregoMatch | BotaoMatch;
+/** Futgolf: o buraco (vem uma vez) e o andamento; `tiebreak` = a rodada aberta é de desempate. */
+interface GolfMatch extends MatchBase { game: 'FUTGOLF'; course: FgCourse; fg: FgView; kickSec: number }
+type Match = PregoMatch | BotaoMatch | GolfMatch;
+type Cam = { x: number; y: number; w: number; h: number };
 interface Over {
   game?: X1Game; winner: Side | null; reason: string; you: Side; training: boolean; money: number; pot?: number; goal?: boolean; why?: string | null;
   goalText?: string | null; lost?: boolean; lostTeam?: string | null; refund?: boolean; players?: Player[]; text?: string; late?: boolean;
   score?: [number, number] | null; lossLimit?: boolean;
+  /** Futgolf: o andamento no fim (chutes de cada um, quem embocou) e o nome do buraco. */
+  golf?: FgView & { hole: string };
   /** Quem não é VIP: até quando espera para desafiar de novo (null = pode já; ausente no treino). */
   cooldownUntil?: number | null;
   /** Retrospecto já com esta partida e a frase de provocação (só partida que entrou no retrospecto). */
@@ -73,7 +82,10 @@ const MAX_PULL = 120; // FutPrego: arrasto (em unidades da tábua) para a força
 const MAX_PULL_BOTAO = 110; // Botão: idem, puxando o botão
 const XRAY_NICKS = ['MVGIC', 'ericklesv']; // Raio-X (tecla R): quem pode usar — e quem fica sabendo quando o outro usa
 const DEFAULT_RULES: Rules = { bet: 200, turnSec: 15, maxTurns: 10, inviteSec: 10, botAfterSec: 60, maxGoalsPerHour: 10 };
-const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' };
+const GAME_NAME: Record<X1Game, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão', FUTGOLF: 'Futgolf' };
+const GOLF_PULL = 150; // Futgolf: arrasto (em pixels da tela) para a força máxima — a câmera muda a escala, a mão não
+const GOLF_VIEW_W = 440; // Futgolf: largura (em unidades do campo) que a câmera mostra
+const golfNick = (m: GolfMatch, side: number) => (side === m.you ? 'Você' : m.players[side].nick);
 // paintOf / matchPaints (uniforme reserva quando os dois times se confundem, amistoso incluído): lib/paint.ts
 const shownOf = (bv: BotaoView): Shown => ({ ball: { ...bv.ball }, pieces: bv.pieces.map((p) => ({ ...p })) });
 
@@ -132,6 +144,21 @@ export function X1Screen() {
   const [xray, setXray] = useState(false);
   const [oppXray, setOppXray] = useState(false); // o adversário (MVGIC/ericklesv) está com o Raio-X ligado
   const [preview, setPreview] = useState<{ path: [number, number][]; piece: [number, number][] | null; goal: string | null } | null>(null);
+  // Futgolf: onde as bolas estão paradas, o efeito escolhido, a câmera, "ver o campo inteiro", as molas batidas e
+  // qual bola está andando (a minha anima enquanto o outro ainda mira: as duas animações correm juntas)
+  const [golfShown, setGolfShown] = useState<[FgPoint, FgPoint] | null>(null);
+  const [spin, setSpin] = useState<-1 | 0 | 1>(0);
+  const [overview, setOverview] = useState(false);
+  const [cam, setCam] = useState<Cam | null>(null);
+  const [bumps, setBumps] = useState<Record<number, number>>({});
+  const [golfMoving, setGolfMoving] = useState<[boolean, boolean]>([false, false]);
+  const golfBallEls = useRef<(SVGGElement | null)[]>([null, null]);
+  const golfAnims = useRef<({ frames: [number, number][]; cuts: Set<number>; start: number; onEnd: () => void } | null)[]>([null, null]);
+  const golfRaf = useRef<number | null>(null);
+  const golfBox = useRef<HTMLDivElement | null>(null);
+  const camRef = useRef<Cam | null>(null);
+  const overviewRef = useRef(false);
+  overviewRef.current = overview;
   const previewSeq = useRef(0);
   const previewAt = useRef(0);
   const [, tick] = useState(0);
@@ -187,7 +214,7 @@ export function X1Screen() {
   // o jogo do dia vira às 19h, junto com a rodada (com a tela aberta): os jogos se alternam
   useEffect(() => {
     if (!today) return;
-    const t = window.setTimeout(() => setToday((d) => (d ? { ...d, game: d.next, name: d.nextName, next: d.game, nextName: d.name, switchAt: d.switchAt + 86_400_000 } : d)), Math.max(1000, today.switchAt - Date.now() + 1500));
+    const t = window.setTimeout(() => setToday((d) => (d ? advanceX1Today(d) : d)), Math.max(1000, today.switchAt - Date.now() + 1500));
     return () => clearTimeout(t);
   }, [today?.switchAt]);
   // campanha no X1 (temporada e posição no ranking) para o começo
@@ -216,12 +243,12 @@ export function X1Screen() {
       };
     };
     connect();
-    return () => { closed = true; clearTimeout(timer); wsRef.current?.close(); if (raf.current) cancelAnimationFrame(raf.current); };
+    return () => { closed = true; clearTimeout(timer); wsRef.current?.close(); if (raf.current) cancelAnimationFrame(raf.current); if (golfRaf.current) cancelAnimationFrame(golfRaf.current); };
   }, []);
 
   function onMessage(m: any) {
     // enquanto a bola anda, vez/fim esperam na fila (a tela mostra tudo na ordem)
-    if (animRef.current && ['turn', 'over', 'skip', 'bturn', 'bskip'].includes(m.t)) { queue.current.push(m); return; }
+    if (animRef.current && ['turn', 'over', 'skip', 'bturn', 'bskip', 'ground'].includes(m.t)) { queue.current.push(m); return; }
     switch (m.t) {
       case 'hello':
         setRules(m.rules ?? DEFAULT_RULES);
@@ -261,6 +288,14 @@ export function X1Screen() {
           setMatch({ ...base, game: 'BOTAO', field: m.field, bv, snapSec: m.snapSec });
           setShown(shownOf(bv)); setSel(nearestPiece(bv, m.you)); setTurnOpen(true);
           ball = bv.ball;
+        } else if (m.game === 'FUTGOLF') {
+          const fg: FgView = m.fg;
+          setMatch({ ...base, game: 'FUTGOLF', course: m.course, fg, kickSec: m.kickSec });
+          setShown(null); setGolfShown([{ ...fg.balls[0] }, { ...fg.balls[1] }]); setGolfMoving([false, false]);
+          golfAnims.current = [null, null];
+          if (!m.resumed) { setSpin(0); setOverview(false); }
+          setCam(null); camRef.current = null; // a câmera se ajusta quando o campo aparecer (golfFit)
+          ball = fg.balls[m.you];
         } else {
           setMatch({ ...base, game: 'FUTPREGO', board: m.board, ball: m.ball, turn: m.turn, turns: m.turns, maxTurns: m.maxTurns, turnSec: m.turnSec });
           setShown(null);
@@ -268,7 +303,7 @@ export function X1Screen() {
         }
         setPhase('match');
         lastPos.current = null;
-        requestAnimationFrame(() => placeBall(ball.x, ball.y));
+        if (m.game !== 'FUTGOLF') requestAnimationFrame(() => placeBall(ball.x, ball.y));
         if (!m.resumed) { if (!m.training) refresh(); sound.play('pop'); }
         break;
       }
@@ -347,6 +382,58 @@ export function X1Screen() {
         flashNotice(morte ? `${who} perdeu o peteleco (tempo) e perdeu um botão.` : `${who} perdeu o peteleco (tempo).`);
         break;
       }
+      // Futgolf
+      case 'ground': { // rodada nova: todo mundo que ainda joga chuta de novo
+        const x = matchRef.current;
+        if (!x || x.game !== 'FUTGOLF') break;
+        const fg: FgView = m.fg;
+        setMatch({ ...x, fg, turnEndsAt: m.turnEndsAt });
+        setGolfShown([{ ...fg.balls[0] }, { ...fg.balls[1] }]);
+        for (const side of [0, 1] as const) golfBallEls.current[side]?.setAttribute('transform', `translate(${fg.balls[side].x} ${fg.balls[side].y})`);
+        lastPos.current = { ...fg.balls[x.you] };
+        setAim(null); setSent(false); setBigText(null); setGoalFlash(null);
+        golfFollow(x, fg, fg.balls[x.you]);
+        if (m.tiebreak) flashNotice(`DESEMPATE${fg.tbCount > 1 ? ` (${fg.tbCount}º)` : ''}: um chute de cada, do X. Mais perto do buraco vence.`);
+        if (golfActive(fg, x.you)) sound.play('pop');
+        break;
+      }
+      case 'gshot': {
+        const x = matchRef.current;
+        if (!x || x.game !== 'FUTGOLF') break;
+        const side = m.side as Side, fg: FgView = m.fg, events: FgEvent[] = m.events ?? [];
+        if (side === x.you) { setSent(false); setAim(null); setPreview(null); }
+        setMatch({ ...x, fg: { ...fg, balls: x.fg.balls } }); // o placar muda já; as bolas, quando pararem
+        const frames: [number, number][] = m.frames;
+        const cuts = new Set(events.filter((e) => e.t === 'tunel').map((e) => e.f));
+        const who = golfNick(x, side);
+        for (const e of events) {
+          const at = (e.f * 1000) / 30;
+          if (e.t === 'mola' && e.i !== undefined) window.setTimeout(() => { setBumps((b) => ({ ...b, [e.i!]: Date.now() })); if (side === x.you) sound.play('tap'); }, at);
+          else if (e.t === 'agua') window.setTimeout(() => flashNotice(side === x.you ? 'Na lagoa! +1 chute e a bola volta.' : `${who} caiu na lagoa!`), at);
+          else if (e.t === 'tunel' && side === x.you) window.setTimeout(() => sound.play('pop'), at);
+        }
+        setGolfMoving((g) => { const n: [boolean, boolean] = [g[0], g[1]]; n[side] = true; return n; });
+        golfAnimate(side, frames, cuts, () => {
+          setGolfMoving((g) => { const n: [boolean, boolean] = [g[0], g[1]]; n[side] = false; return n; });
+          setGolfShown((b) => { const n: [FgPoint, FgPoint] = b ? [b[0], b[1]] : [fg.balls[0], fg.balls[1]]; n[side] = { ...fg.balls[side] }; return n; });
+          golfBallEls.current[side]?.setAttribute('transform', `translate(${fg.balls[side].x} ${fg.balls[side].y})`);
+          setMatch((mm) => (mm && mm.game === 'FUTGOLF' ? { ...mm, fg: { ...mm.fg, balls: mm.fg.balls.map((bb, i) => (i === side ? { ...fg.balls[side] } : bb)) as [FgPoint, FgPoint] } } : mm));
+          if (m.holed) {
+            if (side === x.you) { setBigText(fg.phase === 'tiebreak' ? 'NO BURACO!' : 'EMBOCOU!'); sound.play('goal'); window.setTimeout(() => setBigText((t) => (t === 'EMBOCOU!' || t === 'NO BURACO!' ? null : t)), 1600); }
+            else flashNotice(`${who} embocou!`);
+          }
+          if (side === x.you) golfFollow(x, fg, fg.balls[side]);
+        });
+        break;
+      }
+      case 'gskip': {
+        const x = matchRef.current;
+        if (!x || x.game !== 'FUTGOLF') break;
+        setMatch({ ...x, fg: { ...m.fg, balls: x.fg.balls } });
+        if (m.side === x.you) { setAim(null); setSent(false); }
+        flashNotice(m.side === x.you ? 'Você perdeu o chute (tempo): conta 1.' : `${x.players[m.side].nick} perdeu o chute (tempo).`);
+        break;
+      }
       case 'opp-dropped': setOppDropped(true); break;
       case 'opp-back': setOppDropped(false); break;
       case 'provocar': {
@@ -389,12 +476,78 @@ export function X1Screen() {
 
   function flashNotice(text: string) { setNotice(text); window.setTimeout(() => setNotice((n) => (n === text ? null : n)), 2400); }
 
+  // ─── Futgolf: as duas bolas podem andar ao mesmo tempo ──────────────────────
+  /** Janela da câmera: o campo na largura, com a bola um pouco abaixo do meio (dá para ver o caminho à frente). */
+  function golfCamAt(c: FgCourse, p: FgPoint): Cam {
+    const el = golfBox.current;
+    const ratio = el && el.clientWidth ? el.clientHeight / el.clientWidth : 1.4;
+    const w = GOLF_VIEW_W, h = w * ratio;
+    return { x: (c.W - w) / 2, y: Math.max(-34, Math.min(c.H + 34 - h, p.y - h * 0.58)), w, h };
+  }
+  const golfWhole = (c: FgCourse): Cam => ({ x: -34, y: -34, w: c.W + 68, h: c.H + 68 });
+  /** Leva a câmera para a bola que importa: a minha — ou, se eu já saí do buraco, a do outro. */
+  function golfFollow(x: GolfMatch, fg: FgView, p: FgPoint) {
+    const mine = golfActive(fg, x.you) || fg.phase === 'tiebreak' ? p : fg.balls[1 - x.you];
+    const c = golfCamAt(x.course, mine);
+    camRef.current = c; setCam(c);
+  }
+  function setViewBox(c: Cam) { svgRef.current?.setAttribute('viewBox', `${c.x} ${c.y} ${c.w} ${c.h}`); }
+  function placeGolfBall(side: number, x: number, y: number) {
+    golfBallEls.current[side]?.setAttribute('transform', `translate(${x} ${y})`);
+    const mt = matchRef.current;
+    if (mt && side === mt.you) {
+      const p = lastPos.current;
+      if (p) ballApi.current?.roll(x - p.x, y - p.y);
+      lastPos.current = { x, y };
+    }
+  }
+  function golfAnimate(side: number, frames: [number, number][], cuts: Set<number>, onEnd: () => void) {
+    golfAnims.current[side] = { frames, cuts, start: performance.now(), onEnd };
+    animRef.current = true; setAnimating(true);
+    if (!golfRaf.current) golfRaf.current = requestAnimationFrame(golfStep);
+  }
+  function golfStep(t: number) {
+    const mt = matchRef.current;
+    let any = false;
+    for (const side of [0, 1]) {
+      const a = golfAnims.current[side];
+      if (!a) continue;
+      const f = Math.max(0, ((t - a.start) / 1000) * 30), i = Math.floor(f);
+      if (i >= a.frames.length - 1) {
+        const [lx, ly] = a.frames[a.frames.length - 1];
+        placeGolfBall(side, lx, ly);
+        golfAnims.current[side] = null;
+        a.onEnd();
+        continue;
+      }
+      any = true;
+      const [x0, y0] = a.frames[i], [x1, y1] = a.frames[i + 1];
+      const k = a.cuts.has(i + 1) ? 0 : f - i; // bueiro: some num lugar e aparece no outro, sem "voar" entre eles
+      const x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k;
+      placeGolfBall(side, x, y);
+      // a câmera acompanha a bola que importa (sem re-render: mexe no viewBox direto)
+      if (mt && mt.game === 'FUTGOLF' && !overviewRef.current && camRef.current) {
+        const follow = golfActive(mt.fg, mt.you) || mt.fg.phase === 'tiebreak' || mt.fg.kicked[mt.you] ? mt.you : 1 - mt.you;
+        if (side === follow || (side !== mt.you && !golfAnims.current[mt.you] && !golfActive(mt.fg, mt.you))) {
+          const target = golfCamAt(mt.course, { x, y });
+          const c = camRef.current;
+          const ny = c.y + (target.y - c.y) * (a.cuts.has(i + 1) ? 1 : 0.12);
+          camRef.current = { ...c, y: ny }; setViewBox(camRef.current);
+        }
+      }
+    }
+    if (any) { golfRaf.current = requestAnimationFrame(golfStep); return; }
+    golfRaf.current = null; animRef.current = false; setAnimating(false);
+    if (camRef.current) setCam({ ...camRef.current });
+    queue.current.splice(0).forEach(onMessage);
+  }
+
   function showOver(o: Over) {
     setOver(o); setLastResult(o); setAim(null); setSent(false); setTray(false);
     if (o.cooldownUntil !== undefined) setCooldownUntil(o.cooldownUntil); // o relógio começa quando a partida acaba
     if (!o.training) refresh();
   }
-  function closeOver() { setOver(null); setMatch(null); setShown(null); setGoalFlash(null); setBigText(null); setPhase('lobby'); }
+  function closeOver() { setOver(null); setMatch(null); setShown(null); setGolfShown(null); setGoalFlash(null); setBigText(null); setOverview(false); setPhase('lobby'); }
 
   // ─── ações ────────────────────────────────────────────────────────────────
   function challenge() {
@@ -431,7 +584,12 @@ export function X1Screen() {
 
   // ─── estilingue ───────────────────────────────────────────────────────────
   const busyFx = animating || sent || !!over || !!goalFlash || !!bigText;
-  const myTurn = !!match && !busyFx && (match.game === 'FUTPREGO' ? match.turn === match.you : match.bv.turn === match.you && turnOpen);
+  // Futgolf: a bola do outro andando não trava a minha mira (os dois chutam ao mesmo tempo); a rodada abre em
+  // turnEndsAt − kickSec (antes disso o servidor ignora o chute)
+  const golfOpen = !!match && match.game === 'FUTGOLF' && now() >= match.turnEndsAt - match.kickSec * 1000 - 300;
+  const myTurn = !!match && (match.game === 'FUTGOLF'
+    ? golfOpen && golfActive(match.fg, match.you) && !match.fg.kicked[match.you] && !golfMoving[match.you] && !sent && !over
+    : !busyFx && (match.game === 'FUTPREGO' ? match.turn === match.you : match.bv.turn === match.you && turnOpen));
   function toSvg(e: React.PointerEvent) {
     const svg = svgRef.current!, pt = svg.createSVGPoint();
     pt.x = e.clientX; pt.y = e.clientY;
@@ -439,6 +597,11 @@ export function X1Screen() {
   }
   function onDown(e: React.PointerEvent<SVGSVGElement>) {
     if (!myTurn || !match) return;
+    if (match.game === 'FUTGOLF') { // puxa de qualquer lugar do campo (em pixels: a escala muda com a câmera)
+      e.currentTarget.setPointerCapture(e.pointerId);
+      drag.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
     const p = toSvg(e);
     if (match.game === 'BOTAO') {
       // tocou num botão seu: escolhe ele (e já dá para puxar); tocou fora: puxa o que está escolhido
@@ -459,6 +622,11 @@ export function X1Screen() {
   /** Direção (coordenadas do servidor) e força pelo arrasto até o ponto do evento. */
   function aimFrom(e: React.PointerEvent<SVGSVGElement>) {
     if (!drag.current || !match) return null;
+    if (match.game === 'FUTGOLF') {
+      const dx = e.clientX - drag.current.x, dy = e.clientY - drag.current.y, len = Math.hypot(dx, dy);
+      if (len < 6) return null;
+      return { sx: -dx / len, sy: -dy / len, power: Math.min(1, len / GOLF_PULL) };
+    }
     const p = toSvg(e);
     const dx = p.x - drag.current.x, dy = p.y - drag.current.y; // arrasto na tela
     const len = Math.hypot(dx, dy);
@@ -476,15 +644,16 @@ export function X1Screen() {
       if (match.game === 'BOTAO' && sel === null) return;
       previewAt.current = performance.now();
       const seq = ++previewSeq.current;
-      send(match.game === 'BOTAO' ? { t: 'preview', seq, idx: sel, dx: a.sx, dy: a.sy, power: a.power } : { t: 'preview', seq, dx: a.sx, dy: a.sy, power: a.power });
+      send(match.game === 'BOTAO' ? { t: 'preview', seq, idx: sel, dx: a.sx, dy: a.sy, power: a.power } : { t: 'preview', seq, dx: a.sx, dy: a.sy, power: a.power, spin });
     }
   }
   function onUp(e: React.PointerEvent<SVGSVGElement>) {
     const a = aimFrom(e); // o ponto onde o dedo soltou vale (não o último quadro desenhado)
     drag.current = null;
     setPreview(null); previewSeq.current++;
-    if (!a || !myTurn || !match || a.power < 0.06) { setAim(null); return; }
-    if (match.game === 'BOTAO') {
+    if (!a || !myTurn || !match || a.power < (match.game === 'FUTGOLF' ? 0.03 : 0.06)) { setAim(null); return; }
+    if (match.game === 'FUTGOLF') send({ t: 'gkick', dx: a.sx, dy: a.sy, power: a.power, spin });
+    else if (match.game === 'BOTAO') {
       if (sel === null) { setAim(null); return; }
       const forca = match.bv.phase === 'death' ? 1 : a.power; // death match: sempre força máxima
       send({ t: 'snap', idx: sel, dx: a.sx, dy: a.sy, power: forca });
@@ -510,7 +679,7 @@ export function X1Screen() {
   else if (phase === 'lobby') body = (
     <Lobby rules={rules} today={today} open={open} busy={busy} me={me} lastResult={lastResult} season={season} now={now()}
       cooldownLeft={cooldownUntil ? Math.max(0, cooldownUntil - now()) : 0} drain={!!drainUntil && drainUntil > now()}
-      onChallenge={challenge} onAccept={accept} board={meta?.futprego?.board} field={meta?.x1?.field} kickoff={meta?.x1?.kickoff} />
+      onChallenge={challenge} onAccept={accept} board={meta?.futprego?.board} field={meta?.x1?.field} kickoff={meta?.x1?.kickoff} golfPreview={meta?.x1?.futgolf?.preview} />
   );
   else if (phase === 'waiting' && waiting) body = (
     <Waiting rules={rules} gameName={waiting.gameName || today?.name || ''} elapsed={Math.max(0, now() - waiting.startedAt)} botOffer={waiting.botOffer}
@@ -570,6 +739,63 @@ export function X1Screen() {
           className={`w-full drop-shadow-[0_6px_0_rgba(0,0,0,0.25)] ${myTurn ? 'cursor-grab' : ''}`}
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} />
       );
+    } else if (match.game === 'FUTGOLF') {
+      const { fg, course: C } = match;
+      const tb = fg.phase === 'tiebreak';
+      const balls = golfShown ?? fg.balls;
+      left = Math.max(0, Math.min(match.kickSec, Math.ceil((match.turnEndsAt - now()) / 1000))); total = match.kickSec;
+      const oppPlays = golfActive(fg, opp), mePlays = golfActive(fg, you);
+      oppActive = oppPlays && !fg.kicked[opp] && golfOpen; meActive = myTurn;
+      const state = (side: Side) => (fg.holed[side] && !tb ? 'embocou' : fg.out[side] && !tb ? 'pegou a bola' : null);
+      oppLabel = oppDropped ? 'caiu, esperando voltar' : state(opp) ?? (golfMoving[opp] ? 'a bola dele está andando' : fg.kicked[opp] ? 'já chutou' : oppActive ? 'mirando…' : null);
+      meLabel = myTurn ? (aim ? `força ${Math.round(aim.power * 100)}%` : 'puxe e solte') : state(you) ?? (golfMoving[you] ? null : fg.kicked[you] && oppPlays ? `esperando ${match.players[opp].nick}` : null);
+      extraH = 64; foot = `Futgolf · ${C.name} (par ${fg.par})`;
+      const me = balls[you], other = balls[opp];
+      const L = aim ? 30 + aim.power * 150 : 0;
+      // mira: a linha curva para o lado do efeito (só uma ideia; o servidor calcula a bola de verdade)
+      const tip = aim ? { x: me.x + aim.sx * L, y: me.y + aim.sy * L } : null;
+      const bend = aim ? spin * L * 0.22 : 0;
+      const ctrl = aim ? { x: me.x + aim.sx * L * 0.55 - aim.sy * bend, y: me.y + aim.sy * L * 0.55 + aim.sx * bend } : null;
+      const overlay = aim && myTurn && tip && ctrl ? (
+        <g pointerEvents="none">
+          {xray && preview && <XrayPath path={preview.path} goal={preview.goal} r={C.ball} />}
+          <line x1={me.x} y1={me.y} x2={me.x - aim.sx * aim.power * 46} y2={me.y - aim.sy * aim.power * 46} stroke="#0B2D6B" strokeOpacity="0.6" strokeWidth="4" strokeLinecap="round" />
+          <path d={`M${me.x} ${me.y} Q${ctrl.x} ${ctrl.y} ${tip.x + aim.sy * bend * 0.6} ${tip.y - aim.sx * bend * 0.6}`} fill="none" stroke="#FFFFFF" strokeWidth="3" strokeDasharray="2 7" strokeLinecap="round" />
+          <circle cx={tip.x + aim.sy * bend * 0.6} cy={tip.y - aim.sx * bend * 0.6} r="4" fill="#FFFFFF" />
+          <circle cx={me.x} cy={me.y} r={C.ball + 6} fill="none" stroke={powerColor(aim.power)} strokeWidth="3" />
+        </g>
+      ) : myTurn ? (
+        <circle cx={me.x} cy={me.y} r={C.ball + 7} fill="none" stroke="#FFD54A" strokeWidth="2.5" pointerEvents="none">
+          <animate attributeName="r" values={`${C.ball + 5};${C.ball + 11};${C.ball + 5}`} dur="1.2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite" />
+        </circle>
+      ) : null;
+      const oppPaint = paint[opp].primary;
+      const view = overview ? golfWhole(C) : cam;
+      center = (
+        <div ref={(el) => {
+          golfBox.current = el;
+          if (el && !camRef.current && match.game === 'FUTGOLF') { const c = golfCamAt(C, balls[you]); camRef.current = c; window.setTimeout(() => setCam(c), 0); }
+        }} className="relative w-full overflow-hidden rounded-[18px] border-[3px] border-navy-deep shadow-[0_5px_0_rgba(0,0,0,0.25)]" style={{ height: 'clamp(280px, calc(100dvh - 378px), 560px)' }}>
+          <FutgolfCourse ref={svgRef} course={C} view={view} bumps={bumps} tiebreak={tb} className={`h-full w-full ${myTurn ? 'cursor-grab' : ''}`}
+            onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { drag.current = null; setAim(null); }}>
+            {overlay}
+            {(golfActive(fg, opp) || golfMoving[opp] || tb) && !(fg.holed[opp] && !golfMoving[opp] && !tb) && (
+              <g ref={(el) => { golfBallEls.current[opp] = el; }} transform={`translate(${other.x} ${other.y})`} opacity="0.6" pointerEvents="none">
+                <circle r={C.ball + 3} fill="none" stroke={oppPaint} strokeWidth="3" />
+                <circle r={C.ball} fill="#FFFFFF" />
+              </g>
+            )}
+            {!(fg.holed[you] && !golfMoving[you] && !tb) && (
+              <g ref={(el) => { golfBallEls.current[you] = el; }} transform={`translate(${me.x} ${me.y})`} pointerEvents="none"><TriondaBall ref={ballApi} r={C.ball} /></g>
+            )}
+          </FutgolfCourse>
+          <button onClick={() => setOverview((v) => !v)} className="no-drag absolute right-2 top-2 rounded-xl bg-navy-deep/80 px-2.5 py-1 font-display text-[12px] text-white" aria-pressed={overview}>
+            {overview ? 'Seguir a bola' : 'Ver o campo'}
+          </button>
+          {tb && <span className="pointer-events-none absolute left-2 top-2 rounded-xl bg-gold px-2 py-0.5 font-display text-[12px] text-navy-deep">DESEMPATE: mais perto vence</span>}
+        </div>
+      );
     } else {
       const { bv, field: F } = match;
       const morte = bv.phase === 'death';
@@ -611,10 +837,12 @@ export function X1Screen() {
         <PlayerBar p={match.players[opp]} active={oppActive} left={left} total={total} label={oppLabel} bubble={bubbles[opp]} muted={muted} onMute={muteOpp} xray={oppXray} />
         {h2hOn && <H2HStrip h2h={match.h2h!} opp={match.players[opp].nick} />}
         {match.game === 'BOTAO' && <BotaoStrip bv={match.bv} you={you} oppNick={match.players[opp].nick} firstSnaps={rules.botao?.firstTurnSnaps ?? 1} />}
-        <div className="relative my-1.5" style={{ width: `min(92vw, 380px, calc((100dvh - ${250 + (h2hOn ? 26 : 0) + extraH}px) * 0.62))` }}>
+        {match.game === 'FUTGOLF' && <GolfStrip m={match} />}
+        <div className="relative my-1.5" style={{ width: match.game === 'FUTGOLF' ? 'min(92vw, 380px)' : `min(92vw, 380px, calc((100dvh - ${250 + (h2hOn ? 26 : 0) + extraH}px) * 0.62))` }}>
           {center}
           {bigOverlay}
         </div>
+        {match.game === 'FUTGOLF' && <SpinPicker spin={spin} onPick={setSpin} disabled={!golfActive(match.fg, you)} />}
         <PlayerBar p={match.players[you]} me active={meActive} left={left} total={total} label={meLabel} bubble={bubbles[you]} />
         <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 px-1">
           <span className="min-w-0 text-[11px] font-extrabold leading-tight text-white/80">{match.training ? 'Treino contra bot: não vale gol nem dinheiro' : match.freeplay ? 'Treino: vocês estão na mesma internet — sem aposta e sem gol' : match.sameTeam ? `Amistoso do seu time: valendo ${fmt(match.bet * 2)}, sem gol` : `Valendo ${fmt(match.bet * 2)} e 1 gol`}<br />{foot}{reserve}{xray && <span className="ml-1 rounded bg-gold px-1 text-[9px] text-navy-deep">RAIO-X</span>}</span>
@@ -671,6 +899,11 @@ function Msg({ title, text, onBack }: { title: string; text: string; onBack: () 
 /** As regras do jogo de hoje em duas frases (a aposta e as travas valem para os dois jogos). */
 function rulesText(game: X1Game, r: Rules) {
   const b = r.botao;
+  const g = r.futgolf;
+  if (game === 'FUTGOLF') return {
+    main: `Futgolf 1x1: os dois chutam AO MESMO TEMPO no mesmo buraco (${g?.kickSec ?? 20} s por chute). Puxe a bola e solte; escolha o efeito para curvar. Setas dão velocidade, molas devolvem a bola com força, os bueiros levam a bola para outro lugar e a lagoa custa 1 chute. Quem embocar primeiro vence; se os dois embocarem juntos, desempate: um chute de cada e vence quem deixar a bola mais perto do buraco.`,
+    stakes: `Cada um põe ${fmt(r.bet)}. Quem vencer leva ${fmt(r.bet * 2)} e 1 gol para o time, e o time do outro perde 1 gol na rodada.`,
+  };
   const main = game === 'BOTAO'
     ? `Futebol de botão 1x1. Na sua vez, dê ${b?.snapsPerTurn ?? 2} petelecos num botão seu (quem começa dá ${b?.firstTurnSnaps ?? 1}). O primeiro gol acaba a partida. Sem gol em ${b?.maxTurns ?? 9} vezes, entra o DEATH MATCH: os goleiros saem, só vale força máxima, 1 peteleco por vez e o botão que você jogar sai do campo — até ficar 1x1. As áreas ficam liberadas (sem goleiro) e a bola rola mais; ${b?.death?.drawAfter1v1 ?? 5} rodadas de 1x1 sem gol dão empate.`
     : `Futebol de prego 1x1, uma vez de cada. Quem fizer o primeiro gol vence; sem gol em ${r.maxTurns} jogadas de cada, o dinheiro volta.`;
@@ -678,15 +911,18 @@ function rulesText(game: X1Game, r: Rules) {
 }
 
 /** Começo: o X1 de hoje (e o de amanhã), as regras, a campanha na temporada, os desafios abertos e desafiar. */
-function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldownLeft, drain, onChallenge, onAccept, board, field, kickoff }: {
+function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldownLeft, drain, onChallenge, onAccept, board, field, kickoff, golfPreview }: {
   rules: Rules; today: X1Today | null; open: OpenChallenge[]; busy: boolean; me: { money: number; team: Team }; lastResult: Over | null;
   season: PublicPlayer['x1'] | null; now: number; cooldownLeft: number; drain: boolean; onChallenge: () => void; onAccept: (id: number) => void;
   board: PregoBoardData | undefined; field: BotaoFieldData | undefined; kickoff: { pieces: BotaoPiece[]; ball: { x: number; y: number } } | undefined;
+  golfPreview?: FgCourse;
 }) {
   const game: X1Game = today?.game ?? 'FUTPREGO';
   const t = rulesText(game, rules);
   const [mine, rival] = previewPaints(paintOf(me.team));
-  const preview = game === 'BOTAO'
+  const preview = game === 'FUTGOLF'
+    ? golfPreview && <FutgolfCourse course={golfPreview} view={previewView(golfPreview)} still className="w-full drop-shadow-[0_5px_0_rgba(0,0,0,0.25)]" />
+    : game === 'BOTAO'
     ? field && kickoff && (
       <BotaoField field={field} className="w-full drop-shadow-[0_5px_0_rgba(0,0,0,0.25)]">
         {kickoff.pieces.map((p, i) => <g key={i} transform={`translate(${p.x} ${p.y})`}><BotaoDisc p={p} r={field.piece} paint={p.side === 0 ? mine : rival} /></g>)}
@@ -959,6 +1195,51 @@ function BotaoStrip({ bv, you, oppNick, firstSnaps }: { bv: BotaoView; you: Side
   );
 }
 
+/** Futgolf, logo abaixo do retrospecto: o buraco e o par, os chutes de cada um e quem já embocou. */
+function GolfStrip({ m }: { m: GolfMatch }) {
+  const { fg, you } = m, opp = (1 - you) as Side, tb = fg.phase === 'tiebreak';
+  const cell = (side: Side) => {
+    const tag = fg.holed[side] ? 'embocou' : fg.out[side] ? 'pegou a bola' : null;
+    return (
+      <span className="flex items-center gap-1">
+        <span className="max-w-[88px] truncate text-[11px] font-extrabold text-white/85">{side === you ? 'Você' : m.players[side].nick}</span>
+        <b className="t-display text-[17px] leading-none text-white tabular-nums">{fg.strokes[side]}</b>
+        {tag && <span className={`rounded px-1 text-[9px] font-black ${fg.holed[side] ? 'bg-gold text-navy-deep' : 'bg-white/25 text-white'}`}>{tag}</span>}
+      </span>
+    );
+  };
+  return (
+    <div className="mt-1 flex w-full max-w-[380px] items-center justify-between gap-2 rounded-xl bg-navy-deep/60 px-2 py-1">
+      <span className="min-w-0">
+        <span className="t-display block truncate text-[14px] leading-none text-gold">{m.course.name}</span>
+        <span className="text-[10px] font-extrabold text-white/80">{tb ? `desempate ${fg.tbCount > 1 ? `${fg.tbCount}º` : ''}`.trim() : `par ${fg.par} · rodada ${fg.round}`}</span>
+      </span>
+      <span className="flex items-center gap-3">{cell(you)}<span className="text-[10px] font-black text-white/50">×</span>{cell(opp)}</span>
+    </div>
+  );
+}
+
+/** Futgolf: o efeito do próximo chute — curva para a esquerda, reto ou curva para a direita. */
+function SpinPicker({ spin, onPick, disabled }: { spin: -1 | 0 | 1; onPick: (s: -1 | 0 | 1) => void; disabled: boolean }) {
+  const opts: { v: -1 | 0 | 1; label: string; d: string }[] = [
+    { v: -1, label: 'Curva para a esquerda', d: 'M16 21 C16 12 12 7 5 6 M9 2.5 L5 6 L9 9.5' },
+    { v: 0, label: 'Sem efeito', d: 'M12 21 V4 M8 8 L12 4 L16 8' },
+    { v: 1, label: 'Curva para a direita', d: 'M8 21 C8 12 12 7 19 6 M15 2.5 L19 6 L15 9.5' },
+  ];
+  return (
+    <div className="mb-1 flex w-full max-w-[380px] items-center gap-2 px-1">
+      <span className="t-display t-out text-[13px]">EFEITO</span>
+      {opts.map((o) => (
+        <button key={o.v} onClick={() => onPick(o.v)} disabled={disabled} aria-label={o.label} aria-pressed={spin === o.v}
+          className={`no-drag btn btn-sm w-11 !px-0 ${spin === o.v ? 'btn-yellow' : 'btn-white'}`}>
+          <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true"><path d={o.d} fill="none" stroke={spin === o.v ? '#5a3200' : '#14335F'} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+      ))}
+      <span className="min-w-0 flex-1 text-right text-[11px] font-extrabold leading-tight text-white/85">Puxe e solte: direção e força</span>
+    </div>
+  );
+}
+
 /** Retrospecto contra este adversário no X1, logo abaixo da barra dele: V·E·D e as últimas 5 (a mais recente primeiro). */
 function H2HStrip({ h2h, opp }: { h2h: H2H; opp: string }) {
   const tone = h2h.wins > h2h.losses ? 'text-[#7DFF5C]' : h2h.wins < h2h.losses ? 'text-[#FF8A80]' : 'text-gold';
@@ -987,7 +1268,7 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   if (!over) return <GoalOverlay open={false} goal={false} onClose={onClose} />;
   const won = over.winner === over.you;
   const opp = over.players?.[1 - over.you]?.nick ?? 'o adversário';
-  const botao = over.game === 'BOTAO';
+  const botao = over.game === 'BOTAO', golf = over.game === 'FUTGOLF';
   let title = 'PERDEU', text = '', goal = false, money = 0;
   if (over.canceled) { title = 'PARTIDA CANCELADA'; text = over.text ?? 'O JogaGol está sendo atualizado. A aposta voltou e nada contou.'; }
   else if (over.training) { title = won ? 'VENCEU O TREINO' : 'FIM DO TREINO'; text = 'Treino contra bot não vale gol nem dinheiro. Desafie alguém de verdade!'; goal = won; }
@@ -995,7 +1276,7 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
   else if (over.why === 'mesma-internet') { title = won ? 'VENCEU O TREINO' : over.winner === null ? 'EMPATE NO TREINO' : 'FIM DO TREINO'; text = over.text ?? 'Vocês estão na mesma internet: valeu pela diversão — sem aposta, sem gol e fora do Ranking X1.'; }
   else if (over.refund) {
     title = 'EMPATE';
-    text = botao ? `Nem o death match desempatou: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;
+    text = botao ? `Nem o death match desempatou: os ${fmt(over.money)} voltaram.` : golf ? `Nem os desempates separaram vocês: os ${fmt(over.money)} voltaram.` : `Ninguém marcou em 10 jogadas: os ${fmt(over.money)} voltaram.`;
   } else if (won) {
     goal = true; money = over.money;
     title = over.goal ? 'GOOOL!!!' : 'VENCEU!';
@@ -1008,7 +1289,9 @@ function OverResult({ over, me, limit, onClose }: { over: Over | null; me: { tea
     text = over.goal ? `${narr}${/[.!?]$/.test(narr) ? '' : '.'}${lostTxt}` : `Você venceu ${opp}${how} e levou ${fmt(over.money)}.${why}${lostTxt}`;
   } else {
     text = over.reason === 'wo' ? `Você ficou fora e perdeu por W.O. para ${opp}.` : over.reason === 'desistiu' ? 'Você desistiu da partida.'
-      : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.` : `${opp} marcou primeiro.`;
+      : over.reason === 'gol-contra' ? `Gol contra! ${opp} venceu.`
+        : over.reason === 'desempate' ? `${opp} deixou a bola mais perto do buraco no desempate.`
+          : golf ? `${opp} embocou primeiro${over.golf ? ` (${over.golf.strokes[1 - over.you]} chute${over.golf.strokes[1 - over.you] === 1 ? '' : 's'})` : ''}.` : `${opp} marcou primeiro.`;
     text += over.why === 'mesmo-time' ? ' Amistoso do seu time: não vale gol.'
       : over.lost ? ` O ${over.lostTeam} perdeu 1 gol na rodada.` : over.lossLimit ? ` Seu time não perdeu gol: você já jogou as ${limit} partidas desta hora que valem gol.` : ' Seu time não perdeu gol.';
   }

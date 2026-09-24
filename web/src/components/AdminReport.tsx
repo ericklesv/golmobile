@@ -28,7 +28,7 @@ const eventLabel = (e: Report['eventos'][number]) => {
   return base;
 };
 
-const X1_GAME: Record<AdminX1Live['game'], string> = { FUTPREGO: 'FutPrego', BOTAO: 'Botão' };
+const X1_GAME: Record<AdminX1Live['game'], string> = { FUTPREGO: 'FutPrego', BOTAO: 'Botão', FUTGOLF: 'Futgolf' };
 /** "há 40 s" / "há 3 min" a partir do relógio do servidor (r.at), não do aparelho. */
 const ago = (ms: number) => (ms < 60_000 ? `há ${Math.max(0, Math.round(ms / 1000))} s` : `há ${Math.round(ms / 60_000)} min`);
 

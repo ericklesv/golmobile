@@ -5,7 +5,7 @@ import { handle, notFound, badRequest, idDeRota } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP, PARTY_PRIZES, BALL } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP, PARTY_PRIZES, BALL, FUTGOLF } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
@@ -14,6 +14,7 @@ import { HATTRICK } from '../lib/hattrick.js';
 import { FALTAPRO } from '../lib/faltapro.js';
 import { BOARD as FUTPREGO_BOARD } from '../lib/futprego.js';
 import { BOTAO_FIELD, kickoffLayout as botaoKickoff } from '../lib/botao.js';
+import { HOLES as FUTGOLF_HOLES, courseOf as futgolfCourse } from '../lib/futgolf.js';
 import { boardView, playerClub } from '../services/club.js';
 import { x1Today } from '../realtime/x1.js';
 import { x1Ranking, x1Record } from '../services/x1.js';
@@ -61,7 +62,7 @@ game.get('/meta', cached(10000), handle(async () => {
     camisas: CAMISAS,
     ganhaperde: GANHAPERDE,
     futprego: { ...FUTPREGO, board: FUTPREGO_BOARD }, // a tábua (pregos) para a tela do começo
-    x1: { names: X1.names, today: x1Today(), botao: BOTAO, field: BOTAO_FIELD, kickoff: botaoKickoff() }, // X1: jogo do dia e regras do Futebol de Botão (campo de enfeite no começo)
+    x1: { names: X1.names, today: x1Today(), botao: BOTAO, field: BOTAO_FIELD, kickoff: botaoKickoff(), futgolf: { ...FUTGOLF, preview: futgolfCourse('rotatoria') } }, // X1: jogo do dia, regras do Botão e do Futgolf (campo e buraco de enfeite no começo)
     resetHour: RESET_HOUR, // hora de virada de cada minigame diário
     // minigames jogáveis e o nível que libera cada um (janela de "subiu de nível": LIBERADO X! JOGAR AGORA)
     minigames: MINIGAMES.filter((g) => !g.soon).map(({ id, name, unlock, route, icon }) => ({ id, name, unlock, route, icon })),
@@ -74,6 +75,9 @@ game.get('/meta', cached(10000), handle(async () => {
     kitDesigns: KIT_DESIGNS, // desenhos de uniforme que o presidente pode escolher (cores sempre as do time)
   };
 }));
+
+// Futgolf: os buracos montados (a rota oculta /debug-futgolf desenha para conferir; `?espelho=1` = espelhados)
+game.get('/x1/futgolf/buracos', cached(60000), handle(async (req) => ({ holes: FUTGOLF_HOLES.map((h) => futgolfCourse(h.id, req.query.espelho === '1')) })));
 
 game.get('/home', cached(5000), handle(async (req) => {
   const now = new Date();

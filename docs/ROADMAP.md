@@ -2,6 +2,17 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## Futgolf — 3º jogo do X1 (23–24/09/2026)
+Aprovado pelo dono a partir das telas de exemplo (canvas "X1 Várzea e Footgolf"), com os pedidos: campo maior, powerups
+(setas de boost, molas que devolvem a bola), mais formas e nada óbvio. Golfe de chute visto de cima, os dois chutando ao
+mesmo tempo no mesmo buraco; quem embocar primeiro vence, empate vai para o desempate (mais perto do buraco). 8 buracos
+(Tabelinha, Bifurcação, Ilha, Fliperama, Zigue-zague, Slalom, Rotatória, Bueiros) × espelhado = 16 variações, com lagoa,
+terrão, mato, placas, molas, setas e bueiros. Entra no rodízio do X1 (agora com 3 jogos, âncora em `X1.anchor`) e estreia
+às 19h de 24/09. Bots jogam (treino, tutorial e os "quase reais"). Testes: `scripts/futgolf-balance.js` (par e física) e
+`scripts/test-futgolf.js` (partida ponta a ponta); toda a regressão do X1 passou. Detalhes no CLAUDE.md.
+- [ ] Depois da estreia: olhar as partidas de verdade (quantos chutes por buraco, quanto desempate) e acertar pares/buracos.
+- [ ] Próximo: os ajustes do Várzea (o dono pediu depois do Futgolf).
+
 ## X1: nunca dois desafios abertos por causa de bot (23/09/2026) — publicado em 23/09 19:25 de Brasília (commit 6bc7418)
 O dono mandou print da lista do X1 com dois bots desafiando ao mesmo tempo (Vilao e Loudete): "quando um bot está
 desafiando, criar um desafio devia cair contra esse bot e não ficar 2 desafios abertos". Causa: o bot que chegava com

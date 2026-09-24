@@ -587,7 +587,7 @@ function MultiList({ onPick }: { onPick: (id: number) => void }) {
 
 // ─── X1 (FutPrego e Futebol de Botão): histórico dos confrontos (a partida mais recente primeiro) ───
 const FP_REASON: Record<string, string> = { gol: 'gol', 'gol-contra': 'gol contra', wo: 'W.O.', desistiu: 'desistência', empate: 'empate (aposta devolvida)', 'wo-cedo': 'W.O. cedo (aposta devolvida)', reinicio: 'API reiniciou (aposta devolvida)', penaltis: 'pênaltis', tempo: 'mais gols no fim' };
-const X1_GAME: Record<string, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Botão' };
+const X1_GAME: Record<string, string> = { FUTPREGO: 'FutPrego', BOTAO: 'Botão', FUTGOLF: 'Futgolf' };
 
 function FutPregoList({ onPick }: { onPick: (id: number) => void }) {
   const [page, setPage] = useState(1);

@@ -406,7 +406,7 @@ export const MINIGAMES = [
   { id: 'ALVO', name: 'Alvo no Gol', unlock: 6, daily: true, route: '/alvo', icon: '/ui/ico-target.png', desc: 'Goleiro, zagueiros e cones escondidos no gol. 12 chutes para derrubar todos.', reward: premio('ALVO', 'até 30 de nível') },
   { id: 'HATTRICK', name: 'Hat Trick', unlock: 7, daily: true, route: '/hat-trick', icon: '/ui/ico-hattrick.svg', desc: 'Chute de longe contra o vento e o goleiro. 3 vidas; 3 gols é hat trick.', reward: premio('HATTRICK', 'a cada gol, + até 30 de nível') },
   { id: 'FALTAPRO', name: 'Falta PRO', unlock: 8, daily: true, route: '/falta-pro', icon: '/ui/ico-medal_gold.png', desc: 'Arraste a bola: direção, força e efeito. 5 cobranças; 3 gols vence.', reward: premio('FALTAPRO', 'até 20 de nível + R$ 50 por alvo') },
-  { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego ou Futebol de Botão. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
+  { id: 'X1', name: 'X1', unlock: 0, daily: false, route: '/x1', icon: '/ui/ico-x1.svg', desc: 'Um jogo 1x1 ao vivo por dia (troca às 19h, com a rodada): FutPrego, Futebol de Botão ou Futgolf. Cada um põe R$ 200; quem ganha leva tudo.', reward: '1 gol + R$ 400 (o time do outro perde 1)' },
   { id: 'GOLEADA', name: 'PenalCup', unlock: 3, daily: true, route: '/penalcup', icon: '/ui/ico-ball.png', desc: 'Emende gols seguidos: a cada 3, um gol do seu time. A cada gol o goleiro fica melhor.', reward: premio('GOLEADA', 'a cada 3 seguidos, até 3 no dia, + até 30 de nível') },
   { id: 'GANHAPERDE', name: 'Ganha ou Perde', unlock: 9, daily: true, route: '/ganha-ou-perde', icon: '/ui/ico-roleta.svg', desc: 'Gire a roleta: caiu no GANHA é gol e gira de novo. Pague para aumentar a chance até 75%.', reward: premio('GANHAPERDE', '5 de nível a cada acerto') },
   { id: 'BAU', name: 'Baú diário', unlock: 9, daily: true, route: '/bau', icon: '/ui/ico-goldpouch.png', desc: 'Abra o baú do dia e leve dinheiro ou VIP.', reward: 'gol + dinheiro', soon: true },
@@ -548,9 +548,18 @@ export const FUTPREGO = {
   },
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
-export const X1 = { games: ['FUTPREGO', 'BOTAO'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão' }, switchHour: 19 };
+export const X1 = {
+  games: ['FUTPREGO', 'BOTAO', 'FUTGOLF'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão', FUTGOLF: 'Futgolf' }, switchHour: 19,
+  // O rodízio parte deste dia (dayNumberAt(19) de lib/time.js) com este jogo. Serve para jogo NOVO entrar sem mudar o
+  // de hoje: antes era `dia % 2`, e passar para `% 3` trocaria o jogo no meio do dia. O Futgolf entrou em 23/09/2026
+  // (dia 13 = Botão) e estreia na troca seguinte, às 19h do dia 24.
+  anchor: { day: 13, game: 'BOTAO' },
+};
 /** O jogo do X1 no dia `day` (dayNumberAt(X1.switchHour) de lib/time.js: o dia vira às 19h, com a rodada). */
-export const x1GameOf = (day) => X1.games[((day % X1.games.length) + X1.games.length) % X1.games.length];
+export const x1GameOf = (day) => {
+  const n = X1.games.length, i0 = X1.games.indexOf(X1.anchor.game);
+  return X1.games[((((day - X1.anchor.day + i0) % n) + n) % n)];
+};
 // Futebol de Botão (X1; como o SnapFC, sem poderes — só no peteleco): 7 botões por time (goleiro na
 // área + 6 na linha, que não entram nas áreas). Cada vez = 2 petelecos do mesmo jogador (15 s cada); quem
 // começa só dá 1 na primeira vez (medido: assim quem começa vence ~45%, e não 68% com 3). O 1º GOL ACABA
@@ -561,6 +570,14 @@ export const x1GameOf = (day) => X1.games[((day % X1.games.length) + X1.games.le
 // (dono, 16/09/2026) — 1 peteleco por vez, sempre na força máxima, e o botão que jogou SAI do campo até
 // sobrar 1x1 (os goleiros são os primeiros a sair, assim que o death match começa). Bola que para dentro
 // de uma área volta para o meio (sem goleiro, ali ninguém alcança). 5 rodadas no 1x1 sem gol = empate.
+// Futgolf (X1; aprovado pelo dono em 23/09/2026): golfe de chute visto de cima, os dois chutando ao mesmo tempo no
+// mesmo buraco. Física e buracos em lib/futgolf.js; regras da partida e bot em lib/futgolfMatch.js.
+//  - kickSec: tempo para chutar em cada rodada (perdeu = chute que não sai do lugar; 3 seguidas = W.O.);
+//  - overPar: par + isto chutes sem embocar = pegou a bola;
+//  - tiebreaks: quantos desempates seguidos (do mesmo lugar) antes de virar empate de verdade.
+// FUTGOLF_CHUTE_SEG encurta o tempo do chute para os testes (só no PC; ignorado com NODE_ENV=production)
+export const FUTGOLF = { kickSec: (process.env.NODE_ENV !== 'production' && Number(process.env.FUTGOLF_CHUTE_SEG)) || 20, overPar: 4, tiebreaks: 3 };
+
 export const BOTAO = {
   // BOTAO_TURNOS encurta a partida para testar o death match (só no PC; ignorado com NODE_ENV=production)
   snapsPerTurn: 2, firstTurnSnaps: 1, snapSec: 15, goalsToWin: 1,
@@ -568,6 +585,7 @@ export const BOTAO = {
   death: { snapsPerTurn: 1, drawAfter1v1: 5 },
 };
 KIND_LABEL.BOTAO = 'Futebol de Botão';
+KIND_LABEL.FUTGOLF = 'Futgolf';
 
 // Provocar — caretas e frases prontas durante a partida do X1, estilo Clash Royale (pedido do dono, 15/09/2026;
 // realtime/x1.js → onProvocar). Sem texto livre: o servidor só aceita as chaves daqui. Quem NÃO é VIP só manda

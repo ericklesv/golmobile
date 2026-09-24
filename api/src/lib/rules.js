@@ -560,12 +560,6 @@ export const X1 = {
     { from: 0, games: ['FUTPREGO', 'BOTAO'], anchor: { day: 13, game: 'BOTAO' } },
     { from: 14, games: ['FUTGOLF', 'FUTPREGO', 'BOTAO'], anchor: { day: 14, game: 'FUTGOLF' } },
   ],
-  // Jogo em TESTE, enquanto não está no rodízio do dia (dono, 24/09/2026): só os ADMINS (User.isAdmin) desafiam nele,
-  // pelo botão "Testar FutGolf" do X1 — o "Desafiar alguém" deles é o do jogo do dia, como de todo mundo ("os admins
-  // devem voltar a ter o botão de desafiar de antes"). O desafio só aparece (lista, convite) e só pode ser aceito por
-  // admins e pelos bots; nenhum admin aceitou em `botAcceptSec`, um bot aceita e joga valendo. Entrou no rodízio (o
-  // Futgolf a partir do dia 14), o teste acaba sozinho e o botão some.
-  test: { game: 'FUTGOLF', botAcceptSec: 5 },
 };
 /** O rodízio que vale no dia `day`. */
 export const x1RotationOf = (day) => X1.rotations.filter((r) => day >= r.from).pop() ?? X1.rotations[0];

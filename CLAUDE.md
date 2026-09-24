@@ -416,21 +416,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   preto tocar no vermelho").
 - **Futgolf — 3º jogo do X1** (aprovado pelo dono em 23/09/2026 a partir das telas de exemplo; pedidos dele: "campo
   maior", "powerups na pista, como as setinhas de boost, coisas para bater e receber bump como uma mola", "mais shapes e
-  nada tão óbvio"). **Em teste de 24/09/2026 até entrar no rodízio, às 19h do mesmo dia** (dono, primeiro: "Libere
-  apenas para as contas MVGIC e ericklesv. Os adversários precisam ser bots, aceitando em 5 s… não mostre o aviso, ainda,
-  para outros usuários"; depois: "adicione um botão embaixo de 'Desafiar alguém' chamado 'Testar FutGolf', visível apenas
-  para os admins… os admins devem voltar a ter o botão de desafiar de antes"). **Jogo em teste** (`X1.test` em rules.js:
-  `game`, `botAcceptSec` = 5) = o que não está no rodízio de HOJE (`inTest` em realtime/x1.js): só os **admins**
-  (`User.isAdmin`; no PC também `X1_TESTERS=nick1,nick2`) recebem `today.test` na `hello` e veem o botão **"Testar
-  FutGolf"** embaixo do "Desafiar alguém" (que para eles é o jogo do dia, como para todo mundo); o botão manda
-  `{t:'challenge', game}` e o servidor recusa (`error` `jogo`) quem não é admin ou jogo fora de teste. O desafio de teste só
-  aparece (lista, convite) e só pode ser aceito por admins e bots (`canSee`); nenhum admin aceitou em 5 s, um bot livre de
-  outro time aceita e joga valendo, sem cota nem sorteio (`botEntraNoDesafio`, o mesmo do tutorial). O perfil só mostra a
-  linha do jogo fora do rodízio para quem já jogou. **Entrou no rodízio, o teste acaba sozinho** e o botão some (a tela
-  tira o `test` ao virar para o rodízio que já tem o jogo). Jogo novo no futuro: `X1.test.game` = ele e o rodízio novo
-  numa data futura. Mexeu no teste? **`node scripts/test-futgolf-teste.js`** (pasta api/, API local com `X1_JOGO=BOTAO`,
-  `BOTS_OFF=1` e `BOTS_X1_OFF=1`; cria dois admins; sem jogo em teste, confere só que ninguém recebe o botão e que
-  desafiar fora do dia é recusado). Golfe de chute visto de cima, com a bola ROLANDO (física de
+  nada tão óbvio"). **No rodízio desde as 19h de 24/09/2026 para todo mundo.** O modo de teste só para admins (botão "Testar FutGolf", `X1.test`,
+  bot aceitando em 5 s) existiu só nas horas antes da estreia e foi REMOVIDO do código no mesmo dia (dono: "voltar ao
+  normal"). Jogo novo no futuro entra direto por um rodízio novo numa data futura (`X1.rotations`) + `CLIENT_MIN`. Golfe de chute visto de cima, com a bola ROLANDO (física de
   chão, tipo minigolfe). **`lib/futgolf.js`** = física pura e
   determinística + os **8 buracos** (`HOLES`: Tabelinha, Bifurcação, Ilha, Fliperama, Zigue-zague, Slalom, Rotatória,
   Bueiros; cada um sorteado e espelhado ou não = 16 variações): corredor (linha central com larguras, Catmull-Rom,

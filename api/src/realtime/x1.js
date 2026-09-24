@@ -67,27 +67,9 @@ const aiDelayMs = (c) => (c.ai ? betweenMs(BX.thinkSec) : 900 + randomInt(1400))
 // SÓ NO PC (X1_JOGO=BOTAO, FUTPREGO ou FUTGOLF no api/.env; ignorado em produção): força o jogo do dia para testar.
 const forcedGame = () => (process.env.NODE_ENV !== 'production' && process.env.X1_JOGO in X1.names ? process.env.X1_JOGO : null);
 
-// ─── Jogo em TESTE (X1.test; dono, 24/09/2026) ─────────────────────────────
-// Enquanto não está no rodízio do dia: só os ADMINS desafiam nele — pelo botão "Testar FutGolf" (a mensagem `challenge`
-// com `game`); o "Desafiar alguém" deles é o do jogo do dia, como o de todo mundo. Só admins e bots veem e aceitam o
-// desafio, e nenhum admin aceitou em X1.test.botAcceptSec, um bot aceita (sem cota nem sorteio) e joga valendo. No PC,
-// X1_TESTERS=nick1,nick2 também vale como admin (os testes criam as contas deles).
-const testNicks = () => (process.env.NODE_ENV !== 'production' && process.env.X1_TESTERS ? process.env.X1_TESTERS.split(',') : []);
-/** O rodízio de hoje (o dia do X1 vira às 19h). */
-const rotationNow = (now = new Date()) => x1RotationOf(dayNumberAt(X1.switchHour, now));
-/** O jogo está em teste agora (fora do rodízio de hoje e não forçado no PC)? No rodízio, o teste acaba sozinho. */
-const inTest = (game) => !!X1.test && game === X1.test.game && !rotationNow().games.includes(game) && forcedGame() !== game;
-const isTester = (c) => !!c && !c.bot && !c.ai && (!!c.user.isAdmin || testNicks().includes(c.user.nick));
-/** O jogo em que o "Desafiar alguém" desafia: o do dia, para todo mundo. */
+/** O jogo em que o "Desafiar alguém" desafia: o do dia, para todo mundo. (O modo de teste só para admins — botão
+ * "Testar FutGolf", 24/09/2026 — saiu no mesmo dia, quando o Futgolf entrou no rodízio: dono, "voltar ao normal".) */
 const gameFor = () => x1Today().game;
-/** Pode ver/aceitar este desafio? O de um jogo em teste, só os admins e os bots. */
-const canSee = (ch, conn) => !inTest(ch.game) || isTester(conn) || isAi(conn);
-/** O "jogo de hoje" que a tela do X1 mostra; para os admins, com o jogo em teste (o botão "Testar FutGolf"). */
-function todayFor(conn) {
-  const t = x1Today();
-  if (!X1.test || !isTester(conn) || !inTest(X1.test.game)) return t;
-  return { ...t, test: { game: X1.test.game, name: X1.names[X1.test.game], botAcceptSec: X1.test.botAcceptSec } };
-}
 
 export function x1Today(now = new Date()) {
   const day = dayNumberAt(X1.switchHour, now);
@@ -282,7 +264,7 @@ export function attachX1(server) {
       for (const m of matches.values()) for (const c of m.conns) if (!isAi(c) && c.user.id === user.id && c !== conn && c.dropped) takeOver(c, conn);
     }
     conns.add(conn);
-    send(ws, { t: 'hello', me: user.id, rules: rulesView(), today: todayFor(conn), drain: x1Drain()?.until ?? null });
+    send(ws, { t: 'hello', me: user.id, rules: rulesView(), today: x1Today(), drain: x1Drain()?.until ?? null });
     if (mode === 'lobby') offerOpen(conn).catch(() => {});
     else if (conn.match) sendMatch(conn, true);
     else {
@@ -312,12 +294,6 @@ async function onMessage(conn, m) {
   if (m.t === 'ping') return send(conn.ws, { t: 'pong', at: m.at, now: Date.now() });
   if (conn.mode !== 'game') return;
   if (m.t === 'challenge') {
-    // "Testar FutGolf" (só admins, enquanto o jogo está em teste): o desafio é no jogo pedido, não no do dia
-    if (m.game && m.game !== gameFor()) {
-      if (!(m.game in X1.names) || !inTest(m.game) || !isTester(conn)) return err(conn, 'jogo', 'Esse jogo não está no X1 agora.');
-      if (oldClient(conn, m.game)) return;
-      return createChallenge(conn, m.game);
-    }
     if (oldClient(conn, gameFor())) return;
     return createChallenge(conn);
   }
@@ -423,7 +399,7 @@ async function createChallenge(conn, game = gameFor()) {
 async function casaOuAbre(conn, game = gameFor()) {
   if (conn.match || conn.challenge || (conn.ws && conn.ws.readyState !== conn.ws.OPEN)) return null; // (bot: sem tela)
   if (x1Drain()) { drainErr(conn); return null; }
-  const waitingNow = [...challenges.values()].filter((ch) => ch.game === game && canSee(ch, conn))
+  const waitingNow = [...challenges.values()].filter((ch) => ch.game === game)
     .sort((a, b) => sameTeamOf(a.from, conn) - sameTeamOf(b.from, conn) || (isAi(conn) ? isAi(a.from) - isAi(b.from) : 0) || a.at - b.at);
   for (const ch of waitingNow) {
     if (!challenges.has(ch.id)) continue;
@@ -440,10 +416,8 @@ async function casaOuAbre(conn, game = gameFor()) {
   if (tutorial) {
     ch.tutorTimer = setTimeout(() => botDoTutorialAceita(ch).catch((e) => console.error('[x1] bot do tutorial:', e.message)), TUTORIAL.botAcceptSec * 1000);
   }
-  // Jogo em teste: ninguém de teste aceitou em X1.test.botAcceptSec, um bot aceita (sem cota nem sorteio — dono, 24/09/2026)
-  if (inTest(game) && !isAi(conn)) ch.botAcceptTimer = setTimeout(() => naFila(() => botEntraNoDesafio(ch, { skill: BX.skill[0] + Math.random() * (BX.skill[1] - BX.skill[0]), motivo: 'bot-teste' })).catch((e) => console.error('[x1] bot do teste:', e.message)), X1.test.botAcceptSec * 1000);
   // Gente de verdade esperando: passados 5–30 s sem ninguém, um bot em sessão pode aceitar (dono, 20/09/2026)
-  else if (!isAi(conn) && botPicker) ch.botAcceptTimer = setTimeout(() => botAceita(ch).catch((e) => console.error('[x1] bot aceitando:', e.message)), betweenMs(BX.acceptDelaySec));
+  if (!isAi(conn) && botPicker) ch.botAcceptTimer = setTimeout(() => botAceita(ch).catch((e) => console.error('[x1] bot aceitando:', e.message)), betweenMs(BX.acceptDelaySec));
   challenges.set(ch.id, ch);
   conn.challenge = ch;
   // gente abriu e ficou bot esperando (é um que ela não podia enfrentar): o bot desiste, para não ficarem dois
@@ -462,7 +436,7 @@ function cancelChallenge(ch, _why) {
 
 /** Quem pode receber o convite agora: nas telas com abas, livre, com dinheiro e compatível. */
 async function inviteTargets(ch, only = null) {
-  const cands = [...(only ? [only] : conns)].filter((c) => c.mode === 'lobby' && !c.seen.has(ch.id) && c.user.id !== ch.from.user.id && !busyUser(c.user.id) && canSee(ch, c));
+  const cands = [...(only ? [only] : conns)].filter((c) => c.mode === 'lobby' && !c.seen.has(ch.id) && c.user.id !== ch.from.user.id && !busyUser(c.user.id));
   if (!cands.length) return [];
   const ids = [...new Set(cands.map((c) => c.user.id))];
   const rich = new Set((await prisma.user.findMany({ where: { id: { in: ids }, money: { gte: F.bet }, deletedAt: null }, select: { id: true } })).map((r) => r.id));
@@ -492,7 +466,7 @@ async function offerOpen(conn) {
 /** Na tela do X1 (sem partida nem desafio): a lista de desafios abertos que dá para aceitar. */
 async function sendOpenList(conn) {
   const list = [];
-  for (const ch of challenges.values()) if (ch.from !== conn && canSee(ch, conn) && (await compatible(ch.from, conn))) list.push({ ...challengeView(ch), sameTeam: !!sameTeamOf(ch.from, conn), freeplay: treinoPorIp(ch.from, conn) });
+  for (const ch of challenges.values()) if (ch.from !== conn && (await compatible(ch.from, conn))) list.push({ ...challengeView(ch), sameTeam: !!sameTeamOf(ch.from, conn), freeplay: treinoPorIp(ch.from, conn) });
   send(conn.ws, { t: 'open', list });
 }
 async function refreshOpenLists() {
@@ -502,7 +476,7 @@ async function refreshOpenLists() {
 async function acceptChallenge(conn, id) {
   if (x1Drain()) return drainErr(conn);
   const ch = challenges.get(id);
-  if (!ch || !canSee(ch, conn)) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' }); // (jogo em teste: só as contas de teste e os bots)
+  if (!ch) return send(conn.ws, { t: 'taken', message: 'Esse desafio já começou ou foi cancelado.' });
   if (conn.match || ch.from === conn) return;
   if (conn.challenge) cancelChallenge(conn.challenge, 'aceitou-outro');
   const problem = await canPlay(conn);

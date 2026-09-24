@@ -301,8 +301,6 @@ export interface X1Today {
   game: X1Game; name: string; next: X1Game; nextName: string; switchAt: number; switchHour?: number;
   /** O rodízio de hoje e o que vale a partir da próxima troca (no dia em que um jogo novo entra, ele já vem aqui). */
   order?: X1Game[] | null; nextOrder?: X1Game[] | null; names?: Record<X1Game, string>;
-  /** Jogo em teste — só para os admins (botão "Testar FutGolf"): nenhum admin aceitou em `botAcceptSec`, um bot aceita. */
-  test?: { game: X1Game; name: string; botAcceptSec: number };
 }
 /** V/E/D, pontos do Ranking X1 (3·V + 1·E − 2·D) e sequência sem perder (`streak` = a atual, `best` = a maior). */
 export interface X1Tally { wins: number; losses: number; draws: number; points: number; streak: number; best: number }

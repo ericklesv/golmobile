@@ -629,12 +629,12 @@ export function X1Screen() {
   function closeOver() { stopDrama(); setOver(null); setMatch(null); setShown(null); setGolfShown(null); setGoalFlash(null); setBigText(null); setOverview(false); setPhase('lobby'); }
 
   // ─── ações ────────────────────────────────────────────────────────────────
-  /** Desafia no jogo do dia; `game` = o jogo em teste (botão "Testar FutGolf", só admins — o servidor confere). */
-  function challenge(game?: X1Game) {
+  /** Desafia no jogo do dia. */
+  function challenge() {
     if (busy) return;
     if (me.money < rules.bet) { toast(`Você precisa de ${fmt(rules.bet)} para jogar.`, 'error'); return; }
     setBusy(true); setLastResult(null);
-    send(game ? { t: 'challenge', game } : { t: 'challenge' });
+    send({ t: 'challenge' });
     window.setTimeout(() => setBusy(false), 4000);
   }
   function accept(id: number) {
@@ -759,7 +759,7 @@ export function X1Screen() {
   else if (phase === 'lobby') body = (
     <Lobby rules={rules} today={today} open={open} busy={busy} me={me} lastResult={lastResult} season={season} now={now()}
       cooldownLeft={cooldownUntil ? Math.max(0, cooldownUntil - now()) : 0} drain={!!drainUntil && drainUntil > now()}
-      onChallenge={() => challenge()} onTest={(g) => challenge(g)} onAccept={accept} board={meta?.futprego?.board} field={meta?.x1?.field} kickoff={meta?.x1?.kickoff} golfPreview={meta?.x1?.futgolf?.preview} />
+      onChallenge={() => challenge()} onAccept={accept} board={meta?.futprego?.board} field={meta?.x1?.field} kickoff={meta?.x1?.kickoff} golfPreview={meta?.x1?.futgolf?.preview} />
   );
   else if (phase === 'waiting' && waiting) body = (
     <Waiting rules={rules} gameName={waiting.gameName || today?.name || ''} elapsed={Math.max(0, now() - waiting.startedAt)} botOffer={waiting.botOffer}
@@ -1005,9 +1005,9 @@ function rulesText(game: X1Game, r: Rules) {
 }
 
 /** Começo: o X1 de hoje (e o de amanhã), as regras, a campanha na temporada, os desafios abertos e desafiar. */
-function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldownLeft, drain, onChallenge, onTest, onAccept, board, field, kickoff, golfPreview }: {
+function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldownLeft, drain, onChallenge, onAccept, board, field, kickoff, golfPreview }: {
   rules: Rules; today: X1Today | null; open: OpenChallenge[]; busy: boolean; me: { money: number; team: Team }; lastResult: Over | null;
-  season: PublicPlayer['x1'] | null; now: number; cooldownLeft: number; drain: boolean; onChallenge: () => void; onTest: (game: X1Game) => void; onAccept: (id: number) => void;
+  season: PublicPlayer['x1'] | null; now: number; cooldownLeft: number; drain: boolean; onChallenge: () => void; onAccept: (id: number) => void;
   board: PregoBoardData | undefined; field: BotaoFieldData | undefined; kickoff: { pieces: BotaoPiece[]; ball: { x: number; y: number } } | undefined;
   golfPreview?: FgCourse;
 }) {
@@ -1074,15 +1074,6 @@ function Lobby({ rules, today, open, busy, me, lastResult, season, now, cooldown
       <button onClick={onChallenge} disabled={busy || drain || me.money < rules.bet || cooldownLeft > 0} className="btn btn-green btn-lg mt-3 w-full tabular-nums">
         {drain ? 'Atualizando o JogaGol…' : busy ? 'Chamando…' : cooldownLeft > 0 ? `Desafiar de novo em ${mmss(cooldownLeft)}` : `Desafiar alguém (${fmt(rules.bet)})`}
       </button>
-      {/* jogo em teste: só os admins recebem `today.test` do servidor (dono, 24/09/2026) */}
-      {today?.test && (
-        <>
-          <button onClick={() => onTest(today.test!.game)} disabled={busy || drain || me.money < rules.bet || cooldownLeft > 0} className="btn btn-blue btn-md mt-2 w-full">
-            Testar {today.test.game === 'FUTGOLF' ? 'FutGolf' : today.test.name}
-          </button>
-          <p className="t-out mt-1 text-center text-[11px] font-extrabold">Só admins veem. Se nenhum admin aceitar em {today.test.botAcceptSec} s, um bot aceita (vale de verdade).</p>
-        </>
-      )}
       {cooldownLeft > 0 && !drain && <VipNudge minutes={Math.round((rules.challengeCooldownSec ?? 120) / 60)} />}
       {me.money < rules.bet && <p className="t-out mt-2 text-center text-[12px] font-extrabold">Você precisa de {fmt(rules.bet)} para jogar.</p>}
     </>

@@ -41,6 +41,7 @@ import { ShopScreen } from './screens/Shop';
 import { ActiveScreen } from './screens/Active';
 import { installDragScroll } from './lib/dragScroll';
 import { installTracking, trackScreen } from './lib/track';
+import { installAds } from './lib/ads';
 import { AdminDock } from './components/AdminDock';
 import { installClickSounds } from './lib/sound';
 import { LevelsScreen } from './screens/Levels';
@@ -90,7 +91,7 @@ export default function App() {
   useEffect(() => {
     const onMulti = (e: Event) => setMulti((e as CustomEvent<string>).detail || 'Contas demais nesta internet.');
     window.addEventListener(MULTI_EVENT, onMulti); // antes do boot: o /api/me dele já pode voltar barrado
-    boot(); const a = installDragScroll(); const b = installClickSounds(); installTracking(); // eventos de uso (lib/track.ts)
+    boot(); const a = installDragScroll(); const b = installClickSounds(); installTracking(); installAds(); // eventos de uso (lib/track.ts) · tag do Google Ads, só no site e sem login (lib/ads.ts)
     return () => { window.removeEventListener(MULTI_EVENT, onMulti); a(); b(); };
   }, []);
   useEffect(() => { trackScreen(loc.pathname); }, [loc.pathname]); // funil: cada tela aberta (lib/track.ts)

@@ -23,7 +23,9 @@ const eventLabel = (e: Report['eventos'][number]) => {
   const base = EVENT_LABEL[e.name] || e.name;
   const d = e.data || {};
   if (e.name === 'app.saiu') return `${base} (${d.seg ?? '?'} s em ${screen(String(d.tela ?? ''))})`;
-  if (e.name === 'app.abriu') return `${base}${d.ref ? ` via ${d.ref}` : ''}${d.twa ? ' · app' : d.pwa ? ' · PWA' : ''}`;
+  const ad = (o: any) => (o && typeof o === 'object' ? ` · anúncio ${o.src ?? (o.gclid ? 'google' : '?')}${o.term ? ` (${o.term})` : ''}` : ''); // origem (lib/track.ts)
+  if (e.name === 'app.abriu') return `${base}${d.ref ? ` via ${d.ref}` : ''}${d.twa ? ' · app' : d.pwa ? ' · PWA' : ''}${ad(d.origem)}`;
+  if (e.name === 'cadastro.ok') return `${base}${ad(d.origem)}`;
   if (e.name === 'erro.tela') return `${base}: ${String(d.msg ?? '').slice(0, 40)}`;
   return base;
 };

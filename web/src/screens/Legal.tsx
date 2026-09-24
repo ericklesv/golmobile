@@ -13,7 +13,8 @@ import { useSeo } from '../lib/seo';
 
 export const CONTACT_EMAIL = 'contato@jogagol.com.br';
 export const RESPONSIBLE = 'Managol Softwares';
-const UPDATED = '14 de setembro de 2026';
+const UPDATED = '24 de setembro de 2026'; // privacidade (24/09: tag do Google Ads no site)
+const TERMS_UPDATED = '14 de setembro de 2026';
 
 function LegalFrame({ title, ribbon, children }: { title: string; ribbon: 'blue' | 'orange' | 'green'; children: React.ReactNode }) {
   const nav = useNavigate();
@@ -56,7 +57,7 @@ export function PrivacyScreen() {
           <li><b>Endereço IP</b> do último acesso e a <b>localização aproximada</b> (cidade/estado) obtida a partir dele. Usamos para segurança e moderação: coibir contas falsas, fraudes em propostas e trocas de VIP e para aplicar suspensões.</li>
           <li><b>Dados de jogo:</b> gols, chutes, recargas, nível, dinheiro virtual, itens, VIP, partidas dos minigames, cargo no time, propostas e histórico de ações — é o próprio jogo.</li>
           <li><b>Compras:</b> pacote, valor, identificadores da transação e data. O pagamento em si é feito pelos parceiros (abaixo); não vemos nem guardamos dados do seu banco ou cartão.</li>
-          <li><b>No aparelho:</b> o token de login e preferências (som, nível já visto) ficam no armazenamento do navegador/app. Não usamos cookies de rastreamento nem anúncios.</li>
+          <li><b>No aparelho:</b> o token de login e preferências (som, nível já visto) ficam no armazenamento do navegador/app. No site, para quem ainda não entrou numa conta, a tag do Google Ads grava cookies do Google para medir os anúncios do JogaGol (veja em "Com quem compartilhamos"). O app da Google Play não usa cookies de rastreamento, e o jogo não mostra anúncios.</li>
         </ul>
       </Panel>
       <Panel title="PARA QUE USAMOS" ribbon="green">
@@ -65,8 +66,9 @@ export function PrivacyScreen() {
           <li>Segurança e moderação: impedir múltiplas contas, golpes, spam e ofensas; analisar denúncias; aplicar suspensões.</li>
           <li>Compras de VIP: gerar a cobrança, confirmar o pagamento e creditar os dias.</li>
           <li>Comunicação: e-mail de recuperação de senha e avisos sobre a sua conta. Não mandamos propaganda.</li>
+          <li>Divulgação: saber se os anúncios do JogaGol no Google trazem jogadores, ou seja, quantos cliques viraram conta.</li>
         </ul>
-        <p>A base legal é a execução do contrato (os Termos de Uso), o legítimo interesse em manter o jogo seguro e, para a foto e o texto pessoal, o seu consentimento (você pode remover quando quiser).</p>
+        <p>A base legal é a execução do contrato (os Termos de Uso), o legítimo interesse em manter o jogo seguro e em medir a divulgação do jogo e, para a foto e o texto pessoal, o seu consentimento (você pode remover quando quiser).</p>
       </Panel>
       <Panel title="O QUE É PÚBLICO" ribbon="orange">
         <p>Outros jogadores veem: nick, foto, texto pessoal, time, nível, gols, posição nos rankings, cargo no time, VIP ativo, últimos lances e as mensagens que você manda no chat. E-mail, senha, IP e localização <b>nunca</b> são mostrados a outros jogadores.</p>
@@ -77,9 +79,10 @@ export function PrivacyScreen() {
           <li><b>Google Play</b> — processa as compras feitas dentro do app Android, conforme a política de privacidade do Google.</li>
           <li><b>ip-api.com</b> — recebe apenas o endereço IP para devolver a localização aproximada usada na moderação.</li>
           <li><b>Google Fonts</b> — as fontes do jogo são carregadas dos servidores do Google, que recebem o seu IP nessa requisição.</li>
+          <li><b>Google Ads</b> — só no site e só para quem ainda não entrou numa conta: a tag do Google recebe o IP, dados do navegador, a página visitada e, se você chegou por um anúncio nosso, o aviso de que a conta foi criada. Serve só para medir os anúncios (não usamos remarketing nem publicidade personalizada) e não recebe e-mail, senha nem dados do jogo. Segue a política de privacidade do Google; dá para bloquear esses cookies nas configurações do navegador.</li>
           <li><b>Hospedagem</b> — os dados ficam em servidor próprio contratado de provedor de hospedagem, com acesso restrito à equipe.</li>
         </ul>
-        <p>Não vendemos dados e não compartilhamos com anunciantes. Podemos entregar dados a autoridades quando a lei exigir.</p>
+        <p>Não vendemos dados nem os repassamos a outros anunciantes. Podemos entregar dados a autoridades quando a lei exigir.</p>
       </Panel>
       <Panel title="POR QUANTO TEMPO" ribbon="green">
         <ul>
@@ -107,7 +110,7 @@ export function TermsScreen() {
   return (
     <LegalFrame title="TERMOS DE USO" ribbon="orange">
       <Panel>
-        <p>Ao criar uma conta no <b>JogaGol</b> você concorda com estes termos e com a <Link to="/privacidade" className="text-sky-deep">Política de Privacidade</Link>. O JogaGol é um jogo casual de futebol de {RESPONSIBLE} · {CONTACT_EMAIL}. Atualizado em {UPDATED}.</p>
+        <p>Ao criar uma conta no <b>JogaGol</b> você concorda com estes termos e com a <Link to="/privacidade" className="text-sky-deep">Política de Privacidade</Link>. O JogaGol é um jogo casual de futebol de {RESPONSIBLE} · {CONTACT_EMAIL}. Atualizado em {TERMS_UPDATED}.</p>
       </Panel>
       <Panel title="SUA CONTA" ribbon="orange">
         <ul>

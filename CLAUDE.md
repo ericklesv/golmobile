@@ -771,6 +771,15 @@ depois que o novo estiver estável. Não instalar nada dele.
   nicks (tocar abre o perfil), card X1 AO VIVO com as partidas, os outros números, **Atividade dos jogadores** (os
   últimos eventos, que ficavam no fim), gols por hora, retenção, funil, onde somem.
   **Mexeu? Rode `node scripts/test-eventos.js`** (pasta api/, API local no ar, banco LOCAL; tem de dar "TUDO OK").
+- **Google Ads** (Guilherme, 24/09/2026: 1ª campanha de Pesquisa "JogaGol | Pesquisa | Teste set-26", R$ 180 de 24/09 a
+  07/10, conta do Google Ads do Guilherme): tag do Google `AW-17439857189` em **`web/src/lib/ads.ts`** — carregada SÓ no site
+  jogagol.com.br e SÓ para quem abre sem login (nunca no app da Play Store/TWA, cuja ficha diz "sem anúncios"; nunca no PC),
+  sem remarketing (`allow_ad_personalization_signals: false`). Conversão "Cadastro JogaGol" = `adsSignup()` no cadastro que
+  deu certo (`store/auth.ts`; precisa do rótulo em `SIGNUP_LABEL`). A origem do clique (`utm_*`/`gclid` da URL de entrada,
+  guardada 30 dias no aparelho) vai no `app.abriu` e no `cadastro.ok` como `origem` (`lib/track.ts`) — é por ela que o banco diz
+  quantos do anúncio criaram conta e voltaram; o relatório ao vivo do admin mostra "· anúncio google (brgol)". A campanha usa o
+  sufixo `utm_source=google&utm_medium=cpc&utm_campaign=teste-set26&utm_term={keyword}`. A Política de Privacidade
+  (`screens/Legal.tsx`) descreve a tag — mudou o que ela faz, mude o texto e a data lá.
 - **Gracinhas → Telegram** (pedido do dono, 22/09/2026, depois da varredura de 17/09 do IP 107.150.41.226 — Kansas City,
   VPN/datacenter; contas gol36930 e jogador22276, @pm.me —: 582 pedidos em 8 min: /.env, /.git/config, /dump.sql,
   injeção de SQL na busca, id gigante, 15 senhas, chat/bio com código; "precisamos de aviso no telegram sempre que

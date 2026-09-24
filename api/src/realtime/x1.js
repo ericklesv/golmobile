@@ -25,7 +25,7 @@ import { BOTAO_FIELD, simulateSnap } from '../lib/botao.js';
 import { newBotaoMatch, botaoView, applySnap, skipSnap, botaoBotMove, botaoHumanMove, movablePieces } from '../lib/botaoMatch.js';
 import { simulateKick as simulateGolf } from '../lib/futgolf.js';
 import { newFutgolfMatch, futgolfView, golfKick, golfSkip, golfCloseRound, golfRoundDone, golfActive, futgolfAiKick } from '../lib/futgolfMatch.js';
-import { FUTPREGO, BOTAO, FUTGOLF, X1, PROVOCAR, TUTORIAL, BOTS, x1GameOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
+import { FUTPREGO, BOTAO, FUTGOLF, X1, PROVOCAR, TUTORIAL, BOTS, x1GameOf, x1RotationOf, MINIGAMES, levelOf, isVip } from '../lib/rules.js';
 import { noPassoDoX1 } from '../services/tutorial.js';
 import { applyResult, loadUser } from '../services/play.js';
 import { liveMatchForTeam, currentRound } from '../services/league.js';
@@ -68,31 +68,35 @@ const aiDelayMs = (c) => (c.ai ? betweenMs(BX.thinkSec) : 900 + randomInt(1400))
 const forcedGame = () => (process.env.NODE_ENV !== 'production' && process.env.X1_JOGO in X1.names ? process.env.X1_JOGO : null);
 
 // ─── Jogo em TESTE (X1.test; dono, 24/09/2026) ─────────────────────────────
-// Fora do rodízio: só as contas de X1.test.nicks desafiam nele (é o X1 delas enquanto o teste durar), só elas e os bots
-// veem e aceitam o desafio, e ninguém delas aceitou em X1.test.botAcceptSec, um bot aceita (sem cota nem sorteio) e
-// joga valendo. No PC, X1_TESTERS=nick1,nick2 troca as contas (os testes criam as deles).
-const testNicks = () => (process.env.NODE_ENV !== 'production' && process.env.X1_TESTERS ? process.env.X1_TESTERS.split(',') : X1.test?.nicks ?? []);
-/** O jogo está em teste agora (fora do rodízio e não forçado no PC)? */
-const inTest = (game) => !!X1.test && game === X1.test.game && !X1.games.includes(game) && forcedGame() !== game;
-const isTester = (c) => !!c && !c.bot && !c.ai && testNicks().includes(c.user.nick);
-/** O jogo em que esta conexão desafia: o de teste para as contas de teste, o do dia para o resto. */
-const gameFor = (conn) => (X1.test && isTester(conn) && inTest(X1.test.game) ? X1.test.game : x1Today().game);
-/** Pode ver/aceitar este desafio? O de um jogo em teste, só as contas de teste e os bots. */
+// Enquanto não está no rodízio do dia: só os ADMINS desafiam nele — pelo botão "Testar FutGolf" (a mensagem `challenge`
+// com `game`); o "Desafiar alguém" deles é o do jogo do dia, como o de todo mundo. Só admins e bots veem e aceitam o
+// desafio, e nenhum admin aceitou em X1.test.botAcceptSec, um bot aceita (sem cota nem sorteio) e joga valendo. No PC,
+// X1_TESTERS=nick1,nick2 também vale como admin (os testes criam as contas deles).
+const testNicks = () => (process.env.NODE_ENV !== 'production' && process.env.X1_TESTERS ? process.env.X1_TESTERS.split(',') : []);
+/** O rodízio de hoje (o dia do X1 vira às 19h). */
+const rotationNow = (now = new Date()) => x1RotationOf(dayNumberAt(X1.switchHour, now));
+/** O jogo está em teste agora (fora do rodízio de hoje e não forçado no PC)? No rodízio, o teste acaba sozinho. */
+const inTest = (game) => !!X1.test && game === X1.test.game && !rotationNow().games.includes(game) && forcedGame() !== game;
+const isTester = (c) => !!c && !c.bot && !c.ai && (!!c.user.isAdmin || testNicks().includes(c.user.nick));
+/** O jogo em que o "Desafiar alguém" desafia: o do dia, para todo mundo. */
+const gameFor = () => x1Today().game;
+/** Pode ver/aceitar este desafio? O de um jogo em teste, só os admins e os bots. */
 const canSee = (ch, conn) => !inTest(ch.game) || isTester(conn) || isAi(conn);
-/** O "jogo de hoje" que a tela do X1 mostra: para as contas de teste, o de teste (fica nele depois das 19h). */
+/** O "jogo de hoje" que a tela do X1 mostra; para os admins, com o jogo em teste (o botão "Testar FutGolf"). */
 function todayFor(conn) {
   const t = x1Today();
-  if (gameFor(conn) === t.game) return t;
-  const name = `${X1.names[X1.test.game]} (teste)`;
-  return { ...t, game: X1.test.game, name, next: X1.test.game, nextName: name, order: null, test: true };
+  if (!X1.test || !isTester(conn) || !inTest(X1.test.game)) return t;
+  return { ...t, test: { game: X1.test.game, name: X1.names[X1.test.game], botAcceptSec: X1.test.botAcceptSec } };
 }
 
 export function x1Today(now = new Date()) {
   const day = dayNumberAt(X1.switchHour, now);
   const game = forcedGame() ?? x1GameOf(day);
-  const next = forcedGame() ? X1.games.find((g) => g !== game) : x1GameOf(day + 1); // forçado: o "próximo" mostra o outro
-  // order + names: a tela sabe qual vem depois do próximo (com 3 jogos, "inverter hoje e amanhã" não serve mais)
-  return { game, name: X1.names[game], next, nextName: X1.names[next], switchAt: nextResetAt(X1.switchHour, now).getTime(), switchHour: X1.switchHour, order: forcedGame() ? null : X1.games, names: X1.names };
+  const order = x1RotationOf(day).games, nextOrder = x1RotationOf(day + 1).games;
+  const next = forcedGame() ? order.find((g) => g !== game) : x1GameOf(day + 1); // forçado: o "próximo" mostra o outro
+  // order + names: a tela sabe qual vem depois do próximo (com 3 jogos, "inverter hoje e amanhã" não serve mais);
+  // nextOrder = o rodízio a partir da troca (o dia em que um jogo novo entra, ele já vem nele)
+  return { game, name: X1.names[game], next, nextName: X1.names[next], switchAt: nextResetAt(X1.switchHour, now).getTime(), switchHour: X1.switchHour, order: forcedGame() ? null : order, nextOrder: forcedGame() ? null : nextOrder, names: X1.names };
 }
 
 /** Início da hora cheia de Brasília em que `now` está (a trava de gols do X1 conta por hora, como a artilharia da hora). */
@@ -291,7 +295,14 @@ export function attachX1(server) {
 async function onMessage(conn, m) {
   if (m.t === 'ping') return send(conn.ws, { t: 'pong', at: m.at, now: Date.now() });
   if (conn.mode !== 'game') return;
-  if (m.t === 'challenge') return createChallenge(conn);
+  if (m.t === 'challenge') {
+    // "Testar FutGolf" (só admins, enquanto o jogo está em teste): o desafio é no jogo pedido, não no do dia
+    if (m.game && m.game !== gameFor()) {
+      if (!(m.game in X1.names) || !inTest(m.game) || !isTester(conn)) return err(conn, 'jogo', 'Esse jogo não está no X1 agora.');
+      return createChallenge(conn, m.game);
+    }
+    return createChallenge(conn);
+  }
   if (m.t === 'cancel') { if (conn.challenge) cancelChallenge(conn.challenge, 'cancelou'); return send(conn.ws, { t: 'canceled' }); }
   if (m.t === 'accept') return naFila(() => acceptChallenge(conn, Number(m.id)));
   if (m.t === 'bot') return startBot(conn);
@@ -365,7 +376,7 @@ function naFila(fn) {
   return run;
 }
 
-async function createChallenge(conn) {
+async function createChallenge(conn, game = gameFor()) {
   if (conn.match || conn.challenge) return;
   if (x1Drain()) return drainErr(conn);
   if (busyUser(conn.user.id)) return err(conn, 'busy', 'Você já está numa partida ou desafiando em outra tela.');
@@ -375,7 +386,7 @@ async function createChallenge(conn) {
   const until = await challengeCooldownUntil(conn.user);
   if (until) return send(conn.ws, { t: 'error', code: 'cooldown', until, message: cooldownText(until) });
   if (await autoClientBlocked(conn)) return; // programa ligado direto no WebSocket: 1 partida a cada 20 min
-  const ch = await naFila(() => casaOuAbre(conn));
+  const ch = await naFila(() => casaOuAbre(conn, game));
   if (!ch) return;
   send(conn.ws, { t: 'waiting', id: ch.id, game: ch.game, gameName: X1.names[ch.game], at: ch.at, botAt: ch.at + F.botAfterSec * 1000, until: ch.at + F.challengeMaxSec * 1000 });
   await broadcastInvite(ch);
@@ -391,10 +402,9 @@ async function createChallenge(conn) {
  * segundo desafio e, se quem abriu é gente, o bot que esperava desiste do dele.
  * Devolve o desafio aberto, ou null (casou, ou não abriu).
  */
-async function casaOuAbre(conn) {
+async function casaOuAbre(conn, game = gameFor()) {
   if (conn.match || conn.challenge || (conn.ws && conn.ws.readyState !== conn.ws.OPEN)) return null; // (bot: sem tela)
   if (x1Drain()) { drainErr(conn); return null; }
-  const game = gameFor(conn);
   const waitingNow = [...challenges.values()].filter((ch) => ch.game === game && canSee(ch, conn))
     .sort((a, b) => sameTeamOf(a.from, conn) - sameTeamOf(b.from, conn) || (isAi(conn) ? isAi(a.from) - isAi(b.from) : 0) || a.at - b.at);
   for (const ch of waitingNow) {
@@ -505,7 +515,7 @@ async function acceptChallenge(conn, id) {
     if (e.who === 'a') { err(a, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`); return send(b.ws, { t: 'taken', message: `${a.user.nick} ficou sem dinheiro para jogar.` }); }
     if (e.who === 'b') { // o desafio de quem esperava volta — sem esperar: estamos na fila e createChallenge entra nela
       err(b, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`);
-      createChallenge(a).catch((e2) => console.error('[x1] desafio de volta:', e2.message));
+      createChallenge(a, game).catch((e2) => console.error('[x1] desafio de volta:', e2.message));
       return;
     }
     throw e;
@@ -528,7 +538,7 @@ async function randomTeamExcept(teamId) {
 async function startBot(conn) {
   if (conn.match) return;
   if (x1Drain()) return drainErr(conn);
-  const game = conn.challenge?.game ?? gameFor(conn);
+  const game = conn.challenge?.game ?? gameFor();
   if (conn.challenge) cancelChallenge(conn.challenge, 'bot');
   const team = await randomTeamExcept(conn.user.teamId);
   const nick = `BOT ${BOT_NAMES[randomInt(BOT_NAMES.length)]}`;
@@ -586,7 +596,7 @@ async function botEntraNoDesafio(ch, { skill, motivo }) {
     });
   } catch (e) {
     if (e.who === 'a') return err(a, 'no-money', `Você precisa de R$ ${F.bet} para jogar.`);
-    createChallenge(a).catch((e2) => console.error('[x1] desafio de volta:', e2.message)); // o bot não tinha dinheiro: o desafio volta (sem esperar: pode estar na fila)
+    createChallenge(a, ch.game).catch((e2) => console.error('[x1] desafio de volta:', e2.message)); // o bot não tinha dinheiro: o desafio volta (sem esperar: pode estar na fila)
     return;
   }
   const h2h = await headToHead(a.user.id, bot.id).catch(() => null);

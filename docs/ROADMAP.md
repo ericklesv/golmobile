@@ -2,7 +2,7 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## Futgolf — 3º jogo do X1 (23–24/09/2026) — EM TESTE: só MVGIC e ericklesv, contra bots
+## Futgolf — 3º jogo do X1 (23–24/09/2026) — ENTRA NO RODÍZIO em 24/09 às 19h (até lá, "Testar FutGolf" só dos admins)
 Aprovado pelo dono a partir das telas de exemplo (canvas "X1 Várzea e Footgolf"), com os pedidos: campo maior, powerups
 (setas de boost, molas que devolvem a bola), mais formas e nada óbvio. Golfe de chute visto de cima, os dois chutando ao
 mesmo tempo no mesmo buraco; quem embocar primeiro vence, empate vai para o desempate (mais perto do buraco). 8 buracos
@@ -18,8 +18,11 @@ outro sempre dá o mesmo número de chutes antes de alguém vencer); **vento** (
 **campo do desempate** do 2º desempate em diante; **medidas dramáticas** do desempate decidido na distância; **buraco
 exigente na força** (bola forte tira tinta); câmera volta da lagoa; **Bueiros com assinatura**: o bueiro 3 sorteia a
 saída (perto do buraco ou lá atrás). Ideia do dono: cada mapa com uma assinatura própria, como no Valorant.
+Ainda em 24/09 o dono pediu o botão **"Testar FutGolf"** só para os admins (o "Desafiar alguém" deles voltou a ser o
+jogo do dia) e **programou o Futgolf para as 19h**: `X1.rotations` ganhou o rodízio novo a partir do dia 14 (24/09 às
+19h): Futgolf → FutPrego → Botão. Às 19h o teste acaba sozinho e o botão some.
+- [x] Liberar para todos: rodízio novo a partir de 24/09 às 19h (`X1.rotations`).
 - [ ] Dar uma assinatura a cada mapa (dono, 24/09): o Bueiros é o teleporte; rampas na Bifurcação/Ilha; faltam os outros.
-- [ ] Liberar para todos quando o dono aprovar: `FUTGOLF` em `X1.games` + acertar `X1.anchor` (e avisar no grupo).
 - [ ] Depois da estreia: olhar as partidas de verdade (quantos chutes por buraco, quanto desempate) e acertar pares/buracos.
 - [ ] Próximo: os ajustes do Várzea (o dono pediu depois do Futgolf).
 

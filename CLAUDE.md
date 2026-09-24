@@ -237,10 +237,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   20h" (commit 02dd9d4) e o dono pediu 19h DE NOVO em 16/09 — se for mudar, combine entre vocês antes;
   `X1.games`): **FutPrego** (futebol de prego, `lib/futprego.js`, 1 peteleco na bola por vez), **Futebol de Botão**
   (`lib/botao.js` = física determinística; `lib/botaoMatch.js` = regras puras; como o SnapFC, sem poderes); o
-  **Futgolf** está pronto mas EM TESTE, fora do rodízio (ver o item dele logo abaixo). **O rodízio tem âncora**
-  (`X1.anchor` em rules.js: um dia e o jogo daquele dia) — com `dia % n`, mudar o número de jogos trocaria o jogo de hoje
-  no meio do dia; jogo novo = entra em `X1.games` e a âncora é acertada para o dia de hoje e o jogo de hoje. A tela recebe `order` + `names` no `x1Today` e anda o rodízio com
-  `advanceX1Today` (components/X1GameSwitch.tsx) — "inverter hoje e amanhã" só servia para 2 jogos. Regras de
+  **Futgolf**, que **entra no rodízio às 19h de 24/09/2026** (dono: "pode programar o futgolf para as 19h"; ver o item
+  dele logo abaixo). **O rodízio muda por data** (`X1.rotations` em rules.js: cada rodízio vale a partir do dia `from` —
+  o `dayNumberAt(19)` de lib/time.js — e parte da sua `anchor`, um dia e o jogo daquele dia; `x1RotationOf(dia)`): até o
+  dia 13, FutPrego e Botão alternando; do dia 14 (24/09 às 19h) em diante, Futgolf → FutPrego → Botão. Com `dia % n`,
+  mudar o número de jogos trocaria o jogo de hoje no meio do dia — **jogo novo = rodízio novo começando num dia FUTURO**.
+  A tela recebe `order` (o rodízio de hoje), `nextOrder` (o que vale depois da troca) e `names` no `x1Today` e anda o
+  rodízio com `advanceX1Today` (components/X1GameSwitch.tsx) — com a meta carregada antes da troca, ela já entra no
+  rodízio novo. Regras de
   dinheiro e travas iguais para todos (`FUTPREGO` em rules.js — o nome ficou): cada um põe R$ 200, quem vence leva
   R$ 400 + 1 gol e o time do outro perde 1 gol na rodada; **só as 10 PRIMEIRAS PARTIDAS válidas de cada jogador em
   cada hora cheia de Brasília mexem no placar** (dono, 15/09/2026; `FUTPREGO.maxGoalsPerHour` — o nome ficou): empate
@@ -406,16 +410,21 @@ depois que o novo estiver estável. Não instalar nada dele.
   preto tocar no vermelho").
 - **Futgolf — 3º jogo do X1** (aprovado pelo dono em 23/09/2026 a partir das telas de exemplo; pedidos dele: "campo
   maior", "powerups na pista, como as setinhas de boost, coisas para bater e receber bump como uma mola", "mais shapes e
-  nada tão óbvio"). **EM TESTE desde 24/09/2026, fora do rodízio** (dono: "Quero testar o futgolf. Libere apenas para as
-  contas MVGIC e ericklesv. Os adversários precisam ser bots, aceitando em 5 s se nem mvgic nem ericklesv aceitarem… não
-  mostre o aviso, ainda, para outros usuários"): `X1.test` em rules.js (`game`, `nicks`, `botAcceptSec` = 5). Para essas
-  contas o X1 É o Futgolf (`gameFor`/`todayFor` em realtime/x1.js; a `hello` traz `today.test`); o desafio delas só
-  aparece (lista, convite) e só pode ser aceito por elas e pelos bots (`canSee`); ninguém delas aceitou em 5 s, um bot
-  livre de outro time aceita e joga valendo, sem cota nem sorteio (`botEntraNoDesafio`, o mesmo do tutorial). O perfil
-  só mostra a linha do jogo fora do rodízio para quem já jogou. **Liberar para todos = pôr `FUTGOLF` em `X1.games` e
-  acertar `X1.anchor`** (o teste deixa de valer sozinho, `inTest`). Mexeu no teste? **`node scripts/test-futgolf-teste.js`**
-  (pasta api/, API local com `X1_JOGO=BOTAO`, `X1_TESTERS=fgteste1,fgteste2`, `BOTS_OFF=1` e `BOTS_X1_OFF=1`;
-  `X1_TESTERS` só vale fora de produção). Golfe de chute visto de cima, com a bola ROLANDO (física de
+  nada tão óbvio"). **Em teste de 24/09/2026 até entrar no rodízio, às 19h do mesmo dia** (dono, primeiro: "Libere
+  apenas para as contas MVGIC e ericklesv. Os adversários precisam ser bots, aceitando em 5 s… não mostre o aviso, ainda,
+  para outros usuários"; depois: "adicione um botão embaixo de 'Desafiar alguém' chamado 'Testar FutGolf', visível apenas
+  para os admins… os admins devem voltar a ter o botão de desafiar de antes"). **Jogo em teste** (`X1.test` em rules.js:
+  `game`, `botAcceptSec` = 5) = o que não está no rodízio de HOJE (`inTest` em realtime/x1.js): só os **admins**
+  (`User.isAdmin`; no PC também `X1_TESTERS=nick1,nick2`) recebem `today.test` na `hello` e veem o botão **"Testar
+  FutGolf"** embaixo do "Desafiar alguém" (que para eles é o jogo do dia, como para todo mundo); o botão manda
+  `{t:'challenge', game}` e o servidor recusa (`error` `jogo`) quem não é admin ou jogo fora de teste. O desafio de teste só
+  aparece (lista, convite) e só pode ser aceito por admins e bots (`canSee`); nenhum admin aceitou em 5 s, um bot livre de
+  outro time aceita e joga valendo, sem cota nem sorteio (`botEntraNoDesafio`, o mesmo do tutorial). O perfil só mostra a
+  linha do jogo fora do rodízio para quem já jogou. **Entrou no rodízio, o teste acaba sozinho** e o botão some (a tela
+  tira o `test` ao virar para o rodízio que já tem o jogo). Jogo novo no futuro: `X1.test.game` = ele e o rodízio novo
+  numa data futura. Mexeu no teste? **`node scripts/test-futgolf-teste.js`** (pasta api/, API local com `X1_JOGO=BOTAO`,
+  `BOTS_OFF=1` e `BOTS_X1_OFF=1`; cria dois admins; sem jogo em teste, confere só que ninguém recebe o botão e que
+  desafiar fora do dia é recusado). Golfe de chute visto de cima, com a bola ROLANDO (física de
   chão, tipo minigolfe). **`lib/futgolf.js`** = física pura e
   determinística + os **8 buracos** (`HOLES`: Tabelinha, Bifurcação, Ilha, Fliperama, Zigue-zague, Slalom, Rotatória,
   Bueiros; cada um sorteado e espelhado ou não = 16 variações): corredor (linha central com larguras, Catmull-Rom,

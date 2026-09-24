@@ -499,7 +499,7 @@ RESET_HOUR.GOLEADA = 22;
 DAILY_GAMES.push('GOLEADA');
 KIND_LABEL.GOLEADA = 'PenalCup'; // o nome de tela (dono, 18/09/2026); o id GOLEADA fica, é enum e dado no banco
 // X1 (jogos 1x1 ao vivo — dono, 15/09/2026: "jogos X1 rotativos, cada dia 1 jogo para não ficar
-// enjoativo"): um jogo por dia, FutPrego e Futebol de Botão se alternando (x1GameOf); o jogo troca às 19h
+// enjoativo"): um jogo por dia, em rodízio (X1.rotations + x1GameOf; o Futgolf entrou em 24/09/2026); o jogo troca às 19h
 // de Brasília, JUNTO com o fechamento da rodada (X1.switchHour — dono, 15/09/2026: "os jogos eram para mudar junto
 // com a rodada, às 19"; antes era às 20h). As regras de
 // convite, aposta, gol e travas abaixo (FUTPREGO.*) valem para TODOS os jogos do X1. Ranking do X1:
@@ -549,22 +549,30 @@ export const FUTPREGO = {
 };
 KIND_LABEL.FUTPREGO = 'FutPrego';
 export const X1 = {
-  games: ['FUTPREGO', 'BOTAO'], names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão', FUTGOLF: 'Futgolf' }, switchHour: 19,
-  // O rodízio parte deste dia (dayNumberAt(19) de lib/time.js) com este jogo. Serve para jogo NOVO entrar sem mudar o
-  // de hoje (com `dia % n`, mudar n trocaria o jogo no meio do dia): ao pôr um jogo em `games`, acerte a âncora para
-  // o dia de hoje e o jogo de hoje. Dia 13 = Botão é o mesmo rodízio de antes (par = FutPrego).
-  anchor: { day: 13, game: 'BOTAO' },
-  // Jogo em TESTE, fora do rodízio (dono, 24/09/2026: "Quero testar o futgolf. Libere apenas para as contas MVGIC e
-  // ericklesv. Os adversários precisam ser bots, aceitando em 5 s se nem mvgic nem ericklesv aceitarem… não mostre o
-  // aviso, ainda, para outros usuários"): só estas contas desafiam nele; o desafio só aparece (lista, convite) e só pode
-  // ser aceito por elas e pelos bots; ninguém delas aceitou em `botAcceptSec`, um bot aceita e joga valendo. Liberar
-  // para todos = pôr o jogo em `games` (acertando a âncora) — aí o teste deixa de valer sozinho.
-  test: { game: 'FUTGOLF', nicks: ['MVGIC', 'ericklesv'], botAcceptSec: 5 },
+  names: { FUTPREGO: 'FutPrego', BOTAO: 'Futebol de Botão', FUTGOLF: 'Futgolf' }, switchHour: 19,
+  // RODÍZIOS, do mais antigo ao mais novo: cada um vale a partir do dia `from` (dayNumberAt(19) de lib/time.js — o dia
+  // do X1 vira às 19h, com a rodada) e parte da `anchor` (um dia e o jogo daquele dia). Jogo novo = um rodízio novo
+  // que começa num dia FUTURO: assim o de hoje nunca muda no meio do dia (com `dia % n`, mudar n trocaria o jogo).
+  //  - até o dia 13: FutPrego e Botão alternando (dia 13 = Botão);
+  //  - dia 14 = 24/09/2026 às 19h: entra o Futgolf (dono, 24/09/2026: "pode programar o futgolf para as 19h"), no
+  //    lugar do FutPrego daquele dia; depois FutPrego, Botão, Futgolf…
+  rotations: [
+    { from: 0, games: ['FUTPREGO', 'BOTAO'], anchor: { day: 13, game: 'BOTAO' } },
+    { from: 14, games: ['FUTGOLF', 'FUTPREGO', 'BOTAO'], anchor: { day: 14, game: 'FUTGOLF' } },
+  ],
+  // Jogo em TESTE, enquanto não está no rodízio do dia (dono, 24/09/2026): só os ADMINS (User.isAdmin) desafiam nele,
+  // pelo botão "Testar FutGolf" do X1 — o "Desafiar alguém" deles é o do jogo do dia, como de todo mundo ("os admins
+  // devem voltar a ter o botão de desafiar de antes"). O desafio só aparece (lista, convite) e só pode ser aceito por
+  // admins e pelos bots; nenhum admin aceitou em `botAcceptSec`, um bot aceita e joga valendo. Entrou no rodízio (o
+  // Futgolf a partir do dia 14), o teste acaba sozinho e o botão some.
+  test: { game: 'FUTGOLF', botAcceptSec: 5 },
 };
+/** O rodízio que vale no dia `day`. */
+export const x1RotationOf = (day) => X1.rotations.filter((r) => day >= r.from).pop() ?? X1.rotations[0];
 /** O jogo do X1 no dia `day` (dayNumberAt(X1.switchHour) de lib/time.js: o dia vira às 19h, com a rodada). */
 export const x1GameOf = (day) => {
-  const n = X1.games.length, i0 = X1.games.indexOf(X1.anchor.game);
-  return X1.games[((((day - X1.anchor.day + i0) % n) + n) % n)];
+  const r = x1RotationOf(day), n = r.games.length, i0 = r.games.indexOf(r.anchor.game);
+  return r.games[((((day - r.anchor.day + i0) % n) + n) % n)];
 };
 // Futebol de Botão (X1; como o SnapFC, sem poderes — só no peteleco): 7 botões por time (goleiro na
 // área + 6 na linha, que não entram nas áreas). Cada vez = 2 petelecos do mesmo jogador (15 s cada); quem

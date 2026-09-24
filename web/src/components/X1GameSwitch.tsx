@@ -31,10 +31,10 @@ const DAY = 86_400_000;
  * servidor). Sem ordem (jogo forçado no PC, ou meta antiga de dois jogos) inverte hoje e amanhã, como antes.
  */
 export function advanceX1Today(t: X1Today): X1Today {
-  const order = t.order;
+  const order = t.nextOrder ?? t.order; // depois da troca vale o rodízio novo (o jogo que entrou já está nele)
   if (!order || order.length < 2) return { ...t, game: t.next, name: t.nextName, next: t.game, nextName: t.name, switchAt: t.switchAt + DAY };
   const next = order[(order.indexOf(t.next) + 1) % order.length];
-  return { ...t, game: t.next, name: t.nextName, next, nextName: t.names?.[next] ?? next, switchAt: t.switchAt + DAY };
+  return { ...t, game: t.next, name: t.nextName, next, nextName: t.names?.[next] ?? next, switchAt: t.switchAt + DAY, order, nextOrder: order, test: t.test && !order.includes(t.test.game) ? t.test : undefined }; // entrou no rodízio: acabou o teste
 }
 
 /** O jogo de AGORA a partir da meta (que pode estar velha): anda um dia de jogo a cada troca já passada. */

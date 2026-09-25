@@ -1,8 +1,14 @@
 User-agent: *
 Allow: /
+# O Google respeita o robots.txt também nos dados que a página busca ao abrir: com /api/ inteiro bloqueado, ele via a
+# página inicial sem placar e as páginas dos times vazias (auditoria de SEO, 25/09/2026). Liberadas só as leituras
+# públicas que as páginas sem login usam; a regra mais específica (a mais longa) vence o Disallow: /api/.
+Allow: /api/meta
+Allow: /api/vitrine
+Allow: /api/teams
+Allow: /api/uploads/
 Disallow: /api/
 Disallow: /admin
-Disallow: /debug3d
-Disallow: /debug-faltapro
+Disallow: /debug
 
 Sitemap: https://jogagol.com.br/sitemap.xml

@@ -1,21 +1,70 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import type { ComponentType } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './store/auth';
 import { ToastHost } from './components/Toast';
-import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MultiAccountScreen } from './components/MultiAccount';
 import { MULTI_EVENT } from './lib/api';
-import { LevelUpWatcher } from './components/LevelUp';
-import { TutorialWatcher } from './components/Tutorial';
-import { PassWatcher } from './components/Pass';
 import { InviteRoute } from './components/Invite';
 import { LoginScreen } from './screens/Login';
 import { RegisterScreen } from './screens/Register';
-import { HomeScreen } from './screens/Home';
-import { TrailScreen } from './screens/Trail';
-import { TermoScreen } from './screens/Termo';
-import { QuizScreen } from './screens/Quiz';
+import { LandingScreen } from './screens/Landing';
+import { PrivacyScreen, TermsScreen, DeleteAccountInfoScreen } from './screens/Legal';
+import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
+import { installDragScroll } from './lib/dragScroll';
+import { installTracking, trackScreen } from './lib/track';
+import { installAds } from './lib/ads';
+import { installClickSounds } from './lib/sound';
+
+/**
+ * Telas baixadas só quando alguém abre (25/09/2026, SEO e velocidade): a página de entrada baixava o jogo inteiro
+ * (739 KB de JavaScript, 492 KB sem uso ali) e demorava 8,8 s para pintar no celular em 4G. Ficam no pacote inicial só
+ * as telas de quem ainda não entrou (apresentação, entrar, cadastro, legais). Depois da 1ª visita o PWA guarda todos os
+ * pedaços no aparelho, então trocar de tela continua instantâneo. Tela nova do jogo = `tela(...)` aqui.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function tela<M extends Record<string, any>>(load: () => Promise<M>, name: keyof M) {
+  return lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+}
+const Layout = tela(() => import('./components/Layout'), 'Layout');
+const LevelUpWatcher = tela(() => import('./components/LevelUp'), 'LevelUpWatcher');
+const TutorialWatcher = tela(() => import('./components/Tutorial'), 'TutorialWatcher');
+const PassWatcher = tela(() => import('./components/Pass'), 'PassWatcher');
+const AdminDock = tela(() => import('./components/AdminDock'), 'AdminDock');
+const HomeScreen = tela(() => import('./screens/Home'), 'HomeScreen');
+const TrailScreen = tela(() => import('./screens/Trail'), 'TrailScreen');
+const TermoScreen = tela(() => import('./screens/Termo'), 'TermoScreen');
+const QuizScreen = tela(() => import('./screens/Quiz'), 'QuizScreen');
+const PartyScreen = tela(() => import('./screens/Party'), 'PartyScreen');
+const RankingsScreen = tela(() => import('./screens/Rankings'), 'RankingsScreen');
+const LeagueScreen = tela(() => import('./screens/League'), 'LeagueScreen');
+const TeamScreen = tela(() => import('./screens/Team'), 'TeamScreen');
+const ProfileScreen = tela(() => import('./screens/Profile'), 'ProfileScreen');
+const InboxScreen = tela(() => import('./screens/Inbox'), 'InboxScreen');
+const PlayerScreen = tela(() => import('./screens/Player'), 'PlayerScreen');
+const RulesScreen = tela(() => import('./screens/Rules'), 'RulesScreen');
+const ShopScreen = tela(() => import('./screens/Shop'), 'ShopScreen');
+const ActiveScreen = tela(() => import('./screens/Active'), 'ActiveScreen');
+const LevelsScreen = tela(() => import('./screens/Levels'), 'LevelsScreen');
+const ChatScreen = tela(() => import('./screens/Chat'), 'ChatScreen');
+const MemoriaScreen = tela(() => import('./screens/Memoria'), 'MemoriaScreen');
+const QualtimeScreen = tela(() => import('./screens/Qualtime'), 'QualtimeScreen');
+const AlvoScreen = tela(() => import('./screens/Alvo'), 'AlvoScreen');
+const CabecaoScreen = tela(() => import('./screens/Cabecao'), 'CabecaoScreen');
+const StatsScreen = tela(() => import('./screens/Stats'), 'StatsScreen');
+const CamisasScreen = tela(() => import('./screens/Camisas'), 'CamisasScreen');
+const GanhaPerdeScreen = tela(() => import('./screens/GanhaPerde'), 'GanhaPerdeScreen');
+const GoleadaScreen = tela(() => import('./screens/Goleada'), 'GoleadaScreen');
+const X1Screen = tela(() => import('./screens/X1'), 'X1Screen');
+const HattrickScreen = tela(() => import('./screens/Hattrick'), 'HattrickScreen');
+const VipScreen = tela(() => import('./screens/Vip'), 'VipScreen');
+const OffersScreen = tela(() => import('./screens/Offers'), 'OffersScreen');
+const MatchScreen = tela(() => import('./screens/Match'), 'MatchScreen');
+// páginas públicas para o Google (25/09/2026): a história do BRGOL e os times
+const BrgolScreen = tela(() => import('./screens/Brgol'), 'BrgolScreen');
+const TeamsIndexScreen = tela(() => import('./screens/PublicTeams'), 'TeamsIndexScreen');
+const PublicTeamScreen = lazy(() => import('./screens/PublicTeams').then((m) => ({ default: m.PublicTeamScreen })));
 // Cenas 3D (three.js ~260 KB gz) só carregam quando o jogador abre o pênalti/falta
 const PenaltyScreen = lazy(() => import('./screens/Penalty').then((m) => ({ default: m.PenaltyScreen })));
 const FoulScreen = lazy(() => import('./screens/Foul').then((m) => ({ default: m.FoulScreen })));
@@ -27,39 +76,6 @@ const DebugX1KitsScreen = lazy(() => import('./screens/DebugX1Kits').then((m) =>
 const DebugFutgolfScreen = lazy(() => import('./screens/DebugFutgolf').then((m) => ({ default: m.DebugFutgolfScreen })));
 // Painel de admin: só carrega para quem abre /admin (e o servidor exige isAdmin)
 const AdminScreen = lazy(() => import('./screens/Admin').then((m) => ({ default: m.AdminScreen })));
-import { PartyScreen } from './screens/Party';
-import { RankingsScreen } from './screens/Rankings';
-import { LeagueScreen } from './screens/League';
-import { TeamScreen } from './screens/Team';
-import { ProfileScreen } from './screens/Profile';
-import { InboxScreen } from './screens/Inbox';
-import { PlayerScreen } from './screens/Player';
-import { RulesScreen } from './screens/Rules';
-import { LandingScreen } from './screens/Landing';
-import { PrivacyScreen, TermsScreen, DeleteAccountInfoScreen } from './screens/Legal';
-import { ShopScreen } from './screens/Shop';
-import { ActiveScreen } from './screens/Active';
-import { installDragScroll } from './lib/dragScroll';
-import { installTracking, trackScreen } from './lib/track';
-import { installAds } from './lib/ads';
-import { AdminDock } from './components/AdminDock';
-import { installClickSounds } from './lib/sound';
-import { LevelsScreen } from './screens/Levels';
-import { ChatScreen } from './screens/Chat';
-import { MemoriaScreen } from './screens/Memoria';
-import { QualtimeScreen } from './screens/Qualtime';
-import { AlvoScreen } from './screens/Alvo';
-import { CabecaoScreen } from './screens/Cabecao';
-import { EsqueciSenhaScreen } from './screens/EsqueciSenha'; import { RedefinirSenhaScreen } from './screens/RedefinirSenha';
-import { StatsScreen } from './screens/Stats';
-import { CamisasScreen } from './screens/Camisas';
-import { GanhaPerdeScreen } from './screens/GanhaPerde';
-import { GoleadaScreen } from './screens/Goleada';
-import { X1Screen } from './screens/X1';
-import { HattrickScreen } from './screens/Hattrick';
-import { VipScreen } from './screens/Vip';
-import { OffersScreen } from './screens/Offers';
-import { MatchScreen } from './screens/Match';
 
 function Splash() {
   return (
@@ -77,7 +93,15 @@ function Splash() {
 function Private({ children }: { children: React.ReactNode }) {
   const me = useAuth((s) => s.me);
   const loc = useLocation();
-  if (!me) return <Navigate to="/entrar" replace state={{ from: loc.pathname }} />;
+  if (!me) {
+    // Quem não entrou vê a APRESENTAÇÃO no endereço principal (25/09/2026): antes ia para /entrar, e o Google via a página
+    // inicial como uma tela de login (sem título, 102 palavras, nenhum "BRGOL"). O placar ao vivo da vitrine continua no
+    // topo da apresentação. E a página de cada time é pública (as outras telas do jogo seguem pedindo login).
+    if (loc.pathname === '/') return <LandingScreen />;
+    const time = loc.pathname.match(/^\/time\/([a-z0-9-]+)\/?$/);
+    if (time) return <PublicTeamScreen slug={time[1]} />;
+    return <Navigate to="/entrar" replace state={{ from: loc.pathname }} />;
+  }
   return <>{children}</>;
 }
 
@@ -94,17 +118,21 @@ export default function App() {
     boot(); const a = installDragScroll(); const b = installClickSounds(); installTracking(); installAds(); // eventos de uso (lib/track.ts) · tag do Google Ads, só no site e sem login (lib/ads.ts)
     return () => { window.removeEventListener(MULTI_EVENT, onMulti); a(); b(); };
   }, []);
-  useEffect(() => { trackScreen(loc.pathname); }, [loc.pathname]); // funil: cada tela aberta (lib/track.ts)
+  // funil: cada tela aberta (lib/track.ts); sem login, o endereço principal é a apresentação ("landing"), não a home
+  useEffect(() => { trackScreen(!me && loc.pathname === '/' ? '/bem-vindo' : loc.pathname); }, [loc.pathname, me]);
   if (multi) return <MultiAccountScreen message={multi} onRetry={async () => { setMulti(null); await boot(); }} />;
   if (loading) return <Splash />;
   return (
     <>
       <ToastHost />
-      {me?.isAdmin && <AdminDock />}
-      {me && <TutorialWatcher />}
-      {me && <LevelUpWatcher />}
-      {me && <PassWatcher />}
+      <Suspense fallback={null}>
+        {me?.isAdmin && <AdminDock />}
+        {me && <TutorialWatcher />}
+        {me && <LevelUpWatcher />}
+        {me && <PassWatcher />}
+      </Suspense>
       <ErrorBoundary resetKey={loc.pathname}>
+      <Suspense fallback={<Splash />}>
       <Routes>
         <Route path="/bem-vindo" element={me ? <Navigate to="/" replace /> : <LandingScreen />} />
         <Route path="/entrar" element={me ? <Navigate to="/" replace /> : <LoginScreen />} />
@@ -114,6 +142,8 @@ export default function App() {
         <Route path="/privacidade" element={<PrivacyScreen />} />
         <Route path="/termos" element={<TermsScreen />} />
         <Route path="/excluir-conta" element={<DeleteAccountInfoScreen />} />
+        <Route path="/brgol" element={<BrgolScreen />} />
+        <Route path="/times" element={<TeamsIndexScreen />} />
         <Route element={<Private><Layout /></Private>}>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/liga" element={<LeagueScreen />} />
@@ -160,8 +190,9 @@ export default function App() {
         <Route path="/partygol" element={<Private><PartyScreen /></Private>} />
         <Route path="/chat" element={<Private><ChatScreen /></Private>} />
         <Route path="/esqueci-senha" element={me ? <Navigate to="/" replace /> : <EsqueciSenhaScreen />} /><Route path="/redefinir-senha" element={<RedefinirSenhaScreen />} />
-        <Route path="*" element={<Navigate to={me ? '/' : '/bem-vindo'} replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       </ErrorBoundary>
     </>
   );

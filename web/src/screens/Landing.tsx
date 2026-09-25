@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSeo } from '../lib/seo';
+import { PlacarDaRodada, RankingsDaVitrine } from '../components/MundoVivo';
 
 const slides = [
   { icon: '/ui/ico-energy.png', title: 'CHUTE A GOL', text: 'Chute direto a cada 10 minutos, pênaltis, faltas e a trilha. Cada gol é seu — e do seu time.' },
@@ -17,7 +18,7 @@ const slides = [
 const about = [
   { title: 'COMO FUNCIONA A DISPUTA DE GOLS', text: 'Você escolhe um clube brasileiro e cada gol seu soma no placar do time na rodada de 24 horas, que fecha todo dia às 19:00. Chute direto a cada 10 minutos, pênalti, falta e trilha — tudo decidido no servidor. Os clubes disputam as Séries A, B e C com acesso e rebaixamento; os melhores artilheiros da rodada e da temporada ganham R$ do jogo (moeda virtual, sem valor real) e dias de VIP.' },
   { title: 'PARA QUEM JOGAVA BRGOL', text: 'O JogaGol é o port fiel do BRGOL (BR GOL), o jogo de fazer gols de navegador que marcou época entre 2008 e 2013: as mesmas recargas, os mesmos rankings, a mesma artilharia por hora — agora feito para o celular, com pênalti e falta em 3D, diretoria e contratações entre times. Se você curte Brasfoot, Gamegol ou qualquer jogo de futebol online leve de jogar todo dia, é aqui.' },
-  { title: 'MINIGAMES TODO DIA', text: 'Termo do futebol, quiz, Party GoL, memória dos escudos, estatísticas do Brasileirão, "de que time é?", camisas, alvo no gol, Hat Trick e Falta PRO: cada minigame renova numa hora do dia e vale gol para o seu time. No FutPrego, o futebol de prego 1x1 em tempo real, você desafia outros jogadores valendo gol e ponto no Ranking X1.' },
+  { title: 'MINIGAMES TODO DIA', text: 'Termo do futebol, quiz, Party GoL, memória dos escudos, estatísticas do Brasileirão, "de que time é?", camisas, alvo no gol, Hat Trick e Falta PRO: cada minigame renova numa hora do dia e vale gol para o seu time. No X1 você desafia outros jogadores ao vivo, valendo gol para o seu time e ponto no Ranking X1: FutPrego (futebol de prego), Futebol de Botão e Futgolf, um jogo por dia.' },
 ];
 const faq = [
   { q: 'O JogaGol é grátis?', a: 'Sim. Criar conta, escolher o clube, chutar e disputar a artilharia é grátis. O VIP é opcional e dá recargas mais rápidas e vantagens na diretoria do time.' },
@@ -29,15 +30,21 @@ const faq = [
 ];
 
 export function LandingScreen() {
-  useSeo('Jogo de fazer gols online grátis — o novo BRGOL', 'Escolha seu clube, marque gols de pênalti, falta e trilha e dispute a artilharia com outros jogadores. Sucessor do clássico BRGOL, no celular e no PC.', '/bem-vindo');
+  // É a página inicial de quem não entrou (App.tsx → Private) e também a /bem-vindo (link antigo e anúncio do Google):
+  // as duas apontam o Google para o endereço principal (canonical "/").
+  useSeo('Jogo de fazer gols online grátis — o novo BRGOL', 'Escolha seu clube, marque gols de pênalti, falta e trilha e dispute a artilharia com outros jogadores. Sucessor do clássico BRGOL, no celular e no PC.', '/');
   return (
     <div className="app-frame flex min-h-full flex-col px-5 pb-8" style={{ paddingTop: 'calc(var(--sat) + 40px)' }}>
       <div className="stadium-bg" />
       <div className="relative text-center">
-        <motion.img src="/brand/logo-v.webp" alt="JogaGol" width={600} height={648} initial={{ scale: 0.7, opacity: 0, rotate: -6 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} className="mx-auto h-auto w-56 drop-shadow-[0_10px_18px_rgba(0,0,0,0.4)]" />
+        {/* sem animação de entrada de propósito (25/09/2026): é o maior elemento da tela, e começar invisível atrasava a
+            pintura principal (LCP) em segundos. A versão de 448 px basta para os 224 px da tela em 2x. */}
+        <img src="/brand/logo-v-448.webp" srcSet="/brand/logo-v-448.webp 448w, /brand/logo-v.webp 600w" sizes="224px" alt="JogaGol" width={448} height={484} fetchPriority="high" className="mx-auto h-auto w-56 drop-shadow-[0_10px_18px_rgba(0,0,0,0.4)]" />
         <div className="trap trap-orange mx-auto -mt-1 text-[12px] uppercase tracking-[0.25em]">chute · marque · suba</div>
         <h1 className="t-display t-out mt-3 text-[17px] leading-tight">O jogo de fazer gols online — grátis, no celular e no PC</h1>
       </div>
+      {/* o jogo acontecendo (a vitrine da tela de entrada, dono 19/09/2026): o placar mais disputado da rodada, ao vivo */}
+      <PlacarDaRodada />
       <div className="relative mt-5 flex flex-1 flex-col gap-3">
         {slides.map((s, i) => (
           <motion.div key={s.title} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.15 * i }} className="panel flex items-center gap-3">
@@ -53,6 +60,7 @@ export function LandingScreen() {
         <Link to="/cadastro" className="btn btn-orange btn-lg w-full">Escolher meu time</Link>
         <Link to="/entrar" className="btn btn-blue btn-md w-full">Já tenho conta</Link>
       </div>
+      <RankingsDaVitrine />
 
       {/* apresentação + perguntas frequentes (abaixo dos botões: quem quer jogar não precisa rolar) */}
       <div className="relative mt-8 flex flex-col gap-3">
@@ -70,6 +78,13 @@ export function LandingScreen() {
               <p className="text-[13px] font-bold leading-snug text-navy-ink/85">{f.a}</p>
             </div>
           ))}
+        </section>
+        <section className="panel">
+          <h2 className="t-display text-lg text-navy-ink">CONHEÇA MAIS</h2>
+          <ul className="mt-1 flex flex-col gap-1 text-[13px] font-extrabold">
+            <li><Link to="/brgol" className="text-sky-deep underline">O que foi o BRGOL, o jogo de fazer gols de 2008 a 2013</Link></li>
+            <li><Link to="/times" className="text-sky-deep underline">Os 48 times do JogaGol: placar, tabela e artilheiros</Link></li>
+          </ul>
         </section>
         <Link to="/cadastro" className="btn btn-orange btn-md w-full">Criar minha conta grátis</Link>
         <p className="t-display t-out text-center text-[11px]"><Link to="/privacidade">Privacidade</Link> · <Link to="/termos">Termos de uso</Link> · JogaGol é um produto da Managol Softwares</p>

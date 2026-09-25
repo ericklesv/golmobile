@@ -4,7 +4,8 @@ import { useAuth } from '../store/auth';
 import { Shield } from './Shield';
 import { Avatar } from './Avatar';
 import { money } from '../lib/format';
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
+import { Spinner } from './ui';
 import { toast } from './Toast';
 import { api } from '../lib/api';
 import { SeriesNoticeWatcher } from './SeriesNotice';
@@ -103,7 +104,8 @@ export function Layout() {
       )}
 
       <main className="relative flex-1 px-3 pb-28 pt-3">
-        <ErrorBoundary resetKey={loc.pathname}><Outlet /></ErrorBoundary>
+        {/* as telas são baixadas quando abertas (App.tsx): o cabeçalho e as abas ficam; só o miolo espera */}
+        <ErrorBoundary resetKey={loc.pathname}><Suspense fallback={<div className="flex justify-center py-16"><Spinner /></div>}><Outlet /></Suspense></ErrorBoundary>
       </main>
       <SeriesNoticeWatcher />
       <ChatFab />

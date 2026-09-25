@@ -122,7 +122,7 @@ export function RankingsDaVitrine() {
 export function RodapeDaVitrine() {
   return (
     <p className="relative mt-5 text-center text-[12px] font-bold text-white/90 drop-shadow-[0_2px_2px_rgba(0,0,0,0.35)]">
-      Cada gol seu entra no placar do seu time. <Link to="/bem-vindo" className="text-gold underline">Como funciona</Link>
+      Cada gol seu entra no placar do seu time. <Link to="/" className="text-gold underline">Como funciona</Link>
     </p>
   );
 }

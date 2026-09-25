@@ -75,7 +75,8 @@
           "mainEntity": [
             { "@type": "Question", "name": "O JogaGol é o BRGOL?", "acceptedAnswer": { "@type": "Answer", "text": "O JogaGol é o sucessor do BRGOL (BR GOL), o jogo de fazer gols que existiu de 2008 a 2013. As regras são as mesmas — chute direto, pênalti, falta, trilha, rodadas de 24 horas e artilharia da hora, da rodada e da temporada — refeitas para o celular, com minigames diários e o FutPrego 1x1." } },
             { "@type": "Question", "name": "O JogaGol é grátis?", "acceptedAnswer": { "@type": "Answer", "text": "Sim. Criar conta, escolher o clube, chutar e disputar a artilharia é grátis. Existe o VIP opcional, que dá recargas mais rápidas e vantagens na diretoria do time." } },
-            { "@type": "Question", "name": "O JogaGol é jogo de apostas?", "acceptedAnswer": { "@type": "Answer", "text": "Não. Não existe aposta com dinheiro de verdade, jogo de azar nem prêmio em dinheiro real. Os R$ do JogaGol são moeda virtual do jogo, servem só para itens e vantagens dentro dele e não podem ser sacados, trocados nem transferidos. O VIP é uma compra opcional dentro do jogo." } },
+            { "@type": "Question", "name": "O JogaGol é jogo de apostas?", "acceptedAnswer": { "@type": "Answer", "text": "Não. Não existe aposta com dinheiro de verdade, jogo de azar nem prêmio em dinheiro real. Os R$ do JogaGol são moeda virtual do jogo, servem só para itens e vantagens dentro dele e não podem ser sacados, trocados nem transferidos. O VIP é uma compra opcional dentro do jogo." } },
+
             { "@type": "Question", "name": "Como funciona a disputa de gols?", "acceptedAnswer": { "@type": "Answer", "text": "Cada gol que você marca soma no placar do seu clube na rodada de 24 horas (que fecha às 19:00) e na sua artilharia. Os times disputam as Séries A, B e C com acesso e rebaixamento; os melhores artilheiros da rodada e da temporada ganham R$ do jogo (moeda virtual, sem valor real) e VIP." } },
             { "@type": "Question", "name": "Dá para jogar no celular?", "acceptedAnswer": { "@type": "Answer", "text": "Sim. O JogaGol foi feito para o celular: abre no navegador, pode ser instalado como aplicativo (PWA) e também está chegando à Google Play. Funciona no PC também." } }
           ]
@@ -103,12 +104,16 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
+    <!-- fontes sem travar a primeira pintura (25/09/2026: 1,1 s no Lighthouse): baixam em paralelo e entram quando chegam -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" /></noscript>
+    <link rel="preload" as="image" href="/brand/logo-v-448.webp" fetchpriority="high" />
   </head>
   <body>
     <div id="root">
       <main class="seo">
-        <img src="/brand/logo-v.webp" alt="JogaGol" width="600" height="648" />
+        <img src="/brand/logo-v-448.webp" alt="JogaGol" width="448" height="484" fetchpriority="high" />
         <h1>JogaGol: o jogo de fazer gols online — grátis, no celular e no PC</h1>
         <p>Escolha seu clube, chute, marque gols de pênalti, falta e trilha e dispute a artilharia da hora, da rodada e da temporada com outros jogadores. O sucessor do clássico BRGOL.</p>
         <a class="cta" href="/cadastro">Escolher meu time</a>
@@ -124,7 +129,7 @@
         </section>
         <section>
           <h2>Minigames de futebol todo dia</h2>
-          <p>Termo do futebol, quiz, Party GoL, memória dos escudos, estatísticas do Brasileirão, "de que time é?", camisas, alvo no gol, Hat Trick e Falta PRO: cada minigame renova numa hora do dia e vale gol para o seu time. No FutPrego, o futebol de prego 1x1 em tempo real, você desafia outros jogadores valendo gol e ponto no Ranking X1.</p>
+          <p>Termo do futebol, quiz, Party GoL, memória dos escudos, estatísticas do Brasileirão, "de que time é?", camisas, alvo no gol, Hat Trick e Falta PRO: cada minigame renova numa hora do dia e vale gol para o seu time. No X1 você desafia outros jogadores ao vivo, valendo gol para o seu time e ponto no Ranking X1: FutPrego (futebol de prego), Futebol de Botão e Futgolf, um jogo por dia.</p>
         </section>
         <section>
           <h2>Perguntas frequentes</h2>
@@ -135,7 +140,7 @@
           <h3>Posso trocar de time?</h3>
           <p>Pode, comprando a Troca de time na Loja do jogo — salvo quando você aceita um contrato de contratação de outro clube, que prende por alguns dias.</p>
         </section>
-        <p class="nota"><a href="/privacidade">Privacidade</a> · <a href="/termos">Termos de uso</a> · JogaGol é um produto da Managol Softwares.</p>
+        <p class="nota"><a href="/brgol">O que foi o BRGOL</a> · <a href="/times">Os 48 times</a> · <a href="/privacidade">Privacidade</a> · <a href="/termos">Termos de uso</a> · JogaGol é um produto da Managol Softwares.</p>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

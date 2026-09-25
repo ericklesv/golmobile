@@ -561,7 +561,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   só nas telas com abas (Layout — nunca no meio de chute/minigame) e depois que a Presença da Semana do dia foi
   resolvida (`passSettled`). "Entrar no grupo" = não aparece mais; "Agora não" = 100 h. Botão fixo no Perfil.
 - **Vitrine da tela de entrada** (`GET /api/vitrine` em `routes/game.js`, cache de 15 s; `components/MundoVivo.tsx`
-  em `screens/Login.tsx`): dono, 19/09/2026 — "alguns usuários abrem o site e dão de cara com o login… isso faz
+  em `screens/Login.tsx` e, desde 25/09/2026, no topo da APRESENTAÇÃO, que virou a página inicial de quem não entrou —
+  ver "SEO orgânico"): dono, 19/09/2026 — "alguns usuários abrem o site e dão de cara com o login… isso faz
   eles desanimarem… era ideal mostrar um mundo vivo". Quem ainda não entrou vê, **antes do formulário**, o placar
   da partida mais disputada da rodada (mais gols na soma; empatando, o placar mais apertado) com o relógio até as
   19h, e **abaixo dele** os artilheiros do dia e os reis do X1. É tudo dado de verdade — nada de frase de
@@ -1149,6 +1150,29 @@ servidos pelo próprio Express em `/api/uploads/`.
   `useSeo()` (`lib/seo.ts`: título, descrição, canonical, og:* por rota; volta ao padrão ao sair). `robots.txt`
   (bloqueia /api, /admin, /debug*) e `sitemap.xml` (só páginas públicas) em `web/public/`. Preview em cache nos
   apps: depois de mudar, forçar com o depurador do Facebook / @WebpageBot no Telegram.
+- **SEO orgânico** (auditoria do Guilherme, 25/09/2026; antes o Google via a página inicial como a tela de LOGIN — título
+  "Entrar", canonical /entrar, 102 palavras, nenhum "BRGOL" — e baixava 1 MB de three.js em toda abertura):
+  - **Página inicial sem login = a apresentação** (`screens/Landing.tsx`, com o placar ao vivo da vitrine no topo): o
+    `Private` do `App.tsx` desenha a Landing em "/" em vez de mandar para /entrar. `/bem-vindo` é a mesma página (link
+    antigo e URL final do anúncio do Google) com canonical "/". Endereço desconhecido sem login → "/".
+  - **Páginas públicas** para o Google: `/brgol` (`screens/Brgol.tsx`, a história do BRGOL 2008–2013 — fatos só do
+    `docs/BRGOL_ORIGINAL.md`; nunca dizer que o JogaGol É o site original nem citar concorrente), `/times` e
+    `/time/<slug>` sem login (`screens/PublicTeams.tsx`: placar, posição, campanha, artilheiros e títulos, da rota
+    pública `GET /api/teams/:slug`; com login, `/time/<slug>` segue sendo a tela completa). "Jogar pelo X" abre o
+    cadastro com o time marcado (`/cadastro?time=<slug>`).
+  - **`robots.txt` libera `/api/meta`, `/api/vitrine`, `/api/teams` e `/api/uploads/`**: o Google respeita o robots nos
+    dados que a página busca ao abrir — com `/api/` inteiro bloqueado ele via as páginas vazias. Rota nova que página
+    pública use = `Allow:` aqui.
+  - **`sitemap.xml` gerado** por `node web/scripts/gerar-sitemap.mjs` (54 endereços: "/", /brgol, /times, os 48 times e
+    os legais). Time novo = rodar de novo.
+  - **Velocidade**: as telas do jogo são carregadas quando abertas (`tela(...)` no `App.tsx`; o `Layout` espera o miolo
+    com um spinner) e o `vite.config.ts` separa `three` (SÓ o 3D) de `vendor` (as outras bibliotecas) — com só o
+    "three" separado, o Rollup punha o React dentro dele e o site inteiro pré-carregava 1 MB. A página de entrada caiu
+    de ~495 KB para ~123 KB de JavaScript (comprimido). Fontes do Google não travam mais a pintura (preload + media=print)
+    e o logo da apresentação não começa invisível (era o maior elemento: atrasava o LCP). **Tela nova do jogo = `tela(...)`
+    no App.tsx; nunca importar a tela direto lá.**
+  - Falta do lado do dono: verificar o domínio no **Google Search Console** (DNS na Hostinger, `dns-parking.com`) e enviar
+    o sitemap; ver `docs/ROADMAP.md` → "SEO".
 - Escudos reais em `web/public/escudos/<slug>.svg|png` (projeto privado para amigos);
   `Shield.tsx` renderiza `<img>` com fallback de sigla.
 - 3D: modelos glTF em `web/public/3d/` gerados dos packs comprados via `tools/3d/` (README lá).

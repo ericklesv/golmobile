@@ -112,6 +112,22 @@ habilidade; nunca chat/minigame/X1; fora da premiação e do relatório diário;
 `node scripts/bots.js listar|criar|status|persona` (o `criar` só depois de o dono validar os nicks). Teste:
 `scripts/test-bots.js`. Ver `CLAUDE.md` → "Bots quase reais".
 
+## SEO orgânico (auditoria de 25/09/2026)
+**Feito 25/09:** página inicial sem login = apresentação (antes o Google via o login); páginas públicas `/brgol`,
+`/times` e `/time/<slug>` (48); `robots.txt` liberando as leituras públicas da API; `sitemap.xml` com 54 endereços
+(`web/scripts/gerar-sitemap.mjs`); telas carregadas sob demanda e three.js fora da página de entrada (JS inicial
+~495 KB → ~123 KB comprimido); fontes e logo sem travar a pintura. Detalhes em `CLAUDE.md` → "SEO orgânico".
+**Próximos (em ordem):**
+1. [ ] **Search Console** (do lado do dono): propriedade de Domínio, TXT no DNS da Hostinger, enviar `sitemap.xml`,
+   pedir indexação de "/", "/brgol" e "/times". Depois, Bing Webmaster Tools importando do Search Console.
+2. [ ] Links de fora: descrição dos vídeos do YouTube que citam o jogo, bio do Instagram, grupos de nostalgia do
+   BRGOL, ficha da Play Store quando abrir ao público.
+3. [ ] Tabela da liga pública (`/liga` sem login, a partir de `GET /api/league`) e página pública da partida
+   (`/partida/:id`, a rota da API já é pública) — mais páginas vivas com nomes de times.
+4. [ ] Rankings públicos (artilharia da rodada/temporada) — só com o nick, sem link para o perfil.
+5. [ ] Medir no Search Console quais buscas trazem gente e escrever páginas para as que aparecerem (ex.: "jogo de
+   pênalti online", "futebol de botão online").
+
 ## Próximos passos (atualizado 14/09/2026 — fazer nesta ordem)
 0. [~] **Google Play** (14/09/2026, decisões do dono; guia completo em **`docs/PLAY_STORE.md`**):
    app = TWA com Bubblewrap; Play Billing dentro do app + PIX só no site (modelo Pokémon GO); conta

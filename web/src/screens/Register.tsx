@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../store/auth';
 import { toast } from '../components/Toast';
@@ -30,6 +30,13 @@ export function RegisterScreen() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const onToken = useCallback((t: string | null) => setTurnstileToken(t), []);
 
+  // veio da página pública de um time ("Jogar pelo Flamengo", screens/PublicTeams.tsx; 25/09/2026): o time já vem marcado
+  const [params] = useSearchParams();
+  useEffect(() => {
+    const pre = params.get('time');
+    const t = pre ? meta?.teams.find((x) => x.slug === pre) : undefined;
+    if (t && !teamSlug) { setSerie(t.serie); setTeam(t.slug); }
+  }, [meta]); // eslint-disable-line react-hooks/exhaustive-deps
   const teams = useMemo(() => (meta?.teams ?? []).filter((t) => t.serie === serie), [meta, serie]);
   const chosen = meta?.teams.find((t) => t.slug === teamSlug);
 
@@ -47,7 +54,7 @@ export function RegisterScreen() {
     <div className="app-frame flex min-h-full flex-col px-4 pb-8" style={{ paddingTop: 'calc(var(--sat) + 16px)' }}>
       <div className="stadium-bg" />
       <div className="relative flex items-center justify-between">
-        <Link to="/bem-vindo" className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></Link>
+        <Link to="/" className="btn-sq btn-sq-white h-12 w-12"><img src="/ui/pi-back.png" className="h-5 w-5" alt="voltar" /></Link>
         <img src="/brand/logo-h.webp" alt="JogaGol" className="h-12 drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]" />
         <span className="trap trap-blue">{step}/2</span>
       </div>

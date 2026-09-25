@@ -32,6 +32,19 @@ export default defineConfig({
   server: { port: 5174, proxy: { '/api': { target: 'http://localhost:4310', ws: true } } }, // ws: Cabeção e FutPrego
   build: {
     chunkSizeWarningLimit: 1500,
-    rollupOptions: { output: { manualChunks: { three: ['three', '@react-three/fiber', '@react-three/drei'] } } },
+    // Pacote "three" = SÓ o 3D (pênalti, falta, Falta PRO); "vendor" = as outras bibliotecas (React, roteador, zustand,
+    // framer-motion, ícones). Separar as duas é obrigatório: o Rollup põe no pacote manual as dependências dele que não
+    // estão em outro pacote manual — com só o "three", o React (que o @react-three também usa) ia junto, e o site inteiro
+    // pré-carregava 1 MB de three.js em toda abertura, até a página de entrada (auditoria de SEO, 25/09/2026).
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // os ajudantes do próprio Vite (carregar tela sob demanda) vão com as bibliotecas — soltos, caíam no "three"
+          if (/vite\/(preload-helper|modulepreload-polyfill)|commonjsHelpers/.test(id)) return 'vendor';
+          if (!/[\\/]node_modules[\\/]/.test(id)) return undefined;
+          return /[\\/]node_modules[\\/](three|three-stdlib|three-mesh-bvh|@react-three|troika-[^\\/]+|react-reconciler|camera-controls|maath|meshline|@monogrid|suspend-react|its-fine)[\\/]/.test(id) ? 'three' : 'vendor';
+        },
+      },
+    },
   },
 });

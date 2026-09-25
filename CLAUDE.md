@@ -800,7 +800,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   achava que tinha encontrado); a jaula **`brgol-probes`** (4 em 5 min = 1 h fora) conta isso e os `/api/swagger|
   graphql|.env`. **Achados de 22/09 nas jaulas de 15/09:** o `action.d/brgol-telegram.conf` estava com token/chat
   VAZIOS (nunca avisou) — agora chama `/usr/local/bin/brgol-f2b-aviso.sh`, que explica a jaula em português
-  ("🚫 BLOQUEADO o IP X por 60 min: procurou 4 arquivos sensíveis… Nada passou"); e as jaulas do nginx liam o
+  ("🚫 BLOQUEADO o IP X por 60 min: procurou 4 arquivos sensíveis… Nada passou. Conta nesse IP: fulano"; **só avisa se o
+  IP tem conta no jogo** — `lastIp`/`createdIp`, dizendo qual; sem conta, só o syslog `brgol-f2b`: Guilherme, 24/09/2026,
+  depois de um robô trocando de IP pela rede da Cloudflare virar uma mensagem a cada 20 s); e as jaulas do nginx liam o
   JOURNAL (`backend = systemd`, padrão do Ubuntu) em vez dos arquivos — `backend = auto` nas três. Conferir filtro:
   `fail2ban-regex /var/log/nginx/access.log /etc/fail2ban/filter.d/brgol-probes.conf` (0 no tráfego normal).
   **ADMIN NUNCA é bloqueado** (dono, 22/09/2026: "vai banir o admin? espero que não"): `ignorecommand` =
@@ -839,7 +841,7 @@ depois que o novo estiver estável. Não instalar nada dele.
   bate com o que está rodando. `{ key, every }`
   agrupa repetidos. Evento novo importante para o dono = chamar `tg.*` (com `tg.esc()` em dado de usuário).
   Na VPS: `brgol-watchdog.sh` (API caiu/voltou a cada 2 min; resumo 09h) e fail2ban → Telegram (🚫 BLOQUEADO, via
-  `brgol-f2b-aviso.sh` — consertado em 22/09, ver "Gracinhas"). 🕵️ gracinha (SQL/XSS/varredura…, com o veredito) e
+  `brgol-f2b-aviso.sh` — consertado em 22/09, ver "Gracinhas"; desde 24/09 só para IP com conta no jogo, dizendo qual). 🕵️ gracinha (SQL/XSS/varredura…, com o veredito) e
   🗄️ Postgres reiniciou também são `tg.warn`.
 - **Captcha** (`lib/captcha.js`): a cada 10 chutes manuais o `/api/me` manda `captchaRequired`;
   o chute seguinte (pênalti/falta/início de trilha) precisa de `{captchaId, answer}` de

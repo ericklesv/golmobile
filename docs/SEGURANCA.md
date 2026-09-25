@@ -173,7 +173,8 @@ privado). `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` no `api/.env` da VPS e em `/
 - **VPS**: `brgol-watchdog.sh` (`tools/vps/`) a cada 2 min → 🔴 "API fora do ar" quando `/api/health`
   para de responder e ✅ "voltou" com o tempo fora; 09h → resumo do dia (disco, último backup, reinícios
   do PM2, bans do fail2ban) e ⚠️ se o disco passar de 85 % ou o backup não tiver rodado em 26 h.
-  **fail2ban** manda 🚫 BLOQUEADO a cada ban (SSH, limit_req do nginx, phpMyAdmin/WordPress, arquivos sensíveis) —
+  **fail2ban** manda 🚫 BLOQUEADO quando o IP bloqueado tem CONTA no jogo, dizendo qual (desde 24/09/2026; sem conta, só o
+  syslog `brgol-f2b`) — (SSH, limit_req do nginx, phpMyAdmin/WordPress, arquivos sensíveis) —
   `action.d/brgol-telegram.conf` → `brgol-f2b-aviso.sh` (consertado em 22/09: antes saía mudo).
 - O que este esquema NÃO pega: a VPS inteira fora do ar (o vigia mora nela). Para isso, quando quiser:
   https://uptimerobot.com → monitor em `https://jogagol.com.br/api/health` com alerta por Telegram

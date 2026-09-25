@@ -63,7 +63,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ unread: (r as any)?.unread ?? get().unread, me: r.me, offset: r.me.serverTime - Date.now() });
   },
   register: async (b) => {
-    const r = await api.register(b);
+    const r = await api.register({ ...b, origem: origem() }); // de onde veio: vai no aviso de cadastro do Telegram
     token.set(r.token);
     set({ unread: (r as any)?.unread ?? get().unread, me: r.me, offset: r.me.serverTime - Date.now() });
     track('cadastro.ok', { time: b.teamSlug, convite: b.ref ? true : undefined, origem: origem() }); // funil dos novatos (lib/track.ts)

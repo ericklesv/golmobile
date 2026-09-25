@@ -833,7 +833,11 @@ depois que o novo estiver estável. Não instalar nada dele.
   `/root/brgol-nginx-antes-bloqueio-2026-09-17.conf`.
 - **Telegram** (`lib/telegram.js`, `tg.info/warn/error`, mesmo bot do Managol (@Managol_bot) via `TELEGRAM_BOT_TOKEN`/
   `TELEGRAM_CHAT_ID`; pedido do dono, 15/09/2026; **desde 16/09 o chat é o grupo "JogaGol - ADMIN" (dono + Erickles),
-  id em `docs/SEGURANCA.md` — trocar de chat = `api/.env` + `/etc/brgol-telegram.conf` + `pm2 restart`**): cadastro, cadastro barrado, conta trancada, PIX gerado/pago,
+  id em `docs/SEGURANCA.md` — trocar de chat = `api/.env` + `/etc/brgol-telegram.conf` + `pm2 restart`**): cadastro
+  (com **"📍 Veio de:"** — Google Ads com a palavra buscada, Google orgânico, Instagram/Facebook/TikTok pelo navegador do
+  app, WhatsApp/Telegram, site que mandou, convite ou direto; `api/src/lib/origem.js` junta a `origem` que o site guardou
+  da visita de entrada — utm/gclid + `ref` = document.referrer, 30 dias, `web/src/lib/track.ts` — e o User-Agent; pedido
+  do Guilherme, 25/09/2026), cadastro barrado, conta trancada, PIX gerado/pago,
   denúncia, exclusão de conta, ações do painel, erro 500, scheduler, exceção e **"API subiu"**, que lista
   **o que aquela versão trouxe** (`lib/versao.js`; dono, 19/09/2026): os títulos dos commits entre o antes e o
   depois da última linha de `/var/log/brgol-deploy.log`. Restart que não é publicação (queda, watchdog,

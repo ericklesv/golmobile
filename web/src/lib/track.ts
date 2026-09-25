@@ -63,11 +63,12 @@ export function trackScreen(pathname: string) {
 }
 
 /**
- * De onde a pessoa veio (Google Ads, 24/09/2026): `utm_*` e `gclid` da URL de entrada. Fica no aparelho por 30 dias
+ * De onde a pessoa veio (Google Ads, 24/09/2026): `utm_*` e `gclid` da URL de entrada e, desde 25/09, o site ou app que
+ * a mandou (`ref`, do document.referrer). Fica no aparelho por 30 dias
  * (clicou hoje, pode criar a conta amanhã) e vai no `app.abriu` (só na visita que chegou com eles) e no `cadastro.ok`
  * — é o que deixa o banco dizer quantos que vieram do anúncio criaram conta e voltaram.
  */
-type Origem = { src?: string; med?: string; camp?: string; term?: string; gclid?: true };
+type Origem = { src?: string; med?: string; camp?: string; term?: string; gclid?: true; ref?: string };
 const ORIGEM_KEY = 'brgol.origem';
 const ORIGEM_MS = 30 * 86_400_000;
 
@@ -97,7 +98,10 @@ export function installTracking() {
     try { ref = document.referrer ? new URL(document.referrer).hostname : ''; } catch { ref = ''; }
     const pwa = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as any).standalone === true;
     const o = origemDaUrl();
-    if (o) { try { localStorage.setItem(ORIGEM_KEY, JSON.stringify({ o, at: Date.now() })); } catch { /* sem armazenamento */ } }
+    // o site/app que mandou a pessoa (Google, Instagram, WhatsApp…) também vale como origem — 25/09/2026, para o aviso
+    // de cadastro no Telegram dizer de onde ela veio (api/src/lib/origem.js). Navegar dentro do jogo não conta.
+    const fora = ref && !/(^|\.)jogagol\.com\.br$/i.test(ref) ? ref.slice(0, 80) : undefined;
+    if (o || fora) { try { localStorage.setItem(ORIGEM_KEY, JSON.stringify({ o: { ...(o ?? {}), ref: fora }, at: Date.now() })); } catch { /* sem armazenamento */ } }
     // currentScreen fica vazio de propósito: o TrackWatcher manda o `tela.<rota>` da primeira tela logo em seguida
     track('app.abriu', { tela: screenOf(location.pathname), ref: ref || undefined, twa: isTwa() || undefined, pwa: pwa || undefined, origem: o ?? undefined });
     const leave = () => {

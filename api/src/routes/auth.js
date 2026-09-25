@@ -12,6 +12,7 @@ import { attachReferral } from '../services/referral.js';
 import { SECURITY, isDisposableEmail, checkRegisterForm, verifyTurnstile, assertNotLocked, noteLoginFail, noteLoginOk, takeSlot, assertRoom } from '../lib/security.js';
 import { deviceOf, deviceData } from '../lib/device.js';
 import { tg } from '../lib/telegram.js';
+import { fonteDoCadastro } from '../lib/origem.js';
 
 export const auth = Router();
 
@@ -36,6 +37,7 @@ const registerSchema = z.object({
   elapsedMs: z.number().optional(),
   startedAt: z.number().optional(),
   turnstileToken: z.string().max(4000).optional(),
+  origem: z.any().optional(), // de onde a pessoa chegou (web/src/lib/track.ts → lib/origem.js); só para o aviso
 });
 
 auth.post('/register', registerLimiter, handle(async (req) => {
@@ -63,9 +65,10 @@ auth.post('/register', registerLimiter, handle(async (req) => {
     data: { nick: body.nick, nickLower, email: body.email, passwordHash, gender: body.gender, teamId: team.id, lastIp: ip, lastIpAt: new Date(), createdIp: ip, ...deviceData(req) },
     include: { team: true },
   });
-  await attachReferral(user.id, body.ref, clientIp(req)).catch((e) => console.error('[convite] cadastro:', e.message));
+  const convite = await attachReferral(user.id, body.ref, clientIp(req)).catch((e) => { console.error('[convite] cadastro:', e.message); return null; });
   try { takeSlot({ ip, device }, user.id, Date.now(), user.nick); } catch { /* vaga conferida acima; corrida rara: o próximo pedido decide */ }
-  tg.info(`👤 Novo cadastro: <b>${tg.esc(user.nick)}</b> · ${tg.esc(team.name)} · ${tg.esc(body.email)} · IP <code>${tg.esc(ip)}</code>${body.ref ? ` · convite <code>${tg.esc(body.ref)}</code>` : ''}`);
+  const fonte = fonteDoCadastro({ origem: body.origem, ua: req.headers['user-agent'], twa: req.headers['x-app'] === 'twa', convite });
+  tg.info(`👤 Novo cadastro: <b>${tg.esc(user.nick)}</b> · ${tg.esc(team.name)} · ${tg.esc(body.email)} · IP <code>${tg.esc(ip)}</code>${body.ref && !convite ? ` · convite <code>${tg.esc(body.ref)}</code> (não valeu)` : ''}\n📍 Veio de: <b>${tg.esc(fonte)}</b>`);
   return { token: signToken(user), me: meView(user) };
 }));
 

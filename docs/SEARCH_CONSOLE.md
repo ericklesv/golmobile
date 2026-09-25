@@ -1,7 +1,8 @@
 # Google Search Console — passo a passo (combinado para 26/09/2026)
 
-> **Status:** domínio **verificado em 26/09/2026** (registro TXT `google-site-verification` no DNS da Hostinger).
-> Seguem os passos 3.2 em diante (sitemap, indexação) e o Bing.
+> **Status: CONCLUÍDO em 26/09/2026** — domínio verificado (TXT `google-site-verification` no DNS da Hostinger), sitemap
+> processado (`https://jogagol.com.br/sitemap.xml` — numa propriedade de Domínio o campo pede o ENDEREÇO COMPLETO),
+> indexação pedida para "/", "/brgol" e "/times", Bing importado do Search Console. Falta só o "Depois", lá embaixo.
 
 Última etapa da auditoria de SEO de 25/09/2026 (ver `CLAUDE.md` → "SEO orgânico" e `docs/ROADMAP.md` → "SEO orgânico").
 O site já está pronto para o Google (página inicial com a apresentação, páginas públicas `/brgol`, `/times` e

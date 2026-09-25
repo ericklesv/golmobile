@@ -118,7 +118,7 @@ habilidade; nunca chat/minigame/X1; fora da premiação e do relatório diário;
 (`web/scripts/gerar-sitemap.mjs`); telas carregadas sob demanda e three.js fora da página de entrada (JS inicial
 ~495 KB → ~123 KB comprimido); fontes e logo sem travar a pintura. Detalhes em `CLAUDE.md` → "SEO orgânico".
 **Próximos (em ordem):**
-1. [~] **Search Console** — domínio VERIFICADO em 26/09/2026; falta sitemap/indexação/Bing, passo a passo em **`docs/SEARCH_CONSOLE.md`** (o domínio
+1. [x] **Search Console** — FEITO em 26/09/2026 (verificado, sitemap processado, indexação pedida, Bing importado); passo a passo em **`docs/SEARCH_CONSOLE.md`** (o domínio
    está na Hostinger do Erickles: fazer com ele). Propriedade de Domínio, TXT no DNS, enviar `sitemap.xml`, pedir
    indexação de "/", "/brgol" e "/times". Depois, Bing Webmaster Tools importando do Search Console.
 2. [ ] Links de fora: descrição dos vídeos do YouTube que citam o jogo, bio do Instagram, grupos de nostalgia do

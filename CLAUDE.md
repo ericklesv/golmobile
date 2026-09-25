@@ -127,6 +127,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   O gol aparece como o "GOOOL" de tela cheia só na aba Jogar; nas outras telas vira aviso discreto (nunca cobrir
   uma partida de X1 ou um minigame). Duas abas abertas não dobram gol: a recarga é reservada de forma atômica
   na API (`claimCooldown`), a segunda leva 429. O toque no card AUTO usa o mesmo caminho (`useAutoKick.fire(true)`).
+  **O que o cliente NÃO resolve** (medido em 25/09/2026 com API e banco locais, Chrome no Windows): passados alguns
+  minutos com a aba em SEGUNDO PLANO o Chrome **congela** a página — nenhum timer roda, nem o heartbeat —, então quem
+  minimiza o navegador ou deixa a janela coberta por horas só marca 1 gol (o da recarga corrente) quando VOLTA para a
+  aba. Com a janela do jogo VISÍVEL (em frente, ou num segundo monitor) o relógio roda direito e o gol sai a cada
+  recarga. Cobrir a aba congelada/fechada depende de chutar no SERVIDOR — o motor existe (`vipOfflineAutoKicks`) e
+  está **desligado** por decisão do dono: religar (para VIP ou para todos) é decisão dele, não nossa.
   O chute do VIP com o app FECHADO está pronto mas **desligado** (`VIP_OFFLINE_AUTO = false`; ver "VIP pago").
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
   relógio do celular.

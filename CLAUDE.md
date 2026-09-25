@@ -1171,8 +1171,8 @@ servidos pelo próprio Express em `/api/uploads/`.
     de ~495 KB para ~123 KB de JavaScript (comprimido). Fontes do Google não travam mais a pintura (preload + media=print)
     e o logo da apresentação não começa invisível (era o maior elemento: atrasava o LCP). **Tela nova do jogo = `tela(...)`
     no App.tsx; nunca importar a tela direto lá.**
-  - Falta do lado do dono: verificar o domínio no **Google Search Console** (DNS na Hostinger, `dns-parking.com`) e enviar
-    o sitemap; ver `docs/ROADMAP.md` → "SEO".
+  - Falta: verificar o domínio no **Google Search Console** e enviar o sitemap — passo a passo em
+    **`docs/SEARCH_CONSOLE.md`** (o DNS do jogagol.com.br fica na conta Hostinger do Erickles, `dns-parking.com`).
 - Escudos reais em `web/public/escudos/<slug>.svg|png` (projeto privado para amigos);
   `Shield.tsx` renderiza `<img>` com fallback de sigla.
 - 3D: modelos glTF em `web/public/3d/` gerados dos packs comprados via `tools/3d/` (README lá).

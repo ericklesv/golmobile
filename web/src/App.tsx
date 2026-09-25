@@ -31,6 +31,7 @@ const Layout = tela(() => import('./components/Layout'), 'Layout');
 const LevelUpWatcher = tela(() => import('./components/LevelUp'), 'LevelUpWatcher');
 const TutorialWatcher = tela(() => import('./components/Tutorial'), 'TutorialWatcher');
 const PassWatcher = tela(() => import('./components/Pass'), 'PassWatcher');
+const AutoKickWatcher = tela(() => import('./components/AutoKick'), 'AutoKickWatcher');
 const AdminDock = tela(() => import('./components/AdminDock'), 'AdminDock');
 const HomeScreen = tela(() => import('./screens/Home'), 'HomeScreen');
 const TrailScreen = tela(() => import('./screens/Trail'), 'TrailScreen');
@@ -130,6 +131,8 @@ export default function App() {
         {me && <TutorialWatcher />}
         {me && <LevelUpWatcher />}
         {me && <PassWatcher />}
+        {/* chute direto automático: relógio único, vale em todas as telas e não depende de a aba estar visível */}
+        {me && <AutoKickWatcher />}
       </Suspense>
       <ErrorBoundary resetKey={loc.pathname}>
       <Suspense fallback={<Splash />}>

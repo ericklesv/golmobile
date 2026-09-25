@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { api, ApiError } from '../lib/api';
+import { api } from '../lib/api';
 import { track } from '../lib/track';
 import { useAuth } from '../store/auth';
 import type { DailyStatus, Home, Kind } from '../lib/types';
 import { Shield } from '../components/Shield';
-import { GoalOverlay } from '../components/GoalOverlay';
 import { MinigameSlider } from '../components/MinigameSlider';
+import { useAutoKick } from '../components/AutoKick';
 import { X1King } from '../components/X1King';
 import { Panel, TopList, ProgressRing, useCountdown, Countdown } from '../components/ui';
 import { countdown, hourLabel, timeAgo, pct } from '../lib/format';
@@ -70,29 +70,17 @@ function KickTarget({ t, onAuto }: { t: typeof TARGETS[number]; onAuto: () => vo
 let recargaVista = false;
 export function HomeScreen() {
   const me = useAuth((s) => s.me)!;
-  const refresh = useAuth((s) => s.refresh);
   const offers = useAuth((s) => s.offers);
   const [home, setHome] = useState<Home | null>(null);
-  const [overlay, setOverlay] = useState<{ goal: boolean; text: string; money: number } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const autoFired = useRef(false);
+  // o chute direto automático é um relógio só, montado no App (components/AutoKick.tsx): vale em todas
+  // as telas e não depende de a aba estar visível. Aqui a tela só o aciona no toque e recarrega o placar.
+  const autoKick = () => { void useAutoKick.getState().fire(true); };
+  const ultimoAuto = useAutoKick((s) => s.last?.at);
 
   const load = useCallback(() => api.home(me.team.slug).then(setHome).catch(() => {}), [me.team.slug]);
   useEffect(() => { load(); const iv = setInterval(load, 15_000); return () => clearInterval(iv); }, [load]);
-
-  async function autoKick() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const r = await api.autoKick();
-      setOverlay({ goal: r.goal, text: r.text, money: r.money });
-      await refresh();
-      load();
-    } catch (e) {
-      if (e instanceof ApiError && e.code === 'cooldown') { toast('Chute direto ainda em recarga.'); refresh(); }
-      else toast((e as Error).message, 'error');
-    } finally { setBusy(false); }
-  }
+  // gol automático (o relógio já atualizou o /api/me): recarrega o placar da partida e os rankings da tela
+  useEffect(() => { if (ultimoAuto) load(); }, [ultimoAuto]);
 
   // funil dos novatos (lib/track.ts): a "parede" — todos os chutes em recarga ao mesmo tempo (1x por carregamento)
   useEffect(() => {
@@ -101,16 +89,6 @@ export function HomeScreen() {
     const all = (['AUTO', 'PENALTY', 'FOUL', 'TRAIL'] as const).every((k) => me.cooldowns[k].readyAt > now) && !me.trail.active;
     if (all) { recargaVista = true; track('recarga.vista'); }
   }, [me.cooldowns, me.trail.active]);
-
-  // Auto-chute igual ao original: com o app aberto, quando o tempo zera o chute sai sozinho.
-  const autoRem = useCountdown(me.cooldowns.AUTO.readyAt);
-  useEffect(() => {
-    if (autoRem > 0) { autoFired.current = false; return; }
-    if (autoFired.current || document.visibilityState !== 'visible' || overlay) return;
-    autoFired.current = true;
-    const t = setTimeout(autoKick, 800);
-    return () => clearTimeout(t);
-  }, [autoRem, overlay]);
 
   const m = home?.myMatch;
   const mine = m ? (m.home.slug === me.team.slug ? 'home' : 'away') : null;
@@ -136,8 +114,6 @@ export function HomeScreen() {
           <span className="btn btn-yellow btn-sm shrink-0">Ver</span>
         </Link>
       )}
-      <GoalOverlay open={!!overlay} goal={overlay?.goal ?? false} text={overlay?.text} money={overlay?.money} team={me.team} onClose={() => setOverlay(null)} />
-
       {/* Placar da partida do meu time */}
       <section className="panel-navy relative pt-5">
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap"><span className="trap trap-orange text-[11px] uppercase">{home?.season ? `Temporada ${home.season.number} · Rodada ${home.round?.number} · Série ${m?.serie ?? me.team.serie}` : 'Carregando…'}</span></div>

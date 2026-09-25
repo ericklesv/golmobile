@@ -109,8 +109,24 @@ depois que o novo estiver estável. Não instalar nada dele.
   vão junto. Os jogadores dos times que trocaram recebem mensagem na caixa; o dono, no Telegram. A regra aparece
   embaixo da tabela na Liga. **Mexeu? Rode `node scripts/test-troca-serie-a.js`** (pasta api/, só banco LOCAL,
   schema `troca_sim` criado e apagado por ele; tem de dar "TUDO OK") e o `sim-liga.js`.
-- Auto-chute: o cliente dispara `POST /api/play/auto` quando o timer zera com a aba aberta
-  (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
+- **Auto-chute** (`components/AutoKick.tsx`, montado no App para quem está logado; **refeito em 25/09/2026**):
+  o cliente dispara `POST /api/play/auto` quando a recarga do chute direto zera, **com o app aberto em
+  qualquer tela** (igual ao original, que exigia estar logado). Heartbeat `POST /api/me/heartbeat` a cada 60 s.
+  **O que estava quebrado** (achado do Erickles, 25/09/2026 — "o jogo sobrevive de a pessoa deixar a página
+  aberta no PC e isso não está acontecendo"): o relógio vivia na tela Jogar (`Home.tsx`) e só chutava se
+  `document.visibilityState === 'visible'` NO SEGUNDO em que o contador zerava. Com a janela minimizada, numa
+  aba de trás ou **coberta por outra janela** (no Windows o Chrome trata janela ocluída como oculta), ele caía
+  no `return` — e **não voltava mais**: o contador ficava parado em 0 (o `setRem(0)` repetido não re-renderiza),
+  o `readyAt` volta IGUAL do `/api/me` e nada re-disparava o efeito. O jogador voltava para a aba e ficava horas
+  com o card em "PRONTO" sem sair gol; e nas outras telas (Liga, Chat, Loja, X1) nunca houve auto-chute.
+  **Como é agora:** um relógio SÓ, no App, que (1) vale em todas as telas, (2) mede pelo horário do servidor
+  (`cooldowns.AUTO.readyAt`, nunca por tick acumulado), (3) se re-arma a cada 60 s no máximo — em aba de fundo
+  o navegador ATRASA o timer (mín. ~1/min) e pode congelar a aba, então o chute só atrasa, nunca some —,
+  (4) confere na hora ao voltar para a aba, focar a janela ou a internet voltar, e (5) em erro de rede/servidor
+  tenta de novo (20 s, 40 s… até 2 min) em vez de queimar a recarga. **Não exigir aba visível de novo.**
+  O gol aparece como o "GOOOL" de tela cheia só na aba Jogar; nas outras telas vira aviso discreto (nunca cobrir
+  uma partida de X1 ou um minigame). Duas abas abertas não dobram gol: a recarga é reservada de forma atômica
+  na API (`claimCooldown`), a segunda leva 429. O toque no card AUTO usa o mesmo caminho (`useAutoKick.fire(true)`).
   O chute do VIP com o app FECHADO está pronto mas **desligado** (`VIP_OFFLINE_AUTO = false`; ver "VIP pago").
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
   relógio do celular.

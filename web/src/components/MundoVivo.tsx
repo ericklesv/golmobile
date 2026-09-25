@@ -29,14 +29,14 @@ const RECARGA_MS = 30_000;
 /** Links inertes: nesta página o perfil e o X1 estão atrás do login. */
 const INERTE = '[&_a]:pointer-events-none';
 
-type Store = { v: Vitrine | null; buscando: boolean; puxar: () => Promise<void> };
+type Store = { v: Vitrine | null; buscando: boolean; tentou: boolean; puxar: () => Promise<void> };
 const useVitrine = create<Store>((set, get) => ({
-  v: null, buscando: false,
+  v: null, buscando: false, tentou: false,
   puxar: async () => {
     if (get().buscando) return;
     set({ buscando: true });
     try { set({ v: await api.vitrine() }); } catch { /* sem vitrine: a tela de entrada funciona igual */ }
-    finally { set({ buscando: false }); }
+    finally { set({ buscando: false, tentou: true }); }
   },
 }));
 
@@ -66,7 +66,10 @@ export function PlacarDaRodada() {
   const [agora, setAgora] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 1000); return () => clearInterval(t); }, []);
 
-  if (!v?.match) return null;
+  const tentou = useVitrine((s) => s.tentou);
+  // Enquanto a 1ª resposta não chega, um ESBOÇO do mesmo tamanho segura o lugar (25/09/2026): o placar entrando depois
+  // empurrava a página inteira para baixo — "a página pula" (CLS 0,27 no Lighthouse, acima do limite do Google).
+  if (!v?.match) return tentou ? null : <EsbocoDoPlacar />;
   const m = v.match;
   const falta = v.round ? new Date(v.round.endsAt).getTime() - agora : 0;
 
@@ -99,6 +102,25 @@ export function PlacarDaRodada() {
           Série {m.serie} · rodada {v.round?.number}
           {falta > 0 && <> · fecha em <b className="t-display text-[13px] text-orange-deep">{countdown(falta)}</b></>}
         </p>
+      </Panel>
+    </div>
+  );
+}
+
+/** O placar com a mesma estrutura e as mesmas medidas, sem conteúdo: segura o espaço até os dados chegarem. */
+function EsbocoDoPlacar() {
+  const bloco = 'rounded-md bg-navy-ink/10';
+  return (
+    <div className="relative mt-4 flex flex-col gap-3" aria-hidden="true">
+      <p className="invisible text-[13px] font-extrabold">0 gols nesta rodada</p>
+      <Panel title="JOGO DA RODADA" ribbon="blue">
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex w-[33%] flex-col items-center gap-1"><div className={`${bloco} h-[44px] w-[44px]`} /><span className="invisible text-[12px] font-extrabold">time</span></div>
+          <div className="flex items-baseline gap-1"><span className="t-display text-[34px] leading-none text-navy-ink/15">0</span><span className="t-display text-[16px] text-muted">x</span><span className="t-display text-[34px] leading-none text-navy-ink/15">0</span></div>
+          <div className="flex w-[33%] flex-col items-center gap-1"><div className={`${bloco} h-[44px] w-[44px]`} /><span className="invisible text-[12px] font-extrabold">time</span></div>
+        </div>
+        <div className="bar mt-3"><i style={{ width: '50%' }} /><span className="invisible">50%</span></div>
+        <p className="invisible mt-2 text-center text-[12px] font-bold">Série A · rodada 1</p>
       </Panel>
     </div>
   );

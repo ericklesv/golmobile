@@ -1,4 +1,4 @@
-import type { DemoHattrickShot, DemoHattrickResult, Vitrine, TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { DemoPregoPartida, DemoPregoJogada, Vitrine, TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -96,9 +96,8 @@ export const api = {
   ganhaPerde: () => req<{ state: GanhaPerdeState }>('GET', '/api/daily/ganhaperde'),
   ganhaPerdeSpin: (chance: number, spins: number) => req<GanhaPerdeSpin>('POST', '/api/daily/ganhaperde/spin', { chance, spins }),
   // chute jogavel da tela de entrada, sem login (api/src/routes/demo.js): nao conta gol para ninguem
-  demoHattrick: () => req<DemoHattrickShot>('GET', '/api/demo/hattrick'),
-  demoHattrickShoot: (b: { id: string; dirX: number; dirY: number; power: number; strike: { sx: number; sy: number } | null }) =>
-    req<DemoHattrickResult>('POST', '/api/demo/hattrick', b),
+  demoPrego: () => req<DemoPregoPartida>('GET', '/api/demo/futprego'),
+  demoPregoFlick: (b: { id: string; dx: number; dy: number; power: number }) => req<DemoPregoJogada>('POST', '/api/demo/futprego', b),
   hattrick: () => req<{ state: HattrickState }>('GET', '/api/daily/hattrick'),
   hattrickStart: () => req<{ state: HattrickState }>('POST', '/api/daily/hattrick/start'),
   hattrickShoot: (b: { i: number; dirX: number; dirY: number; power: number; strike: { sx: number; sy: number } | null }) => req<HattrickShootResponse>('POST', '/api/daily/hattrick/shoot', b),

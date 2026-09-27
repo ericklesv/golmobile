@@ -1,3 +1,4 @@
+import type { PregoBoardData } from '../components/PregoBoard';
 import type { NickFade } from './nick';
 export type Serie = 'A' | 'B' | 'C';
 export type Kind = 'AUTO' | 'PENALTY' | 'FOUL' | 'TRAIL';
@@ -646,6 +647,10 @@ export interface AdminReportRow {
 }
 export interface AdminReportsPage { status: 'OPEN' | 'RESOLVED'; page: number; pages: number; total: number; open: number; rows: AdminReportRow[] }
 
-/** Chute jogavel da tela de entrada (sem login). O goleiro do lance fica no servidor, como no jogo de verdade. */
-export interface DemoHattrickShot { id: string; ball: { x: number; y: number }; wind: { speed: number; angle: number } }
-export interface DemoHattrickResult { result: HattrickResult; flight: HattrickFlight }
+/** FutPrego jogável da tela de entrada (sem login): tábua aberta, bot ruim, o 1º gol seu encerra. */
+export interface DemoPregoPartida { id: string; board: PregoBoardData; ball: { x: number; y: number }; golsBot: number }
+export interface DemoPregoJogada {
+  meu: { frames: number[][]; goal: "top" | "bottom" | null };
+  bot: { frames: number[][]; goal: "top" | "bottom" | null } | null;
+  golsBot: number; fim: "gol" | null;
+}

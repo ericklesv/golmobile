@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSeo } from '../lib/seo';
 import { PlacarDaRodada, RankingsDaVitrine } from '../components/MundoVivo';
-import { DemoHatTrick } from '../components/DemoHatTrick';
+import { DemoFutPrego } from '../components/DemoFutPrego';
 import { demo } from '../lib/demo';
 
 const slides = [
@@ -50,8 +50,8 @@ export function LandingScreen() {
       </div>
       {/* chutar antes de criar conta (27/09/2026, ver lib/demo.ts): é a primeira coisa que a pessoa pode FAZER na
           página, antes de qualquer texto — quem vem do anúncio clicou para jogar, não para preencher formulário.
-          É o chute de longe do Hat Trick (pedido do dono), e o primeiro gol já abre o convite para criar a conta */}
-      <DemoHatTrick onGol={() => setFezGol(true)} />
+          É o FutPrego com tábua aberta e bot ruim (pedido do dono), e o primeiro gol já abre o convite */}
+      <DemoFutPrego onGol={() => setFezGol(true)} />
       {/* o jogo acontecendo (a vitrine da tela de entrada, dono 19/09/2026): o placar mais disputado da rodada, ao vivo */}
       <PlacarDaRodada />
       <div className="relative mt-5 flex flex-1 flex-col gap-3">

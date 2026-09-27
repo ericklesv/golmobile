@@ -591,34 +591,40 @@ depois que o novo estiver estável. Não instalar nada dele.
   propaganda. Em cima do placar vai o **total de gols da rodada** — a soma dos placares de todas as partidas
   (dono, 19/09/2026: antes era quantos estavam chutando agora).
   A API fora do ar = os blocos somem e a tela de entrada funciona igual.
-- **Chutar ANTES de criar conta — o Hat Trick da tela de entrada** (Guilherme, 27/09/2026; `components/DemoHatTrick.tsx`,
-  vista compartilhada em `components/hattrickView.tsx`, rota pública `api/src/routes/demo.js`, memória do aparelho em
-  `lib/demo.ts`; fica no topo da apresentação, logo abaixo do título). **Por que existe:** em 26/09 o Google Ads trouxe
-  11 pessoas ao site (todas com `gclid` nos eventos); **5 abriram a tela de cadastro e NENHUMA enviou o formulário** —
-  zero recusas no log da API, elas nunca clicaram em "Criar jogador"; uma ficou **7 minutos** na tela, outra foi e voltou
-  7 vezes entre landing/cadastro/entrar em 96 s. No mesmo período a base geral converteu **70% de quem abre o cadastro**
-  (47 de 67): com essa base, 0 em 5 é 1 chance em 400. O pedágio (e-mail + senha + escolher entre 48 escudos) antes do
-  primeiro chute é o que derruba o tráfego pago, que chega frio e só quer ver se o jogo é bom.
-  **É o Hat Trick de verdade** (dono, 27/09/2026: "algo mais interativo como o Hat Trick, porém deixe apenas 1 gol"): a
-  MESMA vista de `hattrickView.tsx` que `screens/Hattrick.tsx` desenha (campo em metros visto de cima, goleiro, mira em
-  estilingue, a tela da batida) e a MESMA física no servidor (`api/src/lib/hattrick.js`) — mexeu num, muda nos dois.
-  *(Antes do Hat Trick houve uma versão com o pênalti, publicada em 27/09 e trocada no mesmo dia por esta, a pedido do
-  dono, por ser mais interativa. A tentativa seguinte, com a cena 3D do pênalti, foi descartada junto.)*
-  **Rota pública `GET|POST /api/demo/hattrick`** (sem login): o `GET` sorteia o lance com `newShot` e devolve só bola e
-  vento — **o goleiro daquele chute fica no servidor**, como manda a casa —, e o `POST` resolve com `simulate` e devolve
-  o voo. Cada lance vale **3 minutos e UM chute só** (sem isso dava para pedir um lance e simular mil chutes em cima dele
-  até achar a mira que faz gol) e há 40 chamadas/min por IP. **Não toca no banco, não conta gol para ninguém, não dá
-  dinheiro nem ponto de nível.**
-  Diferenças para o jogo: **sem vidas** (errou, vem outro lance na hora) e **o primeiro gol encerra** e abre a tela de
-  convite ("Faça seus gols contarem" → artilharia, placar do time, disputa da rodada → "Escolher meu time"), com um
-  "Chutar de novo" discreto para quem quiser continuar. O gol daqui não vale no jogo e a tela diz isso — dar gol de
-  verdade a quem se cadastra mexeria na artilharia e no placar da rodada, e isso é decisão do dono.
+- **Jogar ANTES de criar conta — o FutPrego da tela de entrada** (Guilherme, 27/09/2026; `components/DemoFutPrego.tsx`,
+  rota pública `api/src/routes/demo.js`, memória do aparelho em `lib/demo.ts`; fica no topo da apresentação, logo abaixo
+  do título). **Por que existe:** em 26/09 o Google Ads trouxe 11 pessoas ao site (todas com `gclid` nos eventos);
+  **5 abriram a tela de cadastro e NENHUMA enviou o formulário** — zero recusas no log da API, elas nunca clicaram em
+  "Criar jogador"; uma ficou **7 minutos** na tela, outra foi e voltou 7 vezes entre landing/cadastro/entrar em 96 s. No
+  mesmo período a base geral converteu **70% de quem abre o cadastro** (47 de 67): com essa base, 0 em 5 é 1 chance em
+  400. O pedágio (e-mail + senha + escolher entre 48 escudos) antes de jogar é o que derruba o tráfego pago, que chega
+  frio e só quer ver se o jogo é bom.
+  **É o FutPrego de verdade**: a mesma tábua de `components/PregoBoard.tsx` que o X1 desenha, a mesma física
+  (`api/src/lib/futprego.js`) e o **mesmo gesto** — estilingue, arrasta e a bola vai para o lado contrário, com a linha
+  marrom do puxão e a tracejada branca da direção (`MAX_PULL` 120, igual ao X1). Quem migra daqui para o X1 não
+  reaprende nada.
+  *(Antes houve uma versão com o pênalti e outra com o Hat Trick, as duas trocadas no mesmo dia a pedido do dono: o
+  pênalti por ser pouco interativo, o Hat Trick porque o arrasto puxava a PÁGINA junto e o gesto ficava esquisito.)*
+  **Tábua ABERTA, só desta tela** (`TABUA_ABERTA` em `routes/demo.js` — **não entra em `LAYOUTS` do futprego.js**, que
+  alimenta o sorteio do X1 de verdade): 5 pregos por time em vez de 11–13, nenhum na frente da boca e o central
+  deslocado para o lado. Pedido do dono: "que o usuário consiga até fazer gol de primeira se acertar bem". **Mexeu na
+  tábua? Rode `node scripts/demo-tabua-balance.js`** (pasta api/, sem banco): tem de dar "TUDO OK" — o **tiro reto no
+  gol ENTRA**, ~10,6% das combinações de mira e força dão gol de primeira e há faixa contígua de 15° de mira. As tábuas
+  com prego na boca ou no meio ficavam em 2,4% e o tiro reto batia num prego: a pessoa mirava no gol e não entendia.
+  **Bot ruim de propósito** (pedido do dono): mira no gol do jogador com erro de ±35° e força de 0,30 a 0,75 — nunca a
+  força cheia, então a bola morre no meio do caminho. **O primeiro gol SEU encerra** e abre o convite ("Faça seus gols
+  contarem" → artilharia, placar do time, disputa da rodada → "Escolher meu time"). Gol contra e gol do bot só somam no
+  placar dele e a bola volta ao meio. **Nada disso conta para o jogo**: sem login, sem banco, sem gol, dinheiro, nível
+  ou ranking — e a tela diz isso.
+  **Celular — o arrasto NÃO pode rolar a página** (foi a reclamação do dono na versão anterior): a tábua leva
+  **`no-drag`** (a rolagem por arraste do PC é global, `lib/dragScroll.ts`, e só respeita `canvas` e essa classe),
+  `touch-none` (vem do PregoBoard) e **`preventDefault()` em todo pointerdown/move**. Conferido com toque de verdade
+  (CDP `Input.dispatchTouchEvent`, Pixel 7): 14 arrastos, `window.scrollY` inalterado nos 14.
   **Cuidado que já mordeu:** o `vivo.current` do componente PRECISA voltar a `true` ao montar — com só o cleanup, o
-  StrictMode do dev (monta, desmonta, monta) deixava tudo marcado como morto e a tela ficava presa em "Preparando o
-  chute…" para sempre, descartando toda resposta do servidor.
-  **Medição:** eventos `demo.chutou` {gol, res, n} e `demo.cta` {gols}, e o `cadastro.ok` passou a levar `demo` =
-  quantos gols a pessoa fez antes de criar a conta — é por ele que o banco diz se a demonstração aumentou a conversão
-  do anúncio.
+  StrictMode do dev (monta, desmonta, monta) deixava tudo marcado como morto e a tela ficava presa em "Montando a
+  tábua…" para sempre, descartando toda resposta do servidor.
+  **Medição:** eventos `demo.chutou` {gol, res} e `demo.cta` {gols}, e o `cadastro.ok` leva `demo` = quantos gols a
+  pessoa fez antes de criar a conta — é por ele que o banco diz se a demonstração aumentou a conversão do anúncio.
 - **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
   pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/
   empate", artilheiro da partida, top 5 de cada time, gols hora a hora (gráfico espelhado nas cores dos times), gols por
@@ -1095,7 +1101,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
 `GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/x1?page=` (ou `/futprego`) · `GET /api/painel/multicontas?page=&q=` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|x1-rodada|x1-temporada|x1-geral`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
-`GET|POST /api/demo/hattrick` (chute jogável da tela de entrada, SEM login; não conta gol para ninguém)
+`GET|POST /api/demo/futprego` (FutPrego jogável da tela de entrada, SEM login; não conta gol para ninguém)
 `GET /api/x1/status` (jogo do dia, desafios abertos, jogando) · WebSocket `/api/ws/x1?token=&mode=lobby|game` (X1: convite, partida, fim)
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

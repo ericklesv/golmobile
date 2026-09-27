@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { track, origem } from '../lib/track';
+import { demo } from '../lib/demo';
 import { adsSignup } from '../lib/ads';
 import { api, token, ApiError } from '../lib/api';
 import type { Me, Meta } from '../lib/types';
@@ -66,7 +67,9 @@ export const useAuth = create<AuthState>((set, get) => ({
     const r = await api.register({ ...b, origem: origem() }); // de onde veio: vai no aviso de cadastro do Telegram
     token.set(r.token);
     set({ unread: (r as any)?.unread ?? get().unread, me: r.me, offset: r.me.serverTime - Date.now() });
-    track('cadastro.ok', { time: b.teamSlug, convite: b.ref ? true : undefined, origem: origem() }); // funil dos novatos (lib/track.ts)
+    // funil dos novatos (lib/track.ts). `demo` = quantos gols a pessoa fez no pênalti da tela de entrada antes de
+    // criar a conta (lib/demo.ts): é por ele que o banco diz se a demonstração aumentou a conversão do anúncio.
+    track('cadastro.ok', { time: b.teamSlug, convite: b.ref ? true : undefined, origem: origem(), demo: demo()?.gols ?? 0 });
     adsSignup(); // conversão "Cadastro JogaGol" do Google Ads (lib/ads.ts)
   },
   logout: () => { token.set(null); set({ me: null }); },

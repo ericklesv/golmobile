@@ -591,6 +591,25 @@ depois que o novo estiver estável. Não instalar nada dele.
   propaganda. Em cima do placar vai o **total de gols da rodada** — a soma dos placares de todas as partidas
   (dono, 19/09/2026: antes era quantos estavam chutando agora).
   A API fora do ar = os blocos somem e a tela de entrada funciona igual.
+- **Chutar ANTES de criar conta — o pênalti da tela de entrada** (Guilherme, 27/09/2026; `components/DemoPenalti.tsx`,
+  memória do aparelho em `lib/demo.ts`; fica no topo da apresentação, logo abaixo do título). **Por que existe:** em
+  26/09 o Google Ads trouxe 11 pessoas ao site (todas com `gclid` nos eventos); **5 abriram a tela de cadastro e
+  NENHUMA enviou o formulário** — zero recusas no log da API, elas nunca clicaram em "Criar jogador"; uma ficou **7
+  minutos** na tela, outra foi e voltou 7 vezes entre landing/cadastro/entrar em 96 s. No mesmo período a base geral
+  converteu **70% de quem abre o cadastro** (47 de 67): com essa base, 0 em 5 é 1 chance em 400. O pedágio (e-mail +
+  senha + escolher entre 48 escudos) antes do primeiro chute é o que derruba o tráfego pago, que chega frio e só quer
+  ver se o jogo é bom. **Como é:** pênalti 2D, as MESMAS 3 direções e as MESMAS setas do pênalti de verdade
+  (`components/KickArrows.tsx`) — quem cria a conta já encontra a interface que aprendeu ali. **Sem three.js**: a cena
+  3D são ~1 MB, separados de propósito em 25/09 para a página inicial abrir leve (SEO) — aqui é SVG desenhado à mão,
+  zero download a mais. **Nada de `motion.g` com x/y dentro do `<svg>`** (foi assim que a bola da Trilha ficou presa no
+  canto 0,0): o campo é um SVG de fundo e a bola e o goleiro são `<div>` por cima, em % e animados pelo framer-motion.
+  O **primeiro chute do aparelho é sempre gol** (o goleiro vai para outro canto); do segundo em diante sorteia de
+  verdade, 1 em 3 de defesa. **O gol daqui NÃO vale no jogo** e a tela diz isso ("Aqui foi treino") — dar gol de
+  verdade a quem se cadastra mexeria na artilharia e no placar da rodada, e isso é decisão do dono. Feito o gol, o
+  convite sai de dentro da demonstração ("Quero que meus gols valham") e o "Escolher meu time" de baixo some, para não
+  ficarem dois botões laranja; o cadastro reconhece quem veio de lá ("Você já fez N gols aqui fora"). **Medição:**
+  eventos `demo.chutou` {dir, gol, n} e `demo.cta` {gols}, e o `cadastro.ok` passou a levar `demo` = quantos gols a
+  pessoa fez antes de criar a conta — é por ele que o banco diz se a demonstração aumentou a conversão do anúncio.
 - **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
   pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/
   empate", artilheiro da partida, top 5 de cada time, gols hora a hora (gráfico espelhado nas cores dos times), gols por

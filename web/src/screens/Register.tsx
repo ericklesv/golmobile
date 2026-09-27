@@ -9,6 +9,8 @@ import type { Serie } from '../lib/types';
 import { InviteBanner, savedInvite, clearInvite } from '../components/Invite';
 import { Turnstile } from '../components/Turnstile';
 import { useSeo } from '../lib/seo';
+import { demo, limpaDemo } from '../lib/demo';
+import { Bola } from '../components/DemoPenalti';
 
 export function RegisterScreen() {
   useSeo('Criar conta — escolha seu time', 'Crie sua conta grátis no JogaGol, escolha um clube brasileiro e comece a marcar gols na disputa de gols online.', '/cadastro');
@@ -29,6 +31,8 @@ export function RegisterScreen() {
   const [startedAt] = useState(() => Date.now());
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const onToken = useCallback((t: string | null) => setTurnstileToken(t), []);
+  // veio do pênalti da tela de entrada (lib/demo.ts): o formulário reconhece o que ela já fez em vez de começar do zero
+  const [golsDemo] = useState(() => demo()?.gols ?? 0);
 
   // veio da página pública de um time ("Jogar pelo Flamengo", screens/PublicTeams.tsx; 25/09/2026): o time já vem marcado
   const [params] = useSearchParams();
@@ -45,7 +49,7 @@ export function RegisterScreen() {
     if (busy) return;
     if (!teamSlug) { toast('Escolha seu time.', 'error'); setStep(1); return; }
     setBusy(true);
-    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender, ref: savedInvite() ?? undefined, elapsedMs: Math.max(0, Date.now() - startedAt), turnstileToken: turnstileToken ?? undefined }); clearInvite(); nav('/', { replace: true }); }
+    try { await register({ nick: nick.trim(), email: email.trim(), password, teamSlug, gender, ref: savedInvite() ?? undefined, elapsedMs: Math.max(0, Date.now() - startedAt), turnstileToken: turnstileToken ?? undefined }); clearInvite(); limpaDemo(); nav('/', { replace: true }); }
     catch (err: any) { toast(err?.message ?? 'Falha no cadastro.', 'error'); }
     finally { setBusy(false); }
   }
@@ -60,6 +64,14 @@ export function RegisterScreen() {
       </div>
 
       <div className="relative mt-4"><InviteBanner /></div>
+      {golsDemo > 0 && (
+        <div className="relative mt-3 flex items-center gap-3 rounded-2xl bg-grass/25 p-3 ring-2 ring-grass">
+          <div className="h-10 w-10 shrink-0"><Bola /></div>
+          <div className="t-display t-out text-left text-[13px] leading-tight">
+            Você já fez {golsDemo} {golsDemo === 1 ? 'gol' : 'gols'} aqui fora. Escolha seu clube: daqui em diante cada gol soma no placar dele.
+          </div>
+        </div>
+      )}
 
       {step === 1 ? (
         <div className="relative mt-5">

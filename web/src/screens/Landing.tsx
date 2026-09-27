@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSeo } from '../lib/seo';
 import { PlacarDaRodada, RankingsDaVitrine } from '../components/MundoVivo';
+import { DemoPenalti } from '../components/DemoPenalti';
+import { demo } from '../lib/demo';
 
 const slides = [
   { icon: '/ui/ico-energy.png', title: 'CHUTE A GOL', text: 'Chute direto a cada 10 minutos, pênaltis, faltas e a trilha. Cada gol é seu — e do seu time.' },
@@ -33,6 +36,8 @@ export function LandingScreen() {
   // É a página inicial de quem não entrou (App.tsx → Private) e também a /bem-vindo (link antigo e anúncio do Google):
   // as duas apontam o Google para o endereço principal (canonical "/").
   useSeo('Jogo de fazer gols online grátis — o novo BRGOL', 'Escolha seu clube, marque gols de pênalti, falta e trilha e dispute a artilharia com outros jogadores. Sucessor do clássico BRGOL, no celular e no PC.', '/');
+  // quem já fez gol na demonstração vê o convite dentro dela (no calor do gol): aqui embaixo sobra só o "já tenho conta"
+  const [fezGol, setFezGol] = useState(() => (demo()?.gols ?? 0) > 0);
   return (
     <div className="app-frame flex min-h-full flex-col px-5 pb-8" style={{ paddingTop: 'calc(var(--sat) + 40px)' }}>
       <div className="stadium-bg" />
@@ -43,6 +48,9 @@ export function LandingScreen() {
         <div className="trap trap-orange mx-auto -mt-1 text-[12px] uppercase tracking-[0.25em]">chute · marque · suba</div>
         <h1 className="t-display t-out mt-3 text-[17px] leading-tight">O jogo de fazer gols online — grátis, no celular e no PC</h1>
       </div>
+      {/* chutar antes de criar conta (27/09/2026, ver lib/demo.ts): é a primeira coisa que a pessoa pode FAZER na
+          página, antes de qualquer texto — quem vem do anúncio clicou para jogar, não para preencher formulário */}
+      <DemoPenalti onGol={() => setFezGol(true)} />
       {/* o jogo acontecendo (a vitrine da tela de entrada, dono 19/09/2026): o placar mais disputado da rodada, ao vivo */}
       <PlacarDaRodada />
       <div className="relative mt-5 flex flex-1 flex-col gap-3">
@@ -57,7 +65,7 @@ export function LandingScreen() {
         ))}
       </div>
       <div className="relative mt-6 flex flex-col gap-3">
-        <Link to="/cadastro" className="btn btn-orange btn-lg w-full">Escolher meu time</Link>
+        {!fezGol && <Link to="/cadastro" className="btn btn-orange btn-lg w-full">Escolher meu time</Link>}
         <Link to="/entrar" className="btn btn-blue btn-md w-full">Já tenho conta</Link>
       </div>
       <RankingsDaVitrine />

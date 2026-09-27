@@ -30,6 +30,7 @@ import { referral } from './routes/referral.js';
 import { inbox } from './routes/inbox.js';
 import { account } from './routes/account.js';
 import { events } from './routes/events.js';
+import demo from './routes/demo.js';
 import { ensureSeason } from './services/league.js';
 import { startScheduler } from './services/scheduler.js';
 import { startBots } from './services/bots.js';
@@ -89,6 +90,7 @@ app.use('/api/inbox', inbox); // caixa de mensagens do jogador
 app.use('/api/pay', pay); // aviso de PIX da Efí (sem login)
 app.use('/api/account', account); // exclusão de conta, bloqueios e denúncias (Play Store)
 app.use('/api/events', events); // eventos de uso do site (funil dos novatos), com ou sem login
+app.use('/api/demo', demo); // chute jogável da tela de entrada, SEM login (não conta gol para ninguém)
 app.get('/api/cabecao/status', (_req, res) => res.json(cabecaoStatus())); // fila do Cabeção (WebSocket em /api/ws/cabecao)
 app.get('/api/x1/status', (_req, res) => res.json(x1Status())); // X1: jogo do dia, desafios e partidas (WebSocket em /api/ws/x1)
 app.get('/api/futprego/status', (_req, res) => res.json(x1Status())); // endereço antigo (FutPrego virou o X1)

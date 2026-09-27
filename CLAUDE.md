@@ -591,25 +591,34 @@ depois que o novo estiver estável. Não instalar nada dele.
   propaganda. Em cima do placar vai o **total de gols da rodada** — a soma dos placares de todas as partidas
   (dono, 19/09/2026: antes era quantos estavam chutando agora).
   A API fora do ar = os blocos somem e a tela de entrada funciona igual.
-- **Chutar ANTES de criar conta — o pênalti da tela de entrada** (Guilherme, 27/09/2026; `components/DemoPenalti.tsx`,
-  memória do aparelho em `lib/demo.ts`; fica no topo da apresentação, logo abaixo do título). **Por que existe:** em
-  26/09 o Google Ads trouxe 11 pessoas ao site (todas com `gclid` nos eventos); **5 abriram a tela de cadastro e
-  NENHUMA enviou o formulário** — zero recusas no log da API, elas nunca clicaram em "Criar jogador"; uma ficou **7
-  minutos** na tela, outra foi e voltou 7 vezes entre landing/cadastro/entrar em 96 s. No mesmo período a base geral
-  converteu **70% de quem abre o cadastro** (47 de 67): com essa base, 0 em 5 é 1 chance em 400. O pedágio (e-mail +
-  senha + escolher entre 48 escudos) antes do primeiro chute é o que derruba o tráfego pago, que chega frio e só quer
-  ver se o jogo é bom. **Como é:** pênalti 2D, as MESMAS 3 direções e as MESMAS setas do pênalti de verdade
-  (`components/KickArrows.tsx`) — quem cria a conta já encontra a interface que aprendeu ali. **Sem three.js**: a cena
-  3D são ~1 MB, separados de propósito em 25/09 para a página inicial abrir leve (SEO) — aqui é SVG desenhado à mão,
-  zero download a mais. **Nada de `motion.g` com x/y dentro do `<svg>`** (foi assim que a bola da Trilha ficou presa no
-  canto 0,0): o campo é um SVG de fundo e a bola e o goleiro são `<div>` por cima, em % e animados pelo framer-motion.
-  O **primeiro chute do aparelho é sempre gol** (o goleiro vai para outro canto); do segundo em diante sorteia de
-  verdade, 1 em 3 de defesa. **O gol daqui NÃO vale no jogo** e a tela diz isso ("Aqui foi treino") — dar gol de
-  verdade a quem se cadastra mexeria na artilharia e no placar da rodada, e isso é decisão do dono. Feito o gol, o
-  convite sai de dentro da demonstração ("Quero que meus gols valham") e o "Escolher meu time" de baixo some, para não
-  ficarem dois botões laranja; o cadastro reconhece quem veio de lá ("Você já fez N gols aqui fora"). **Medição:**
-  eventos `demo.chutou` {dir, gol, n} e `demo.cta` {gols}, e o `cadastro.ok` passou a levar `demo` = quantos gols a
-  pessoa fez antes de criar a conta — é por ele que o banco diz se a demonstração aumentou a conversão do anúncio.
+- **Chutar ANTES de criar conta — o Hat Trick da tela de entrada** (Guilherme, 27/09/2026; `components/DemoHatTrick.tsx`,
+  vista compartilhada em `components/hattrickView.tsx`, rota pública `api/src/routes/demo.js`, memória do aparelho em
+  `lib/demo.ts`; fica no topo da apresentação, logo abaixo do título). **Por que existe:** em 26/09 o Google Ads trouxe
+  11 pessoas ao site (todas com `gclid` nos eventos); **5 abriram a tela de cadastro e NENHUMA enviou o formulário** —
+  zero recusas no log da API, elas nunca clicaram em "Criar jogador"; uma ficou **7 minutos** na tela, outra foi e voltou
+  7 vezes entre landing/cadastro/entrar em 96 s. No mesmo período a base geral converteu **70% de quem abre o cadastro**
+  (47 de 67): com essa base, 0 em 5 é 1 chance em 400. O pedágio (e-mail + senha + escolher entre 48 escudos) antes do
+  primeiro chute é o que derruba o tráfego pago, que chega frio e só quer ver se o jogo é bom.
+  **É o Hat Trick de verdade** (dono, 27/09/2026: "algo mais interativo como o Hat Trick, porém deixe apenas 1 gol"): a
+  MESMA vista de `hattrickView.tsx` que `screens/Hattrick.tsx` desenha (campo em metros visto de cima, goleiro, mira em
+  estilingue, a tela da batida) e a MESMA física no servidor (`api/src/lib/hattrick.js`) — mexeu num, muda nos dois.
+  *(Antes do Hat Trick houve uma versão com o pênalti, publicada em 27/09 e trocada no mesmo dia por esta, a pedido do
+  dono, por ser mais interativa. A tentativa seguinte, com a cena 3D do pênalti, foi descartada junto.)*
+  **Rota pública `GET|POST /api/demo/hattrick`** (sem login): o `GET` sorteia o lance com `newShot` e devolve só bola e
+  vento — **o goleiro daquele chute fica no servidor**, como manda a casa —, e o `POST` resolve com `simulate` e devolve
+  o voo. Cada lance vale **3 minutos e UM chute só** (sem isso dava para pedir um lance e simular mil chutes em cima dele
+  até achar a mira que faz gol) e há 40 chamadas/min por IP. **Não toca no banco, não conta gol para ninguém, não dá
+  dinheiro nem ponto de nível.**
+  Diferenças para o jogo: **sem vidas** (errou, vem outro lance na hora) e **o primeiro gol encerra** e abre a tela de
+  convite ("Faça seus gols contarem" → artilharia, placar do time, disputa da rodada → "Escolher meu time"), com um
+  "Chutar de novo" discreto para quem quiser continuar. O gol daqui não vale no jogo e a tela diz isso — dar gol de
+  verdade a quem se cadastra mexeria na artilharia e no placar da rodada, e isso é decisão do dono.
+  **Cuidado que já mordeu:** o `vivo.current` do componente PRECISA voltar a `true` ao montar — com só o cleanup, o
+  StrictMode do dev (monta, desmonta, monta) deixava tudo marcado como morto e a tela ficava presa em "Preparando o
+  chute…" para sempre, descartando toda resposta do servidor.
+  **Medição:** eventos `demo.chutou` {gol, res, n} e `demo.cta` {gols}, e o `cadastro.ok` passou a levar `demo` =
+  quantos gols a pessoa fez antes de criar a conta — é por ele que o banco diz se a demonstração aumentou a conversão
+  do anúncio.
 - **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
   pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/
   empate", artilheiro da partida, top 5 de cada time, gols hora a hora (gráfico espelhado nas cores dos times), gols por
@@ -1086,6 +1095,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `DELETE /api/account{password}` (exclui/anonimiza a conta) · `GET /api/account/blocks` · `POST|DELETE /api/account/blocks/:nick` · `POST /api/account/reports{nick,messageId?,reason,details?}` (Play Store: bloqueio e denúncia)
 `GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/x1?page=` (ou `/futprego`) · `GET /api/painel/multicontas?page=&q=` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|x1-rodada|x1-temporada|x1-geral`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
+`GET|POST /api/demo/hattrick` (chute jogável da tela de entrada, SEM login; não conta gol para ninguém)
 `GET /api/x1/status` (jogo do dia, desafios abertos, jogando) · WebSocket `/api/ws/x1?token=&mode=lobby|game` (X1: convite, partida, fim)
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

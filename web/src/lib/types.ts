@@ -645,3 +645,7 @@ export interface AdminReportRow {
   target: { id: number; nick: string; avatarUrl: string | null; banned: boolean; deleted: boolean };
 }
 export interface AdminReportsPage { status: 'OPEN' | 'RESOLVED'; page: number; pages: number; total: number; open: number; rows: AdminReportRow[] }
+
+/** Chute jogavel da tela de entrada (sem login). O goleiro do lance fica no servidor, como no jogo de verdade. */
+export interface DemoHattrickShot { id: string; ball: { x: number; y: number }; wind: { speed: number; angle: number } }
+export interface DemoHattrickResult { result: HattrickResult; flight: HattrickFlight }

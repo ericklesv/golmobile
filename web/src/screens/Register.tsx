@@ -10,7 +10,7 @@ import { InviteBanner, savedInvite, clearInvite } from '../components/Invite';
 import { Turnstile } from '../components/Turnstile';
 import { useSeo } from '../lib/seo';
 import { demo, limpaDemo } from '../lib/demo';
-import { Bola } from '../components/DemoPenalti';
+import { CartoonBall } from '../components/TrailBall';
 
 export function RegisterScreen() {
   useSeo('Criar conta — escolha seu time', 'Crie sua conta grátis no JogaGol, escolha um clube brasileiro e comece a marcar gols na disputa de gols online.', '/cadastro');
@@ -66,7 +66,7 @@ export function RegisterScreen() {
       <div className="relative mt-4"><InviteBanner /></div>
       {golsDemo > 0 && (
         <div className="relative mt-3 flex items-center gap-3 rounded-2xl bg-grass/25 p-3 ring-2 ring-grass">
-          <div className="h-10 w-10 shrink-0"><Bola /></div>
+          <svg viewBox="-11 -11 22 22" className="h-10 w-10 shrink-0" aria-hidden><CartoonBall r={10} /></svg>
           <div className="t-display t-out text-left text-[13px] leading-tight">
             Você já fez {golsDemo} {golsDemo === 1 ? 'gol' : 'gols'} aqui fora. Escolha seu clube: daqui em diante cada gol soma no placar dele.
           </div>

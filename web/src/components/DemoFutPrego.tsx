@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api } from '../lib/api';
-import type { DemoPregoPartida, DemoPregoJogada } from '../lib/types';
+import type { DemoPregoPartida, DemoPregoJogada, DemoPregoGks } from '../lib/types';
 import { PregoBoard, PregoBall, type PregoBoardData } from './PregoBoard';
 import { sound } from '../lib/sound';
 import { somaChute, demo } from '../lib/demo';
@@ -34,9 +34,22 @@ const powerColor = (p: number) => (p > 0.8 ? '#F0413E' : p > 0.45 ? '#FFC63D' : 
 const EU = { primary: '#2EA8FF', secondary: '#123C8A' };
 const BOT = { primary: '#F0413E', secondary: '#7A1F1D' };
 
+/** O goleiro na boca do gol: peça redonda na cor do time, maior que os pregos. Bate na bola como um prego. */
+function Goleiro({ gk, cor }: { gk: { x: number; y: number; r: number }; cor: { primary: string; secondary: string } }) {
+  return (
+    <g transform={`translate(${gk.x} ${gk.y})`} pointerEvents="none">
+      <ellipse cx="1.4" cy="2.2" rx={gk.r} ry={gk.r * 0.8} fill="#000" opacity="0.28" />
+      <circle r={gk.r} fill={cor.primary} stroke={cor.secondary} strokeWidth="2.4" />
+      <circle r={gk.r} fill="url(#fp-metal)" />
+      <circle r={gk.r * 0.42} fill={cor.secondary} opacity="0.9" />
+    </g>
+  );
+}
+
 export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
   const [jogo, setJogo] = useState<DemoPregoPartida | null>(null);
   const [bola, setBola] = useState({ x: 150, y: 230 });
+  const [gks, setGks] = useState<DemoPregoGks | null>(null);
   const [aim, setAim] = useState<Aim | null>(null);
   const [fase, setFase] = useState<Fase>('jogando');
   const [golsBot, setGolsBot] = useState(0);
@@ -52,7 +65,7 @@ export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
 
   function novaPartida() {
     api.demoPrego()
-      .then((p) => { if (!vivo.current) return; setJogo(p); setBola(p.ball); setGolsBot(p.golsBot); setErroRede(false); setFase('jogando'); })
+      .then((p) => { if (!vivo.current) return; setJogo(p); setBola(p.ball); setGks(p.keepers); setGolsBot(p.golsBot); setErroRede(false); setFase('jogando'); })
       .catch(() => { if (vivo.current) setErroRede(true); });
   }
   useEffect(() => { novaPartida(); }, []);
@@ -115,6 +128,7 @@ export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
       if (!vivo.current) return;
       somaChute(r.meu.goal === 'top');
       track('demo.chutou', { gol: r.meu.goal === 'top', res: r.meu.goal ?? 'nada' });
+      setGks(r.keepersMeu);
       animar(r.meu.frames, () => {
         if (r.meu.goal === 'top') { // GOL: é o que a demonstração queria
           sound.play('goal');
@@ -136,9 +150,17 @@ export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
     window.setTimeout(() => {
       if (!vivo.current || !r.bot) return;
       setAviso(null);
+      setGks(r.keepersBot);
       animar(r.bot.frames, () => {
+        if (r.bot?.goal === 'top') { // gol contra do bot: o gol é seu
+          sound.play('goal');
+          setAviso({ texto: 'GOLAÇO!', bom: true });
+          window.setTimeout(() => { if (vivo.current) { setAviso(null); setFase('convite'); onGol?.(); } }, 1200);
+          return;
+        }
         if (r.bot?.goal === 'bottom') { sound.play('error'); setAviso({ texto: 'O BOT MARCOU!', bom: false }); }
         setGolsBot(r.golsBot);
+        setGks(r.keepers);
         window.setTimeout(() => { if (vivo.current) { setAviso(null); setFase('jogando'); } }, r.bot?.goal ? 1100 : 120);
       });
     }, r.meu.goal ? 900 : 120);
@@ -154,7 +176,7 @@ export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
             Crie sua conta grátis: cada gol seu entra na <b>artilharia</b> e soma no <b>placar do seu time</b> na
             disputa online da rodada, que fecha todo dia às 19h.
           </p>
-          <p className="mt-1 text-[12px] font-bold text-muted">No X1 você joga este FutPrego ao vivo contra outros jogadores, valendo gol para o seu clube.</p>
+          <p className="mt-2 text-[14px] font-extrabold leading-snug">Escolha seu time e jogue contra <b>adversários reais</b>: no X1 este mesmo FutPrego é ao vivo, contra outros jogadores, valendo gol para o seu clube.</p>
           <Link to="/cadastro" onClick={() => track('demo.cta', { gols: demo()?.gols ?? 1 })} className="btn btn-orange btn-lg mt-4 w-full">Escolher meu time</Link>
           <button onClick={novaPartida} className="btn btn-gray btn-sm mt-2 w-full no-drag">Jogar de novo</button>
         </div>
@@ -181,7 +203,7 @@ export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
             <span className="trap trap-orange text-[13px]">{golsBot} BOT</span>
           </div>
 
-          <div className="relative mx-auto h-[54vh] min-h-[300px] max-w-[380px]">
+          <div className="relative mx-auto h-[46vh] min-h-[260px] max-h-[420px] max-w-[380px]">
             <PregoBoard
               ref={svgRef}
               board={jogo.board as PregoBoardData}
@@ -190,7 +212,11 @@ export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
               onPointerDown={onDown}
               onPointerMove={onMove}
               onPointerUp={onUp}
-              ball={<g transform={`translate(${bola.x} ${bola.y})`}><PregoBall r={jogo.board.ball} /></g>}
+              ball={<>
+                {gks && <Goleiro gk={gks.top} cor={BOT} />}
+                {gks && <Goleiro gk={gks.bottom} cor={EU} />}
+                <g transform={`translate(${bola.x} ${bola.y})`}><PregoBall r={jogo.board.ball} /></g>
+              </>}
               overlay={aim && podeMirar ? (
                 <g pointerEvents="none">
                   <line x1={bola.x} y1={bola.y} x2={bola.x - aim.sx * aim.power * 38} y2={bola.y - aim.sy * aim.power * 38} stroke="#5B3A1A" strokeWidth="3" strokeLinecap="round" />
@@ -209,6 +235,7 @@ export function DemoFutPrego({ onGol }: { onGol?: () => void }) {
           <div className="panel mt-3 text-center text-navy-ink">
             <p className="t-display text-[16px]">{aim ? `Força ${Math.round(aim.power * 100)}%` : podeMirar ? 'Puxe e solte para dar o peteleco' : 'A bola está rolando…'}</p>
             <p className="mt-1 text-[12px] font-bold text-muted">Arraste para trás: a bola vai para o lado contrário. Você ataca o gol de cima — faça 1 gol e veja o que ele vale.</p>
+            <p className="mt-1 text-[13px] font-extrabold text-navy-ink">Escolha seu time e jogue contra adversários reais.</p>
           </div>
         </>
       )}

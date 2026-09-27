@@ -648,9 +648,12 @@ export interface AdminReportRow {
 export interface AdminReportsPage { status: 'OPEN' | 'RESOLVED'; page: number; pages: number; total: number; open: number; rows: AdminReportRow[] }
 
 /** FutPrego jogável da tela de entrada (sem login): tábua aberta, bot ruim, o 1º gol seu encerra. */
-export interface DemoPregoPartida { id: string; board: PregoBoardData; ball: { x: number; y: number }; golsBot: number }
+export interface DemoPregoGk { x: number; y: number; r: number }
+export interface DemoPregoGks { top: DemoPregoGk; bottom: DemoPregoGk }
+export interface DemoPregoPartida { id: string; board: PregoBoardData; ball: { x: number; y: number }; golsBot: number; keepers: DemoPregoGks }
 export interface DemoPregoJogada {
   meu: { frames: number[][]; goal: "top" | "bottom" | null };
   bot: { frames: number[][]; goal: "top" | "bottom" | null } | null;
   golsBot: number; fim: "gol" | null;
+  keepersMeu: DemoPregoGks; keepersBot: DemoPregoGks | null; keepers: DemoPregoGks;
 }

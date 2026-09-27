@@ -611,11 +611,24 @@ depois que o novo estiver estável. Não instalar nada dele.
   tábua? Rode `node scripts/demo-tabua-balance.js`** (pasta api/, sem banco): tem de dar "TUDO OK" — o **tiro reto no
   gol ENTRA**, ~10,6% das combinações de mira e força dão gol de primeira e há faixa contígua de 15° de mira. As tábuas
   com prego na boca ou no meio ficavam em 2,4% e o tiro reto batia num prego: a pessoa mirava no gol e não entendia.
-  **Bot ruim de propósito** (pedido do dono): mira no gol do jogador com erro de ±35° e força de 0,30 a 0,75 — nunca a
-  força cheia, então a bola morre no meio do caminho. **O primeiro gol SEU encerra** e abre o convite ("Faça seus gols
+  **GOLEIROS** (pedido do dono, 27/09/2026: "precisa do goleiro no futprego"): cada gol tem uma peça redonda na boca
+  (`GK` em routes/demo.js) que a bola bate como se fosse um prego — por `opts.extra`, que foi acrescentado ao
+  `simulateFlick` do futprego.js **sem mexer no X1** (quem não passa `extra` segue idêntico) — e que **muda de lugar a
+  cada peteleco**. Ele cobre parte da boca, nunca ela inteira: com o goleiro, o gol de primeira caiu de 10,6% para
+  **4,9%** e o tiro reto entra em 8 de 28 posições de goleiro/força (ou seja, depende de onde ele está) — continua
+  possível, que é o que o dono pediu.
+  **Bot ruim de propósito, mas que JOGA DE VERDADE** (dono, 27/09/2026: "o adversário/bot jogar de verdade; ele fez um
+  gol contra agora"): a 1ª versão errava ±35° e marcava contra, o que parecia bobo. Agora erra **±18°** e a direção é
+  forçada para baixo (o gol que ele ataca), então nunca sai rumo ao próprio gol; a força segue curta (0,42–0,82), e ele
+  quase sempre para no meio do caminho. Medido em 600 petelecos: **3 gols contra (0,5%)** contra 102 dele. E se o gol
+  contra acontecer, **conta para o jogador** e abre o convite — não é mais ignorado. **O primeiro gol SEU encerra** e abre o convite ("Faça seus gols
   contarem" → artilharia, placar do time, disputa da rodada → "Escolher meu time"). Gol contra e gol do bot só somam no
   placar dele e a bola volta ao meio. **Nada disso conta para o jogo**: sem login, sem banco, sem gol, dinheiro, nível
   ou ranking — e a tela diz isso.
+  **Logo HORIZONTAL na página inicial** (27/09/2026): o vertical custava 242 px de altura e empurrava o jogo para fora
+  da tela — num iPhone SE só **51%** da tábua aparecia sem rolar, e o jogo é justamente o gancho de quem vem do
+  anúncio. Deitado (`logo-h.webp`, 76 px) a tábua cabe **100%** no Pixel 7 e no iPhone SE. Continua sem animação de
+  entrada (é o LCP).
   **Celular — o arrasto NÃO pode rolar a página** (foi a reclamação do dono na versão anterior): a tábua leva
   **`no-drag`** (a rolagem por arraste do PC é global, `lib/dragScroll.ts`, e só respeita `canvas` e essa classe),
   `touch-none` (vem do PregoBoard) e **`preventDefault()` em todo pointerdown/move**. Conferido com toque de verdade
@@ -625,6 +638,8 @@ depois que o novo estiver estável. Não instalar nada dele.
   tábua…" para sempre, descartando toda resposta do servidor.
   **Medição:** eventos `demo.chutou` {gol, res} e `demo.cta` {gols}, e o `cadastro.ok` leva `demo` = quantos gols a
   pessoa fez antes de criar a conta — é por ele que o banco diz se a demonstração aumentou a conversão do anúncio.
+  **Texto:** "Escolha seu time e jogue contra adversários reais" embaixo do jogo e no convite (pedido do dono,
+  27/09/2026) — é o que liga a demonstração ao X1 ao vivo.
 - **Página da partida** (`/partida/:id`, pedido do dono, 14/09/2026; `services/match.js` → `GET /api/matches/:id`,
   pública; tela `screens/Match.tsx`): placar + domínio, "ao vivo · termina em" (fim da rodada) ou "encerrada · vitória/
   empate", artilheiro da partida, top 5 de cada time, gols hora a hora (gráfico espelhado nas cores dos times), gols por

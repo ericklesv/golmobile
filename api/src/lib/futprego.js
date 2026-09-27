@@ -63,6 +63,8 @@ const round1 = (v) => Math.round(v * 10) / 10;
  * ([x, y] a cada 1/30 s), onde parou e se entrou em algum gol ('top' = gol de cima, 'bottom' = de baixo).
  * `opts.closedGoals` = garantia da saída do meio: a boca do gol vira linha de fundo (a bola bate e volta),
  * então a 1ª jogada da partida nunca é gol, mesmo num caminho raríssimo que os pregos não pegaram.
+ * `opts.extra` = obstáculos redondos a mais ({x, y, r}), que a bola bate como se fossem pregos. Nasceu para os
+ * GOLEIROS da demonstração da tela de entrada (routes/demo.js, 27/09/2026); o X1 não passa nada e segue idêntico.
  */
 export function simulateFlick(start, dx, dy, power, board = BOARD, opts = {}) {
   const B = board, P = PHYS;
@@ -73,6 +75,7 @@ export function simulateFlick(start, dx, dy, power, board = BOARD, opts = {}) {
   const r = B.ball;
   const frames = [[round1(x), round1(y)]];
   const obstacles = [...B.nails.map((n) => ({ x: n.x, y: n.y, rr: r + B.nail })), ...B.posts.map((p) => ({ x: p.x, y: p.y, rr: r + B.post }))];
+  for (const e of opts.extra ?? []) obstacles.push({ x: e.x, y: e.y, rr: r + (e.r ?? 9) });
   let goal = null, hits = 0;
   const steps = Math.round(P.maxSec / P.dt);
   for (let i = 1; i <= steps; i++) {

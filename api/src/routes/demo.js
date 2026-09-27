@@ -44,29 +44,53 @@ router.use(rateLimit({
  *
  * `shape` conta o y a partir do PRÓPRIO gol; `makeBoard` espelha para o outro lado. São **5 pregos por time** em vez
  * dos 11–13 das tábuas de verdade, **nenhum na frente da boca** e o central deslocado para o lado (x=118) — é o que
- * abre o corredor do meio. Medido com `scripts/demo-tabua-balance.js`: **o tiro reto no gol ENTRA**, 10,6% das
- * combinações de mira e força dão gol de primeira e há uma faixa contígua de 15° que funciona. As tábuas com prego
- * na boca ou no meio ficavam em 2,4% e o tiro reto batia num prego — a pessoa mirava no gol e não entendia por quê.
+ * abre o corredor do meio. Conferido por `scripts/demo-tabua-balance.js`.
  */
 const TABUA_ABERTA = [[118, 190], [96, 86], [204, 86], [46, 160], [254, 160]];
 const board = makeBoard(TABUA_ABERTA, 'aberta', 'Aberta');
 const CENTRO = { x: board.W / 2, y: board.H / 2 };
-const partidas = new Map(); // id -> { ball, golsBot, expiresAt }
+const partidas = new Map(); // id -> { ball, golsBot, gks, expiresAt }
 
-/** O bot RUIM (pedido do dono): mira no gol do jogador, mas erra muito o ângulo e a força. */
-function peteleccoDoBot(ball) {
-  const alvo = { x: board.W / 2, y: board.H + 10 }; // o gol que o bot ataca é o de baixo
-  const ang = Math.atan2(alvo.y - ball.y, alvo.x - ball.x) + (Math.random() * 2 - 1) * 0.62; // ±35°
-  const power = 0.3 + Math.random() * 0.45; // nunca a força cheia: a bola morre no meio do caminho
-  return simulateFlick(ball, Math.cos(ang), Math.sin(ang), power, board);
+/**
+ * GOLEIROS (pedido do dono, 27/09/2026: "precisa do goleiro no futprego"). Cada gol tem uma peça redonda na boca
+ * que a bola bate como se fosse um prego (`opts.extra` em lib/futprego.js) e que MUDA DE LUGAR a cada peteleco —
+ * é o que dá a sensação de adversário defendendo. Ele cobre parte da boca, nunca ela inteira: sobra passagem dos
+ * dois lados, senão o gol de primeira que o dono pediu deixaria de existir.
+ */
+const GK = { r: 9, recuo: 17, margem: 11 };
+const gkX = () => {
+  const [a, b] = board.goalX;
+  const min = a + GK.r + GK.margem, max = b - GK.r - GK.margem;
+  return Math.round(min + Math.random() * (max - min));
+};
+const novosGoleiros = () => ({
+  top: { x: gkX(), y: GK.recuo, r: GK.r },              // defende o gol de cima (o que o jogador ataca)
+  bottom: { x: gkX(), y: board.H - GK.recuo, r: GK.r }, // defende o gol de baixo (o que o bot ataca)
+});
+const comoExtra = (gks) => [gks.top, gks.bottom];
+
+/**
+ * O bot: ruim de propósito (pedido do dono), mas **joga de verdade** — o erro de ±35° da primeira versão fazia ele
+ * marcar GOL CONTRA, o que parecia bobo. Agora erra ±18° e a direção é forçada para baixo (o gol que ele ataca),
+ * então a bola nunca sai rumo ao próprio gol. A força continua curta: ele quase sempre para no meio do caminho.
+ */
+function peteleccoDoBot(ball, gks) {
+  const alvo = { x: board.W / 2, y: board.H + 10 };
+  const base = Math.atan2(alvo.y - ball.y, alvo.x - ball.x);
+  const ang = base + (Math.random() * 2 - 1) * 0.31; // ±18°
+  let dx = Math.cos(ang), dy = Math.sin(ang);
+  if (dy <= 0.12) dy = 0.12 + Math.random() * 0.2; // nunca chuta para o próprio gol
+  const power = 0.42 + Math.random() * 0.4;
+  return simulateFlick(ball, dx, dy, power, board, { extra: comoExtra(gks) });
 }
 
 router.get('/futprego', (_req, res) => {
   limpaVencidos();
   if (partidas.size >= MAX_LANCES) return res.status(503).json({ error: 'ocupado', message: 'Tente de novo em instantes.' });
   const id = randomBytes(12).toString('hex');
-  partidas.set(id, { ball: { ...CENTRO }, golsBot: 0, expiresAt: Date.now() + TTL_MS });
-  res.json({ id, board, ball: CENTRO, golsBot: 0 });
+  const gks = novosGoleiros();
+  partidas.set(id, { ball: { ...CENTRO }, golsBot: 0, gks, expiresAt: Date.now() + TTL_MS });
+  res.json({ id, board, ball: CENTRO, golsBot: 0, keepers: gks });
 });
 
 router.post('/futprego', (req, res) => {
@@ -76,22 +100,28 @@ router.post('/futprego', (req, res) => {
   p.expiresAt = Date.now() + TTL_MS;
 
   // o peteleco do jogador: ele ataca o gol de CIMA (lado 0), e pode ser gol de primeira
-  const meu = simulateFlick(p.ball, Number(dx) || 0, Number(dy) || -1, Number(power) || 0, board);
+  const gksMeu = p.gks;
+  const meu = simulateFlick(p.ball, Number(dx) || 0, Number(dy) || -1, Number(power) || 0, board, { extra: comoExtra(gksMeu) });
   p.ball = meu.goal ? { ...CENTRO } : meu.end;
   if (meu.goal === 'top') {
     partidas.delete(id); // fez o gol: a demonstração acabou, o resto é o convite
-    return res.json({ meu: { frames: meu.frames, goal: 'top' }, bot: null, golsBot: p.golsBot, fim: 'gol' });
+    return res.json({ meu: { frames: meu.frames, goal: 'top' }, bot: null, golsBot: p.golsBot, keepersMeu: gksMeu, keepersBot: null, keepers: gksMeu, fim: 'gol' });
   }
-  // gol contra conta para o bot, e a bola volta ao meio
-  if (meu.goal === 'bottom') p.golsBot++;
+  if (meu.goal === 'bottom') p.golsBot++; // gol contra do jogador conta para o bot
 
-  const bot = peteleccoDoBot(p.ball);
+  const gksBot = novosGoleiros(); // entre os dois petelecos os goleiros se mexem
+  const bot = peteleccoDoBot(p.ball, gksBot);
   p.ball = bot.goal ? { ...CENTRO } : bot.end;
   if (bot.goal === 'bottom') p.golsBot++;
+  // gol contra do BOT é gol do jogador: com a mira nova quase não acontece, mas se acontecer vale
+  const meuPeloBot = bot.goal === 'top';
+  if (meuPeloBot) partidas.delete(id);
+  else p.gks = novosGoleiros();
   res.json({
     meu: { frames: meu.frames, goal: meu.goal },
     bot: { frames: bot.frames, goal: bot.goal },
-    golsBot: p.golsBot, fim: null,
+    golsBot: p.golsBot, keepersMeu: gksMeu, keepersBot: gksBot, keepers: p.gks ?? gksBot,
+    fim: meuPeloBot ? 'gol' : null,
   });
 });
 

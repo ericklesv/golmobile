@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { useSeo } from '../lib/seo';
 import { Shield } from '../components/Shield';
+import { PublicHeader } from '../components/PublicHeader';
 import { Panel, TopList, Spinner, Tabs } from '../components/ui';
 import { num, pct } from '../lib/format';
 import type { Serie, TeamPage } from '../lib/types';
@@ -25,10 +26,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-frame flex min-h-full flex-col px-5 pb-10" style={{ paddingTop: 'calc(var(--sat) + 20px)' }}>
       <div className="stadium-bg" />
-      <header className="relative flex items-center justify-between gap-3">
-        <Link to="/" aria-label="JogaGol — página inicial"><img src="/brand/logo-h.webp" alt="JogaGol" className="h-11 drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]" /></Link>
-        <Link to="/cadastro" className="btn btn-orange btn-sm">Jogar grátis</Link>
-      </header>
+      <PublicHeader />
       <div className="relative mt-5 flex flex-col gap-3">{children}</div>
       <p className="t-display t-out relative mt-6 text-center text-[11px]"><Link to="/">Como funciona</Link> · <Link to="/times">Os 48 times</Link> · <Link to="/brgol">O que foi o BRGOL</Link> · <Link to="/privacidade">Privacidade</Link></p>
     </div>

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSeo } from '../lib/seo';
+import { PublicHeader } from '../components/PublicHeader';
 
 /**
  * "O que foi o BRGOL" — página pública para quem procura o BRGOL no Google (Guilherme, 25/09/2026, auditoria de SEO:
@@ -40,10 +41,7 @@ export function BrgolScreen() {
   return (
     <div className="app-frame flex min-h-full flex-col px-5 pb-10" style={{ paddingTop: 'calc(var(--sat) + 20px)' }}>
       <div className="stadium-bg" />
-      <header className="relative flex items-center justify-between gap-3">
-        <Link to="/" aria-label="JogaGol — página inicial"><img src="/brand/logo-h.webp" alt="JogaGol" className="h-11 drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]" /></Link>
-        <Link to="/cadastro" className="btn btn-orange btn-sm">Jogar grátis</Link>
-      </header>
+      <PublicHeader />
 
       <article className="relative mt-5 flex flex-col gap-3">
         <div className="text-center">

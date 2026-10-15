@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useSeo } from '../lib/seo';
 import { PlacarDaRodada, RankingsDaVitrine } from '../components/MundoVivo';
 import { DemoFutPrego } from '../components/DemoFutPrego';
+import { PublicHeader } from '../components/PublicHeader';
 import { demo } from '../lib/demo';
 
 const slides = [
@@ -41,14 +42,14 @@ export function LandingScreen() {
   return (
     <div className="app-frame flex min-h-full flex-col px-5 pb-8" style={{ paddingTop: 'calc(var(--sat) + 18px)' }}>
       <div className="stadium-bg" />
-      <div className="relative text-center">
-        {/* Logo HORIZONTAL na página inicial (27/09/2026): o vertical ocupava 242 px de altura e empurrava o jogo
-            para fora da tela — num iPhone SE só 51% da tábua aparecia sem rolar, e o jogo é justamente o gancho de
-            quem chega pelo anúncio. Deitado ele custa 76 px e o FutPrego cabe inteiro. Continua sem animação de
-            entrada de propósito (25/09): é o maior elemento da tela, e começar invisível atrasava a pintura (LCP). */}
-        <img src="/brand/logo-h.webp" alt="JogaGol" width={800} height={267} fetchPriority="high"
-          className="mx-auto h-[76px] w-auto drop-shadow-[0_8px_14px_rgba(0,0,0,0.35)]" />
-        <div className="trap trap-orange mx-auto -mt-1 text-[12px] uppercase tracking-[0.25em]">chute · marque · suba</div>
+      {/* Logo HORIZONTAL na página inicial (27/09/2026): o vertical ocupava 242 px de altura e empurrava o jogo
+          para fora da tela — num iPhone SE só 51% da tábua aparecia sem rolar, e o jogo é justamente o gancho de
+          quem chega pelo anúncio. Continua sem animação de entrada de propósito (25/09): é o maior elemento da tela,
+          e começar invisível atrasava a pintura (LCP). Desde 15/10/2026 ele divide a linha com o "Entrar" (o mesmo
+          topo das outras páginas públicas): quem já tem conta não achava onde entrar. */}
+      <PublicHeader cadastro={false} logo="h-14" />
+      <div className="relative mt-1 text-center">
+        <div className="trap trap-orange mx-auto text-[12px] uppercase tracking-[0.25em]">chute · marque · suba</div>
         <h1 className="t-display t-out mt-3 text-[17px] leading-tight">O jogo de fazer gols online — grátis, no celular e no PC</h1>
       </div>
       {/* chutar antes de criar conta (27/09/2026, ver lib/demo.ts): é a primeira coisa que a pessoa pode FAZER na

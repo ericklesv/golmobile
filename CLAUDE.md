@@ -1227,6 +1227,11 @@ servidos pelo próprio Express em `/api/uploads/`.
   - **Página inicial sem login = a apresentação** (`screens/Landing.tsx`, com o placar ao vivo da vitrine no topo): o
     `Private` do `App.tsx` desenha a Landing em "/" em vez de mandar para /entrar. `/bem-vindo` é a mesma página (link
     antigo e URL final do anúncio do Google) com canonical "/". Endereço desconhecido sem login → "/".
+  - **"Entrar" sempre no topo** (dono, 15/10/2026: "já tenho conta e simplesmente não tem onde fazer login"): a
+    apresentação, `/brgol`, `/times` e `/time/<slug>` usam o mesmo topo, `components/PublicHeader.tsx` (logo + botão
+    azul "Entrar" + "Jogar grátis"; a apresentação esconde o "Jogar grátis" porque o convite lá é o jogo de
+    demonstração). Antes o único caminho para o login na página inicial era o "Já tenho conta" lá embaixo, depois do
+    jogo, do placar e dos cartões; /brgol e /times não tinham nenhum. **Página pública nova = `PublicHeader`.**
   - **Páginas públicas** para o Google: `/brgol` (`screens/Brgol.tsx`, a história do BRGOL 2008–2013 — fatos só do
     `docs/BRGOL_ORIGINAL.md`; nunca dizer que o JogaGol É o site original nem citar concorrente), `/times` e
     `/time/<slug>` sem login (`screens/PublicTeams.tsx`: placar, posição, campanha, artilheiros e títulos, da rota

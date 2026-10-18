@@ -5,7 +5,7 @@ import { handle, notFound, badRequest, idDeRota } from '../lib/errors.js';
 import { hourKey } from '../lib/time.js';
 import { currentRound, liveMatchForTeam, topScorers, records, matchPct, standingOrder } from '../services/league.js';
 import { teamView, publicView, periodGoals, nickFadeOf } from '../services/view.js';
-import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP, PARTY_PRIZES, BALL, FUTGOLF } from '../lib/rules.js';
+import { COOLDOWNS, TRAIL_MIN, MONEY, NERF_OFF, LEVELS, PRIZES, TRAIL_LINES, UNLOCK_LEVEL, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE, CHANCE_CAP, SKILLS, SKILL_COST, COOLDOWN_MIN, REBOUND_CHANCE, TERMO, QUIZ, STATS, CAMISAS, GANHAPERDE, FUTPREGO, BOTAO, X1, RESET_HOUR, MINIGAMES, CLUB, COMMUNITY, KIT_DESIGNS, SERIE_A_SWAP, PARTY_PRIZES, BALL, FUTGOLF, VIP_OFFLINE_AUTO } from '../lib/rules.js';
 import { PARTY_SEGMENTS } from '../services/play.js';
 import { catalogView, NICK_FADE_COLORS } from '../lib/items.js';
 import { cached, TURNSTILE_SITE_KEY, turnstileEnabled } from '../lib/security.js';
@@ -42,6 +42,7 @@ game.get('/meta', cached(10000), handle(async () => {
     cooldowns: COOLDOWNS, trailMin: TRAIL_MIN, money: MONEY, nerfOff: NERF_OFF, // destreza e nerf acabaram em 16/09/2026
     levels: LEVELS, prizes: PRIZES, trailLines: TRAIL_LINES, unlock: UNLOCK_LEVEL,
     serieASwap: SERIE_A_SWAP, // troca automática na Série A (time sem gol na rodada × quem mais marcou fora dela)
+    vipOfflineAuto: VIP_OFFLINE_AUTO, // VIP: chute direto sai mesmo com o app fechado ("Como jogar" fala disso)
     chances: { penalty: PENALTY_BASE_CHANCE, foul: FOUL_BASE_CHANCE, cap: CHANCE_CAP, rebound: REBOUND_CHANCE },
     // Pontaria e Chute: a tela monta o resto com me.skills (nível) e me.chance (acerto de verdade)
     // cada habilidade vai com o ponto de partida e o teto do PRÓPRIO efeito: tempo de recarga (ms),

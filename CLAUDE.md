@@ -131,9 +131,9 @@ depois que o novo estiver estável. Não instalar nada dele.
   minutos com a aba em SEGUNDO PLANO o Chrome **congela** a página — nenhum timer roda, nem o heartbeat —, então quem
   minimiza o navegador ou deixa a janela coberta por horas só marca 1 gol (o da recarga corrente) quando VOLTA para a
   aba. Com a janela do jogo VISÍVEL (em frente, ou num segundo monitor) o relógio roda direito e o gol sai a cada
-  recarga. Cobrir a aba congelada/fechada depende de chutar no SERVIDOR — o motor existe (`vipOfflineAutoKicks`) e
-  está **desligado** por decisão do dono: religar (para VIP ou para todos) é decisão dele, não nossa.
-  O chute do VIP com o app FECHADO está pronto mas **desligado** (`VIP_OFFLINE_AUTO = false`; ver "VIP pago").
+  recarga. Cobrir a aba congelada/fechada depende de chutar no SERVIDOR — o motor (`vipOfflineAutoKicks`) está
+  **LIGADO para VIP ativo desde 18/10/2026** (`VIP_OFFLINE_AUTO = true`; ver "VIP pago"). Para quem não é VIP, a aba
+  congelada continua só marcando ao voltar — estender a todos é decisão do dono.
 - Tempo: contadores do front usam `serverTime` (offset em `useAuth.now()`); não confiar no
   relógio do celular.
 - **Janela de "subiu de nível"** (`components/LevelUp.tsx`, montada no App para quem está logado; pedido do
@@ -242,10 +242,15 @@ depois que o novo estiver estável. Não instalar nada dele.
   escala da Loja onde 1 VIP = R$ 50 mil; aprovado pelo dono em 15/09/2026 — mudar só em `rules.js`). A tela mostra "+ R$ X de saldo" no pacote e no PIX confirmado.
   Teste no PC: `EFI_FAKE=1` (botão "Simular pagamento"; ignorado com NODE_ENV=production) — **nunca na VPS**.
   **Auto-chute com o app fechado para VIP ativo** (`vipOfflineAutoKicks` em `play.js`, a cada volta do
-  scheduler): quem tem `vipUntil` no futuro e não está suspenso chuta sozinho quando a recarga do
-  chute direto (5 min) acaba — mesma regra do `POST /api/play/auto`. **DESLIGADO por decisão do dono
-  (13/09/2026, "por enquanto")**: interruptor `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não
-  chuta e a tela do VIP esconde o benefício). Não religar sem o dono pedir.
+  scheduler = 30 s): quem tem `vipUntil` no futuro, não está suspenso nem excluído e **não é bot** chuta sozinho
+  quando a recarga do chute direto (5 min, 4:30 com a Recarga cheia) acaba — mesmo `autoKick` do
+  `POST /api/play/auto`, recarga reservada de forma atômica (app aberto chutando junto = 1 gol só). Desligado de
+  13/09/2026 ("por enquanto") até **18/10/2026, quando foi LIGADO** (pedido do Guilherme). Interruptor
+  `VIP_OFFLINE_AUTO` em `rules.js` (false = o scheduler não chuta e a tela do VIP e o "Como jogar" —
+  `/api/meta.vipOfflineAuto` — escondem o benefício). **Bots ficam de fora de propósito**: ganham VIP no 7º dia
+  da Presença, e um gol a cada 5 min, 24 h por dia, entregaria quem é bot (em 18/10 havia 3 bots com VIP ativo).
+  Só lê do banco quem chutou há mais que o piso (`COOLDOWN_MIN`), no máximo 500 por volta, quem espera há mais
+  tempo primeiro. **Mexeu? Rode `node scripts/test-vip-offline.js`** (pasta api/, banco LOCAL; "TUDO OK").
 - **Modo livre — SÓ no PC** (`MODO_LIVRE=1` no ambiente; `freeMode()` em rules.js, ignorado com NODE_ENV=production;
   pedido do dono em 14/09/2026 para gravar vídeo de propaganda): chutes sem recarga (`cooldownFor` = 0), sem captcha e
   minigames sem limite do dia (`routes/daily.js` apaga as partidas terminadas do jogador a cada chamada). Junte com

@@ -152,8 +152,8 @@ agacha → voo parabólico → extensão → queda; `/debug3d?pose=dive&at=0.4` 
    ativos. `GET/POST /api/shop/*`. Falta: mercado de chuteiras entre jogadores (depois).
 2. [~] **VIP pago** (13/09/2026, código pronto e testado com a Efí simulada): pacotes de dias de VIP
    por **PIX na Efí** (tela `/vip`, botão VIP do topo e atalho na Loja), dias guardados no banco de
-   VIPs e ativados quando o jogador quiser, e **auto-chute offline para VIP** (pronto, mas DESLIGADO por
-   decisão do dono — `VIP_OFFLINE_AUTO`). Preços aprovados pelo dono e Efí ligada na VPS (13/09/2026;
+   VIPs e ativados quando o jogador quiser, e **auto-chute offline para VIP** (desligado de 13/09 a
+   18/10/2026; **LIGADO em 18/10/2026** — `VIP_OFFLINE_AUTO`, bots de fora, `scripts/test-vip-offline.js`). Preços aprovados pelo dono e Efí ligada na VPS (13/09/2026;
    conta da plataforma Rifa Express + chave só do JogaGol). **Falta:** um PIX real de teste. Depois: cartão.
 3. **Uniformes reais nas cenas 3D** (pack Soccer Players Uniforms) — pipeline em `tools/3d/README.md`.
 4. [x] **Recuperação de senha por e-mail** (13/09/2026): `POST /api/auth/forgot|reset`, telas

@@ -160,6 +160,8 @@ export interface PartyStatus { bet: number; prize: number; prizes?: number[]; sp
 export interface Meta {
   /** Troca automática na Série A (SERIE_A_SWAP em rules.js): mínimo de gols na rodada para subir no lugar de um time da A sem gol. */
   serieASwap?: { minGoals: number };
+  /** VIP ativo: o chute direto sai mesmo com o app fechado (VIP_OFFLINE_AUTO no servidor). */
+  vipOfflineAuto?: boolean;
   /** Chave pública do Turnstile (captcha invisível no cadastro); null = desligado no servidor. */
   turnstileSiteKey?: string | null;
   /** Paleta do nick em degradê (VIP), NICK_FADE_COLORS em lib/items.js. */
@@ -549,7 +551,7 @@ export interface VipPurchase {
 export interface VipState {
   /** enabled = a compra por PIX está ligada no servidor; test = Efí simulada (só no PC de teste). */
   enabled: boolean; test: boolean; packs: VipPack[];
-  /** VIP chuta sozinho com o app fechado (VIP_OFFLINE_AUTO no servidor; desligado por ora). */
+  /** VIP chuta sozinho com o app fechado (VIP_OFFLINE_AUTO no servidor; ligado desde 18/10/2026). */
   offlineAuto: boolean;
   vip: { active: boolean; until: number | null; bank: number };
   pending: VipPurchase | null; history: VipPurchase[];

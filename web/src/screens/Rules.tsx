@@ -18,7 +18,7 @@ export function RulesScreen() {
       <div className="flex justify-center"><div className="ribbon ribbon-blue ribbon-lg">COMO JOGAR</div></div>
       <Panel title="OS CHUTES" ribbon="orange">
         <ul className="flex flex-col gap-2 text-[13px] font-bold text-navy-ink">
-          <li><b className="text-grass-deep">Chute direto</b> — com o app aberto, sai sozinho quando recarrega. Sempre gol: +{fmt(meta?.money.AUTO ?? 10)}.</li>
+          <li><b className="text-grass-deep">Chute direto</b> — com o app aberto, sai sozinho quando recarrega{meta?.vipOfflineAuto && <>; com <b>VIP</b>, sai mesmo com o app fechado</>}. Sempre gol: +{fmt(meta?.money.AUTO ?? 10)}.</li>
           <li><b className="text-gold-deep">Pênalti</b> — escolha esquerda, meio ou direita. O goleiro pula pra um canto. +{fmt(meta?.money.PENALTY ?? 40)}.</li>
           <li><b className="text-sky-deep">Falta</b> — por fora da barreira ou por cima. +{fmt(meta?.money.FOUL ?? 90)}.</li>
           <li><b className="text-orange-deep">Trilha</b> — drible a defesa, o meio e o ataque tocando em um jogador por linha. {thieves ? `Roubam a bola: ${thieves}.` : 'Em cada linha, alguém rouba a bola.'} +{fmt(meta?.money.TRAIL ?? 160)}.</li>

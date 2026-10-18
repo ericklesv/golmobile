@@ -6,7 +6,7 @@ import { prisma } from '../prisma.js';
 import { GameError, badRequest, cooldown as cooldownError } from '../lib/errors.js';
 import { hourKey, nextMidnight } from '../lib/time.js';
 import {
-  COOLDOWN_TOLERANCE_MS, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE,
+  COOLDOWN_TOLERANCE_MS, COOLDOWN_MIN, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE,
   CHANCE_CAP, skillBonus, PARTY_PRIZES, REBOUND_CHANCE, KIND_LABEL,
   cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip, rollBall, BALL } from '../lib/rules.js';
 import { ballNextOf, goalsOf, saveNextBall } from '../lib/bola.js';
@@ -154,19 +154,23 @@ export async function autoKick(userId) {
 
 /**
  * VIP ativo: o chute direto sai sozinho a cada recarga, MESMO com o app fechado (decisão do dono,
- * 13/09/2026 — era o item do roteiro do Guilherme). Chamado pelo scheduler; o autoKick reserva a recarga
- * de forma atômica, então nunca sai dois gols na mesma recarga (nem com o app aberto chutando junto).
+ * 13/09/2026 — era o item do roteiro do Guilherme; ligado em 18/10/2026). Chamado pelo scheduler; o autoKick
+ * reserva a recarga de forma atômica, então nunca sai dois gols na mesma recarga (nem com o app aberto
+ * chutando junto). Bot fica de fora: os bots ganham VIP na Presença, e um gol a cada 5 min, 24 h por dia,
+ * entregaria quem é bot — eles chutam pelo plano do dia deles (services/bots.js).
  */
 export async function vipOfflineAutoKicks(now = new Date()) {
   const users = await prisma.user.findMany({
     where: {
-      vipUntil: { gt: now },
+      vipUntil: { gt: now }, isBot: false, deletedAt: null,
       AND: [
         { OR: [{ bannedUntil: null }, { bannedUntil: { lt: now } }] },
-        { OR: [{ lastAutoAt: null }, { lastAutoAt: { lt: new Date(now.getTime() - 3 * 60_000) } }] }, // recarga VIP: 5 min (4 com boost)
+        // nenhuma recarga do chute direto fica abaixo do piso (cooldownFor): quem chutou antes disso nem é lido
+        { OR: [{ lastAutoAt: null }, { lastAutoAt: { lt: new Date(now.getTime() - COOLDOWN_MIN + COOLDOWN_TOLERANCE_MS) } }] },
       ],
     },
     select: { id: true }, take: 500,
+    orderBy: { lastAutoAt: { sort: 'asc', nulls: 'first' } }, // passou de 500, o que espera há mais tempo vai primeiro
   });
   let goals = 0;
   for (const u of users) {

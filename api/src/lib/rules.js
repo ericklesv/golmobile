@@ -655,12 +655,12 @@ export const VIP_PACKS = [
 /** O QR do PIX vale 30 min; no máximo 3 cobranças abertas por jogador ao mesmo tempo. */
 export const VIP_PIX = { expiresSec: 30 * 60, maxOpen: 3 };
 /**
- * Chute direto saindo sozinho com o app FECHADO para VIP ativo (vipOfflineAutoKicks, no scheduler).
- * DESLIGADO por decisão do dono (13/09/2026, "por enquanto"): com o app aberto o chute direto segue
- * automático para todos, como sempre. Para religar: true — o scheduler volta a chutar e a tela do VIP
- * volta a mostrar o benefício "Gol com o app fechado".
+ * Chute direto saindo sozinho com o app FECHADO para VIP ativo (vipOfflineAutoKicks, no scheduler, a cada 30 s).
+ * Ficou desligado de 13/09/2026 ("por enquanto") até 18/10/2026, quando foi LIGADO. Com o app aberto o chute
+ * direto segue automático para todos, como sempre. false = o scheduler para de chutar e a tela do VIP e o
+ * "Como jogar" (via /api/meta.vipOfflineAuto) deixam de mostrar o benefício "Gol com o app fechado".
  */
-export const VIP_OFFLINE_AUTO = false;
+export const VIP_OFFLINE_AUTO = true;
 
 // ─── Diretoria e contratações ────────────────────────────────────────────────
 // Decisões do dono (13/09/2026, com base no BRGOL original): time sem presidente → um VIP do time que já

@@ -30,7 +30,7 @@ export async function vipState(userId) {
   const history = await prisma.vipPurchase.findMany({ where: { userId, status: 'PAID' }, orderBy: { id: 'desc' }, take: 10 });
   return {
     enabled: efiReady(), test: efiFake(),
-    offlineAuto: VIP_OFFLINE_AUTO, // benefício "Gol com o app fechado" (desligado por ora)
+    offlineAuto: VIP_OFFLINE_AUTO, // benefício "Gol com o app fechado" (ligado desde 18/10/2026)
     packs: VIP_PACKS.map(packView),
     vip: { active: isVip(user, now.getTime()), until: user.vipUntil ? user.vipUntil.getTime() : null, bank: user.vipDays },
     pending: purchaseView(pending),

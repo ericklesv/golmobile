@@ -233,6 +233,10 @@ Feito 13/09: goleiro e barreira com **uniforme de verdade** (textura composta em
 - [ ] Copa do Brasil (mata-mata), Copa BRGOL (inscrição paga), Estaduais, Amistosos
 - [ ] Títulos/histórico de temporadas com página própria; Bola Prateada/Dourada
 - [ ] Avatar de corpo inteiro com uniforme do time (o pack Soccer Players Uniforms tem 430 uniformes/1650 skins texturizados), foto de perfil
+  - **Pedido de jogador (19/10/2026):** "Criar uma imagem do boneco também seria legal, estilo brgol mesmo" — o
+    boneco cartoon do BRGOL, vestindo o uniforme do time, no topo e de corpo inteiro no perfil
+    (`docs/BRGOL_ORIGINAL.md` §3). Hoje o perfil só tem a foto enviada pelo jogador. Para vestir o boneco, usar o
+    pintor de uniforme que já existe (`web/src/lib/kit.ts`: cores e desenho escolhidos pelo presidente).
 - [x] Uniformes reais nas cenas 3D (13/09/2026: textura composta em runtime com cores de kit
   livres — goleiro amarelo com luvas, barreira vermelha; falta usar as cores do time
   adversário de verdade e cabelo)

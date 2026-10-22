@@ -190,12 +190,18 @@ export async function resgatar(raw, now = new Date()) {
  * pessoa abrir) — todo e-mail ia aparecer como aberto. A imagem de rastreio do PRÓPRIO Brevo é de cada e-mail e só
  * carrega quando a pessoa abre; ele avisa aqui. E não dá para desligar o rastreio dele no plano grátis.
  * É aproximado: o Gmail carrega as imagens quando a pessoa abre (abrir de novo não conta); o Outlook pode bloquear
- * imagem de remetente novo (o clique marca a abertura também). `proxy_open` (abertura feita por robô de privacidade,
- * como o Mail do iPhone, sem a pessoa necessariamente abrir) não conta.
- * A linha vem do `X-Mailin-custom` (o id da EmailSend, mandado no envio); sem ele, do e-mail. Só a 1ª abertura avisa.
+ * imagem de remetente novo (o clique marca a abertura também). `proxy_open` = a imagem foi carregada por um servidor
+ * de imagens no meio do caminho: conta só quando é o do Gmail (`GoogleImageProxy`, que carrega quando a pessoa abre —
+ * em 22/10/2026 a abertura de uma prova no Gmail não chegou como `opened`); o do Mail do iPhone carrega sozinho na
+ * entrega, sem a pessoa abrir, e não conta.
+ * A linha vem do `X-Mailin-custom` (o id da EmailSend, mandado no envio); sem ele (o `proxy_open` não traz), do
+ * e-mail. Só a 1ª abertura avisa.
  */
+const ABRIU = ['opened', 'unique_opened'];
+const PROXY = ['proxy_open', 'unique_proxy_open'];
 export async function eventoBrevo(ev, now = new Date()) {
-  if (!ev || typeof ev !== 'object' || !['opened', 'unique_opened', 'spam'].includes(ev.event)) return null;
+  if (!ev || typeof ev !== 'object' || ![...ABRIU, ...PROXY, 'spam'].includes(ev.event)) return null;
+  if (PROXY.includes(ev.event) && !/GoogleImageProxy/i.test(String(ev.user_agent ?? ''))) return null;
   const email = typeof ev.email === 'string' ? ev.email.trim().toLowerCase() : '';
   const id = /^\d{1,9}$/.test(String(ev['X-Mailin-custom'] ?? '')) ? Number(ev['X-Mailin-custom']) : null;
   const sel = { id: true, campaign: true, email: true, userId: true, sentAt: true, openedAt: true, user: { select: { nick: true } } };

@@ -82,7 +82,12 @@ try {
   const rowO = await prisma.emailSend.findUnique({ where: { tokenHash: V.hashToken(await linha(outro)) } });
   check(!(await V.eventoBrevo({ event: 'opened', email: 'outra@pessoa.com', 'X-Mailin-custom': String(rowO.id) }, now)) && !(await prisma.emailSend.findUnique({ where: { id: rowO.id } })).openedAt, 'aviso com o e-mail de outra pessoa: ignorado');
   check(await V.eventoBrevo({ event: 'opened', email: outro.email }, now) === 'aberto', 'aviso sem o X-Mailin-custom: acha a linha pelo e-mail');
-  check(!(await V.eventoBrevo({ event: 'proxy_open', email: sumido.email }, now)) && !(await V.eventoBrevo({ event: 'click', email: sumido.email }, now)) && !(await V.eventoBrevo(null)) && !(await V.eventoBrevo('lixo')), 'proxy_open, click e lixo: ignorados, sem erro');
+  const iphone = await mk();
+  await linha(iphone);
+  check(!(await V.eventoBrevo({ event: 'proxy_open', email: iphone.email, user_agent: 'Mozilla/5.0' }, now)) && !(await V.eventoBrevo({ event: 'click', email: iphone.email }, now)) && !(await V.eventoBrevo(null)) && !(await V.eventoBrevo('lixo')), 'proxy_open do Mail do iPhone, click e lixo: ignorados, sem erro');
+  const gmail = await mk();
+  await linha(gmail);
+  check(await V.eventoBrevo({ event: 'unique_proxy_open', email: gmail.email, user_agent: 'Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)' }, now) === 'aberto', 'proxy_open do Gmail (GoogleImageProxy): conta como aberto');
   const spam = await mk();
   await linha(spam);
   check(await V.eventoBrevo({ event: 'spam', email: spam.email }, now) === 'spam' && !!(await prisma.user.findUnique({ where: { id: spam.id } })).emailOptOut, 'marcou como spam: sai da lista');

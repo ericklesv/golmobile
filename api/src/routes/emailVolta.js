@@ -28,7 +28,10 @@ emailVolta.post('/brevo/:segredo', async (req, res) => {
   if (!segredoOk(req.params.segredo)) return res.status(404).json({ error: 'not-found', message: 'Não encontrado.' });
   const eventos = Array.isArray(req.body) ? req.body.slice(0, 200) : [req.body];
   for (const ev of eventos) {
-    try { await eventoBrevo(ev); } catch (e) { console.error('[email] aviso do Brevo:', e?.message || e); }
+    try {
+      const r = await eventoBrevo(ev);
+      if (ev?.event !== 'delivered' && ev?.event !== 'request') console.log(`[email] Brevo: ${ev?.event} → ${r ?? 'ignorado'} · ${String(ev?.user_agent ?? '').slice(0, 70)}`);
+    } catch (e) { console.error('[email] aviso do Brevo:', e?.message || e); }
   }
   res.json({ ok: true });
 });

@@ -321,6 +321,7 @@ model EmailSend {
   tokenHash  String    @unique
   sentAt     DateTime?
   error      String?
+  openedAt   DateTime? // abriu o e-mail (a imagem de 1 pixel carregou; aproximado — ver services/emailVolta.js)
   clickedAt  DateTime?
   claimedAt  DateTime?
   returnedAt DateTime?

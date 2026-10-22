@@ -5,7 +5,8 @@
  *
  * - O VIP entra JÁ ATIVO (soma em `vipUntil`, como o 7º dia da Presença): não vai para o banco de dias, então não
  *   dá para doar nem trocar por saldo. Uma vez por jogador por campanha (`claimedAt` muda de null uma vez só).
- * - Telegram (pedido do Guilherme): cada clique que pega o VIP vira aviso com quem foi; o scheduler avisa também
+ * - Telegram (pedido do Guilherme): quem ABRIU o e-mail (imagem de 1 pixel, `abriu`) e cada clique que pega o VIP
+ *   viram aviso com quem foi; o scheduler avisa também
  *   quando a pessoa ENTRA no jogo depois do e-mail (o lastSeenAt passou do clique ou do envio) — é o que diz se o
  *   e-mail trouxe gente de volta.
  * - Campanha que termina em "-teste" (o e-mail de prova mandado para um admin) roda o caminho inteiro, mas não
@@ -103,7 +104,7 @@ export async function enviarUm(user, ctx, { campaign = VOLTA.campaign, to = user
   const unsubLink = `${ctx.base}/sair-dos-emails?t=${raw}`;
   const mail = renderVolta({
     ...ctx, nick: user.nick, goalsTotal: user.goalsTotal, lastSeenAt: user.lastSeenAt, team,
-    expiresAt: VOLTA.expiresAt, link, unsubLink,
+    expiresAt: VOLTA.expiresAt, link, unsubLink, pixel: `${ctx.base}/api/email/aberto/${raw}.gif`,
   });
   try {
     const sent = await sendMail({
@@ -138,6 +139,8 @@ export async function resgatar(raw, now = new Date()) {
   const teste = isTeste(row.campaign);
   const base = { nick: user.nick, days: VOLTA.vipDays, teste };
   if (!row.clickedAt) await prisma.emailSend.updateMany({ where: { id: row.id, clickedAt: null }, data: { clickedAt: now } });
+  // clicou sem a imagem ter carregado (Outlook bloqueia imagem de remetente novo): abriu também, sem outro aviso
+  if (!row.openedAt) await prisma.emailSend.updateMany({ where: { id: row.id, openedAt: null }, data: { openedAt: now } });
   if (row.claimedAt) return { ...base, status: 'ja-pegou', vipUntil: user.vipUntil };
   const perfil = `${tg.esc(user.team.name)} · ${user.goalsTotal.toLocaleString('pt-BR')} gols · não entrava desde ${quando(user.lastSeenAt)}`;
   if (now > VOLTA.expiresAt) {
@@ -174,6 +177,27 @@ export async function resgatar(raw, now = new Date()) {
   return { ...base, status: 'ok', vipUntil: res.until };
 }
 
+/**
+ * A imagem de 1 pixel do rodapé carregou = a pessoa ABRIU o e-mail (pedido do Guilherme: aviso no Telegram de quem
+ * abriu). Só a 1ª abertura conta e avisa. É aproximado: o Gmail busca a imagem quando a pessoa abre (e guarda; abrir
+ * de novo não chega aqui); quem bloqueia imagens (Outlook com remetente novo) abre sem a gente saber — o clique marca
+ * a abertura também —; o Mail do iPhone (proteção de privacidade) carrega sozinho na entrega, sem a pessoa abrir.
+ * Nunca lança erro: quem chama responde a imagem de qualquer jeito.
+ */
+export async function abriu(raw, now = new Date()) {
+  if (typeof raw !== 'string' || !/^[A-Za-z0-9_-]{20,64}$/.test(raw)) return false;
+  const row = await prisma.emailSend.findUnique({ where: { tokenHash: hashToken(raw) }, select: { id: true, campaign: true, sentAt: true, openedAt: true, user: { select: { nick: true } } } });
+  if (!row?.sentAt || row.openedAt) return false;
+  const won = await prisma.emailSend.updateMany({ where: { id: row.id, openedAt: null }, data: { openedAt: now } });
+  if (!won.count) return false;
+  const [opened, sent] = await Promise.all([
+    prisma.emailSend.count({ where: { campaign: row.campaign, openedAt: { not: null } } }),
+    prisma.emailSend.count({ where: { campaign: row.campaign, sentAt: { not: null } } }),
+  ]);
+  tg.info(`👀 ${isTeste(row.campaign) ? '<i>(teste)</i> ' : ''}<b>${tg.esc(row.user.nick)}</b> abriu o e-mail de volta (${tempo(now - row.sentAt)} depois do envio).\nAbriram ${opened} de ${sent} e-mails enviados`);
+  return true;
+}
+
 /** "Sair da lista" (rodapé e cancelar de um clique do Gmail): para de receber e-mail de campanha. */
 export async function sairDaLista(raw, now = new Date()) {
   const row = await linhaDoToken(raw);
@@ -208,9 +232,9 @@ export async function voltaSweep() {
 /** Números da campanha (script e Telegram). */
 export async function relatorio(campaign = VOLTA.campaign) {
   const c = (where) => prisma.emailSend.count({ where: { campaign, ...where } });
-  const [linhas, enviados, falhas, clicaram, pegaram, voltaram, sairam] = await Promise.all([
-    c({}), c({ sentAt: { not: null } }), c({ sentAt: null, error: { not: null } }), c({ clickedAt: { not: null } }),
-    c({ claimedAt: { not: null } }), c({ returnedAt: { not: null } }), c({ unsubAt: { not: null } }),
+  const [linhas, enviados, falhas, abriram, clicaram, pegaram, voltaram, sairam] = await Promise.all([
+    c({}), c({ sentAt: { not: null } }), c({ sentAt: null, error: { not: null } }), c({ openedAt: { not: null } }),
+    c({ clickedAt: { not: null } }), c({ claimedAt: { not: null } }), c({ returnedAt: { not: null } }), c({ unsubAt: { not: null } }),
   ]);
-  return { campaign, linhas, enviados, falhas, clicaram, pegaram, voltaram, sairam };
+  return { campaign, linhas, enviados, falhas, abriram, clicaram, pegaram, voltaram, sairam };
 }

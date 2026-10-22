@@ -97,7 +97,7 @@ export async function enviarUm(user, ctx, { campaign = VOLTA.campaign, to = user
   const old = await prisma.emailSend.findUnique({ where: { campaign_userId: { campaign, userId: user.id } } });
   if (old?.sentAt && !isTeste(campaign)) return { ok: false, error: 'já recebeu' };
   const row = old
-    ? await prisma.emailSend.update({ where: { id: old.id }, data: { tokenHash: hashToken(raw), email: to, error: null, sentAt: null, clickedAt: null, claimedAt: null, returnedAt: null, unsubAt: null } })
+    ? await prisma.emailSend.update({ where: { id: old.id }, data: { tokenHash: hashToken(raw), email: to, error: null, sentAt: null, openedAt: null, clickedAt: null, claimedAt: null, returnedAt: null, unsubAt: null } })
     : await prisma.emailSend.create({ data: { campaign, userId: user.id, email: to, tokenHash: hashToken(raw) } });
   const utm = `utm_source=email&utm_medium=email&utm_campaign=${encodeURIComponent(campaign)}`;
   const link = `${ctx.base}/voltar?t=${raw}&${utm}`;

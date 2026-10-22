@@ -1158,9 +1158,14 @@ servidos pelo próprio Express em `/api/uploads/`.
   `sed 's/^BRANCH=main/BRANCH=prod/' /usr/local/bin/brgol-deploy.sh | bash`. **Antes, avisar o outro
   colaborador**: se ele rodar o deploy padrão no meio, o `main` inteiro vai ao ar por cima (aconteceu em
   15/09 — o Futprego foi publicado por ele mesmo e o `prod` foi aposentado). Apagar o ramo `prod` depois.
-- **O jogo roda SOMENTE na VPS do Managol** (`root@187.127.17.121`, projeto em
+- **A VPS é compartilhada** (Hostinger KVM 8 desde 21/10/2026: Guilherme, Erickles e Caio, cada um com o seu
+  usuário — `gui@`, `erick@`, `caio@` — e `sudo`). **Antes do primeiro comando na VPS, leia
+  `/etc/vps/REGRAS.md` e `/etc/vps/PROJETOS.md`** (lá estão o mapa de todos os projetos da máquina, o que é de
+  quem e o que é proibido); quem chega pela primeira vez começa por `/etc/vps/COMECE-AQUI.md`. Toda mudança na VPS
+  vai para o diário: `sudo vps diario "jogagol: …"`.
+- **O jogo roda SOMENTE na VPS do Managol** (`187.127.17.121`, projeto em
   `/var/www/brgol/app`). Não existe ambiente local nem outra hospedagem. Todo deploy é
-  `bash /usr/local/bin/brgol-deploy.sh` na VPS, rodado manualmente via SSH (faz `git reset --hard
+  `sudo bash /usr/local/bin/brgol-deploy.sh` na VPS, rodado manualmente via SSH (faz `git reset --hard
   origin/main`, `npm ci`, `prisma migrate deploy`, **trava a busca do X1 e espera as partidas em andamento
   acabarem** (até 4 min; o que sobrar é cancelado com a aposta devolvida — ver "Trava de atualização" no X1),
   `pm2 restart brgol-api` e build do web). O script está em `tools/vps/brgol-deploy.sh` — mudou, copie para a
@@ -1188,17 +1193,13 @@ servidos pelo próprio Express em `/api/uploads/`.
   fatias em `docs/SPRITES_LAYERLAB.md`. Packs 3D da Unity ficam só na máquina do Guilherme;
   `tools/3d/README.md` gera os `.glb` que entram no repo.
 - **Não usamos GitHub Actions** (removido em 13/09/2026). Deploy é sempre manual, pela VPS:
-  `ssh -i <chave> root@187.127.17.121 'bash /usr/local/bin/brgol-deploy.sh'` — depois conferir
-  `https://jogagol.com.br/api/health`. Push no git **não** publica nada sozinho.
-- **Acesso à VPS (necessário para deployar; precisa da intervenção do Guilherme):**
-  1. Gerar uma chave: `ssh-keygen -t ed25519 -C "erick-brgol" -f ~/.ssh/id_ed25519_brgol`
-  2. Enviar para o Guilherme SOMENTE o conteúdo de `~/.ssh/id_ed25519_brgol.pub`
-     (nunca a chave privada).
-  3. O Guilherme adiciona a chave em `/root/.ssh/authorized_keys` na VPS.
-  4. Testar: `ssh -i ~/.ssh/id_ed25519_brgol root@187.127.17.121 'bash /usr/local/bin/brgol-deploy.sh'`
-  A VPS é compartilhada com o Managol e outros projetos (nginx, PM2, Postgres): mexer só em
-  `/var/www/brgol`, `/etc/nginx/sites-available/brgol`, PM2 `brgol-api` e banco `brgol`.
-  Enquanto não tiver acesso, faça o push e peça ao Guilherme para rodar o deploy.
+  `ssh -i ~/.ssh/id_ed25519_brgol erick@187.127.17.121 'sudo bash /usr/local/bin/brgol-deploy.sh'` — depois
+  conferir `https://jogagol.com.br/api/health`. Push no git **não** publica nada sozinho.
+- **Acesso à VPS**: o Erickles entra com o usuário `erick` (a mesma chave `erick-brgol` que entrava no root) e usa
+  `sudo` sem senha. Na primeira vez, a IA dele segue `/etc/vps/COMECE-AQUI.md` (regras, mapa e o que acrescentar
+  no CLAUDE.md global dele). A VPS tem outros projetos do Guilherme (Managol, clientes…): no JogaGol mexer só em
+  `/var/www/brgol`, `/etc/nginx/sites-available/brgol`, PM2 do usuário `brgol` e banco `brgol` — o resto segue
+  `/etc/vps/REGRAS.md`.
 - Segredos da API (`api/.env` na VPS) nunca vão para o git; `ADMIN_KEY` está lá para os
   endpoints `/api/admin/*`.
 

@@ -2,7 +2,7 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## Drible: o rebote da Trilha vira habilidade da Loja (22/10/2026) — no GitHub, aguardando publicação
+## Drible: o rebote da Trilha vira habilidade da Loja (22/10/2026) — publicado em 22/10 13:55 de Brasília (commit db28bbb)
 Pedido do Erickles: "seria mais justo se o rebote da trilha você conseguisse aumentar as chances na loja… daria um maior
 sentimento de progressão". A Trilha era o único chute sem habilidade (a Recarga não vale para ela e o rebote vinha só dos
 níveis 25 a 32). Agora: 5ª habilidade **Drible**, 6 degraus ("a trilha serão 6 níveis pra ficar full") até os mesmos 32%;
@@ -10,7 +10,9 @@ os níveis deixaram de dar rebote na Trilha (pênalti e falta seguem iguais); **
 (78 pontos) continuar alcançável. Quem já tinha: "perde e ganha pontos, podendo upar na loja e ficar com a mesma coisa" —
 a migração 0045 dá os pontos (`User.skillPointsBonus`) e manda a mensagem na caixa. Teste: `scripts/test-habilidades.js`.
 - [x] Habilidade, níveis novos, devolução de pontos e tela da Loja/Perfil.
-- [ ] Publicar (a migração roda sozinha no deploy) e avisar no grupo do Telegram.
+- [x] Publicar (a migração roda sozinha no deploy) e avisar no grupo do Telegram. Backup antes:
+  `/var/backups/brgol/antes-drible-2026-10-22.dump`. A migração deu pontos a 7 jogadores (6 com 3, 1 com 4; nenhum bot
+  estava no nível 25+) e mandou as 7 mensagens; aviso no grupo às 13:57.
 
 ## Futgolf — 3º jogo do X1 (23–24/09/2026) — ENTRA NO RODÍZIO em 24/09 às 19h (até lá, "Testar FutGolf" só dos admins)
 Aprovado pelo dono a partir das telas de exemplo (canvas "X1 Várzea e Footgolf"), com os pedidos: campo maior, powerups

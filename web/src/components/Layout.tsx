@@ -24,7 +24,8 @@ const tabs = [
   { to: '/rankings', label: 'Rankings', icon: '/ui/ico-ranking.png' },
   { to: '/loja', label: 'Loja', icon: '/ui/ico-goldpouch.png' },
   { to: '/time', label: 'Time', icon: '/ui/ico-clan.png' },
-  { to: '/perfil', label: 'Perfil', icon: 'avatar' },
+  // a aba do Perfil virou a Galeria de troféus (dono, 22/10/2026); o perfil abre pela foto no topo
+  { to: '/galeria', label: 'Troféus', icon: '/ui/ico-medal_gold.png' },
 ];
 
 export function Layout() {
@@ -122,7 +123,7 @@ export function Layout() {
               <NavLink to={t.to} end={t.end} className={({ isActive }) => `menu-btn flex flex-col items-center justify-center gap-0.5 py-0.5 transition ${isActive ? '' : 'opacity-80'}`}>
                 {({ isActive }) => (<>
                   <span className="relative">
-                    {t.icon === 'avatar' ? <Avatar url={me.avatarUrl} size={28} className={isActive ? 'animate-bob' : ''} /> : <img src={t.icon} alt="" className={`h-7 w-7 object-contain ${isActive ? 'animate-bob' : ''}`} />}
+                    <img src={t.icon} alt="" className={`h-7 w-7 object-contain ${isActive ? 'animate-bob' : ''}`} />
                     {t.to === '/time' && offers > 0 && <span className="absolute -right-2 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-orange-deep px-1 font-display text-[10px] leading-none text-white" aria-label={`${offers} propostas`}>{offers}</span>}
                   </span>
                   <span className={`t-display text-[9px] uppercase tracking-wide ${isActive ? 'text-orange-deep' : 'text-navy-ink'}`}>{t.label}</span>

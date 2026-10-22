@@ -20,6 +20,7 @@ import { x1Today } from '../realtime/x1.js';
 import { x1Ranking, x1Record } from '../services/x1.js';
 import { withBadges, badgesOf, topHistory } from '../services/badges.js';
 import { matchPage } from '../services/match.js';
+import { gallery } from '../services/gallery.js';
 
 export const game = Router();
 
@@ -208,6 +209,9 @@ game.get('/league/titles', cached(10000), handle(async () => {
   const titles = await prisma.title.findMany({ orderBy: [{ seasonId: 'desc' }, { competition: 'asc' }, { place: 'asc' }], include: { team: teamSel, season: { select: { number: true } } } });
   return titles.map((t) => ({ season: t.season.number, competition: t.competition, place: t.place, team: teamView(t.team) }));
 }));
+
+// Galeria de troféus (aba Troféus): campeões, artilharia e X1 das temporadas, recordes e artilheiros de rodada
+game.get('/gallery', cached(30000), handle(() => gallery()));
 
 // ─── Partida (página /partida/:id) ──────────────────────────────────────────
 game.get('/matches/:id', handle((req) => matchPage(idDeRota(req.params.id, 'Partida não encontrada.'))));

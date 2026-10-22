@@ -73,6 +73,29 @@ export interface Me {
 }
 
 /** Campanha no FutPrego (perfil e ranking): pontos = 3·V + 1·E − 2·D; `streak` = sequência atual sem perder, `best` = a maior. */
+/** Galeria de troféus (GET /api/gallery, services/gallery.js). As linhas de jogador usam o formato do TopList. */
+export interface GallerySeason {
+  number: number; startsAt: string; endsAt: string | null;
+  /** campeão e vice de cada série, na ordem A, B, C */
+  titles: { competition: string; champion: Team; vice: Team | null }[];
+  /** pódio da artilharia e do Ranking X1 (no X1, `goals` = pontos) */
+  scorers: TopRow[]; x1: TopRow[];
+}
+export interface GalleryRecord { scope: 'HOUR' | 'ROUND' | 'SEASON'; goals: number; nick: string; avatarUrl: string | null; nickColor: string | null; team: Team | null; season: number | null; setAt: string }
+export interface GalleryKing { round: number; userId: number; nick: string; avatarUrl: string | null; nickColor: string | null; nickFade?: NickFade; goals: number; team: TopRow['team'] | null }
+export interface Gallery {
+  /** temporadas fechadas, a mais nova primeiro */
+  seasons: GallerySeason[];
+  /** temporada em andamento: rodada atual e o artilheiro de cada rodada já fechada (a mais recente primeiro) */
+  current: { number: number; totalRounds: number; round: number | null; kings: GalleryKing[] } | null;
+  /** recordes de todos os tempos (hora, rodada, temporada) */
+  records: GalleryRecord[];
+  /** maiores campeões: títulos e vices por time */
+  hall: { team: Team; champion: number; vice: number; titles: { competition: string; count: number }[] }[];
+  /** quem mais vezes foi o artilheiro da rodada (`goals` = quantas vezes) */
+  kings: TopRow[];
+}
+
 export interface FutPregoStats {
   wins: number; draws: number; losses: number; played: number; points: number; streak: number; best: number;
   /** Só nos recortes com prêmio (rodada/temporada): tem o mínimo de partidas? e o que a posição entre os elegíveis paga agora. */

@@ -47,6 +47,7 @@ const PlayerScreen = tela(() => import('./screens/Player'), 'PlayerScreen');
 const RulesScreen = tela(() => import('./screens/Rules'), 'RulesScreen');
 const ShopScreen = tela(() => import('./screens/Shop'), 'ShopScreen');
 const ActiveScreen = tela(() => import('./screens/Active'), 'ActiveScreen');
+const GalleryScreen = tela(() => import('./screens/Gallery'), 'GalleryScreen');
 const LevelsScreen = tela(() => import('./screens/Levels'), 'LevelsScreen');
 const ChatScreen = tela(() => import('./screens/Chat'), 'ChatScreen');
 const MemoriaScreen = tela(() => import('./screens/Memoria'), 'MemoriaScreen');
@@ -154,6 +155,7 @@ export default function App() {
           <Route path="/time" element={<TeamScreen />} />
           <Route path="/time/:slug" element={<TeamScreen />} />
           <Route path="/perfil" element={<ProfileScreen />} />
+          <Route path="/galeria" element={<GalleryScreen />} />
           <Route path="/loja" element={<ShopScreen />} />
           <Route path="/vip" element={<VipScreen />} />
           <Route path="/propostas" element={<OffersScreen />} />

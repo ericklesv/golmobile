@@ -1,4 +1,4 @@
-import type { DemoPregoPartida, DemoPregoJogada, Vitrine, TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { Gallery, DemoPregoPartida, DemoPregoJogada, Vitrine, TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -117,6 +117,7 @@ export const api = {
   league: () => req<League>('GET', '/api/league'),
   round: (n: number) => req<{ round: any; matches: any[] }>('GET', `/api/league/rounds/${n}`),
   titles: () => req<any[]>('GET', '/api/league/titles'),
+  gallery: () => req<Gallery>('GET', '/api/gallery'),
   team: (slug: string) => req<TeamPage>('GET', `/api/teams/${slug}`),
   player: (nick: string) => req<PublicPlayer>('GET', `/api/players/${encodeURIComponent(nick)}`),
   chat: (room: ChatRoom, after = 0) => req<ChatPage>('GET', `/api/chat/${room}${after ? `?after=${after}` : ''}`),

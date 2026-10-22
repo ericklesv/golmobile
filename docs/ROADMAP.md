@@ -2,6 +2,15 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## Galeria de troféus no lugar da aba Perfil (22/10/2026) — no GitHub, aguardando publicação
+Pedido de jogadores, trazido pelo dono: sentiram falta de uma "galeria de troféus" com os campeões e os artilheiros das
+temporadas. A aba Perfil virou **Troféus** (`/galeria`); o perfil continua abrindo pela foto/nick no topo. A estante
+mostra as taças dos campeões A/B/C da temporada escolhida (e os vices); depois artilheiros, X1 da temporada, recordes
+de todos os tempos, maiores campeões, o artilheiro de cada rodada da temporada atual e os "reis da rodada". Só lê o que
+já é congelado no fechamento (sem migração). Teste: `scripts/test-galeria.js`.
+- [x] Rota `/api/gallery`, tela, aba nova e teste.
+- [ ] Publicar e avisar no grupo do Telegram.
+
 ## Drible: o rebote da Trilha vira habilidade da Loja (22/10/2026) — publicado em 22/10 13:55 de Brasília (commit db28bbb)
 Pedido do Erickles: "seria mais justo se o rebote da trilha você conseguisse aumentar as chances na loja… daria um maior
 sentimento de progressão". A Trilha era o único chute sem habilidade (a Recarga não vale para ela e o rebote vinha só dos

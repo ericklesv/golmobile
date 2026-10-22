@@ -1191,8 +1191,14 @@ servidos pelo próprio Express em `/api/uploads/`.
   headless/puppeteer-core (ver `tools/`); se não der para ver, dizer que não viu.
 - Próximos passos combinados estão em **`docs/ROADMAP.md` → "Próximos passos"**. Seguir a ordem.
 - Referência do concorrente (o que copiar/adaptar/descartar): `docs/CONCORRENTE_BRGOL_ONLINE.md`.
-- UI: telas dentro do `Layout` (header + 6 abas: Jogar, Liga, Rankings, Loja, Time, Perfil);
-  o header leva ao perfil e mostra dinheiro e VIP. Rolagem por arraste no PC é global
+- UI: telas dentro do `Layout` (header + 6 abas: Jogar, Liga, Rankings, Loja, Time, Troféus);
+  o header leva ao perfil (a foto e o nick) e mostra dinheiro e VIP. **A aba Troféus (`/galeria`, `screens/Gallery.tsx`)
+  tomou o lugar da aba Perfil em 22/10/2026** (pedido de jogadores via dono): estante com as taças dos campeões A/B/C
+  da temporada (e os vices), artilheiros e premiados do X1 da temporada, recordes de todos os tempos, maiores
+  campeões, artilheiro de cada rodada da temporada em andamento e quem mais vezes foi artilheiro da rodada.
+  `GET /api/gallery` (`services/gallery.js`) só LÊ o que os fechamentos já congelam (`Title`, `Season/Round.topJson`,
+  `Season.x1Json`, `Record`) — nada novo é gravado. Teste: `scripts/test-galeria.js` (cria as temporadas 9001/9002
+  no banco local e apaga; `--manter` deixa para olhar a tela, `--limpar` apaga). Rolagem por arraste no PC é global
   (`web/src/lib/dragScroll.ts`) — botões que não podem iniciar arraste usam a classe `no-drag`.
 
 ## Para o colaborador (ericklesv) e sua IA

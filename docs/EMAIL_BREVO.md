@@ -87,6 +87,22 @@ SMTP_PASS=<chave>
 MAIL_FROM="JogaGol <nao-responda@jogagol.com.br>"
 ```
 
+**IP autorizado.** O Brevo recusa o SMTP de servidor que ele não conhece (`525 5.7.1 Unauthorized IP address`).
+Libere o IP da VPS, **187.127.17.121**, em ⚙ → **Segurança** → **IPs autorizados** (<https://app.brevo.com/security/authorised_ips>).
+Cuidado: o botão "adicionar meu IP atual" põe o IP do SEU PC, não o da VPS (foi o que aconteceu em 22/10/2026).
+
+## 4b. Aviso de quem abriu (webhook)
+
+O Brevo **reescreve todos os links** (passam por `sendibt2.com`) e **troca as imagens por cópias dele**, baixadas na
+hora do envio — no plano grátis isso não desliga. Por isso imagem de rastreio nossa não serve (todo e-mail apareceria
+como aberto no envio). Quem mede a abertura é a imagem do próprio Brevo, e ele avisa a API:
+
+1. Na VPS, `BREVO_WEBHOOK_SECRET` no `api/.env` (um texto aleatório longo) e reiniciar a API.
+2. Brevo → **Transacional** → **Configurações** → **Webhooks** (ou ⚙ → Webhooks) → **Adicionar webhook**:
+   - URL: `https://jogagol.com.br/api/email/brevo/<BREVO_WEBHOOK_SECRET>`
+   - Eventos: **Aberto** (Opened), **Primeira abertura** (Unique opened) e **Spam** (Complaint).
+3. Cada abertura vira "👀 fulano abriu o e-mail de volta" no Telegram; spam tira a pessoa da lista.
+
 ## 5. Conferir
 
 1. Prova da campanha para um e-mail nosso (pasta api/ na VPS, usuário brgol, com o .env carregado):

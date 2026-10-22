@@ -4,25 +4,33 @@
  * POST /api/email/sair {t}    — "Sair da lista" do rodapé (página /sair-dos-emails).
  * POST /api/email/sair?t=…    — "cancelar inscrição" de um clique do Gmail/Yahoo (RFC 8058: corpo
  *                               `List-Unsubscribe=One-Click`, o token vem no endereço).
- * GET /api/email/aberto/<t>.gif — a imagem de 1 pixel do rodapé: marca que o e-mail foi ABERTO (e avisa no Telegram).
- * Fora isso, nada aqui responde a GET: robô que abre link de e-mail para conferir (antivírus, Outlook) não resgata nem
- * tira ninguém da lista.
+ * POST /api/email/brevo/<BREVO_WEBHOOK_SECRET> — aviso do Brevo (webhook dos e-mails transacionais): quem ABRIU o
+ *                               e-mail e quem marcou como spam (services/emailVolta.js → eventoBrevo).
+ * Nada aqui responde a GET: robô que abre link de e-mail para conferir (antivírus, Outlook) não resgata nem tira
+ * ninguém da lista.
  */
+import { timingSafeEqual } from 'crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { handle } from '../lib/errors.js';
-import { abriu, resgatar, sairDaLista } from '../services/emailVolta.js';
+import { eventoBrevo, resgatar, sairDaLista } from '../services/emailVolta.js';
 
 export const emailVolta = Router();
 
-// GIF transparente de 1x1
-const PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+const segredoOk = (s) => {
+  const a = Buffer.from(String(s ?? '')), b = Buffer.from(process.env.BREVO_WEBHOOK_SECRET || '');
+  return b.length >= 16 && a.length === b.length && timingSafeEqual(a, b);
+};
 
-// Antes do limite por IP de propósito: o Gmail busca as imagens de TODOS os e-mails pelos mesmos servidores dele, e o
-// limite de 30 em 15 min jogaria fora as aberturas. Responde a imagem sempre, mesmo com token ruim (nada a esconder).
-emailVolta.get('/aberto/:arq', (req, res) => {
-  res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate, private' }).end(PIXEL);
-  abriu(String(req.params.arq).replace(/\.gif$/, '')).catch((e) => console.error('[email] abertura:', e?.message || e));
+// Antes do limite por IP de propósito: o Brevo manda os avisos de todo mundo dos mesmos servidores. Responde 200 a
+// qualquer evento (o que não interessa é ignorado), senão ele fica reenviando.
+emailVolta.post('/brevo/:segredo', async (req, res) => {
+  if (!segredoOk(req.params.segredo)) return res.status(404).json({ error: 'not-found', message: 'Não encontrado.' });
+  const eventos = Array.isArray(req.body) ? req.body.slice(0, 200) : [req.body];
+  for (const ev of eventos) {
+    try { await eventoBrevo(ev); } catch (e) { console.error('[email] aviso do Brevo:', e?.message || e); }
+  }
+  res.json({ ok: true });
 });
 
 emailVolta.use(rateLimit({

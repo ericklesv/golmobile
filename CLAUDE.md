@@ -959,12 +959,14 @@ depois que o novo estiver estável. Não instalar nada dele.
   em que saiu, escudo/posição do time, gols da carreira, "o que mudou desde" só com o que a pessoa não viu) e tem a
   frase do dono "O JogaGol está mais vivo do que nunca!". Fora do público: bot, admin, banido, quem saiu da lista e
   e-mail descartável/de teste (`NAO_MANDA` + a lista do cadastro). **Telegram** (pedido do Guilherme, para medir o
-  efeito): quem ABRIU o e-mail ("👀 fulano abriu… · abriram N de M" — imagem de 1 pixel no rodapé,
-  `GET /api/email/aberto/<token>.gif` → `abriu()`, coluna `EmailSend.openedAt`, migração 0047; só a 1ª abertura; é
-  APROXIMADO: o Gmail busca a imagem quando a pessoa abre, o Outlook pode bloquear imagem de remetente novo — o clique
-  marca a abertura também — e o Mail do iPhone carrega sozinho na entrega; a rota fica ANTES do limite por IP porque o
-  Gmail busca as imagens de todo mundo pelos mesmos servidores), cada clique que pega o VIP ("📧 fulano clicou… ·
-  clique N de M") e, pelo `voltaSweep` do scheduler (2 min),
+  efeito): quem ABRIU o e-mail ("👀 fulano abriu… · abriram N de M"; coluna `EmailSend.openedAt`, migração 0047; só a
+  1ª abertura), que vem do **aviso do Brevo** (webhook dos transacionais → `POST /api/email/brevo/<BREVO_WEBHOOK_SECRET>`
+  → `eventoBrevo`, que acha a linha pelo `X-Mailin-custom` = id da EmailSend mandado no envio; `spam` tira da lista).
+  **Não usar imagem de rastreio nossa**: o Brevo troca TODAS as imagens do e-mail por cópias dele baixadas na hora do
+  envio (medido em 22/10/2026: a imagem de 1 pixel foi buscada 40 s depois do envio, sem ninguém abrir) e reescreve os
+  links por `sendibt2.com` — não dá para desligar no plano grátis. A abertura é aproximada (Outlook pode bloquear
+  imagem; o clique marca a abertura também; `proxy_open` do Mail do iPhone não conta). Cada clique que pega o VIP
+  ("📧 fulano clicou… · clique N de M") e, pelo `voltaSweep` do scheduler (2 min),
   cada um que ENTROU no jogo depois do e-mail ("✅ fulano voltou a jogar", com ou sem clique — `lastSeenAt` passou do
   clique/envio; só login, heartbeat e X1 mexem no lastSeenAt). O VIP do e-mail liga o chute com o app fechado na
   hora (decisão do Guilherme: deixar assim). As rotas são só POST (robô de antivírus que abre o link não resgata nem
@@ -1159,7 +1161,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/x1?page=` (ou `/futprego`) · `GET /api/painel/multicontas?page=&q=` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|x1-rodada|x1-temporada|x1-geral`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `GET|POST /api/demo/futprego` (FutPrego jogável da tela de entrada, SEM login; não conta gol para ninguém)
-`POST /api/email/voltar{t}|sair{t}` (links do e-mail de volta, SEM login: resgata os 7 dias de VIP · sai da lista; `sair?t=` também é o cancelar de um clique do Gmail) · `GET /api/email/aberto/<t>.gif` (imagem de 1 pixel: marca que abriu)
+`POST /api/email/voltar{t}|sair{t}` (links do e-mail de volta, SEM login: resgata os 7 dias de VIP · sai da lista; `sair?t=` também é o cancelar de um clique do Gmail) · `POST /api/email/brevo/<segredo>` (aviso do Brevo: abriu / spam)
 `GET /api/x1/status` (jogo do dia, desafios abertos, jogando) · WebSocket `/api/ws/x1?token=&mode=lobby|game` (X1: convite, partida, fim)
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

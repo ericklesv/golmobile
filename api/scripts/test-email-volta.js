@@ -1,7 +1,7 @@
 /**
  * E-mail de volta (services/emailVolta.js) direto no banco LOCAL: quem entra no público, o VIP do botão caindo uma
  * vez só (inclusive com dois cliques ao mesmo tempo), somando no VIP que a pessoa já tinha, campanha de teste sem
- * crédito, prazo vencido, abertura (imagem de 1 pixel), sair da lista e o aviso de "voltou a jogar". Não manda e-mail
+ * crédito, prazo vencido, abertura (aviso do Brevo), sair da lista e o aviso de "voltou a jogar". Não manda e-mail
  * nenhum. Cria jogadores ev…
  * e apaga no fim.
  *
@@ -59,9 +59,8 @@ try {
   const ctx = await V.contexto(now);
   const t = ctx.teams.get(team.id);
   check(!!t && t.pos >= 1 && t.n >= t.pos, `contexto: ${t?.name} em ${t?.pos}º de ${t?.n} na Série ${t?.serie}, rodada ${ctx.roundNumber}/${ctx.roundsTotal}`);
-  const m = renderVolta({ ...ctx, nick: sumido.nick, goalsTotal: 1234, lastSeenAt: sumido.lastSeenAt, team: t, expiresAt: V.VOLTA.expiresAt, link: 'https://x/voltar?t=a', unsubLink: 'https://x/sair?t=a', pixel: 'https://x/api/email/aberto/a.gif' });
+  const m = renderVolta({ ...ctx, nick: sumido.nick, goalsTotal: 1234, lastSeenAt: sumido.lastSeenAt, team: t, expiresAt: V.VOLTA.expiresAt, link: 'https://x/voltar?t=a', unsubLink: 'https://x/sair?t=a' });
   check(m.html.includes(sumido.nick) && m.html.includes('mais vivo do que nunca') && m.text.includes('1.234 gols'), 'e-mail tem o nick, a frase do dono e os gols da carreira');
-  check(m.html.includes('src="https://x/api/email/aberto/a.gif" width="1" height="1"'), 'e-mail leva a imagem de 1 pixel da abertura');
   check(!/undefined|NaN|\[object/.test(m.html + m.text + m.subject), 'nada de undefined/NaN no e-mail');
   const semSmtp = await V.enviarUm(sumido, ctx);
   const rowFalha = await prisma.emailSend.findUnique({ where: { campaign_userId: { campaign: V.VOLTA.campaign, userId: sumido.id } } });
@@ -69,14 +68,24 @@ try {
   check((await V.publico(now)).some((u) => u.id === sumido.id), 'quem falhou continua no público (o próximo envio tenta de novo)');
   await prisma.emailSend.delete({ where: { id: rowFalha.id } });
 
-  // ── abriu ──
+  // ── abriu (aviso do Brevo) ──
   const raw = await linha(sumido);
   check(!(await V.publico(now)).some((u) => u.id === sumido.id), 'quem já recebeu sai do público (rodar o envio de novo não repete)');
-  const ab1 = await V.abriu(raw, now);
-  const ab2 = await V.abriu(raw, new Date(now.getTime() + 60_000));
+  const rowS = await prisma.emailSend.findFirst({ where: { userId: sumido.id } });
+  const ts = Math.floor(now.getTime() / 1000);
+  const ev = (event, extra = {}) => ({ event, email: sumido.email.toUpperCase(), 'X-Mailin-custom': String(rowS.id), ts_event: ts, ...extra });
+  const [ab1, ab2] = await Promise.all([V.eventoBrevo(ev('opened'), now), V.eventoBrevo(ev('unique_opened'), now)]);
+  const ab3 = await V.eventoBrevo(ev('opened', { ts_event: ts + 60 }), now);
   const rowAb = await prisma.emailSend.findFirst({ where: { userId: sumido.id } });
-  check(ab1 && !ab2 && perto(rowAb.openedAt, now), 'abriu o e-mail: marca a 1ª abertura, a 2ª não muda nem avisa');
-  check(!(await V.abriu('nao-existe-esse-token-aqui-1234')) && !(await V.abriu('<script>')) && !(await V.abriu(undefined)), 'abertura com token ruim: ignorada, sem erro');
+  check([ab1, ab2].filter((x) => x === 'aberto').length === 1 && !ab3 && perto(rowAb.openedAt, now), 'abriu: "opened" + "unique_opened" juntos marcam UMA abertura; abrir de novo não avisa');
+  const outro = await mk();
+  const rowO = await prisma.emailSend.findUnique({ where: { tokenHash: V.hashToken(await linha(outro)) } });
+  check(!(await V.eventoBrevo({ event: 'opened', email: 'outra@pessoa.com', 'X-Mailin-custom': String(rowO.id) }, now)) && !(await prisma.emailSend.findUnique({ where: { id: rowO.id } })).openedAt, 'aviso com o e-mail de outra pessoa: ignorado');
+  check(await V.eventoBrevo({ event: 'opened', email: outro.email }, now) === 'aberto', 'aviso sem o X-Mailin-custom: acha a linha pelo e-mail');
+  check(!(await V.eventoBrevo({ event: 'proxy_open', email: sumido.email }, now)) && !(await V.eventoBrevo({ event: 'click', email: sumido.email }, now)) && !(await V.eventoBrevo(null)) && !(await V.eventoBrevo('lixo')), 'proxy_open, click e lixo: ignorados, sem erro');
+  const spam = await mk();
+  await linha(spam);
+  check(await V.eventoBrevo({ event: 'spam', email: spam.email }, now) === 'spam' && !!(await prisma.user.findUnique({ where: { id: spam.id } })).emailOptOut, 'marcou como spam: sai da lista');
   const semImagem = await mk();
   await V.resgatar(await linha(semImagem), now);
   check(!!(await prisma.emailSend.findFirst({ where: { userId: semImagem.id } })).openedAt, 'clicou sem a imagem ter carregado: conta como aberto também');

@@ -12,14 +12,14 @@ nunca!"). Teste: `scripts/test-email-volta.js`.
 - [ ] Publicar, mandar a prova para gclithg@gmail.com, conferir SPF/DKIM/DMARC e o "esqueci a senha".
 - [ ] Disparar (`node scripts/email-volta.js enviar`) e avisar no grupo; acompanhar com `relatorio`.
 
-## Galeria de troféus no lugar da aba Perfil (22/10/2026) — no GitHub, aguardando publicação
+## Galeria de troféus no lugar da aba Perfil (22/10/2026) — publicada em 22/10
 Pedido de jogadores, trazido pelo dono: sentiram falta de uma "galeria de troféus" com os campeões e os artilheiros das
 temporadas. A aba Perfil virou **Troféus** (`/galeria`); o perfil continua abrindo pela foto/nick no topo. A estante
 mostra as taças dos campeões A/B/C da temporada escolhida (e os vices); depois artilheiros, X1 da temporada, recordes
 de todos os tempos, maiores campeões, o artilheiro de cada rodada da temporada atual e os "reis da rodada". Só lê o que
 já é congelado no fechamento (sem migração). Teste: `scripts/test-galeria.js`.
 - [x] Rota `/api/gallery`, tela, aba nova e teste.
-- [ ] Publicar e avisar no grupo do Telegram.
+- [x] Publicada em 22/10 (deploy ba63f35, junto com o e-mail "volta" do Guilherme) e avisada no grupo do Telegram.
 
 ## Drible: o rebote da Trilha vira habilidade da Loja (22/10/2026) — publicado em 22/10 13:55 de Brasília (commit db28bbb)
 Pedido do Erickles: "seria mais justo se o rebote da trilha você conseguisse aumentar as chances na loja… daria um maior

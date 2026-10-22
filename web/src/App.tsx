@@ -66,6 +66,9 @@ const MatchScreen = tela(() => import('./screens/Match'), 'MatchScreen');
 // páginas públicas para o Google (25/09/2026): a história do BRGOL e os times
 const BrgolScreen = tela(() => import('./screens/Brgol'), 'BrgolScreen');
 const TeamsIndexScreen = tela(() => import('./screens/PublicTeams'), 'TeamsIndexScreen');
+// links do e-mail de volta (22/10/2026): resgate do VIP e "sair da lista", com ou sem login
+const VoltarScreen = tela(() => import('./screens/Voltar'), 'VoltarScreen');
+const SairEmailsScreen = tela(() => import('./screens/Voltar'), 'SairEmailsScreen');
 const PublicTeamScreen = lazy(() => import('./screens/PublicTeams').then((m) => ({ default: m.PublicTeamScreen })));
 // Cenas 3D (three.js ~260 KB gz) só carregam quando o jogador abre o pênalti/falta
 const PenaltyScreen = lazy(() => import('./screens/Penalty').then((m) => ({ default: m.PenaltyScreen })));
@@ -148,6 +151,8 @@ export default function App() {
         <Route path="/excluir-conta" element={<DeleteAccountInfoScreen />} />
         <Route path="/brgol" element={<BrgolScreen />} />
         <Route path="/times" element={<TeamsIndexScreen />} />
+        <Route path="/voltar" element={<VoltarScreen />} />
+        <Route path="/sair-dos-emails" element={<SairEmailsScreen />} />
         <Route element={<Private><Layout /></Private>}>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/liga" element={<LeagueScreen />} />

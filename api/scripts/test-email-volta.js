@@ -1,0 +1,138 @@
+/**
+ * E-mail de volta (services/emailVolta.js) direto no banco LOCAL: quem entra no público, o VIP do botão caindo uma
+ * vez só (inclusive com dois cliques ao mesmo tempo), somando no VIP que a pessoa já tinha, campanha de teste sem
+ * crédito, prazo vencido, sair da lista e o aviso de "voltou a jogar". Não manda e-mail nenhum. Cria jogadores ev…
+ * e apaga no fim.
+ *
+ * Uso (na pasta api/):  node scripts/test-email-volta.js   → tem de terminar em "TUDO OK".
+ */
+import 'dotenv/config';
+if (process.env.NODE_ENV === 'production' || !/@(localhost|127\.0\.0\.1)[:/]/.test(process.env.DATABASE_URL || '')) {
+  console.error('test-email-volta.js só roda no banco LOCAL (cria jogadores de teste).');
+  process.exit(1);
+}
+process.env.TELEGRAM_BOT_TOKEN = ''; // nada de aviso no grupo
+process.env.SMTP_HOST = ''; // nada de e-mail
+const { prisma } = await import('../src/prisma.js');
+const V = await import('../src/services/emailVolta.js');
+const { renderVolta } = await import('../src/lib/emailVolta.js');
+
+let fails = 0;
+const check = (ok, label) => { console.log(`${ok ? 'OK  ' : 'FALHOU'} ${label}`); if (!ok) fails++; };
+const err = async (p) => { try { await p; return null; } catch (e) { return e; } };
+const DAY = 24 * 3600_000;
+const now = new Date();
+const team = await prisma.team.findFirst({ where: { standings: { some: {} } } }) ?? await prisma.team.findFirst();
+let seq = 0;
+const criados = [];
+const mk = async (extra = {}) => {
+  const n = `ev${Date.now() % 1e6}${seq++}`;
+  const u = await prisma.user.create({ data: { nick: n, nickLower: n, email: `${n}@jogagol-teste.com.br`, passwordHash: 'x', teamId: team.id, lastSeenAt: new Date(now - 20 * DAY), ...extra } });
+  criados.push(u.id);
+  return u;
+};
+const linha = async (u, campaign = V.VOLTA.campaign, sentAt = new Date(now - 60_000)) => {
+  const raw = `tok${Math.random().toString(36).slice(2)}${Date.now()}${seq++}`.padEnd(32, 'x');
+  await prisma.emailSend.create({ data: { campaign, userId: u.id, email: u.email, tokenHash: V.hashToken(raw), sentAt } });
+  return raw;
+};
+const vipOf = async (id) => (await prisma.user.findUnique({ where: { id }, select: { vipUntil: true } })).vipUntil;
+const perto = (d, alvo) => d && Math.abs(new Date(d) - alvo) < 60_000;
+
+try {
+  // ── público ──
+  const sumido = await mk();
+  const ativo = await mk({ lastSeenAt: new Date(now - 2 * DAY) });
+  const banido = await mk({ bannedUntil: new Date(now.getTime() + DAY) });
+  const saiu = await mk({ emailOptOut: new Date() });
+  const bot = await mk({ isBot: true });
+  const descartavel = await mk({ email: `ev${Date.now() % 1e6}${seq++}@mailinator.com` });
+  const teste = await mk({ email: `ev${Date.now() % 1e6}${seq++}@test.com` });
+  const ids = new Set((await V.publico(now)).map((u) => u.id));
+  check(ids.has(sumido.id), 'sem entrar há 20 dias: recebe');
+  check(!ids.has(ativo.id), 'entrou há 2 dias: não recebe');
+  check(!ids.has(banido.id), "banido: não recebe"); check(!ids.has(saiu.id), "quem saiu da lista: não recebe"); check(!ids.has(bot.id), "bot: não recebe");
+  check(!ids.has(descartavel.id) && !ids.has(teste.id), 'e-mail descartável (mailinator) e de teste (test.com): não recebem');
+
+  // ── e-mail ──
+  const ctx = await V.contexto(now);
+  const t = ctx.teams.get(team.id);
+  check(!!t && t.pos >= 1 && t.n >= t.pos, `contexto: ${t?.name} em ${t?.pos}º de ${t?.n} na Série ${t?.serie}, rodada ${ctx.roundNumber}/${ctx.roundsTotal}`);
+  const m = renderVolta({ ...ctx, nick: sumido.nick, goalsTotal: 1234, lastSeenAt: sumido.lastSeenAt, team: t, expiresAt: V.VOLTA.expiresAt, link: 'https://x/voltar?t=a', unsubLink: 'https://x/sair?t=a' });
+  check(m.html.includes(sumido.nick) && m.html.includes('mais vivo do que nunca') && m.text.includes('1.234 gols'), 'e-mail tem o nick, a frase do dono e os gols da carreira');
+  check(!/undefined|NaN|\[object/.test(m.html + m.text + m.subject), 'nada de undefined/NaN no e-mail');
+  const semSmtp = await V.enviarUm(sumido, ctx);
+  const rowFalha = await prisma.emailSend.findUnique({ where: { campaign_userId: { campaign: V.VOLTA.campaign, userId: sumido.id } } });
+  check(!semSmtp.ok && /SMTP/.test(semSmtp.error) && rowFalha && !rowFalha.sentAt, 'sem SMTP: não marca como enviado e guarda o erro');
+  check((await V.publico(now)).some((u) => u.id === sumido.id), 'quem falhou continua no público (o próximo envio tenta de novo)');
+  await prisma.emailSend.delete({ where: { id: rowFalha.id } });
+
+  // ── resgate ──
+  const raw = await linha(sumido);
+  check(!(await V.publico(now)).some((u) => u.id === sumido.id), 'quem já recebeu sai do público (rodar o envio de novo não repete)');
+  const r1 = await V.resgatar(raw, now);
+  check(r1.status === 'ok' && perto(r1.vipUntil, now.getTime() + 7 * DAY) && perto(await vipOf(sumido.id), now.getTime() + 7 * DAY), 'botão: 7 dias de VIP ATIVO a partir de agora');
+  const msg = await prisma.message.findFirst({ where: { userId: sumido.id }, orderBy: { id: 'desc' } });
+  check(msg?.kind === 'PRESENTE' && /7 dias de VIP/.test(msg.title), 'mensagem na caixa do jogador');
+  const r2 = await V.resgatar(raw, new Date(now.getTime() + 5000));
+  check(r2.status === 'ja-pegou' && perto(await vipOf(sumido.id), now.getTime() + 7 * DAY), '2º clique: "já pegou", o VIP não soma de novo');
+  const row = await prisma.emailSend.findFirst({ where: { userId: sumido.id } });
+  check(!!row.clickedAt && !!row.claimedAt, 'clique e resgate registrados');
+
+  const comVip = await mk({ vipUntil: new Date(now.getTime() + 3 * DAY) });
+  await V.resgatar(await linha(comVip), now);
+  check(perto(await vipOf(comVip.id), now.getTime() + 10 * DAY), 'quem já tinha 3 dias de VIP fica com 10');
+
+  const duplo = await mk();
+  const rawD = await linha(duplo);
+  const rs = await Promise.all([V.resgatar(rawD, now), V.resgatar(rawD, now), V.resgatar(rawD, now)]);
+  check(rs.filter((r) => r.status === 'ok').length === 1 && perto(await vipOf(duplo.id), now.getTime() + 7 * DAY), 'três cliques AO MESMO TEMPO: um VIP só');
+
+  const prova = await mk();
+  const rT = await V.resgatar(await linha(prova, `${V.VOLTA.campaign}-teste`), now);
+  check(rT.status === 'ok' && rT.teste && !(await vipOf(prova.id)), 'campanha -teste: o botão funciona, mas não dá VIP');
+
+  const tarde = await mk();
+  const rV = await V.resgatar(await linha(tarde), new Date(V.VOLTA.expiresAt.getTime() + 1000));
+  check(rV.status === 'vencido' && !(await vipOf(tarde.id)), 'depois do prazo: "vencido", sem VIP');
+
+  const susp = await mk({ bannedUntil: new Date(now.getTime() + DAY) });
+  const rS = await V.resgatar(await linha(susp), now);
+  check(rS.status === 'suspenso' && !(await vipOf(susp.id)), 'conta suspensa: não ativa');
+
+  check((await err(V.resgatar('nao-existe-esse-token-aqui-1234', now)))?.code === 'link-invalido', 'token que não existe: "link inválido"');
+  check((await err(V.resgatar('<script>', now)))?.code === 'link-invalido', 'token com lixo: "link inválido"');
+
+  // ── sair da lista ──
+  const fora = await mk();
+  const rawF = await linha(fora, 'outra-campanha');
+  await V.sairDaLista(rawF);
+  const uF = await prisma.user.findUnique({ where: { id: fora.id } });
+  check(!!uF.emailOptOut && !(await V.publico(now)).some((u) => u.id === fora.id), 'sair da lista: não entra mais no público');
+
+  // ── voltou a jogar ──
+  await prisma.user.update({ where: { id: sumido.id }, data: { lastSeenAt: new Date(now.getTime() + 60_000) } });
+  const naoClicou = await mk();
+  await linha(naoClicou, V.VOLTA.campaign, new Date(now.getTime() - 3600_000));
+  await prisma.user.update({ where: { id: naoClicou.id }, data: { lastSeenAt: new Date(now.getTime() - 60_000) } });
+  await V.voltaSweep();
+  const [a1, a2, a3] = await Promise.all([sumido, naoClicou, duplo].map((u) => prisma.emailSend.findFirst({ where: { userId: u.id } })));
+  check(!!a1.returnedAt, 'pegou o VIP e entrou no jogo: "voltou a jogar"');
+  check(!!a2.returnedAt, 'entrou depois do e-mail sem clicar: também conta como volta');
+  check(!a3.returnedAt, 'pegou o VIP mas não entrou: ainda não voltou');
+  const antes = a1.returnedAt.getTime();
+  await prisma.user.update({ where: { id: sumido.id }, data: { lastSeenAt: new Date(now.getTime() + 120_000) } });
+  await V.voltaSweep();
+  check((await prisma.emailSend.findFirst({ where: { userId: sumido.id } })).returnedAt.getTime() === antes, 'a volta é avisada uma vez só');
+
+  const rel = await V.relatorio();
+  check(rel.enviados >= 5 && rel.pegaram >= 3 && rel.voltaram >= 2, `relatório: ${JSON.stringify(rel)}`);
+} finally {
+  await prisma.emailSend.deleteMany({ where: { userId: { in: criados } } });
+  await prisma.message.deleteMany({ where: { userId: { in: criados } } });
+  await prisma.user.deleteMany({ where: { id: { in: criados } } });
+  await prisma.$disconnect();
+}
+
+console.log(fails ? `\n${fails} FALHA(S)` : '\nTUDO OK');
+process.exitCode = fails ? 1 : 0;

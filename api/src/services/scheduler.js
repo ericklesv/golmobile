@@ -7,6 +7,7 @@ import { tg } from '../lib/telegram.js';
 import { vipReconcile } from './vip.js';
 import { clubSweep } from './club.js';
 import { referralSweep } from './referral.js';
+import { voltaSweep } from './emailVolta.js';
 
 let ticking = false;
 let exact = null; // disparo extra para fechar a rodada NA HORA (a volta normal é de 30 s)
@@ -14,6 +15,7 @@ let lastReconcile = 0; // conferência dos PIX do VIP pendentes: a cada 2 min
 let lastClubSweep = 0; // diretoria: cargos perdidos e propostas vencidas (o VIP volta) — a cada 5 min
 let lastReferral = 0; // convites: paga os marcos de gols que os convidados passaram — a cada 2 min
 let lastEvents = 0; // eventos de uso (tabela Event): apaga os com mais de 90 dias — a cada 6 h
+let lastVolta = 0; // e-mail de volta: quem recebeu e entrou no jogo depois (aviso no Telegram) — a cada 2 min
 
 async function tick() {
   if (ticking) return;
@@ -43,6 +45,11 @@ async function tick() {
       lastReferral = Date.now();
       const n = await referralSweep();
       if (n) console.log('[convite] marcos pagos:', n);
+    }
+    if (Date.now() - lastVolta > 120_000) {
+      lastVolta = Date.now();
+      const n = await voltaSweep();
+      if (n) console.log('[email] voltaram ao jogo depois do e-mail:', n);
     }
     if (Date.now() - lastEvents > 6 * 3600_000) {
       lastEvents = Date.now();

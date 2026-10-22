@@ -945,7 +945,29 @@ depois que o novo estiver estável. Não instalar nada dele.
   `{ok}` ou `{ok:false, message, captcha: próxima}`); acertou, a caixa some; errou, vem outra conta.
   Não voltar a ter botão "Outra" (jogador achava que era confirmar e ficava trocando de conta).
 - **Senha** (`routes/password.js`): `forgot` sempre 200; token SHA-256 de uso único (1 h) em
-  `PasswordReset`; e-mail via Nodemailer (`SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`); sem SMTP, loga o link.
+  `PasswordReset`; e-mail via Nodemailer (`lib/mail.js`: `SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`); sem SMTP, loga o link.
+  **Até 22/10/2026 a VPS não tinha SMTP nenhum** (o link só ia para o log) e o domínio não tinha SPF/DKIM/DMARC: o
+  serviço é o **Brevo** (grátis, 300/dia), guia completo em **`docs/EMAIL_BREVO.md`** (conta, registros na Hostinger
+  do Erickles, chave SMTP no `api/.env` da VPS).
+- **E-mail "volta pro JogaGol"** (Guilherme, 22/10/2026; `lib/emailVolta.js` = o e-mail, função pura;
+  `services/emailVolta.js` = público, envio, resgate, rastreio; `routes/emailVolta.js` em `/api/email`; telas `/voltar`
+  e `/sair-dos-emails` = `screens/Voltar.tsx`; tabela `EmailSend` + `User.emailOptOut`, migração 0046; imagens em
+  `web/public/email/`, geradas por `scripts/email-assets.js` — e-mail não mostra SVG/WebP —, os dois títulos no estilo
+  `.t-out`/`.t-gold` saíram de `scripts/email-titulos.html` pelo Edge headless): chama de volta quem não entra há
+  **10+ dias** com **7 dias de VIP ATIVO** no botão (soma em `vipUntil`, como a Presença: não vai para o banco, não
+  doa, não vira saldo), uma vez por conta, até `VOLTA.expiresAt` (06/11/2026). O e-mail é personalizado (nick, data
+  em que saiu, escudo/posição do time, gols da carreira, "o que mudou desde" só com o que a pessoa não viu) e tem a
+  frase do dono "O JogaGol está mais vivo do que nunca!". Fora do público: bot, admin, banido, quem saiu da lista e
+  e-mail descartável/de teste (`NAO_MANDA` + a lista do cadastro). **Telegram** (pedido do Guilherme, para medir o
+  efeito): cada clique que pega o VIP ("📧 fulano clicou… · clique N de M") e, pelo `voltaSweep` do scheduler (2 min),
+  cada um que ENTROU no jogo depois do e-mail ("✅ fulano voltou a jogar", com ou sem clique — `lastSeenAt` passou do
+  clique/envio; só login, heartbeat e X1 mexem no lastSeenAt). O VIP do e-mail liga o chute com o app fechado na
+  hora (decisão do Guilherme: deixar assim). As rotas são só POST (robô de antivírus que abre o link não resgata nem
+  tira da lista); a de sair aceita o "cancelar inscrição" de um clique do Gmail (`List-Unsubscribe-Post`). Campanha
+  terminada em `-teste` (a prova mandada a um admin) faz tudo menos dar o VIP. Operação (pasta api/, na VPS com o
+  .env): `node scripts/email-volta.js listar|previa <nick> <arq>|teste <email> [nick]|enviar [--max N] [--seg S]|
+  relatorio [--telegram]`. Campanha nova = outro `campaign` em `VOLTA` (a linha é única por campanha e jogador).
+  **Mexeu? `node scripts/test-email-volta.js`** (pasta api/, banco LOCAL; "TUDO OK").
 - **Painel de admin** (`routes/adminPanel.js` em `/api/painel`; tela `/admin`, lazy, fora das abas):
   SÓ usuários com `User.isAdmin` (ericklesv e MVGIC, marcados na migração 0015; middleware
   `requireAdmin` = JWT + isAdmin no banco). Lista/busca/edita jogadores, dá gols de verdade
@@ -1132,6 +1154,7 @@ depois que o novo estiver estável. Não instalar nada dele.
 `GET /api/painel/denuncias?status=OPEN|RESOLVED&page=` · `POST /api/painel/denuncias/:id/resolver{acao,horas?}` · `GET /api/painel/x1?page=` (ou `/futprego`) · `GET /api/painel/multicontas?page=&q=` (painel de admin)
 `GET /api/meta|home?team=|rankings/:scope` (`hora|rodada|temporada|geral|penal|falta|trilha|x1-rodada|x1-temporada|x1-geral`)`|league|league/rounds/:n|league/titles|teams|teams/:slug|players/:nick|players/search?q=|feed|matches/:id`
 `GET|POST /api/demo/futprego` (FutPrego jogável da tela de entrada, SEM login; não conta gol para ninguém)
+`POST /api/email/voltar{t}|sair{t}` (links do e-mail de volta, SEM login: resgata os 7 dias de VIP · sai da lista; `sair?t=` também é o cancelar de um clique do Gmail)
 `GET /api/x1/status` (jogo do dia, desafios abertos, jogando) · WebSocket `/api/ws/x1?token=&mode=lobby|game` (X1: convite, partida, fim)
 `POST /api/admin/advance-round|close-hour|vip|money|level|reset-daily{nick}|ban` (header `x-admin-key`)
 `GET /api/painel/users?q=&page=&order=recentes|criadas|painel/users/:id|painel/log?page=` · `PATCH /api/painel/users/:id{nick,email,bio,money,vipDays,dexterity,nickColor,teamSlug,banHours}` · `POST /api/painel/users/:id/gols{qtd}|exp{qtd}` (painel de admin; JWT + `isAdmin`)

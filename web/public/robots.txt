@@ -10,5 +10,8 @@ Allow: /api/uploads/
 Disallow: /api/
 Disallow: /admin
 Disallow: /debug
+# links pessoais dos e-mails de campanha (o token vai no endereço)
+Disallow: /voltar
+Disallow: /sair-dos-emails
 
 Sitemap: https://jogagol.com.br/sitemap.xml

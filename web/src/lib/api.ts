@@ -1,4 +1,4 @@
-import type { Gallery, DemoPregoPartida, DemoPregoJogada, Vitrine, TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
+import type { EmailVoltar, Gallery, DemoPregoPartida, DemoPregoJogada, Vitrine, TutorialState, InboxPage, AdminReport, AdminFutPregoPage, AdminLogPage, AdminMultiPage, AdminPatch, AdminReportsPage, BlockedUser, ReportReason, AdminUserDetail, AdminUserRow, AdminUsersPage, AlvoPiece, AlvoState, ActivePlayer, CamisasGuess, CamisasState, GanhaPerdeSpin, GanhaPerdeState, GoleadaState, GoleadaBoard, GoleadaEnd, FaltaProKickResponse, FaltaProState, HattrickShootResponse, HattrickState, VipPurchase, VipState, ClubCandidate, ClubState, PassReward, PassState, RefInviter, RefState, MatchPage, CaptchaPayload, ChatMessage, ChatPage, ChatRoom, DailyStatus, Home, KickResult, League, Me, MemoriaCard, MemoriaReward, MemoriaState, Meta, MinigameCard, PartyResult, PartyStatus, PublicPlayer, QualtimeState, QuizState, ShopView, SkillKey, StatsPair, StatsState, TeamPage, TermoReward, TermoState, TopRow, TrailResult, UserItemView } from './types';
 
 import { deviceHeaders } from './device';
 
@@ -195,6 +195,9 @@ export const api = {
   adminReports: (status: 'OPEN' | 'RESOLVED' = 'OPEN', page = 1) => req<AdminReportsPage>('GET', `/api/painel/denuncias?status=${status}&page=${page}`),
   adminResolveReport: (id: number, acao: 'ignorar' | 'apagar' | 'banir', horas?: number) => req<{ ok: boolean }>('POST', `/api/painel/denuncias/${id}/resolver`, { acao, horas }),
   // recuperação de senha
+  // e-mail de campanha (sem login; o token do link é a prova) — telas /voltar e /sair-dos-emails
+  emailVoltar: (t: string) => req<EmailVoltar>('POST', '/api/email/voltar', { t }),
+  emailSair: (t: string) => req<{ ok: boolean; nick: string }>('POST', '/api/email/sair', { t }),
   forgotPassword: (email: string) => req<{ ok: boolean; message: string }>('POST', '/api/auth/forgot', { email }),
   resetPassword: (token: string, password: string) => req<{ ok: boolean; nick: string; message: string }>('POST', '/api/auth/reset', { token, password }),
 };

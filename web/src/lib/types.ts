@@ -30,6 +30,8 @@ export interface SkillDef {
   max: number; perLevel: number; base: number; cap: number;
 }
 
+/** Resposta do botão do e-mail de volta (POST /api/email/voltar). `teste` = e-mail de prova, nada foi creditado. */
+export interface EmailVoltar { nick: string; days: number; teste: boolean; status: 'ok' | 'ja-pegou' | 'vencido' | 'suspenso'; vipUntil?: string | null }
 export interface TutorialState { step: number; pending: boolean; done: boolean; steps: number; vip: number; botAcceptSec: number }
 
 export interface Me {

@@ -9,11 +9,11 @@
 import { Router } from 'express';
 import { createHash, randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import nodemailer from 'nodemailer';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../prisma.js';
 import { handle, badRequest } from '../lib/errors.js';
+import { sendMail } from '../lib/mail.js';
 
 export const password = Router();
 
@@ -24,32 +24,15 @@ const limiter = () => rateLimit({ windowMs: 15 * 60_000, limit: 10, standardHead
 const hashToken = (t) => createHash('sha256').update(t).digest('hex');
 const webUrl = () => (process.env.PUBLIC_WEB_URL || 'https://jogagol.com.br').replace(/\/+$/, '');
 
-let transporter = null;
-function mailer() {
-  if (transporter !== null) return transporter;
-  const host = process.env.SMTP_HOST;
-  if (!host) { transporter = false; return transporter; }
-  const port = Number(process.env.SMTP_PORT || 587);
-  transporter = nodemailer.createTransport({
-    host, port, secure: port === 465,
-    auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS || '' } : undefined,
-  });
-  return transporter;
-}
-
 async function sendResetMail(user, link) {
-  const t = mailer();
-  if (!t) {
-    console.log(`[senha] SMTP não configurado — link de redefinição para ${user.email}: ${link}`);
-    return;
-  }
   const text = `Olá, ${user.nick}!\n\nRecebemos um pedido para redefinir a senha da sua conta no JogaGol.\nAbra o link abaixo (vale por 1 hora):\n\n${link}\n\nSe não foi você, ignore este e-mail — sua senha continua a mesma.\n\nJogaGol`;
   const html = `<p>Olá, <b>${user.nick}</b>!</p>
 <p>Recebemos um pedido para redefinir a senha da sua conta no JogaGol. Abra o link abaixo (vale por 1 hora):</p>
 <p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#2BA83A;color:#fff;font-weight:bold;border-radius:10px;text-decoration:none">Redefinir minha senha</a></p>
 <p style="color:#6B86B3;font-size:13px">Ou copie e cole: ${link}</p>
 <p style="color:#6B86B3;font-size:13px">Se não foi você, ignore este e-mail — sua senha continua a mesma.</p>`;
-  await t.sendMail({ from: process.env.MAIL_FROM || 'JogaGol <nao-responda@jogagol.com.br>', to: user.email, subject: 'JogaGol — redefinir sua senha', text, html });
+  const sent = await sendMail({ to: user.email, subject: 'JogaGol — redefinir sua senha', text, html });
+  if (!sent) console.log(`[senha] SMTP não configurado — link de redefinição para ${user.email}: ${link}`);
 }
 
 password.post('/forgot', limiter(), handle(async (req) => {

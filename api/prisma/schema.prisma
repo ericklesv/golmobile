@@ -146,6 +146,9 @@ model User {
 
   // Avisos de uma vez só que este jogador já viu (ex.: { "instagram": "2026-09-17T…" }) — dono, 17/09/2026
   avisosVistos Json?
+  // Saiu da lista de e-mails de campanha ("Sair da lista" no rodapé ou o cancelar do Gmail): não recebe mais
+  // nenhum e-mail promocional. Os e-mails da conta (esqueci a senha) continuam.
+  emailOptOut  DateTime?
 
   // Bot "quase real" (dono, 18/09/2026): conta que o servidor joga sozinho para encher time sem gente
   // (services/bots.js). `botJson` = { persona, plan } — o jeito de jogar e as sessões do dia.
@@ -195,6 +198,7 @@ model User {
   messages    Message[]       @relation("MsgTo")
   messagesSent Message[]      @relation("MsgFrom")
   events      Event[]
+  emailSends  EmailSend[]
 
   @@index([teamId])
   @@index([goalsTotal])
@@ -301,6 +305,32 @@ model ShopLog {
 }
 
 // Recuperação de senha por e-mail: token de uso único (guardado como hash SHA-256) com validade.
+/**
+ * Um e-mail de campanha mandado a um jogador (services/emailVolta.js; a primeira é a "volta" de 22/10/2026: 7 dias
+ * de VIP para quem não entrava havia 10+ dias). Uma linha por jogador por campanha — rodar o envio de novo pula quem
+ * já recebeu. O e-mail leva o token cru; aqui fica só o SHA-256. O mesmo token resgata o presente e tira da lista.
+ * Rastreio: `clickedAt` (abriu o link), `claimedAt` (o VIP caiu, uma vez só), `returnedAt` (entrou no jogo depois
+ * do clique — o lastSeenAt passou do clique; o scheduler confere e avisa no Telegram) e `unsubAt`.
+ */
+model EmailSend {
+  id         Int       @id @default(autoincrement())
+  campaign   String
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id])
+  email      String
+  tokenHash  String    @unique
+  sentAt     DateTime?
+  error      String?
+  clickedAt  DateTime?
+  claimedAt  DateTime?
+  returnedAt DateTime?
+  unsubAt    DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([campaign, userId])
+  @@index([campaign, claimedAt])
+}
+
 model PasswordReset {
   id        Int       @id @default(autoincrement())
   token     String    @unique

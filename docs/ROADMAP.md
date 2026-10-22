@@ -2,6 +2,16 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
+## E-mail "volta pro JogaGol" com 7 dias de VIP (22/10/2026) — no GitHub, falta o Brevo
+Pedido do Guilherme: o jogo voltou a encher com a divulgação e quem parou de entrar não sabe. E-mail no visual do jogo
+para quem não entra há 10+ dias (~215 contas válidas em 22/10), com 7 dias de VIP ativos no botão e aviso no Telegram de
+quem clicou e de quem voltou a jogar. Aprovado pelo Guilherme em 22/10 (com a frase "O JogaGol está mais vivo do que
+nunca!"). Teste: `scripts/test-email-volta.js`.
+- [x] E-mail, resgate, sair da lista, rastreio no Telegram, script de disparo, guia `docs/EMAIL_BREVO.md`.
+- [ ] Conta no Brevo + registros DNS na Hostinger (conta do Erickles) + chave SMTP no `api/.env` da VPS.
+- [ ] Publicar, mandar a prova para gclithg@gmail.com, conferir SPF/DKIM/DMARC e o "esqueci a senha".
+- [ ] Disparar (`node scripts/email-volta.js enviar`) e avisar no grupo; acompanhar com `relatorio`.
+
 ## Galeria de troféus no lugar da aba Perfil (22/10/2026) — no GitHub, aguardando publicação
 Pedido de jogadores, trazido pelo dono: sentiram falta de uma "galeria de troféus" com os campeões e os artilheiros das
 temporadas. A aba Perfil virou **Troféus** (`/galeria`); o perfil continua abrindo pela foto/nick no topo. A estante

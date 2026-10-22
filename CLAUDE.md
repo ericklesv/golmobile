@@ -1159,7 +1159,7 @@ servidos pelo próprio Express em `/api/uploads/`.
   colaborador**: se ele rodar o deploy padrão no meio, o `main` inteiro vai ao ar por cima (aconteceu em
   15/09 — o Futprego foi publicado por ele mesmo e o `prod` foi aposentado). Apagar o ramo `prod` depois.
 - **A VPS é compartilhada** (Hostinger KVM 8 desde 21/10/2026: Guilherme, Erickles e Caio, cada um com o seu
-  usuário — `gui@`, `erick@`, `caio@` — e `sudo`). **Antes do primeiro comando na VPS, leia
+  usuário — `gui@`, `erickles@`, `caio@` — e `sudo`). **Antes do primeiro comando na VPS, leia
   `/etc/vps/REGRAS.md` e `/etc/vps/PROJETOS.md`** (lá estão o mapa de todos os projetos da máquina, o que é de
   quem e o que é proibido); quem chega pela primeira vez começa por `/etc/vps/COMECE-AQUI.md`. Toda mudança na VPS
   vai para o diário: `sudo vps diario "jogagol: …"`.
@@ -1193,9 +1193,9 @@ servidos pelo próprio Express em `/api/uploads/`.
   fatias em `docs/SPRITES_LAYERLAB.md`. Packs 3D da Unity ficam só na máquina do Guilherme;
   `tools/3d/README.md` gera os `.glb` que entram no repo.
 - **Não usamos GitHub Actions** (removido em 13/09/2026). Deploy é sempre manual, pela VPS:
-  `ssh -i ~/.ssh/id_ed25519_brgol erick@187.127.17.121 'sudo bash /usr/local/bin/brgol-deploy.sh'` — depois
+  `ssh -i ~/.ssh/id_ed25519_brgol erickles@187.127.17.121 'sudo bash /usr/local/bin/brgol-deploy.sh'` — depois
   conferir `https://jogagol.com.br/api/health`. Push no git **não** publica nada sozinho.
-- **Acesso à VPS**: o Erickles entra com o usuário `erick` (a mesma chave `erick-brgol` que entrava no root) e usa
+- **Acesso à VPS**: o Erickles entra com o usuário `erickles` (a mesma chave `erick-brgol` que entrava no root) e usa
   `sudo` sem senha. Na primeira vez, a IA dele segue `/etc/vps/COMECE-AQUI.md` (regras, mapa e o que acrescentar
   no CLAUDE.md global dele). A VPS tem outros projetos do Guilherme (Managol, clientes…): no JogaGol mexer só em
   `/var/www/brgol`, `/etc/nginx/sites-available/brgol`, PM2 do usuário `brgol` e banco `brgol` — o resto segue

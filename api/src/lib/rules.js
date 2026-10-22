@@ -89,15 +89,23 @@ export const MINIGAME_MONEY = {
 // Com 4 × 18 = **72 pontos**, a árvore inteira é o nível 72, que fica nos 300 mil pontos — o "full" do BRGOL.
 // A Recarga tira **5 s por degrau** (era 30 s): o não-VIP sai de 10:00 e chega a 8:30, e **só o VIP chega ao
 // piso de 4:30** (decisão do dono: "ele só deve chegar nos 4:30 se for vip"), o que acontece no 6º degrau.
-export const SKILL_STEPS = 18; // degraus de cada habilidade (dono, 17/09/2026: "coloque 18 níveis")
+//
+// DRIBLE (dono, 22/10/2026): o rebote da Trilha saiu dos níveis 25 a 32 e virou a 5ª habilidade — "seria mais justo
+// se o rebote da trilha você conseguisse aumentar as chances na loja… daria um maior sentimento de progressão".
+// **6 degraus** ("a trilha serão 6 níveis pra ficar full") até os mesmos 32% que o nível 32 dava. A árvore passou
+// a custar 4 × 18 + 6 = **78 pontos**, e entraram os níveis 73 a 78 para o full continuar alcançável. Quem já tinha
+// rebote pelo nível recebeu os pontos para voltar a ter pelo menos o mesmo (`skillPointsBonus`, migração 0045).
+export const SKILL_STEPS = 18; // degraus de cada habilidade (dono, 17/09/2026: "coloque 18 níveis"); o Drible tem 6
+export const TRAIL_REBOUND_MAX = 0.32; // teto do Drible (o rebote da Trilha que o nível 32 dava)
 export const SKILLS = [
   { key: 'CD', name: 'Recarga', unit: 'tempo', icon: 'ico-energy', desc: 'Tira 5 s da recarga do chute direto, do pênalti e da falta (a trilha tem a dela, que cai com os níveis).', max: SKILL_STEPS, perLevel: 5_000 },
   { key: 'AIM', name: 'Pontaria', unit: 'acerto', kind: 'PENALTY', icon: 'ico-target', desc: 'Aumenta o acerto do pênalti.', max: SKILL_STEPS, perLevel: 0.025 },
   { key: 'SHOT', name: 'Chute', unit: 'acerto', kind: 'FOUL', icon: 'ico-ball', desc: 'Aumenta o acerto da falta.', max: SKILL_STEPS, perLevel: 0.025 },
+  { key: 'DRIBBLE', name: 'Drible', unit: 'rebote', icon: 'ico-badge', desc: 'Rebote na Trilha: quando um ladrão rouba a bola, chance de ela sobrar pra você e a jogada seguir na mesma linha.', max: 6, perLevel: TRAIL_REBOUND_MAX / 6 },
   { key: 'LUCK', name: 'Sorte', unit: 'sorte', icon: 'ico-star01_s', desc: 'Aumenta a chance de vir pênalti, falta ou trilha de prata (o gol vale 2) ou de ouro (vale 3).', max: SKILL_STEPS, perLevel: 0.0039 },
 ];
 export const SKILL_BY_KEY = Object.fromEntries(SKILLS.map((s) => [s.key, s]));
-export const SKILL_FIELD = { CD: 'skillCd', AIM: 'skillAim', SHOT: 'skillShot', LUCK: 'skillLuck' };
+export const SKILL_FIELD = { CD: 'skillCd', AIM: 'skillAim', SHOT: 'skillShot', DRIBBLE: 'skillDribble', LUCK: 'skillLuck' };
 export const SKILL_COST = { point: 1 };
 /** Teto do acerto, já com chuteira (ninguém chega a 100%) — dono, 17/09/2026: pênalti 90%, falta 80%. */
 export const CHANCE_CAP = { PENALTY: 0.90, FOUL: 0.80 };
@@ -146,9 +154,15 @@ export function shotChance(user, kind, now = Date.now()) {
   return Math.min(CHANCE_CAP[kind], base + skillBonus(user, kind) + bootBonus(user, now));
 }
 
-/** Pontos de habilidade disponíveis: 1 por nível do jogador, menos os já gastos. */
+/** Pontos de habilidade disponíveis: 1 por nível do jogador + os ganhos fora do nível, menos os já gastos. */
 export function skillPointsLeft(user) {
-  return Math.max(0, levelOf(user).lvl - (user?.skillPoints ?? 0));
+  return Math.max(0, levelOf(user).lvl + (user?.skillPointsBonus ?? 0) - (user?.skillPoints ?? 0));
+}
+
+/** Chance de rebote na Trilha (habilidade Drible): a bola sobra e a jogada segue na mesma linha. */
+export function trailReboundChance(user) {
+  const s = SKILL_BY_KEY.DRIBBLE;
+  return Math.min(TRAIL_REBOUND_MAX, Math.min(s.max, user?.[SKILL_FIELD.DRIBBLE] ?? 0) * s.perLevel);
 }
 
 // ─── Chances ────────────────────────────────────────────────────────────────
@@ -225,16 +239,16 @@ export const LEVELS = [
   { lvl: 22, name: 'Double Gold Star', goals: 3571, skill: 'Rebote Falta nível 4', rebound: 'FOUL' },
   { lvl: 23, name: 'Triple Gold Star', goals: 3989, skill: 'Rebote Pênalti nível 5', rebound: 'PENALTY' },
   { lvl: 24, name: 'Mega Player', goals: 4459, skill: 'Rebote Falta nível 5', rebound: 'FOUL' },
-  { lvl: 25, name: 'Ultra Player', goals: 4993, skill: 'Rebote Trilha nível 1', rebound: 'TRAIL' },
-  { lvl: 26, name: 'Monster Player', goals: 5618, skill: 'Rebote Trilha nível 2', rebound: 'TRAIL' },
-  { lvl: 27, name: 'Chuteira de Bronze', goals: 6379, skill: 'Rebote Trilha nível 3', rebound: 'TRAIL' },
-  { lvl: 28, name: 'Chuteira Prateada', goals: 7394, skill: 'Rebote Trilha nível 4', rebound: 'TRAIL' },
-  { lvl: 29, name: 'Chuteira Dourada', goals: 10000, skill: 'Rebote Trilha nível 5', rebound: 'TRAIL' },
-  { lvl: 30, name: 'Lendário nível 1', goals: 20000, skill: 'Todos os rebotes em nível 6', rebound: 'ALL' },
-  { lvl: 31, name: 'Lendário nível 2', goals: 35000, skill: 'Todos os rebotes em nível 7', rebound: 'ALL' },
-  { lvl: 32, name: 'Lendário nível 3', goals: 55000, skill: 'Todos os rebotes em nível 8', rebound: 'ALL' },
-  // Níveis 33 a 72 (dono, 17/09/2026): a árvore de habilidades custa 4 × 18 = 72 pontos, e ponto só vem de
-  // nível — então o FULL mora no nível 72, nos 300 mil pontos, como o BRGOL que o dono lembrou ("precisava de
+  { lvl: 25, name: 'Ultra Player', goals: 4993, skill: null }, // o rebote da Trilha saiu dos níveis 25–29 e virou o Drible (dono, 22/10/2026)
+  { lvl: 26, name: 'Monster Player', goals: 5618, skill: null },
+  { lvl: 27, name: 'Chuteira de Bronze', goals: 6379, skill: null },
+  { lvl: 28, name: 'Chuteira Prateada', goals: 7394, skill: null },
+  { lvl: 29, name: 'Chuteira Dourada', goals: 10000, skill: null },
+  { lvl: 30, name: 'Lendário nível 1', goals: 20000, skill: 'Rebote Pênalti e Falta nível 6', rebound: 'ALL' },
+  { lvl: 31, name: 'Lendário nível 2', goals: 35000, skill: 'Rebote Pênalti e Falta nível 7', rebound: 'ALL' },
+  { lvl: 32, name: 'Lendário nível 3', goals: 55000, skill: 'Rebote Pênalti e Falta nível 8', rebound: 'ALL' },
+  // Níveis 33 a 72 (dono, 17/09/2026): a árvore de habilidades custava 4 × 18 = 72 pontos, e ponto só vem de
+  // nível — então o FULL morava no nível 72, nos 300 mil pontos, como o BRGOL que o dono lembrou ("precisava de
   // 300k de gols para ficar full"; no ritmo do jogador mais forte medido, 537 pontos/dia, dá ~18 meses).
   // Daqui para cima cada nível sobe ~4,3%: é uma escada regular, para o jogador nunca ficar meses sem ponto
   // novo. Rebote não sobe mais aqui: REBOUND_CHANCE acaba no nível 8, que o nível 32 já entrega.
@@ -278,6 +292,14 @@ export const LEVELS = [
   { lvl: 70, name: 'Imortal nível 11', goals: 275000, skill: null },
   { lvl: 71, name: 'Imortal nível 12', goals: 290000, skill: null },
   { lvl: 72, name: 'Imortal nível 13', goals: 300000, skill: null },
+  // Níveis 73 a 78 (dono, 22/10/2026): o Drible somou 6 pontos à árvore (78 no total), e o full foi junto
+  // para o nível 78. Mesma escada (~4,5% por nível, em passos de 5 mil).
+  { lvl: 73, name: 'Imortal nível 14', goals: 315000, skill: null },
+  { lvl: 74, name: 'Imortal nível 15', goals: 330000, skill: null },
+  { lvl: 75, name: 'Imortal nível 16', goals: 345000, skill: null },
+  { lvl: 76, name: 'Imortal nível 17', goals: 360000, skill: null },
+  { lvl: 77, name: 'Imortal nível 18', goals: 375000, skill: null },
+  { lvl: 78, name: 'Imortal nível 19', goals: 390000, skill: null },
 ];
 
 export function levelFor(goals) {
@@ -297,8 +319,10 @@ export function trailReductionSec(level) {
   return LEVELS.filter((l) => l.lvl <= level && l.trail).reduce((s, l) => s + l.trail, 0);
 }
 
-/** Nível de rebote (0..8) por modo, conforme os níveis conquistados. */
+/** Nível de rebote (0..8) do pênalti ou da falta, conforme os níveis conquistados ('ALL' = os dois). A Trilha
+ *  não usa mais isto: o rebote dela é a habilidade Drible (trailReboundChance). */
 export function reboundLevel(level, kind) {
+  if (kind !== 'PENALTY' && kind !== 'FOUL') return 0;
   let n = 0;
   for (const l of LEVELS) {
     if (l.lvl > level) break;
@@ -307,7 +331,7 @@ export function reboundLevel(level, kind) {
   }
   return n;
 }
-// Chance de rebote por nível de rebote (segunda tentativa automática)
+// Chance de rebote por nível de rebote (segunda tentativa automática) — pênalti e falta
 export const REBOUND_CHANCE = [0, 0.05, 0.08, 0.11, 0.14, 0.17, 0.22, 0.27, 0.32];
 
 export function isVip(user, now = Date.now()) {

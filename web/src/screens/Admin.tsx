@@ -382,7 +382,7 @@ function UserDetail({ id, onBack, onPick }: { id: number; onBack: () => void; on
           <div className="grid grid-cols-2 gap-2">
             <div><label className="label">Dinheiro</label><input className="field" type="number" min={0} value={form.money} onChange={(e) => setForm({ ...form, money: e.target.value })} /></div>
             <div><label className="label">VIP (un.)</label><input className="field" type="number" min={0} value={form.vipDays} onChange={(e) => setForm({ ...form, vipDays: e.target.value })} /></div>
-            {(meta?.skills ?? []).map((sk) => (
+            {(meta?.skills ?? []).filter((sk) => sk.key === 'AIM' || sk.key === 'SHOT').map((sk) => ( // o formulário só edita Pontaria e Chute
               <div key={sk.key}>
                 <label className="label">{sk.name} (0–{sk.max})</label>
                 <input className="field" type="number" min={0} max={sk.max}

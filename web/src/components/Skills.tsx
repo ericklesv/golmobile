@@ -2,7 +2,7 @@ import { useAuth } from '../store/auth';
 import type { SkillLevels } from '../lib/types';
 
 /**
- * Habilidades do jogador (Recarga, Pontaria, Chute e Sorte): as trilhas que aparecem no Perfil e no perfil
+ * Habilidades do jogador (Recarga, Pontaria, Chute, Drible e Sorte): as trilhas que aparecem no Perfil e no perfil
  * público. Os nomes, o teto e quanto cada nível vale vêm do servidor (`meta.skills`), então mudar o número
  * lá muda a tela. Quem sobe o nível é a Loja — aqui é só leitura.
  */
@@ -14,6 +14,7 @@ export function SkillTracks({ skills, chance }: { skills: SkillLevels; chance?: 
       {defs.map((d) => {
         const level = skills?.[d.key] ?? 0;
         const acerto = d.unit === 'acerto' && d.kind ? (chance?.[d.kind] ?? Math.min(d.cap, d.base + level * d.perLevel)) : null;
+        const rebote = d.unit === 'rebote' && level > 0 ? Math.min(d.cap, level * d.perLevel) : null;
         return (
           <div key={d.key} className="flex items-center gap-3 rounded-xl bg-sky/10 p-2">
             <img src={`/ui/${d.icon}.png`} className="h-8 w-8 shrink-0 object-contain" alt="" />
@@ -24,6 +25,7 @@ export function SkillTracks({ skills, chance }: { skills: SkillLevels; chance?: 
               </div>
               <SkillPips level={level} max={d.max} />
               {acerto !== null && <div className="text-[11px] font-extrabold text-grass-deep">{Math.round(acerto * 100)}% de acerto {d.kind === 'PENALTY' ? 'no pênalti' : 'na falta'}</div>}
+              {rebote !== null && <div className="text-[11px] font-extrabold text-grass-deep">{(rebote * 100).toFixed(1).replace(/\.0$/, '').replace('.', ',')}% de rebote na Trilha</div>}
             </div>
           </div>
         );

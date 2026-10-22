@@ -2,7 +2,8 @@
  * Habilidades do jogador (catálogo e números em `SKILLS`/`SKILL_COST` de rules.js). Quatro, na ordem em que o
  * dono desenhou a evolução (17/09/2026): **Recarga** (tira 30 s do chute direto, do pênalti e da falta, até o
  * piso de 4:30), **Pontaria** (acerto do pênalti, até 90%), **Chute** (acerto da falta, até 80%) e **Sorte**
- * (chance de vir chute de prata/ouro, de 3% a 10%).
+ * (chance de vir chute de prata/ouro, de 3% a 10%). Desde 22/10/2026 há uma 5ª, o **Drible** (rebote da Trilha, 6
+ * degraus até 32%), que antes vinha dos níveis 25 a 32.
  *
  * **Cada nível custa 1 ponto de nível — e só isso.** Dinheiro e VIP saíram em 17/09/2026 por decisão do dono:
  * "upar as habilidades só com ponto de nível, temos que dar mais valor a upada de nível… achei tosco poder

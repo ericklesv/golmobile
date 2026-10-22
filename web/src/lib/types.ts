@@ -18,13 +18,13 @@ export interface Cooldown {
   ball?: 'PRATA' | 'OURO' | null; goals?: number;
 }
 
-/** Habilidades (SKILLS em rules.js), na ordem da árvore: Recarga, Pontaria, Chute e Sorte. */
-export type SkillKey = 'CD' | 'AIM' | 'SHOT' | 'LUCK';
+/** Habilidades (SKILLS em rules.js), na ordem da árvore: Recarga, Pontaria, Chute, Drible e Sorte. */
+export type SkillKey = 'CD' | 'AIM' | 'SHOT' | 'DRIBBLE' | 'LUCK';
 export type SkillLevels = Partial<Record<SkillKey, number>>;
 export interface SkillDef {
   key: SkillKey; name: string; icon: string; desc: string;
-  /** o que a habilidade mexe: tempo de recarga, acerto do chute ou chance de chute de prata/ouro */
-  unit: 'tempo' | 'acerto' | 'sorte';
+  /** o que a habilidade mexe: tempo de recarga, acerto do chute, chance de chute de prata/ouro ou rebote da Trilha */
+  unit: 'tempo' | 'acerto' | 'sorte' | 'rebote';
   kind?: 'PENALTY' | 'FOUL';
   /** níveis, quanto cada nível vale, o valor de quem está no nível 0 e o teto (na unidade do efeito) */
   max: number; perLevel: number; base: number; cap: number;
@@ -44,8 +44,8 @@ export interface Me {
   avisos?: Record<string, string>;
   /** Habilidades (Loja): nível de cada uma e quantos pontos de nível ainda dá para gastar. */
   skills: SkillLevels & { points: number };
-  /** Acerto de verdade de cada chute (com habilidade, chuteira e teto) e a chance de chute de prata/ouro. */
-  chance: { PENALTY: number; FOUL: number; BALL?: { total: number; gold: number; silver: number } };
+  /** Acerto de verdade de cada chute (com habilidade, chuteira e teto), a chance de chute de prata/ouro e o rebote da Trilha (Drible). */
+  chance: { PENALTY: number; FOUL: number; BALL?: { total: number; gold: number; silver: number }; TRAIL_REBOUND?: number };
   goalsTotal: number; goalsSeason: number; goalsRound: number; goalsHour: number;
   hourKey: string | null; roundId: number | null; seasonId: number | null;
   /** Pontos de nível = gols + levelBonus (minigames diários). A barra de nível usa estes. */
@@ -58,7 +58,8 @@ export interface Me {
     party: { wins: number; tries: number };
   };
   level: { lvl: number; name: string; goals: number; next: { lvl: number; name: string; goals: number; skill: string | null } | null };
-  rebound: Record<'PENALTY' | 'FOUL' | 'TRAIL', number>;
+  /** Rebote do pênalti e da falta pelos níveis (o da Trilha é a habilidade Drible: chance.TRAIL_REBOUND). */
+  rebound: Record<'PENALTY' | 'FOUL', number>;
   cooldowns: Record<Kind, Cooldown>;
   trail: { active: boolean; phase: number; revealed: { phase: number; index: number }[] };
   /** Itens da loja ativos (ver ShopView) e cor do nick (chave da paleta). */

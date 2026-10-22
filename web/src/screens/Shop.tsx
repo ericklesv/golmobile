@@ -197,7 +197,7 @@ export function ShopScreen() {
 
   /**
    * Habilidade: um degrau da árvore. A ordem da lista é a ordem que o dono desenhou (Recarga → Pontaria →
-   * Chute → Sorte) e o trilho da esquerda mostra isso — é caminho, não lista solta. Desde 17/09/2026 o único
+   * Chute → Drible → Sorte) e o trilho da esquerda mostra isso — é caminho, não lista solta. Desde 17/09/2026 o único
    * jeito de subir é PONTO DE NÍVEL. Os valores de hoje vêm prontos do servidor (recarga de verdade em
    * me.cooldowns, acerto com chuteira em me.chance), então a tela nunca contradiz o jogo.
    */
@@ -217,6 +217,12 @@ export function ShopScreen() {
       const uma = (v: number) => `${(v * 100).toFixed(1).replace('.', ',')}%`;
       const hoje = me.chance.BALL?.total ?? def.base + level * def.perLevel;
       agora = `${uma(hoje)} de chance`;
+      proximo = uma(Math.min(def.cap, hoje + def.perLevel));
+    } else if (def.unit === 'rebote') {
+      // Drible: degraus de 32%/6 — "5,3%", "10,7%", "16%" (a casa decimal só quando existe)
+      const uma = (v: number) => `${(v * 100).toFixed(1).replace(/\.0$/, '').replace('.', ',')}%`;
+      const hoje = me.chance.TRAIL_REBOUND ?? Math.min(def.cap, level * def.perLevel);
+      agora = `${uma(hoje)} de rebote na Trilha`;
       proximo = uma(Math.min(def.cap, hoje + def.perLevel));
     } else {
       const hoje = me.chance[def.kind!];
@@ -310,7 +316,7 @@ export function ShopScreen() {
             Você tem <b className="t-display text-[15px] text-grass-deep">{me.skills.points}</b> {me.skills.points === 1 ? 'ponto' : 'pontos'}.
           </p>
           <p className="mb-3 text-[11px] font-bold leading-snug text-muted">
-            Na ordem: primeiro a Recarga, para chutar mais vezes; depois Pontaria e Chute, para errar menos; a Sorte por último, quando o resto estiver no máximo.
+            Na ordem: primeiro a Recarga, para chutar mais vezes; depois Pontaria, Chute e Drible, para errar menos; a Sorte por último, quando o resto estiver no máximo.
           </p>
           <ol className="flex flex-col">{skills.map(skillRow)}</ol>
         </Panel>

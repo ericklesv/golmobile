@@ -1,5 +1,5 @@
 /** Projeções de dados para o cliente (nunca expõe hash, e-mail alheio, layout da trilha). */
-import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel, skillPointsLeft, shotChance, ballChance } from '../lib/rules.js';
+import { cooldownFor, LAST_FIELD, levelOf, levelPoints, isVip, UNLOCK_LEVEL, reboundLevel, skillPointsLeft, shotChance, ballChance, trailReboundChance } from '../lib/rules.js';
 import { ballView } from '../lib/bola.js';
 import { itemsView, nickFadeOf } from '../lib/items.js';
 export { nickFadeOf };
@@ -49,8 +49,8 @@ export function meView(user, now = Date.now()) {
     avisos: user.avisosVistos ?? {}, // avisos de uma vez só que ele já viu (ex.: Instagram)
     // tutorial de boas-vindas: enquanto `pending`, a tela NÃO mostra pop-up nenhum (services/tutorial.js)
     tutorial: tutorialView(user),
-    skills: { CD: user.skillCd ?? 0, AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, LUCK: user.skillLuck ?? 0, points: skillPointsLeft(user) }, // habilidades
-    chance: { PENALTY: shotChance(user, 'PENALTY', now), FOUL: shotChance(user, 'FOUL', now), BALL: ballChance(user) }, // acerto de verdade e chance de chute especial
+    skills: { CD: user.skillCd ?? 0, AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, DRIBBLE: user.skillDribble ?? 0, LUCK: user.skillLuck ?? 0, points: skillPointsLeft(user) }, // habilidades
+    chance: { PENALTY: shotChance(user, 'PENALTY', now), FOUL: shotChance(user, 'FOUL', now), BALL: ballChance(user), TRAIL_REBOUND: trailReboundChance(user) }, // acerto de verdade, chance de chute especial e rebote da Trilha (Drible)
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     levelBonus: user.levelBonus ?? 0, levelPoints: levelPoints(user),
@@ -62,7 +62,7 @@ export function meView(user, now = Date.now()) {
       party: { wins: user.partyWins, tries: user.partyTries },
     },
     level: { lvl: level.lvl, name: level.name, goals: level.goals, next: level.next ? { lvl: level.next.lvl, name: level.next.name, goals: level.next.goals, skill: level.next.skill } : null },
-    rebound: { PENALTY: reboundLevel(level.lvl, 'PENALTY'), FOUL: reboundLevel(level.lvl, 'FOUL'), TRAIL: reboundLevel(level.lvl, 'TRAIL') },
+    rebound: { PENALTY: reboundLevel(level.lvl, 'PENALTY'), FOUL: reboundLevel(level.lvl, 'FOUL') }, // o da Trilha é o Drible (chance.TRAIL_REBOUND)
     cooldowns: cooldownsView(user, now),
     trail: user.trailState?.active ? { active: true, phase: user.trailState.phase, revealed: user.trailState.revealed || [] } : { active: false, phase: 0, revealed: [] },
     items: itemsView(user, now), nickColor: user.nickColor ?? null, // itens da loja ativos (carregar o usuário com meInclude() de items.js)
@@ -78,7 +78,7 @@ export function publicView(user, now = Date.now()) {
   const level = levelOf(user);
   return {
     id: user.id, nick: user.nick, gender: user.gender, bio: user.bio, avatarUrl: user.avatarUrl ?? null, createdAt: user.createdAt,
-    team: teamView(user.team), vip: isVip(user, now), skills: { CD: user.skillCd ?? 0, AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, LUCK: user.skillLuck ?? 0 }, nickColor: user.nickColor ?? null, nickFade: nickFadeOf(user, now),
+    team: teamView(user.team), vip: isVip(user, now), skills: { CD: user.skillCd ?? 0, AIM: user.skillAim ?? 0, SHOT: user.skillShot ?? 0, DRIBBLE: user.skillDribble ?? 0, LUCK: user.skillLuck ?? 0 }, nickColor: user.nickColor ?? null, nickFade: nickFadeOf(user, now),
     goalsTotal: user.goalsTotal, ...periodGoals(user, now),
     hourKey: user.hourKey, roundId: user.roundId, seasonId: user.seasonId,
     stats: {

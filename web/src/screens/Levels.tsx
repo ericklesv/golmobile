@@ -24,7 +24,7 @@ export function LevelsScreen() {
         <div className="mt-3">
           <Bar value={me.levelPoints - me.level.goals} max={(next?.goals ?? me.levelPoints) - me.level.goals} label={next ? `faltam ${num(next.goals - me.levelPoints)} para ${next.name}` : 'nível máximo'} yellow />
         </div>
-        <p className="mt-2 text-center text-[11px] font-bold text-white/80">Cada gol vale 1 ponto. O Termo e o Quiz do dia dão pontos extras. Todo nível dá 1 ponto para as habilidades (Pontaria e Chute, na Loja) — e ainda tira espera da Trilha e dá rebotes (segunda chance) nos chutes.</p>
+        <p className="mt-2 text-center text-[11px] font-bold text-white/80">Cada gol vale 1 ponto. O Termo e o Quiz do dia dão pontos extras. Todo nível dá 1 ponto para as habilidades da Loja — e ainda tira espera da Trilha e dá rebotes (segunda chance) no pênalti e na falta. O rebote da Trilha é a habilidade Drible.</p>
       </section>
 
       <Panel title="A ESCADA DO CRAQUE" ribbon="orange">

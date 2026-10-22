@@ -31,7 +31,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { prisma, dbDropped, avisarDbDropped } from '../prisma.js';
-import { BOTS, FUTPREGO, cooldownFor, LAST_FIELD, skillPointsLeft, TRAIL_LINES, SKILL_FIELD, SKILL_STEPS } from '../lib/rules.js';
+import { BOTS, FUTPREGO, cooldownFor, LAST_FIELD, skillPointsLeft, TRAIL_LINES, SKILL_FIELD, SKILL_BY_KEY } from '../lib/rules.js';
 import { x1BotVisit, x1BotsInside, setX1BotPicker } from '../realtime/x1.js';
 import { tzParts, fromTz, calendarDay } from '../lib/time.js';
 import { activeItemsWhere } from '../lib/items.js';
@@ -163,7 +163,7 @@ async function act(bot, m, what) {
 /**
  * Onde o bot gasta o ponto de nível — na ordem que o dono desenhou para a árvore (17/09/2026): primeiro a
  * Recarga (até o 6º degrau, onde o VIP chega ao piso), depois o acerto que a persona prefere (Pontaria,
- * Chute ou os dois alternando), e no fim a Sorte e o resto da Recarga. De vez em quando (1 em 5) escolhe
+ * Chute ou os dois alternando), o Drible se ela joga a Trilha, e no fim a Sorte e o resto da Recarga. De vez em quando (1 em 5) escolhe
  * qualquer uma que ainda não está no máximo — gente de verdade não segue receita à risca.
  */
 function nextSkill(bot) {
@@ -172,8 +172,10 @@ function nextSkill(bot) {
   const order = [];
   if (lvl('CD') < 6) order.push('CD');
   const acerto = pref === 'both' ? (lvl('AIM') <= lvl('SHOT') ? ['AIM', 'SHOT'] : ['SHOT', 'AIM']) : [pref];
-  order.push(...acerto, 'LUCK', 'CD', 'AIM', 'SHOT');
-  const open = [...new Set(order)].filter((k) => SKILL_FIELD[k] && lvl(k) < SKILL_STEPS);
+  order.push(...acerto);
+  if ((bot.botJson?.persona?.kinds?.TRAIL ?? 0) > 0) order.push('DRIBBLE');
+  order.push('LUCK', 'CD', 'AIM', 'SHOT', 'DRIBBLE');
+  const open = [...new Set(order)].filter((k) => SKILL_FIELD[k] && lvl(k) < SKILL_BY_KEY[k].max);
   if (!open.length) return null;
   return rnd() < 0.2 ? pick(open) : open[0];
 }

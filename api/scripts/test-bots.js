@@ -143,7 +143,7 @@ await sleep(1500);
   const pass = await prisma.loginPass.count({ where: { userId: ids['tb-assiduo'] } });
   check(pass === 1, 'assíduo resgatou a Presença da Semana (1 vez)');
   check((await prisma.loginPass.count({ where: { userId: ids['tb-casual'] } })) === 0, 'casual com pass:false NÃO resgatou');
-  check(a.skillPoints >= 1 && (a.skillCd ?? 0) + (a.skillAim ?? 0) + (a.skillShot ?? 0) + (a.skillLuck ?? 0) === a.skillPoints, `ponto de nível gasto na árvore (Recarga ${a.skillCd}, Pontaria ${a.skillAim}, Chute ${a.skillShot}, Sorte ${a.skillLuck})`);
+  check(a.skillPoints >= 1 && (a.skillCd ?? 0) + (a.skillAim ?? 0) + (a.skillShot ?? 0) + (a.skillDribble ?? 0) + (a.skillLuck ?? 0) === a.skillPoints, `ponto de nível gasto na árvore (Recarga ${a.skillCd}, Pontaria ${a.skillAim}, Chute ${a.skillShot}, Drible ${a.skillDribble}, Sorte ${a.skillLuck})`);
   const c = await prisma.user.findUnique({ where: { id: ids['tb-casual'] } });
   check(c.foulTries === 0 && c.penaltyTries >= 1 && c.trailTries === 0, `casual: só direto e pênalti (FOUL 0 e sem TRAIL na persona) — pên ${c.penaltyTries}, falta ${c.foulTries}, trilha ${c.trailTries}`);
   const p = await prisma.user.findUnique({ where: { id: ids['tb-parado'] } });

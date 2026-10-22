@@ -142,7 +142,7 @@ export function ProfileScreen() {
       <InstaButton />
       <WhatsButton />
       {me.isAdmin && <Link to="/admin" className="btn btn-gray btn-md w-full"><img src="/ui/pi-setting.png" className="h-5 w-5" alt="" /> Painel de admin</Link>}
-      <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · trilha nv {me.rebound.TRAIL} · <Link to="/niveis" className="t-gold t-display">níveis</Link> · <Link to="/regras" className="t-gold t-display">regras</Link></p>
+      <p className="-mt-2 text-center text-[11px] font-bold text-white/80">Rebotes: pênalti nv {me.rebound.PENALTY} · falta nv {me.rebound.FOUL} · <Link to="/niveis" className="t-gold t-display">níveis</Link> · <Link to="/regras" className="t-gold t-display">regras</Link></p>
 
       <NickFadePanel />
 

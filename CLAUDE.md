@@ -33,15 +33,25 @@ depois que o novo estiver estável. Não instalar nada dele.
   dono, 13/09/2026: travar desanimava); **só os minigames travam por nível** (`MINIGAMES.unlock`).
   O front lê tudo via `GET /api/meta` — **não duplicar constantes no `web/`**.
 - **Habilidades = a evolução do jogador** (`SKILLS`/`SKILL_STEPS` em rules.js, `services/skills.js`, painel
-  na Loja; reforma do dono em 17/09/2026, ajustada no mesmo dia). **Quatro habilidades de 18 degraus cada**,
-  na ordem de gastar ponto: **Recarga** (−5 s por degrau no chute direto/pênalti/falta; a trilha tem a
+  na Loja; reforma do dono em 17/09/2026, ajustada no mesmo dia). **Quatro habilidades de 18 degraus cada
+  + o Drible de 6**, na ordem de gastar ponto: **Recarga** (−5 s por degrau no chute direto/pênalti/falta; a trilha tem a
   redução dos níveis, não esta), **Pontaria** (+2,5 p.p. no pênalti, até 90%), **Chute** (+2,5 p.p. na falta,
-  até 80%) e **Sorte** (+0,39 p.p. na chance de chute especial, de 3% a 10%).
+  até 80%), **Drible** (rebote da Trilha, 32%/6 ≈ +5,3 p.p. por degrau, até 32%) e **Sorte** (+0,39 p.p. na chance
+  de chute especial, de 3% a 10%).
+  **Drible (dono, 22/10/2026):** o rebote da Trilha vinha dos níveis 25 a 32 ("Rebote Trilha nível 1–5" e "Todos os
+  rebotes 6–8") e virou habilidade ("daria um maior sentimento de progressão"); `trailReboundChance(user)` em
+  rules.js, usado no `trailPick`. Os níveis 25–29 ficaram só com o ponto de habilidade e o 30–32 dão rebote só no
+  pênalti e na falta (`reboundLevel` devolve 0 para a Trilha). Quem tinha o rebote pelo nível recebeu os pontos
+  para voltar a ter PELO MENOS o mesmo — `CEIL(antes × 6 / 32)`: nível 25 → 1, 26 → 2, 27–28 → 3, 29 → 4, 30 → 5,
+  31+ → 6 — na coluna **`User.skillPointsBonus`** (pontos ganhos fora do nível; `skillPointsLeft` = nível +
+  bônus − gastos) e uma mensagem na caixa (bots ganham os pontos, sem mensagem). Tudo na migração
+  **0045_drible**, que roda sozinha no deploy.
   **Cada degrau custa 1 PONTO DE NÍVEL e nada mais** — dinheiro e VIP saíram ("temos que dar mais valor a
   upada de nível… tira a magia que é passar de nível"); o que foi pago com dinheiro/VIP foi devolvido EM
   DOBRO (`scripts/devolver-habilidades.js`, com trava no AdminAction para não pagar duas vezes).
-  A árvore inteira custa **72 pontos = nível 72 = 300 mil pontos de nível**, o "full" do BRGOL — os níveis
-  33 a 72 (Lendário 4–10, Ídolo, Mito, Imortal) foram criados para isso, subindo ~4,3% por nível.
+  A árvore inteira custa **78 pontos = nível 78 = 390 mil pontos de nível**, o "full" do BRGOL — os níveis
+  33 a 72 (Lendário 4–10, Ídolo, Mito, Imortal) foram criados para os 72 pontos de antes, subindo ~4,3% por nível,
+  e os 73 a 78 (Imortal 14–19, de 15 em 15 mil) entraram com o Drible.
   **Por que 18 degraus e não 9:** com 9, o acerto máximo dos dois chutes custava 18 pontos e o dono chegou lá
   em 4 dias ("nível 18 e já tô full praticamente") — os 28 primeiros pontos saem em 2 semanas, e só do 29 em
   diante a curva trava. Com 18, os dois acertos custam 36 pontos. Mexeu nos degraus? **Tem de zerar as

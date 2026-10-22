@@ -1,7 +1,7 @@
 /**
  * Habilidades (services/skills.js) e chute de prata/ouro (lib/bola.js + services/play.js) no banco LOCAL:
- * só ponto de nível paga, os tetos (recarga 4:30, pênalti 90%, falta 80%, sorte 10%), a árvore inteira
- * custando 36 pontos = nível 36, e a recarga de prata/ouro rendendo 2 e 3 batidas sem cobrar recarga nova.
+ * só ponto de nível paga, os tetos (recarga 4:30, pênalti 90%, falta 80%, sorte 10%, drible 32%), a árvore inteira
+ * custando 78 pontos = nível 78, o Drible (rebote da Trilha) que saiu dos níveis, e a recarga de prata/ouro rendendo 2 e 3 batidas sem cobrar recarga nova.
  * Cria jogadores th…
  *
  * Uso (na pasta api/):  node scripts/test-habilidades.js   → tem de terminar em "TUDO OK".
@@ -30,15 +30,17 @@ const U = (id) => prisma.user.findUnique({ where: { id }, include: { items: true
 
 // ── a árvore
 const custo = R.SKILLS.reduce((s, x) => s + x.max, 0);
-check(R.SKILLS.map((s) => s.key).join(',') === 'CD,AIM,SHOT,LUCK', `as 4 habilidades, na ordem do dono: ${R.SKILLS.map((s) => s.name).join(' → ')}`);
-check(custo === 72 && R.LEVELS.at(-1).lvl === 72, `a árvore inteira custa ${custo} pontos (4 habilidades de ${R.SKILL_STEPS} degraus) e o nível máximo é ${R.LEVELS.at(-1).lvl} (${R.LEVELS.at(-1).goals.toLocaleString('pt-BR')} pontos de nível)`);
-check(R.SKILLS.every((x) => x.max === R.SKILL_STEPS), `todas as habilidades têm ${R.SKILL_STEPS} degraus (dono: "coloque 18 níveis")`);
+check(R.SKILLS.map((s) => s.key).join(',') === 'CD,AIM,SHOT,DRIBBLE,LUCK', `as 5 habilidades, na ordem do dono: ${R.SKILLS.map((s) => s.name).join(' → ')}`);
+check(custo === 78 && R.LEVELS.at(-1).lvl === 78, `a árvore inteira custa ${custo} pontos (4 habilidades de ${R.SKILL_STEPS} degraus + o Drible de ${R.SKILL_BY_KEY.DRIBBLE.max}) e o nível máximo é ${R.LEVELS.at(-1).lvl} (${R.LEVELS.at(-1).goals.toLocaleString('pt-BR')} pontos de nível)`);
+check(R.SKILLS.filter((x) => x.key !== 'DRIBBLE').every((x) => x.max === R.SKILL_STEPS) && R.SKILL_BY_KEY.DRIBBLE.max === 6, `as 4 de antes têm ${R.SKILL_STEPS} degraus (dono: "coloque 18 níveis") e o Drible tem 6 ("a trilha serão 6 níveis pra ficar full")`);
+check(R.LEVELS.every((l, i) => i === 0 || (l.lvl === R.LEVELS[i - 1].lvl + 1 && l.goals > R.LEVELS[i - 1].goals)), 'a tabela de níveis segue sem buraco e sempre subindo (73 a 78 incluídos)');
 check(Object.keys(R.SKILL_COST).join(',') === 'point', 'habilidade paga só com ponto de nível (dinheiro e VIP saíram)');
 check(R.CHANCE_CAP.PENALTY === 0.90 && R.CHANCE_CAP.FOUL === 0.80, `tetos: pênalti ${pct(R.CHANCE_CAP.PENALTY)}, falta ${pct(R.CHANCE_CAP.FOUL)}`);
 
 // ── um jogador full: cada habilidade no máximo entrega o que o dono pediu
-const full = { skillCd: 18, skillAim: 18, skillShot: 18, skillLuck: 18, goalsTotal: 300000, levelBonus: 0 };
-check(R.levelOf(full).lvl === 72, `com 300 mil pontos o jogador chega ao nível ${R.levelOf(full).lvl} — e aí tem os ${custo} pontos da árvore inteira`);
+const full = { skillCd: 18, skillAim: 18, skillShot: 18, skillDribble: 6, skillLuck: 18, goalsTotal: R.LEVELS.at(-1).goals, levelBonus: 0 };
+check(R.levelOf(full).lvl === 78, `com ${R.LEVELS.at(-1).goals.toLocaleString('pt-BR')} pontos o jogador chega ao nível ${R.levelOf(full).lvl} — e aí tem os ${custo} pontos da árvore inteira`);
+check(R.trailReboundChance(full) === R.TRAIL_REBOUND_MAX && R.TRAIL_REBOUND_MAX === 0.32, `rebote da Trilha no full: ${pct(R.trailReboundChance(full))} (o mesmo que o nível 32 dava)`);
 check(R.shotChance(full, 'PENALTY') === 0.90, `pênalti no full: ${pct(R.shotChance(full, 'PENALTY'))}`);
 check(Math.abs(R.shotChance(full, 'FOUL') - 0.80) < 1e-9, `falta no full: ${pct(R.shotChance(full, 'FOUL'))}`);
 check(Math.abs(R.ballChance(full).total - 0.10) < 1e-9, `chance de chute especial no full: ${pct(R.ballChance(full).total)} (prata ${(R.ballChance(full).silver * 100).toFixed(1)}% + ouro ${(R.ballChance(full).gold * 100).toFixed(1)}%)`);
@@ -53,6 +55,46 @@ check(R.cooldownFor({ ...full, skillCd: 0 }, 'PENALTY') === 10 * 60_000, 'sem a 
 check(R.cooldownFor({ ...full, skillCd: 6 }, 'PENALTY') === 9.5 * 60_000, 'no 6º degrau da Recarga o comum está em 9:30 (5 s por degrau)');
 check(R.cooldownFor(comVip({ ...full, skillCd: 5 }), 'PENALTY') === 4 * 60_000 + 35_000, 'VIP no 5º degrau: 4:35 — ainda não é o piso');
 check(R.cooldownFor(comVip({ ...full, skillCd: 6 }), 'PENALTY') === R.COOLDOWN_MIN, 'VIP no 6º degrau: bate nos 4:30 e não desce mais');
+
+// ── Drible (dono, 22/10/2026): o rebote da Trilha saiu dos níveis e virou habilidade
+check(R.LEVELS.every((l) => l.rebound !== 'TRAIL') && R.LEVELS.every((l) => R.reboundLevel(l.lvl, 'TRAIL') === 0), 'nenhum nível dá mais rebote na Trilha');
+check(R.trailReboundChance({ goalsTotal: 60000 }) === 0, 'jogador do nível 32 sem Drible: 0% de rebote na Trilha');
+check(R.reboundLevel(32, 'PENALTY') === 8 && R.reboundLevel(32, 'FOUL') === 8 && R.reboundLevel(30, 'FOUL') === 6 && R.reboundLevel(24, 'PENALTY') === 5,
+  'pênalti e falta seguem com o rebote dos níveis (nível 24 = 5, 30 = 6, 32 = 8)');
+const degraus = [0, 1, 2, 3, 4, 5, 6].map((k) => R.trailReboundChance({ skillDribble: k }));
+check(degraus.every((c, k) => Math.abs(c - k * 0.32 / 6) < 1e-12) && R.trailReboundChance({ skillDribble: 9 }) === 0.32,
+  `degraus do Drible: ${degraus.map((c) => (c * 100).toFixed(1) + '%').join(' → ')} (e não passa de 32%)`);
+// a devolução da migração 0045: CEIL(antes × 6 / 32) degraus é o MENOR número que volta a dar pelo menos o rebote que o nível dava
+for (let n = 1; n <= 8; n++) {
+  const antes = R.REBOUND_CHANCE[n];
+  const pontos = Math.ceil(Math.round(antes * 100) * 6 / 32);
+  check(R.trailReboundChance({ skillDribble: pontos }) >= antes - 1e-12 && R.trailReboundChance({ skillDribble: pontos - 1 }) < antes,
+    `quem tinha rebote ${n} (${pct(antes)}) ganha ${pontos} ${pontos === 1 ? 'ponto' : 'pontos'}: com eles o Drible dá ${(R.trailReboundChance({ skillDribble: pontos }) * 100).toFixed(1)}%`);
+}
+// pontos ganhos fora do nível entram nos disponíveis e compram o Drible até o teto
+const devolvido = await mk({ goalsTotal: 200, skillPointsBonus: 3 }); // nível 5 + 3 devolvidos
+check(R.skillPointsLeft(await U(devolvido.id)) === 8, `nível 5 com 3 pontos devolvidos: ${R.skillPointsLeft(await U(devolvido.id))} pontos para gastar`);
+for (let i = 0; i < 6; i++) await buySkill(devolvido.id, 'DRIBBLE', 'point');
+const eDrible = await err(buySkill(devolvido.id, 'DRIBBLE', 'point'));
+const dv = await U(devolvido.id);
+check(dv.skillDribble === 6 && eDrible?.status === 400 && R.skillPointsLeft(dv) === 2, `Drible comprado até o 6º degrau e trava aí ("${eDrible?.message}"); sobraram ${R.skillPointsLeft(dv)} pontos`);
+// na Trilha de verdade: o rebote sai na chance do Drible, e o nível sozinho não dá mais nenhum
+const { trailPick: pick0 } = await import('../src/services/play.js');
+const rebotes = async (id, N) => {
+  let ladroes = 0, rebs = 0;
+  for (let i = 0; i < N; i++) {
+    await prisma.user.update({ where: { id }, data: { lastTrailAt: null, trailState: null, ballNext: {} } });
+    const r = await pick0(id, 0); // 1º jogador da defesa: 1 ladrão em 4
+    if (r.mine) { ladroes++; if (r.rebound) rebs++; }
+  }
+  return { ladroes, rebs };
+};
+const comDrible = await mk({ goalsTotal: 200, skillDribble: 6 });
+const rd = await rebotes(comDrible.id, 800);
+check(rd.ladroes > 120 && rd.rebs / rd.ladroes > 0.2 && rd.rebs / rd.ladroes < 0.45, `Drible cheio na Trilha: ${rd.rebs} rebotes em ${rd.ladroes} roubadas (${pct(rd.rebs / rd.ladroes)}; previsto 32%)`);
+const veterano = await mk({ goalsTotal: 60000 }); // nível 32, que antes tinha 32% de rebote na Trilha
+const rv = await rebotes(veterano.id, 300);
+check(rv.ladroes > 30 && rv.rebs === 0, `nível 32 sem Drible: ${rv.rebs} rebotes em ${rv.ladroes} roubadas`);
 
 // ── Boost Auto: -30 s e nunca abaixo de 4 min
 const I = await import('../src/lib/items.js');
@@ -167,7 +209,7 @@ check((await ladroesDaUltima(cavador.id)) === R.TRAIL_LINES[linhaFinal].mines, '
 const view = cooldownsView(await U(sortudo.id));
 check(view.PENALTY.ball !== undefined && view.TRAIL.ball !== undefined && view.AUTO.ball === null, 'cooldownsView manda a bola de cada modo para a tela');
 
-const ids = [u.id, alto.id, sortudo.id, cavador.id];
+const ids = [u.id, alto.id, sortudo.id, cavador.id, devolvido.id, comDrible.id, veterano.id];
 await prisma.$transaction([
   prisma.userItem.deleteMany({ where: { userId: { in: ids } } }),
   prisma.goal.deleteMany({ where: { userId: { in: ids } } }),

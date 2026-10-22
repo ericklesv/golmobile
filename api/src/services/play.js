@@ -8,7 +8,7 @@ import { hourKey, nextMidnight } from '../lib/time.js';
 import {
   COOLDOWN_TOLERANCE_MS, COOLDOWN_MIN, LAST_FIELD, MONEY, UNLOCK_LEVEL, TRAIL_LINES, FOUL_BASE_CHANCE, PENALTY_BASE_CHANCE,
   CHANCE_CAP, skillBonus, PARTY_PRIZES, REBOUND_CHANCE, KIND_LABEL,
-  cooldownFor, levelOf, reboundLevel, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip, rollBall, BALL } from '../lib/rules.js';
+  cooldownFor, levelOf, reboundLevel, trailReboundChance, PARTY_SPINS, MINIGAME_MONEY_KINDS, MINIGAME_MONEY, isVip, rollBall, BALL } from '../lib/rules.js';
 import { ballNextOf, goalsOf, saveNextBall } from '../lib/bola.js';
 import { liveMatchForTeam } from './league.js';
 import { activeItemsWhere, bootBonus, shinGuard, rollShinGuardMines, strikerOn } from '../lib/items.js';
@@ -286,10 +286,9 @@ export async function trailPick(userId, pickIndex) {
     let text = null;
     let vale = 1; // bola de prata/ouro: quanto o gol da trilha vale
     let premio = 0;
-    const lvl = levelOf(user).lvl;
 
     if (mine) {
-      const rb = REBOUND_CHANCE[reboundLevel(lvl, 'TRAIL')] || 0;
+      const rb = trailReboundChance(user); // habilidade Drible (até 22/10/2026 vinha dos níveis 25–32)
       const minesLeft = lineMines.filter((m, i) => m && !(state.revealed || []).some((r) => r.phase === line && r.index === i)).length;
       if (rnd() < rb && cfg.total - cfg.mines > 0 && minesLeft > 0) {
         rebound = true; // mantém a posse: revela o errado e continua na mesma linha

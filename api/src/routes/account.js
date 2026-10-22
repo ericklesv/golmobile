@@ -58,7 +58,7 @@ export async function deleteAccount(userId) {
         nick: anon, nickLower: anon, email: `${anon}@excluido.jogagol.com.br`, passwordHash: '!', // "!" nunca bate no bcrypt
         bio: null, avatarUrl: null, nickColor: null, lastIp: null, lastIpAt: null, refCode: null, trailState: null,
         money: 0, dexterity: 0, vipDays: 0, vipUntil: null, contractUntil: null, // economia some junto
-        skillAim: 0, skillShot: 0, skillCd: 0, skillLuck: 0, skillPoints: 0, ballNext: null, ballLeft: null, // habilidades e bolas especiais
+        skillAim: 0, skillShot: 0, skillCd: 0, skillLuck: 0, skillDribble: 0, skillPoints: 0, skillPointsBonus: 0, ballNext: null, ballLeft: null, // habilidades e bolas especiais
         avisosVistos: null,
         lastSeenAt: new Date(0), // some de "online"/"ativos" sem mexer nas consultas
         deletedAt: new Date(),

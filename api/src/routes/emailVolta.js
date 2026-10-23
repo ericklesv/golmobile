@@ -26,6 +26,9 @@ const PIXEL_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAA
 // imagem sempre, mesmo com código ruim, e sem guardar em cache (cada exibição tem de chegar aqui).
 emailVolta.get('/aberto/:arq', (req, res) => {
   res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate, private' }).end(PIXEL_GIF);
+  // investigação de 23/10/2026: o que separa a conferência do Brevo de uma abertura de verdade (tirar depois)
+  const { cookie, authorization, ...cab } = req.headers;
+  console.log(`[email] imagem cabeçalhos ${String(req.params.arq).slice(0, 8)}: ${JSON.stringify(cab).slice(0, 900)}`);
   abriuPixel(String(req.params.arq).replace(/\.gif$/, ''))
     .then((r) => { if (r) console.log(`[email] imagem: ${r} · ${String(req.get('user-agent') ?? '').slice(0, 60)}`); })
     .catch((e) => console.error('[email] abertura pela imagem:', e?.message || e));

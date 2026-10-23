@@ -13,6 +13,7 @@ import { SECURITY, isDisposableEmail, checkRegisterForm, verifyTurnstile, assert
 import { deviceOf, deviceData } from '../lib/device.js';
 import { tg } from '../lib/telegram.js';
 import { fonteDoCadastro } from '../lib/origem.js';
+import { vipAoEntrar } from '../services/emailVolta.js';
 
 export const auth = Router();
 
@@ -90,6 +91,10 @@ auth.post('/login', limiter, handle(async (req) => {
   // já tem 3 contas neste aparelho (ou, no PC, nesta internet) agora: esta não entra (lib/security.js) — admin fica de fora
   const ip = clientIp(req);
   if (!user.isAdmin) takeSlot({ ip, device: deviceOf(req) }, user.id, Date.now(), user.nick);
+  // recebeu o e-mail de volta: o VIP cai ao entrar, sem tocar no botão (services/emailVolta.js) — lido ANTES do
+  // lastSeenAt novo, para o aviso do Telegram dizer desde quando a pessoa não entrava
+  const vipEmail = await vipAoEntrar(user.id).catch((e) => { console.error('[email] VIP ao entrar:', e?.message || e); return 0; });
   await prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(), lastIp: ip, lastIpAt: new Date(), ...deviceData(req) } });
-  return { token: signToken(user), me: meView(user) };
+  const atual = vipEmail ? await prisma.user.findUnique({ where: { id: user.id }, include: meInclude() }) : user;
+  return { token: signToken(user), me: meView(atual) };
 }));

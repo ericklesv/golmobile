@@ -955,7 +955,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   `web/public/email/`, geradas por `scripts/email-assets.js` — e-mail não mostra SVG/WebP —, os dois títulos no estilo
   `.t-out`/`.t-gold` saíram de `scripts/email-titulos.html` pelo Edge headless): chama de volta quem não entra há
   **10+ dias** com **7 dias de VIP ATIVO** no botão (soma em `vipUntil`, como a Presença: não vai para o banco, não
-  doa, não vira saldo), uma vez por conta, até `VOLTA.expiresAt` (06/11/2026). O e-mail é personalizado (nick, data
+  doa, não vira saldo), uma vez por conta, até `VOLTA.expiresAt` (06/11/2026). **O VIP cai também ao ENTRAR no jogo,
+  sem tocar no botão** (`vipAoEntrar`; Guilherme, 23/10/2026, depois que o EberVita abriu o e-mail, entrou pelo app 1
+  min depois e ficou sem o VIP): no login, no `GET /api/me` (a sessão dura 30 dias, então quem volta quase nunca passa
+  pelo login) e no `voltaSweep` (quem só entrou pelo X1 e quem voltou antes da regra). Mesmas travas do botão; marca
+  `claimedAt` sem `clickedAt` e o `returnedAt` junto (um aviso só no Telegram); quem toca no botão depois vê "VIP
+  ativado" sem somar de novo. O `relatorio` separa os que ganharam ao entrar (`semClique`). O e-mail é personalizado (nick, data
   em que saiu, escudo/posição do time, gols da carreira, "o que mudou desde" só com o que a pessoa não viu) e tem a
   frase do dono "O JogaGol está mais vivo do que nunca!". Fora do público: bot, admin, banido, quem saiu da lista e
   e-mail descartável/de teste (`NAO_MANDA` + a lista do cadastro) — e, desde 23/10/2026, endereço que voltaria como

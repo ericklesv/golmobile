@@ -321,10 +321,10 @@ model EmailSend {
   tokenHash  String    @unique
   sentAt     DateTime?
   error      String?
-  openedAt   DateTime? // abriu o e-mail (aviso do Brevo ou a 2ª busca da imagem de 1 pixel; aproximado — ver services/emailVolta.js)
+  openedAt   DateTime? // abriu o e-mail (aviso do Brevo ou a 1ª busca da imagem de 1 pixel 90 s depois do envio; aproximado — ver services/emailVolta.js)
   pixelAt    DateTime? // 1ª busca da imagem de 1 pixel, venha quando vier (só registro; a abertura é a 1ª busca 90 s depois do envio)
   clickedAt  DateTime?
-  claimedAt  DateTime?
+  claimedAt  DateTime? // ficou com o VIP: pelo botão (com clickedAt) ou ao entrar no jogo sem clicar (vipAoEntrar, desde 23/10/2026)
   returnedAt DateTime?
   unsubAt    DateTime?
   createdAt  DateTime  @default(now())

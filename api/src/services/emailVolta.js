@@ -5,6 +5,7 @@
  *
  * - O VIP entra JÁ ATIVO (soma em `vipUntil`, como o 7º dia da Presença): não vai para o banco de dias, então não
  *   dá para doar nem trocar por saldo. Uma vez por jogador por campanha (`claimedAt` muda de null uma vez só).
+ *   Desde 23/10/2026 cai também ao ENTRAR no jogo sem tocar no botão (`vipAoEntrar`).
  * - Telegram (pedido do Guilherme): quem ABRIU o e-mail (aviso do Brevo, `eventoBrevo`, ou a imagem de 1 pixel do
  *   rodapé, `abriuPixel` — o que chegar primeiro) e cada clique que pega o VIP
  *   viram aviso com quem foi; o scheduler avisa também
@@ -131,14 +132,42 @@ export async function enviarUm(user, ctx, { campaign = VOLTA.campaign, to = user
   }
 }
 
+const USER_SEL = { id: true, nick: true, deletedAt: true, bannedUntil: true, vipUntil: true, goalsTotal: true, lastSeenAt: true, team: { select: { name: true } } };
+
 async function linhaDoToken(raw) {
   if (typeof raw !== 'string' || !/^[A-Za-z0-9_-]{20,64}$/.test(raw)) throw badRequest('Esse link está incompleto.', 'link-invalido');
-  const row = await prisma.emailSend.findUnique({
-    where: { tokenHash: hashToken(raw) },
-    include: { user: { select: { id: true, nick: true, deletedAt: true, bannedUntil: true, vipUntil: true, goalsTotal: true, lastSeenAt: true, team: { select: { name: true } } } } },
-  });
+  const row = await prisma.emailSend.findUnique({ where: { tokenHash: hashToken(raw) }, include: { user: { select: USER_SEL } } });
   if (!row || row.user.deletedAt) throw badRequest('Esse link não vale mais.', 'link-invalido');
   return row;
+}
+
+/** "Flamengo · 1.234 gols · não entrava desde 10/10 às 21:30" (a última parte só enquanto o lastSeenAt é de antes do e-mail) */
+const perfilTg = (user, sentAt) => `${tg.esc(user.team.name)} · ${user.goalsTotal.toLocaleString('pt-BR')} gols${!sentAt || user.lastSeenAt < sentAt ? ` · não entrava desde ${quando(user.lastSeenAt)}` : ''}`;
+const contagem = (campaign) => Promise.all([
+  prisma.emailSend.count({ where: { campaign, claimedAt: { not: null } } }),
+  prisma.emailSend.count({ where: { campaign, sentAt: { not: null } } }),
+]);
+
+/**
+ * Ativa os dias de VIP da linha (uma vez: `claimedAt` muda de null uma vez só — dois cliques, duas abas ou o botão e
+ * o VIP ao entrar chegando juntos dão um VIP só) e manda a mensagem na caixa. Devolve `{until}` ou null (já pegou).
+ */
+async function ativarVip(row, now) {
+  return prisma.$transaction(async (tx) => {
+    const won = await tx.emailSend.updateMany({ where: { id: row.id, claimedAt: null }, data: { claimedAt: now } });
+    if (!won.count) return null;
+    if (isTeste(row.campaign)) return { until: null };
+    // trava a linha: o VIP pode estar chegando por outro caminho ao mesmo tempo (PIX, doação, Presença)
+    const [u] = await tx.$queryRaw`SELECT "vipUntil" FROM "User" WHERE id = ${row.userId} FOR UPDATE`;
+    const from = u.vipUntil && new Date(u.vipUntil) > now ? new Date(u.vipUntil) : now;
+    const until = new Date(from.getTime() + VOLTA.vipDays * DAY);
+    await tx.user.update({ where: { id: row.userId }, data: { vipUntil: until } });
+    await sendMessage(row.userId, {
+      kind: 'PRESENTE', icon: 'vip', title: `${VOLTA.vipDays} dias de VIP ativados`,
+      text: `Que bom te ver de novo! [vip] Seus ${VOLTA.vipDays} dias de VIP do e-mail já estão valendo, até ${quando(until)}. Recargas pela metade, chute direto saindo sozinho mesmo com o jogo fechado e X1 sem espera. [Jogar agora](/)`,
+    }, tx);
+    return { until };
+  });
 }
 
 /** O botão do e-mail: marca o clique e ativa o VIP (uma vez). Devolve o que a página /voltar mostra. */
@@ -150,40 +179,54 @@ export async function resgatar(raw, now = new Date()) {
   if (!row.clickedAt) await prisma.emailSend.updateMany({ where: { id: row.id, clickedAt: null }, data: { clickedAt: now } });
   // clicou sem a abertura ter sido medida (Outlook bloqueia imagem de remetente novo): abriu também, sem outro aviso
   if (!row.openedAt) await prisma.emailSend.updateMany({ where: { id: row.id, openedAt: null }, data: { openedAt: now } });
-  if (row.claimedAt) return { ...base, status: 'ja-pegou', vipUntil: user.vipUntil };
-  const perfil = `${tg.esc(user.team.name)} · ${user.goalsTotal.toLocaleString('pt-BR')} gols · não entrava desde ${quando(user.lastSeenAt)}`;
+  // o VIP já caiu ao entrar no jogo (vipAoEntrar) — no 1º clique a página comemora igual: o VIP está valendo
+  if (row.claimedAt) return { ...base, status: row.clickedAt ? 'ja-pegou' : 'ok', vipUntil: user.vipUntil };
+  const perfil = perfilTg(user, row.sentAt);
   if (now > VOLTA.expiresAt) {
     tg.info(`📧 <b>${tg.esc(user.nick)}</b> clicou no e-mail de volta, mas o prazo do VIP já tinha acabado.\n${perfil}`);
     return { ...base, status: 'vencido' };
   }
   if (user.bannedUntil && user.bannedUntil > now) return { ...base, status: 'suspenso' };
 
-  const res = await prisma.$transaction(async (tx) => {
-    const won = await tx.emailSend.updateMany({ where: { id: row.id, claimedAt: null }, data: { claimedAt: now } });
-    if (!won.count) return null; // outro clique chegou antes (dois toques, duas abas)
-    if (teste) return { until: null };
-    // trava a linha: o VIP pode estar chegando por outro caminho ao mesmo tempo (PIX, doação, Presença)
-    const [u] = await tx.$queryRaw`SELECT "vipUntil" FROM "User" WHERE id = ${user.id} FOR UPDATE`;
-    const from = u.vipUntil && new Date(u.vipUntil) > now ? new Date(u.vipUntil) : now;
-    const until = new Date(from.getTime() + VOLTA.vipDays * DAY);
-    await tx.user.update({ where: { id: user.id }, data: { vipUntil: until } });
-    await sendMessage(user.id, {
-      kind: 'PRESENTE', icon: 'vip', title: `${VOLTA.vipDays} dias de VIP ativados`,
-      text: `Que bom te ver de novo! [vip] Seus ${VOLTA.vipDays} dias de VIP do e-mail já estão valendo, até ${quando(until)}. Recargas pela metade, chute direto saindo sozinho mesmo com o jogo fechado e X1 sem espera. [Jogar agora](/)`,
-    }, tx);
-    return { until };
-  });
-  if (!res) {
+  const res = await ativarVip(row, now);
+  if (!res) { // outro clique (dois toques, duas abas) ou o VIP ao entrar chegou antes: o VIP está valendo
     const again = await prisma.user.findUnique({ where: { id: user.id }, select: { vipUntil: true } });
-    return { ...base, status: 'ja-pegou', vipUntil: again?.vipUntil ?? null };
+    return { ...base, status: 'ok', vipUntil: again?.vipUntil ?? null };
   }
-  const [claims, sent] = await Promise.all([
-    prisma.emailSend.count({ where: { campaign: row.campaign, claimedAt: { not: null } } }),
-    prisma.emailSend.count({ where: { campaign: row.campaign, sentAt: { not: null } } }),
-  ]);
+  const [claims, sent] = await contagem(row.campaign);
   const depois = row.sentAt ? ` · ${tempo(now - row.sentAt)} depois do envio` : '';
-  tg.info(`📧 ${teste ? '<i>(teste)</i> ' : ''}<b>${tg.esc(user.nick)}</b> clicou no e-mail de volta e pegou ${VOLTA.vipDays} dias de VIP.\n${perfil}\nClique ${claims} de ${sent} e-mails enviados${depois}`);
+  tg.info(`📧 ${teste ? '<i>(teste)</i> ' : ''}<b>${tg.esc(user.nick)}</b> clicou no e-mail de volta e pegou ${VOLTA.vipDays} dias de VIP.\n${perfil}\nVIP entregue a ${claims} de ${sent} e-mails enviados${depois}`);
   return { ...base, status: 'ok', vipUntil: res.until };
+}
+
+/**
+ * VIP AO ENTRAR (Guilherme, 23/10/2026): quem recebeu o e-mail e entrou no jogo ganha os dias de VIP como se tivesse
+ * tocado no botão — o EberVita abriu o e-mail, entrou pelo app 1 min depois e ficou sem o VIP porque não clicou.
+ * Chamado no login, no GET /api/me (o site abre com ele; a sessão dura 30 dias, então quem volta quase nunca passa pelo
+ * login) e no `voltaSweep` (quem só entrou pelo X1 e quem voltou antes desta regra). Mesmas travas do botão: uma vez
+ * por campanha, nada depois do prazo, nada para conta suspensa, a campanha "-teste" não conta. Entrar = voltou a
+ * jogar: marca `returnedAt` junto e o aviso no Telegram é um só. Devolve quantos VIPs ativou (0 quase sempre).
+ */
+export async function vipAoEntrar(userId, now = new Date()) {
+  if (now > VOLTA.expiresAt) return 0; // passado o prazo nem consulta (o GET /api/me chama isto)
+  const rows = await prisma.emailSend.findMany({
+    where: { userId, sentAt: { not: null }, claimedAt: null, NOT: { campaign: { endsWith: '-teste' } } },
+    include: { user: { select: USER_SEL } },
+  });
+  let n = 0;
+  for (const row of rows) {
+    const { user } = row;
+    if (user.deletedAt || (user.bannedUntil && user.bannedUntil > now)) continue;
+    if (!(await ativarVip(row, now))) continue; // o botão chegou antes
+    n++;
+    const entrou = user.lastSeenAt > row.sentAt ? user.lastSeenAt : now;
+    const voltouAgora = !row.returnedAt && (await prisma.emailSend.updateMany({ where: { id: row.id, returnedAt: null }, data: { returnedAt: entrou } })).count > 0;
+    const [claims, sent] = await contagem(row.campaign);
+    tg.info(voltouAgora
+      ? `✅ <b>${tg.esc(user.nick)}</b> voltou a jogar ${tempo(entrou - row.sentAt)} depois do e-mail, sem tocar no botão, e ganhou os ${VOLTA.vipDays} dias de VIP ao entrar.\n${perfilTg(user, row.sentAt)}\nVIP entregue a ${claims} de ${sent} e-mails enviados`
+      : `🎁 <b>${tg.esc(user.nick)}</b> ganhou os ${VOLTA.vipDays} dias de VIP do e-mail ao entrar (já tinha voltado a jogar sem tocar no botão).\nVIP entregue a ${claims} de ${sent} e-mails enviados`);
+  }
+  return n;
 }
 
 /**
@@ -282,8 +325,16 @@ export async function sairDaLista(raw, now = new Date()) {
  * Scheduler (a cada 2 min): quem recebeu o e-mail e ENTROU no jogo depois (lastSeenAt passou do clique ou, sem
  * clique, do envio) ganha `returnedAt` e vira aviso no Telegram. Só a 1ª volta conta. UPDATE … RETURNING: o mesmo
  * jogador nunca é avisado duas vezes, nem com duas instâncias.
+ * Antes, quem entrou sem o VIP recebe o VIP ao entrar (`vipAoEntrar`): quem só passou pelo X1 (o lastSeenAt anda sem
+ * o GET /api/me) e quem voltou antes de essa regra existir (23/10/2026).
  */
-export async function voltaSweep() {
+export async function voltaSweep(now = new Date()) {
+  if (now <= VOLTA.expiresAt) {
+    const semVip = await prisma.$queryRaw`
+      SELECT DISTINCT e."userId" FROM "EmailSend" e JOIN "User" u ON u.id = e."userId"
+      WHERE e."sentAt" IS NOT NULL AND e."claimedAt" IS NULL AND e.campaign NOT LIKE '%-teste' AND u."lastSeenAt" > e."sentAt"`;
+    for (const { userId } of semVip) await vipAoEntrar(userId, now);
+  }
   const rows = await prisma.$queryRaw`
     UPDATE "EmailSend" e SET "returnedAt" = u."lastSeenAt"
     FROM "User" u
@@ -303,9 +354,11 @@ export async function voltaSweep() {
 /** Números da campanha (script e Telegram). */
 export async function relatorio(campaign = VOLTA.campaign) {
   const c = (where) => prisma.emailSend.count({ where: { campaign, ...where } });
-  const [linhas, enviados, falhas, abriram, clicaram, pegaram, voltaram, sairam] = await Promise.all([
+  const [linhas, enviados, falhas, abriram, clicaram, pegaram, semClique, voltaram, sairam] = await Promise.all([
     c({}), c({ sentAt: { not: null } }), c({ sentAt: null, error: { not: null } }), c({ openedAt: { not: null } }),
-    c({ clickedAt: { not: null } }), c({ claimedAt: { not: null } }), c({ returnedAt: { not: null } }), c({ unsubAt: { not: null } }),
+    c({ clickedAt: { not: null } }), c({ claimedAt: { not: null } }), c({ claimedAt: { not: null }, clickedAt: null }),
+    c({ returnedAt: { not: null } }), c({ unsubAt: { not: null } }),
   ]);
-  return { campaign, linhas, enviados, falhas, abriram, clicaram, pegaram, voltaram, sairam };
+  // pegaram = ficaram com o VIP (botão ou ao entrar); semClique = desses, os que ganharam ao entrar e não clicaram
+  return { campaign, linhas, enviados, falhas, abriram, clicaram, pegaram, semClique, voltaram, sairam };
 }

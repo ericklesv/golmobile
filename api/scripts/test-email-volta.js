@@ -1,7 +1,7 @@
 /**
  * E-mail de volta (services/emailVolta.js) direto no banco LOCAL: quem entra no público, o VIP do botão caindo uma
- * vez só (inclusive com dois cliques ao mesmo tempo), somando no VIP que a pessoa já tinha, campanha de teste sem
- * crédito, prazo vencido, abertura (aviso do Brevo e imagem de 1 pixel), sair da lista e o aviso de "voltou a jogar". Não manda e-mail
+ * vez só (inclusive com dois cliques ao mesmo tempo), o VIP caindo ao ENTRAR sem clicar, somando no VIP que a pessoa
+ * já tinha, campanha de teste sem crédito, prazo vencido, abertura (aviso do Brevo e imagem de 1 pixel), sair da lista e o aviso de "voltou a jogar". Não manda e-mail
  * nenhum. Cria jogadores ev…
  * e apaga no fim.
  *
@@ -140,7 +140,34 @@ try {
   const duplo = await mk();
   const rawD = await linha(duplo);
   const rs = await Promise.all([V.resgatar(rawD, now), V.resgatar(rawD, now), V.resgatar(rawD, now)]);
-  check(rs.filter((r) => r.status === 'ok').length === 1 && perto(await vipOf(duplo.id), now.getTime() + 7 * DAY), 'três cliques AO MESMO TEMPO: um VIP só');
+  check(rs.every((r) => r.status === 'ok' || r.status === 'ja-pegou') && perto(await vipOf(duplo.id), now.getTime() + 7 * DAY), 'três cliques AO MESMO TEMPO: um VIP só');
+  check(await prisma.message.count({ where: { userId: duplo.id } }) === 1, 'três cliques AO MESMO TEMPO: uma mensagem só na caixa');
+
+  // ── VIP ao entrar (23/10/2026: o EberVita entrou sem tocar no botão e ficou sem o VIP) ──
+  const entrou = await mk();
+  const rawE = await linha(entrou);
+  check(await V.vipAoEntrar(entrou.id, now) === 1 && perto(await vipOf(entrou.id), now.getTime() + 7 * DAY), 'entrou no jogo sem clicar: 7 dias de VIP ATIVO na hora');
+  const rowE = await prisma.emailSend.findFirst({ where: { userId: entrou.id } });
+  check(!!rowE.claimedAt && !rowE.clickedAt && perto(rowE.returnedAt, now), 'entrou sem clicar: VIP registrado, sem clique, e já conta como volta');
+  check((await prisma.message.findFirst({ where: { userId: entrou.id } }))?.kind === 'PRESENTE', 'entrou sem clicar: mensagem do VIP na caixa');
+  check(await V.vipAoEntrar(entrou.id, new Date(now.getTime() + 60_000)) === 0 && perto(await vipOf(entrou.id), now.getTime() + 7 * DAY), 'entrar de novo: o VIP não soma');
+  const rE1 = await V.resgatar(rawE, new Date(now.getTime() + 120_000));
+  check(rE1.status === 'ok' && perto(await vipOf(entrou.id), now.getTime() + 7 * DAY), 'depois de ganhar ao entrar, o 1º toque no botão mostra "VIP ativado" sem somar de novo');
+  check((await V.resgatar(rawE, new Date(now.getTime() + 180_000))).status === 'ja-pegou', 'o 2º toque no botão: "já pegou"');
+  const corrida = await mk();
+  const rawC = await linha(corrida);
+  await Promise.all([V.vipAoEntrar(corrida.id, now), V.resgatar(rawC, now), V.vipAoEntrar(corrida.id, now)]);
+  check(perto(await vipOf(corrida.id), now.getTime() + 7 * DAY) && await prisma.message.count({ where: { userId: corrida.id } }) === 1, 'botão e VIP ao entrar AO MESMO TEMPO: um VIP só');
+  const provaE = await mk();
+  await linha(provaE, `${V.VOLTA.campaign}-teste`);
+  check(await V.vipAoEntrar(provaE.id, now) === 0 && !(await prisma.emailSend.findFirst({ where: { userId: provaE.id } })).claimedAt, 'campanha -teste: entrar não faz nada');
+  const suspE = await mk({ bannedUntil: new Date(now.getTime() + DAY) });
+  await linha(suspE);
+  check(await V.vipAoEntrar(suspE.id, now) === 0 && !(await vipOf(suspE.id)), 'conta suspensa: entrar não ativa');
+  const tardeE = await mk();
+  await linha(tardeE);
+  check(await V.vipAoEntrar(tardeE.id, new Date(V.VOLTA.expiresAt.getTime() + 1000)) === 0 && !(await vipOf(tardeE.id)), 'depois do prazo: entrar não ativa');
+  check(await V.vipAoEntrar(ativo.id, now) === 0, 'quem não recebeu o e-mail: nada');
 
   const prova = await mk();
   const rT = await V.resgatar(await linha(prova, `${V.VOLTA.campaign}-teste`), now);
@@ -173,6 +200,7 @@ try {
   const [a1, a2, a3] = await Promise.all([sumido, naoClicou, duplo].map((u) => prisma.emailSend.findFirst({ where: { userId: u.id } })));
   check(!!a1.returnedAt, 'pegou o VIP e entrou no jogo: "voltou a jogar"');
   check(!!a2.returnedAt, 'entrou depois do e-mail sem clicar: também conta como volta');
+  check(!!a2.claimedAt && perto(await vipOf(naoClicou.id), now.getTime() + 7 * DAY), 'entrou sem passar pelo /api/me (só o X1) ou antes da regra: a varredura dá o VIP');
   check(!a3.returnedAt, 'pegou o VIP mas não entrou: ainda não voltou');
   const antes = a1.returnedAt.getTime();
   await prisma.user.update({ where: { id: sumido.id }, data: { lastSeenAt: new Date(now.getTime() + 120_000) } });
@@ -180,7 +208,7 @@ try {
   check((await prisma.emailSend.findFirst({ where: { userId: sumido.id } })).returnedAt.getTime() === antes, 'a volta é avisada uma vez só');
 
   const rel = await V.relatorio();
-  check(rel.enviados >= 5 && rel.abriram >= rel.pegaram && rel.pegaram >= 3 && rel.voltaram >= 2, `relatório: ${JSON.stringify(rel)}`);
+  check(rel.enviados >= 5 && rel.abriram >= 5 && rel.pegaram >= 3 && rel.semClique >= 1 && rel.voltaram >= 2, `relatório: ${JSON.stringify(rel)}`);
 } finally {
   await prisma.emailSend.deleteMany({ where: { userId: { in: criados } } });
   await prisma.message.deleteMany({ where: { userId: { in: criados } } });

@@ -14,6 +14,7 @@ import { deviceData } from '../lib/device.js';
 import { pendingOffers } from '../services/club.js';
 import { changeTeam } from '../services/shop.js';
 import { unreadCount } from '../services/inbox.js';
+import { vipAoEntrar } from '../services/emailVolta.js';
 
 export const me = Router();
 me.use(requireAuth);
@@ -23,6 +24,8 @@ async function fresh(id) {
 }
 
 me.get('/', handle(async (req) => {
+  // recebeu o e-mail de volta e entrou: o VIP cai sem tocar no botão (services/emailVolta.js); nunca derruba o /me
+  await vipAoEntrar(req.user.id).catch((e) => console.error('[email] VIP ao entrar:', e?.message || e));
   const u = await fresh(req.user.id);
   return { ...meView(u), captchaRequired: captchaRequired(u), unread: await unreadCount(u.id) }; // captcha dos chutes manuais (lib/captcha.js); mensagens não lidas
 }));

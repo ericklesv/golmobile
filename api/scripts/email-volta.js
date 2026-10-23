@@ -87,7 +87,7 @@ async function main() {
   if (cmd === 'relatorio') {
     const r = await relatorio(opt('campanha', VOLTA.campaign));
     const pct = (n) => (r.enviados ? ` (${Math.round((100 * n) / r.enviados)}%)` : '');
-    const txt = `E-mail de volta (${r.campaign}): ${r.enviados} enviados${r.falhas ? `, ${r.falhas} falharam` : ''} · ${r.abriram} abriram${pct(r.abriram)} · ${r.clicaram} clicaram${pct(r.clicaram)} · ${r.pegaram} pegaram o VIP${pct(r.pegaram)} · ${r.voltaram} voltaram a jogar${pct(r.voltaram)} · ${r.sairam} saíram da lista`;
+    const txt = `E-mail de volta (${r.campaign}): ${r.enviados} enviados${r.falhas ? `, ${r.falhas} falharam` : ''} · ${r.abriram} abriram${pct(r.abriram)} · ${r.clicaram} clicaram${pct(r.clicaram)} · ${r.pegaram} ficaram com o VIP${pct(r.pegaram)}${r.semClique ? ` (${r.semClique} ao entrar no jogo, sem clicar)` : ''} · ${r.voltaram} voltaram a jogar${pct(r.voltaram)} · ${r.sairam} saíram da lista`;
     console.log(txt);
     if (args.includes('--telegram')) console.log('Telegram:', await tg.raw(`⚽ <b>JogaGol</b> 📧 ${txt}`));
     return;

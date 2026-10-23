@@ -6,8 +6,9 @@
  *                               `List-Unsubscribe=One-Click`, o token vem no endereço).
  * POST /api/email/brevo/<BREVO_WEBHOOK_SECRET> — aviso do Brevo (webhook dos e-mails transacionais): quem ABRIU o
  *                               e-mail e quem marcou como spam (services/emailVolta.js → eventoBrevo).
- * GET /api/email/aberto/<hash>.gif — a imagem de 1 pixel do rodapé: a 2ª busca = ABRIU (services/emailVolta.js →
- *                               abriuPixel). O endereço leva o hash do código, que não resgata nada.
+ * GET /api/email/aberto/<hash>.gif — a imagem de 1 pixel do rodapé: a 1ª busca 90 s depois do envio = ABRIU
+ *                               (services/emailVolta.js → abriuPixel). O endereço leva o hash do código, que não
+ *                               resgata nada.
  * Fora a imagem, nada aqui responde a GET: robô que abre link de e-mail para conferir (antivírus, Outlook) não resgata
  * nem tira ninguém da lista.
  */
@@ -26,9 +27,6 @@ const PIXEL_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAA
 // imagem sempre, mesmo com código ruim, e sem guardar em cache (cada exibição tem de chegar aqui).
 emailVolta.get('/aberto/:arq', (req, res) => {
   res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate, private' }).end(PIXEL_GIF);
-  // investigação de 23/10/2026: o que separa a conferência do Brevo de uma abertura de verdade (tirar depois)
-  const { cookie, authorization, ...cab } = req.headers;
-  console.log(`[email] imagem cabeçalhos ${String(req.params.arq).slice(0, 8)}: ${JSON.stringify(cab).slice(0, 900)}`);
   abriuPixel(String(req.params.arq).replace(/\.gif$/, ''))
     .then((r) => { if (r) console.log(`[email] imagem: ${r} · ${String(req.get('user-agent') ?? '').slice(0, 60)}`); })
     .catch((e) => console.error('[email] abertura pela imagem:', e?.message || e));

@@ -95,8 +95,8 @@ Cuidado: o botão "adicionar meu IP atual" põe o IP do SEU PC, não o da VPS (f
 
 O Brevo **reescreve todos os links** (passam por `sendibt2.com`) e **troca as imagens por cópias dele**, que vêm
 buscar a nossa a cada exibição — no plano grátis isso não desliga. **Quem mede a abertura é a nossa imagem de 1
-pixel** (a 1ª busca, logo depois do envio, é o Brevo conferindo; a seguinte é a pessoa abrindo — ver
-`abriuPixel` em `api/src/services/emailVolta.js`). O contador do próprio Brevo **não registra a abertura no Gmail
+pixel** (buscas nos primeiros 90 s depois do envio são a entrega e não contam; a 1ª busca depois disso é a pessoa
+abrindo — ver `abriuPixel` em `api/src/services/emailVolta.js`). O contador do próprio Brevo **não registra a abertura no Gmail
 quando o e-mail cai em Promoções** (testado em 23/10/2026: três provas abertas, nenhum aviso). O webhook abaixo
 fica como segunda fonte e para o spam:
 

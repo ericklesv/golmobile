@@ -32,7 +32,7 @@ const mk = async (extra = {}) => {
   criados.push(u.id);
   return u;
 };
-const linha = async (u, campaign = V.VOLTA.campaign, sentAt = new Date(now - 60_000)) => {
+const linha = async (u, campaign = V.VOLTA.campaign, sentAt = new Date(now - 5 * 60_000)) => {
   const raw = `tok${Math.random().toString(36).slice(2)}${Date.now()}${seq++}`.padEnd(32, 'x');
   await prisma.emailSend.create({ data: { campaign, userId: u.id, email: u.email, tokenHash: V.hashToken(raw), sentAt } });
   return raw;
@@ -85,6 +85,10 @@ try {
   check(!(await V.eventoBrevo({ event: 'opened', email: 'outra@pessoa.com', 'X-Mailin-custom': String(rowO.id) }, now)) && !(await prisma.emailSend.findUnique({ where: { id: rowO.id } })).openedAt, 'aviso com o e-mail de outra pessoa: ignorado');
   check(!(await V.eventoBrevo({ event: 'opened', email: outro.email }, now)), 'aviso sem o X-Mailin-custom e sem a etiqueta da campanha (outro e-mail da pessoa): ignorado');
   check(await V.eventoBrevo({ event: 'opened', email: outro.email, tags: [V.VOLTA.campaign] }, now) === 'aberto', 'aviso sem o X-Mailin-custom, com a etiqueta: acha a linha pelo e-mail');
+  const rapido = await mk();
+  await linha(rapido, V.VOLTA.campaign, new Date(now - 12_000));
+  const rowR = await prisma.emailSend.findFirst({ where: { userId: rapido.id } });
+  check(!(await V.eventoBrevo({ event: 'unique_opened', email: rapido.email, 'X-Mailin-custom': String(rowR.id), ts_event: Math.floor(now / 1000) }, now)) && !(await prisma.emailSend.findUnique({ where: { id: rowR.id } })).openedAt, 'aviso do Brevo 12 s depois do envio (a entrega no Gmail, 23/10): não conta');
   const iphone = await mk();
   await linha(iphone);
   check(!(await V.eventoBrevo({ event: 'proxy_open', email: iphone.email, user_agent: 'Mozilla/5.0' }, now)) && !(await V.eventoBrevo({ event: 'click', email: iphone.email }, now)) && !(await V.eventoBrevo(null)) && !(await V.eventoBrevo('lixo')), 'proxy_open do Mail do iPhone, click e lixo: ignorados, sem erro');
@@ -92,20 +96,20 @@ try {
   await linha(gmail);
   check(await V.eventoBrevo({ event: 'unique_proxy_open', email: gmail.email, tag: V.VOLTA.campaign, user_agent: 'Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)' }, now) === 'aberto', 'proxy_open do Gmail (GoogleImageProxy): conta como aberto');
 
-  // ── abriu (imagem de 1 pixel: a 1ª busca é a conferência do Brevo, a seguinte é a abertura) ──
-  const px = async (sentAt = new Date(now - 30_000)) => { const u = await mk(); return { u, hash: V.hashToken(await linha(u, V.VOLTA.campaign, sentAt)) }; };
+  // ── abriu (imagem de 1 pixel: buscas nos primeiros 90 s são a entrega; a 1ª depois disso é a abertura) ──
+  const px = async (sentAt = new Date(now - 6_000)) => { const u = await mk(); return { u, hash: V.hashToken(await linha(u, V.VOLTA.campaign, sentAt)) }; };
   const rowPx = (u) => prisma.emailSend.findFirst({ where: { userId: u.id } });
-  const p1 = await px();
+  const mais = (s) => new Date(now.getTime() + s * 1000);
+  const p1 = await px(); // enviado 6 s antes de `now`
   const c1 = await V.abriuPixel(p1.hash, now);
   const r1a = await rowPx(p1.u);
-  check(c1 === 'conferencia' && !!r1a.pixelAt && !r1a.openedAt, 'imagem: a 1ª busca logo depois do envio é a conferência do Brevo, não abertura');
-  check(!(await V.abriuPixel(p1.hash, new Date(now.getTime() + 2_000))) && !(await rowPx(p1.u)).openedAt, 'imagem: busca repetida em menos de 5 s (conferência em dobro) não conta');
-  const ab = await V.abriuPixel(p1.hash, new Date(now.getTime() + 9_000));
-  check(ab === 'aberto' && perto((await rowPx(p1.u)).openedAt, now.getTime() + 9_000), 'imagem: a busca seguinte é a abertura (9 s depois, como no Gmail em 23/10)');
-  check(!(await V.abriuPixel(p1.hash, new Date(now.getTime() + 60_000))), 'imagem: abrir de novo não avisa outra vez');
-  const p2 = await px(new Date(now - 30 * 60_000));
-  check(await V.abriuPixel(p2.hash, now) === 'aberto', 'imagem: 1ª busca 30 min depois do envio (o Brevo não conferiu) já é a abertura');
-  const p3 = await px();
+  check(c1 === 'entrega' && perto(r1a.pixelAt, now) && !r1a.openedAt, 'imagem: busca 6 s depois do envio é a entrega (Brevo/Gmail conferindo), não abertura');
+  check(await V.abriuPixel(p1.hash, mais(55)) === 'entrega' && !(await rowPx(p1.u)).openedAt, 'imagem: outra busca aos 61 s (a mais tardia medida em 23/10) também é a entrega');
+  check(await V.abriuPixel(p1.hash, mais(128)) === 'aberto' && perto((await rowPx(p1.u)).openedAt, mais(128)) && perto((await rowPx(p1.u)).pixelAt, now), 'imagem: a busca de 2 min 14 s depois é a abertura (a 1ª busca segue registrada)');
+  check(!(await V.abriuPixel(p1.hash, mais(600))), 'imagem: abrir de novo não avisa outra vez');
+  const p2 = await px(new Date(now - 10 * 60_000));
+  check(await V.abriuPixel(p2.hash, now) === 'aberto', 'imagem: sem busca na entrega, a 1ª busca (10 min depois) já é a abertura');
+  const p3 = await px(new Date(now - 5 * 60_000));
   await V.eventoBrevo({ event: 'opened', email: p3.u.email, 'X-Mailin-custom': String((await rowPx(p3.u)).id) }, now);
   await V.abriuPixel(p3.hash, now);
   check(!(await V.abriuPixel(p3.hash, new Date(now.getTime() + 60_000))), 'imagem: já aberta pelo aviso do Brevo, a imagem não avisa de novo');

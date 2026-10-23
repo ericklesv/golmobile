@@ -964,10 +964,12 @@ depois que o novo estiver estável. Não instalar nada dele.
   efeito): quem ABRIU o e-mail ("👀 fulano abriu… · abriram N de M"; coluna `EmailSend.openedAt`, migração 0047; só a
   1ª abertura). **Quem mede a abertura é a imagem de 1 pixel NOSSA** (rodapé, `GET /api/email/aberto/<hash>.gif` →
   `abriuPixel`; o endereço leva o hash do código, que não resgata nada; coluna `EmailSend.pixelAt`, migração 0048).
-  O Brevo troca as imagens do e-mail por cópias dele que vêm buscar a nossa a CADA exibição, e confere cada imagem
-  nova UMA vez logo depois do envio (3 a 40 s): **a 1ª busca é a conferência (grava `pixelAt`, não conta) e a seguinte,
-  5 s ou mais depois, é a abertura** (1ª busca 10+ min depois do envio = abertura). Em 22/10 o pixel contava a 1ª busca
-  e todo e-mail aparecia aberto no envio; aí trocaram pelo aviso do Brevo (webhook → `POST /api/email/brevo/<segredo>`
+  O Brevo troca as imagens do e-mail por cópias dele que vêm buscar a nossa a CADA exibição, sem dizer quem pediu (a
+  busca da entrega e a da pessoa chegam idênticas). Quem separa é o relógio: **buscas nos primeiros 90 s depois do
+  envio são a entrega e não contam; a 1ª busca depois disso é a abertura** (`PIXEL.graceMs`; `pixelAt` só registra a
+  1ª busca). Medido em 23/10/2026 (5 envios ao Gmail): entrega de 3 a 61 s, às vezes nenhuma; aberturas de 2 a 10 min.
+  Quem abre nos primeiros 90 s não conta — é um PISO, nunca conta quem não abriu. O aviso do Brevo segue a mesma regra.
+  Em 22/10 o pixel contava a 1ª busca e todo e-mail aparecia aberto no envio; aí trocaram pelo aviso do Brevo (webhook → `POST /api/email/brevo/<segredo>`
   → `eventoBrevo`, linha pelo `X-Mailin-custom`; sem ele, só com a etiqueta da campanha) — que **não funciona no Gmail
   com o e-mail em Promoções** (onde a campanha cai): em 23/10/2026, três provas abertas no Gmail, nenhum aviso do
   Brevo, e a imagem nossa pegou cada abertura no segundo exato. O aviso do Brevo ficou como segunda fonte (o que chegar

@@ -232,29 +232,28 @@ export async function eventoBrevo(ev, now = new Date()) {
   // ts_event = quando a pessoa abriu (segundos, UTC); o aviso pode chegar um pouco depois
   const at = Number.isFinite(ev.ts_event) && Math.abs(ev.ts_event * 1000 - now) < 7 * DAY ? new Date(ev.ts_event * 1000) : now;
   if (row.openedAt) return null;
+  if (at - row.sentAt < PIXEL.graceMs) return null; // a mesma regra da imagem: no 1º minuto e meio é a entrega, não a pessoa
   return marcarAberto(row, at); // "opened" e "unique_opened" da mesma abertura chegam juntos: só um marca
 }
 
 /**
  * A imagem de 1 pixel do rodapé (`GET /api/email/aberto/<hash>.gif`). O Brevo troca as imagens do e-mail por cópias
- * dele que vêm buscar a NOSSA a cada exibição, e confere cada imagem nova UMA vez logo depois do envio (3 a 40 s,
- * medido em 23/10/2026). Então: a 1ª busca é a conferência do Brevo (grava `pixelAt`, não é abertura) e a seguinte,
- * `gapMs` ou mais depois, é a pessoa abrindo. Se a 1ª busca chega `lateMs` depois do envio, o Brevo não conferiu e ela
- * já é a abertura. (Em 22/10 o pixel contava a 1ª busca e todo e-mail aparecia como aberto no envio.)
- * Medido em 23/10/2026 no Gmail, com o e-mail em Promoções: conferência 6 s depois do envio, nada sozinho em 2 min,
- * e a busca seguinte no segundo em que a pessoa abriu. Também conta como aberto: o Mail do iPhone (carrega sozinho na
- * entrega) e alguém do JogaGol abrindo a pré-visualização desse e-mail no painel do Brevo.
+ * dele que vêm buscar a NOSSA a cada exibição — sem dizer quem pediu (a busca da entrega e a da pessoa abrindo chegam
+ * com os mesmos cabeçalhos, "Go-http-client/2.0" de um IP do Brevo). O que separa as duas é o RELÓGIO: buscas nos
+ * primeiros `graceMs` depois do envio são a entrega (o Brevo/Gmail conferindo; às vezes acontece, às vezes não) e não
+ * contam; a 1ª busca depois disso é a abertura. `pixelAt` guarda a 1ª busca, venha quando vier (só registro).
+ * Medido em 23/10/2026 no Gmail (5 envios): buscas da entrega de 3 a 61 s depois do envio; aberturas confirmadas de
+ * 2 a 10 min. Quem abre nos primeiros 90 s não conta (o Gmail guarda a imagem e não busca de novo): é um PISO, nunca
+ * conta quem não abriu. (Em 22/10 o pixel contava a 1ª busca e todo e-mail aparecia como aberto no envio.) Também
+ * conta como aberto: alguém do JogaGol abrindo a pré-visualização desse e-mail no painel do Brevo.
  */
-export const PIXEL = { gapMs: 5_000, lateMs: 10 * 60_000 };
+export const PIXEL = { graceMs: 90_000 };
 export async function abriuPixel(hash, now = new Date()) {
   if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) return null;
   const row = await prisma.emailSend.findUnique({ where: { tokenHash: hash }, select: { id: true, campaign: true, sentAt: true, pixelAt: true, openedAt: true, user: { select: { nick: true } } } });
   if (!row || row.openedAt) return null;
-  if (!row.pixelAt) {
-    const won = await prisma.emailSend.updateMany({ where: { id: row.id, pixelAt: null }, data: { pixelAt: now } });
-    if (!won.count) return null; // duas buscas no mesmo instante: a outra é a conferência
-    if (!row.sentAt || now - row.sentAt < PIXEL.lateMs) return 'conferencia';
-  } else if (!row.sentAt || now - row.pixelAt < PIXEL.gapMs) return null;
+  if (!row.pixelAt) await prisma.emailSend.updateMany({ where: { id: row.id, pixelAt: null }, data: { pixelAt: now } });
+  if (!row.sentAt || now - row.sentAt < PIXEL.graceMs) return 'entrega';
   return marcarAberto(row, now);
 }
 

@@ -2,15 +2,20 @@
 
 Marcar `[x]` ao concluir. Ordem = prioridade. Referência de regras: `BRGOL_ORIGINAL.md`.
 
-## E-mail "volta pro JogaGol" com 7 dias de VIP (22/10/2026) — no GitHub, falta o Brevo
+## E-mail "volta pro JogaGol" com 7 dias de VIP (22/10/2026) — DISPARADO em 23/10 (18:45–18:57)
 Pedido do Guilherme: o jogo voltou a encher com a divulgação e quem parou de entrar não sabe. E-mail no visual do jogo
 para quem não entra há 10+ dias (~215 contas válidas em 22/10), com 7 dias de VIP ativos no botão e aviso no Telegram de
 quem clicou e de quem voltou a jogar. Aprovado pelo Guilherme em 22/10 (com a frase "O JogaGol está mais vivo do que
 nunca!"). Teste: `scripts/test-email-volta.js`.
 - [x] E-mail, resgate, sair da lista, rastreio no Telegram, script de disparo, guia `docs/EMAIL_BREVO.md`.
-- [ ] Conta no Brevo + registros DNS na Hostinger (conta do Erickles) + chave SMTP no `api/.env` da VPS.
-- [ ] Publicar, mandar a prova para gclithg@gmail.com, conferir SPF/DKIM/DMARC e o "esqueci a senha".
-- [ ] Disparar (`node scripts/email-volta.js enviar`) e avisar no grupo; acompanhar com `relatorio`.
+- [x] Conta no Brevo + registros DNS na Hostinger (conta do Erickles) + chave SMTP no `api/.env` da VPS (22/10).
+- [x] Publicar e mandar a prova para gclithg@gmail.com — SPF e DKIM "pass" no Gmail (23/10). Falta conferir o "esqueci a senha".
+- [x] 23/10: tirar do público 10 endereços que voltariam como erro; medir a abertura pela imagem de 1 pixel nossa (o
+  Brevo não registra a abertura no Gmail em Promoções — testado 4 vezes; regra dos 90 s em `abriuPixel`).
+- [x] Disparar: 208 enviados, 0 falhas (23/10, 18:45–18:57) + 4 contas ligadas ao ericklesv na etiqueta
+  `volta-out26-vinculadas` (VIP de verdade, fora dos números dos 208). Aviso no grupo feito.
+- [ ] Acompanhar com `node scripts/email-volta.js relatorio` (e `--campanha volta-out26-vinculadas`) e levar o
+  resultado ao dono: abriram, pegaram o VIP, voltaram a jogar.
 
 ## Galeria de troféus no lugar da aba Perfil (22/10/2026) — publicada em 22/10
 Pedido de jogadores, trazido pelo dono: sentiram falta de uma "galeria de troféus" com os campeões e os artilheiros das

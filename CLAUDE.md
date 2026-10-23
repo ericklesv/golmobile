@@ -985,6 +985,10 @@ depois que o novo estiver estável. Não instalar nada dele.
   terminada em `-teste` (a prova mandada a um admin) faz tudo menos dar o VIP. Operação (pasta api/, na VPS com o
   .env): `node scripts/email-volta.js listar|previa <nick> <arq>|teste <email> [nick]|enviar [--max N] [--seg S]|
   relatorio [--telegram]`. Campanha nova = outro `campaign` em `VOLTA` (a linha é única por campanha e jogador).
+  **Disparada em 23/10/2026, 18:45–18:57**: 208 enviados, 0 falhas (só as provas tinham saído em 22/10 — confira o
+  `relatorio` antes de achar que falta enviar) + as 4 contas ligadas ao ericklesv (ericklesv, PsicopataDoGOL, naicow,
+  luigiR; pedido do Guilherme) na etiqueta `volta-out26-vinculadas`, com VIP de verdade e fora dos números dos 208.
+  Rodar `enviar` de novo só pega quem ainda não recebeu.
   **Mexeu? `node scripts/test-email-volta.js`** (pasta api/, banco LOCAL; "TUDO OK").
 - **Painel de admin** (`routes/adminPanel.js` em `/api/painel`; tela `/admin`, lazy, fora das abas):
   SÓ usuários com `User.isAdmin` (ericklesv e MVGIC, marcados na migração 0015; middleware

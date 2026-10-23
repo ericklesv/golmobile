@@ -93,9 +93,12 @@ Cuidado: o botão "adicionar meu IP atual" põe o IP do SEU PC, não o da VPS (f
 
 ## 4b. Aviso de quem abriu (webhook)
 
-O Brevo **reescreve todos os links** (passam por `sendibt2.com`) e **troca as imagens por cópias dele**, baixadas na
-hora do envio — no plano grátis isso não desliga. Por isso imagem de rastreio nossa não serve (todo e-mail apareceria
-como aberto no envio). Quem mede a abertura é a imagem do próprio Brevo, e ele avisa a API:
+O Brevo **reescreve todos os links** (passam por `sendibt2.com`) e **troca as imagens por cópias dele**, que vêm
+buscar a nossa a cada exibição — no plano grátis isso não desliga. **Quem mede a abertura é a nossa imagem de 1
+pixel** (a 1ª busca, logo depois do envio, é o Brevo conferindo; a seguinte é a pessoa abrindo — ver
+`abriuPixel` em `api/src/services/emailVolta.js`). O contador do próprio Brevo **não registra a abertura no Gmail
+quando o e-mail cai em Promoções** (testado em 23/10/2026: três provas abertas, nenhum aviso). O webhook abaixo
+fica como segunda fonte e para o spam:
 
 1. Na VPS, `BREVO_WEBHOOK_SECRET` no `api/.env` (um texto aleatório longo) e reiniciar a API.
 2. Brevo → **Transacional** → **Configurações** → **Webhooks** (ou ⚙ → Webhooks) → **Adicionar webhook**:

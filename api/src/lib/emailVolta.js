@@ -215,7 +215,7 @@ export function renderVolta(d) {
           <td class="pad" align="center" style="padding:18px 36px 0;font-family:${F_TEXTO};font-size:12px;line-height:18px;color:${MUTED}">
             Você recebeu este e-mail porque tem a conta <b>${nick}</b> no JogaGol.<br>
             Não quer mais receber? <a href="${esc(d.unsubLink)}" style="color:${MUTED}">Sair da lista</a>.<br><br>
-            JogaGol · <a href="${base}" style="color:${MUTED}">jogagol.com.br</a>
+            JogaGol · <a href="${base}" style="color:${MUTED}">jogagol.com.br</a>${d.pixel ? `<img src="${esc(d.pixel)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0">` : ''}
           </td>
         </tr>
       </table>

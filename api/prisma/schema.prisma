@@ -321,7 +321,8 @@ model EmailSend {
   tokenHash  String    @unique
   sentAt     DateTime?
   error      String?
-  openedAt   DateTime? // abriu o e-mail (a imagem de 1 pixel carregou; aproximado — ver services/emailVolta.js)
+  openedAt   DateTime? // abriu o e-mail (aviso do Brevo ou a 2ª busca da imagem de 1 pixel; aproximado — ver services/emailVolta.js)
+  pixelAt    DateTime? // 1ª busca da imagem de 1 pixel = o Brevo conferindo a imagem logo depois do envio (não é abertura)
   clickedAt  DateTime?
   claimedAt  DateTime?
   returnedAt DateTime?

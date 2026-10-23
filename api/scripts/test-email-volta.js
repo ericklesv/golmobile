@@ -1,7 +1,7 @@
 /**
  * E-mail de volta (services/emailVolta.js) direto no banco LOCAL: quem entra no público, o VIP do botão caindo uma
  * vez só (inclusive com dois cliques ao mesmo tempo), somando no VIP que a pessoa já tinha, campanha de teste sem
- * crédito, prazo vencido, abertura (aviso do Brevo), sair da lista e o aviso de "voltou a jogar". Não manda e-mail
+ * crédito, prazo vencido, abertura (aviso do Brevo e imagem de 1 pixel), sair da lista e o aviso de "voltou a jogar". Não manda e-mail
  * nenhum. Cria jogadores ev…
  * e apaga no fim.
  *
@@ -83,13 +83,35 @@ try {
   const outro = await mk();
   const rowO = await prisma.emailSend.findUnique({ where: { tokenHash: V.hashToken(await linha(outro)) } });
   check(!(await V.eventoBrevo({ event: 'opened', email: 'outra@pessoa.com', 'X-Mailin-custom': String(rowO.id) }, now)) && !(await prisma.emailSend.findUnique({ where: { id: rowO.id } })).openedAt, 'aviso com o e-mail de outra pessoa: ignorado');
-  check(await V.eventoBrevo({ event: 'opened', email: outro.email }, now) === 'aberto', 'aviso sem o X-Mailin-custom: acha a linha pelo e-mail');
+  check(!(await V.eventoBrevo({ event: 'opened', email: outro.email }, now)), 'aviso sem o X-Mailin-custom e sem a etiqueta da campanha (outro e-mail da pessoa): ignorado');
+  check(await V.eventoBrevo({ event: 'opened', email: outro.email, tags: [V.VOLTA.campaign] }, now) === 'aberto', 'aviso sem o X-Mailin-custom, com a etiqueta: acha a linha pelo e-mail');
   const iphone = await mk();
   await linha(iphone);
   check(!(await V.eventoBrevo({ event: 'proxy_open', email: iphone.email, user_agent: 'Mozilla/5.0' }, now)) && !(await V.eventoBrevo({ event: 'click', email: iphone.email }, now)) && !(await V.eventoBrevo(null)) && !(await V.eventoBrevo('lixo')), 'proxy_open do Mail do iPhone, click e lixo: ignorados, sem erro');
   const gmail = await mk();
   await linha(gmail);
-  check(await V.eventoBrevo({ event: 'unique_proxy_open', email: gmail.email, user_agent: 'Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)' }, now) === 'aberto', 'proxy_open do Gmail (GoogleImageProxy): conta como aberto');
+  check(await V.eventoBrevo({ event: 'unique_proxy_open', email: gmail.email, tag: V.VOLTA.campaign, user_agent: 'Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)' }, now) === 'aberto', 'proxy_open do Gmail (GoogleImageProxy): conta como aberto');
+
+  // ── abriu (imagem de 1 pixel: a 1ª busca é a conferência do Brevo, a seguinte é a abertura) ──
+  const px = async (sentAt = new Date(now - 30_000)) => { const u = await mk(); return { u, hash: V.hashToken(await linha(u, V.VOLTA.campaign, sentAt)) }; };
+  const rowPx = (u) => prisma.emailSend.findFirst({ where: { userId: u.id } });
+  const p1 = await px();
+  const c1 = await V.abriuPixel(p1.hash, now);
+  const r1a = await rowPx(p1.u);
+  check(c1 === 'conferencia' && !!r1a.pixelAt && !r1a.openedAt, 'imagem: a 1ª busca logo depois do envio é a conferência do Brevo, não abertura');
+  check(!(await V.abriuPixel(p1.hash, new Date(now.getTime() + 2_000))) && !(await rowPx(p1.u)).openedAt, 'imagem: busca repetida em menos de 5 s (conferência em dobro) não conta');
+  const ab = await V.abriuPixel(p1.hash, new Date(now.getTime() + 9_000));
+  check(ab === 'aberto' && perto((await rowPx(p1.u)).openedAt, now.getTime() + 9_000), 'imagem: a busca seguinte é a abertura (9 s depois, como no Gmail em 23/10)');
+  check(!(await V.abriuPixel(p1.hash, new Date(now.getTime() + 60_000))), 'imagem: abrir de novo não avisa outra vez');
+  const p2 = await px(new Date(now - 30 * 60_000));
+  check(await V.abriuPixel(p2.hash, now) === 'aberto', 'imagem: 1ª busca 30 min depois do envio (o Brevo não conferiu) já é a abertura');
+  const p3 = await px();
+  await V.eventoBrevo({ event: 'opened', email: p3.u.email, 'X-Mailin-custom': String((await rowPx(p3.u)).id) }, now);
+  await V.abriuPixel(p3.hash, now);
+  check(!(await V.abriuPixel(p3.hash, new Date(now.getTime() + 60_000))), 'imagem: já aberta pelo aviso do Brevo, a imagem não avisa de novo');
+  check(!(await V.abriuPixel('nao-e-hash', now)) && !(await V.abriuPixel('a'.repeat(64), now)) && !(await V.abriuPixel(null, now)), 'imagem: código ruim ou que não existe é ignorado, sem erro');
+  const comPixel = renderVolta({ ...ctx, nick: 'x', goalsTotal: 1, lastSeenAt: now, team: t, expiresAt: V.VOLTA.expiresAt, link: 'https://x/v', unsubLink: 'https://x/s', pixel: 'https://x/api/email/aberto/abc.gif' });
+  check(comPixel.html.includes('https://x/api/email/aberto/abc.gif') && !m.html.includes('/api/email/aberto/'), 'e-mail leva a imagem de 1 pixel só quando recebe o endereço dela');
   const spam = await mk();
   await linha(spam);
   check(await V.eventoBrevo({ event: 'spam', email: spam.email }, now) === 'spam' && !!(await prisma.user.findUnique({ where: { id: spam.id } })).emailOptOut, 'marcou como spam: sai da lista');

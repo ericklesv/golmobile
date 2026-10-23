@@ -958,14 +958,23 @@ depois que o novo estiver estável. Não instalar nada dele.
   doa, não vira saldo), uma vez por conta, até `VOLTA.expiresAt` (06/11/2026). O e-mail é personalizado (nick, data
   em que saiu, escudo/posição do time, gols da carreira, "o que mudou desde" só com o que a pessoa não viu) e tem a
   frase do dono "O JogaGol está mais vivo do que nunca!". Fora do público: bot, admin, banido, quem saiu da lista e
-  e-mail descartável/de teste (`NAO_MANDA` + a lista do cadastro). **Telegram** (pedido do Guilherme, para medir o
+  e-mail descartável/de teste (`NAO_MANDA` + a lista do cadastro) — e, desde 23/10/2026, endereço que voltaria como
+  erro e queimaria a reputação do Brevo (domínio sem MX, caixa inventada em empresa, e-mail temporário; conferidos pelo
+  MX). **Telegram** (pedido do Guilherme, para medir o
   efeito): quem ABRIU o e-mail ("👀 fulano abriu… · abriram N de M"; coluna `EmailSend.openedAt`, migração 0047; só a
-  1ª abertura), que vem do **aviso do Brevo** (webhook dos transacionais → `POST /api/email/brevo/<BREVO_WEBHOOK_SECRET>`
-  → `eventoBrevo`, que acha a linha pelo `X-Mailin-custom` = id da EmailSend mandado no envio; `spam` tira da lista).
-  **Não usar imagem de rastreio nossa**: o Brevo troca TODAS as imagens do e-mail por cópias dele baixadas na hora do
-  envio (medido em 22/10/2026: a imagem de 1 pixel foi buscada 40 s depois do envio, sem ninguém abrir) e reescreve os
-  links por `sendibt2.com` — não dá para desligar no plano grátis. A abertura é aproximada (Outlook pode bloquear
-  imagem; o clique marca a abertura também; `proxy_open` do Mail do iPhone não conta). Cada clique que pega o VIP
+  1ª abertura). **Quem mede a abertura é a imagem de 1 pixel NOSSA** (rodapé, `GET /api/email/aberto/<hash>.gif` →
+  `abriuPixel`; o endereço leva o hash do código, que não resgata nada; coluna `EmailSend.pixelAt`, migração 0048).
+  O Brevo troca as imagens do e-mail por cópias dele que vêm buscar a nossa a CADA exibição, e confere cada imagem
+  nova UMA vez logo depois do envio (3 a 40 s): **a 1ª busca é a conferência (grava `pixelAt`, não conta) e a seguinte,
+  5 s ou mais depois, é a abertura** (1ª busca 10+ min depois do envio = abertura). Em 22/10 o pixel contava a 1ª busca
+  e todo e-mail aparecia aberto no envio; aí trocaram pelo aviso do Brevo (webhook → `POST /api/email/brevo/<segredo>`
+  → `eventoBrevo`, linha pelo `X-Mailin-custom`; sem ele, só com a etiqueta da campanha) — que **não funciona no Gmail
+  com o e-mail em Promoções** (onde a campanha cai): em 23/10/2026, três provas abertas no Gmail, nenhum aviso do
+  Brevo, e a imagem nossa pegou cada abertura no segundo exato. O aviso do Brevo ficou como segunda fonte (o que chegar
+  primeiro marca) e para o `spam` (tira da lista). **Não voltar a medir só pelo Brevo.** No webhook do Brevo ficam
+  ligados os quatro de abertura (inclusive "Carregado por proxy") e Reclamação. A abertura é aproximada: Outlook pode
+  bloquear imagem (o clique marca a abertura também); o Mail do iPhone e abrir a pré-visualização do e-mail no painel do
+  Brevo contam como aberto. Cada clique que pega o VIP
   ("📧 fulano clicou… · clique N de M") e, pelo `voltaSweep` do scheduler (2 min),
   cada um que ENTROU no jogo depois do e-mail ("✅ fulano voltou a jogar", com ou sem clique — `lastSeenAt` passou do
   clique/envio; só login, heartbeat e X1 mexem no lastSeenAt). O VIP do e-mail liga o chute com o app fechado na

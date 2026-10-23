@@ -5,7 +5,8 @@
  *
  * - O VIP entra JÁ ATIVO (soma em `vipUntil`, como o 7º dia da Presença): não vai para o banco de dias, então não
  *   dá para doar nem trocar por saldo. Uma vez por jogador por campanha (`claimedAt` muda de null uma vez só).
- * - Telegram (pedido do Guilherme): quem ABRIU o e-mail (aviso do Brevo, `eventoBrevo`) e cada clique que pega o VIP
+ * - Telegram (pedido do Guilherme): quem ABRIU o e-mail (aviso do Brevo, `eventoBrevo`, ou a imagem de 1 pixel do
+ *   rodapé, `abriuPixel` — o que chegar primeiro) e cada clique que pega o VIP
  *   viram aviso com quem foi; o scheduler avisa também
  *   quando a pessoa ENTRA no jogo depois do e-mail (o lastSeenAt passou do clique ou do envio) — é o que diz se o
  *   e-mail trouxe gente de volta.
@@ -100,14 +101,15 @@ export async function enviarUm(user, ctx, { campaign = VOLTA.campaign, to = user
   const old = await prisma.emailSend.findUnique({ where: { campaign_userId: { campaign, userId: user.id } } });
   if (old?.sentAt && !isTeste(campaign)) return { ok: false, error: 'já recebeu' };
   const row = old
-    ? await prisma.emailSend.update({ where: { id: old.id }, data: { tokenHash: hashToken(raw), email: to, error: null, sentAt: null, openedAt: null, clickedAt: null, claimedAt: null, returnedAt: null, unsubAt: null } })
+    ? await prisma.emailSend.update({ where: { id: old.id }, data: { tokenHash: hashToken(raw), email: to, error: null, sentAt: null, openedAt: null, pixelAt: null, clickedAt: null, claimedAt: null, returnedAt: null, unsubAt: null } })
     : await prisma.emailSend.create({ data: { campaign, userId: user.id, email: to, tokenHash: hashToken(raw) } });
   const utm = `utm_source=email&utm_medium=email&utm_campaign=${encodeURIComponent(campaign)}`;
   const link = `${ctx.base}/voltar?t=${raw}&${utm}`;
   const unsubLink = `${ctx.base}/sair-dos-emails?t=${raw}`;
   const mail = renderVolta({
     ...ctx, nick: user.nick, goalsTotal: user.goalsTotal, lastSeenAt: user.lastSeenAt, team,
-    expiresAt: VOLTA.expiresAt, link, unsubLink,
+    // o pixel leva o HASH do código (o que o banco guarda), nunca o código que dá o VIP
+    expiresAt: VOLTA.expiresAt, link, unsubLink, pixel: `${ctx.base}/api/email/aberto/${hashToken(raw)}.gif`,
   });
   try {
     const sent = await sendMail({
@@ -198,7 +200,12 @@ export async function resgatar(raw, now = new Date()) {
  * em 22/10/2026 a abertura de uma prova no Gmail não chegou como `opened`); o do Mail do iPhone carrega sozinho na
  * entrega, sem a pessoa abrir, e não conta.
  * A linha vem do `X-Mailin-custom` (o id da EmailSend, mandado no envio); sem ele (o `proxy_open` não traz), do
- * e-mail. Só a 1ª abertura avisa.
+ * e-mail — mas só se o aviso traz a etiqueta da campanha (`tag`/`tags` = o `X-Mailin-Tag` do envio): em 23/10/2026 a
+ * abertura de um e-mail de teste avulso, sem etiqueta, foi parar na linha da campanha da mesma pessoa. Só a 1ª
+ * abertura avisa.
+ * ATENÇÃO (medido em 23/10/2026): com o e-mail na aba Promoções do Gmail — onde a campanha cai — o Brevo NÃO registrou
+ * a abertura (três provas abertas, nenhum aviso); um e-mail pequeno na Principal, sim. Quem mede de verdade é
+ * `abriuPixel`; este aviso fica como segunda fonte (e para o spam).
  */
 const ABRIU = ['opened', 'unique_opened'];
 const PROXY = ['proxy_open', 'unique_proxy_open'];
@@ -207,6 +214,7 @@ export async function eventoBrevo(ev, now = new Date()) {
   if (PROXY.includes(ev.event) && !/GoogleImageProxy/i.test(String(ev.user_agent ?? ''))) return null;
   const email = typeof ev.email === 'string' ? ev.email.trim().toLowerCase() : '';
   const id = /^\d{1,9}$/.test(String(ev['X-Mailin-custom'] ?? '')) ? Number(ev['X-Mailin-custom']) : null;
+  const tags = [ev.tag, ...(Array.isArray(ev.tags) ? ev.tags : [])].filter((t) => typeof t === 'string');
   const sel = { id: true, campaign: true, email: true, userId: true, sentAt: true, openedAt: true, user: { select: { nick: true } } };
   const row = id
     ? await prisma.emailSend.findUnique({ where: { id }, select: sel })
@@ -214,22 +222,51 @@ export async function eventoBrevo(ev, now = new Date()) {
   if (!row?.sentAt || (email && row.email.toLowerCase() !== email)) return null;
   const teste = isTeste(row.campaign) ? '<i>(teste)</i> ' : '';
 
-  if (ev.event === 'spam') {
+  if (ev.event === 'spam') { // qualquer e-mail nosso marcado como spam tira a pessoa da lista, com ou sem etiqueta
     await prisma.emailSend.updateMany({ where: { id: row.id, unsubAt: null }, data: { unsubAt: now } });
     await prisma.user.updateMany({ where: { id: row.userId, emailOptOut: null }, data: { emailOptOut: now } });
     tg.warn(`🚫 ${teste}<b>${tg.esc(row.user.nick)}</b> marcou o e-mail de volta como SPAM (saiu da lista).`);
     return 'spam';
   }
+  if (!id && !tags.includes(row.campaign)) return null; // abertura de outro e-mail da mesma pessoa (esqueci a senha, teste avulso)
   // ts_event = quando a pessoa abriu (segundos, UTC); o aviso pode chegar um pouco depois
   const at = Number.isFinite(ev.ts_event) && Math.abs(ev.ts_event * 1000 - now) < 7 * DAY ? new Date(ev.ts_event * 1000) : now;
   if (row.openedAt) return null;
+  return marcarAberto(row, at); // "opened" e "unique_opened" da mesma abertura chegam juntos: só um marca
+}
+
+/**
+ * A imagem de 1 pixel do rodapé (`GET /api/email/aberto/<hash>.gif`). O Brevo troca as imagens do e-mail por cópias
+ * dele que vêm buscar a NOSSA a cada exibição, e confere cada imagem nova UMA vez logo depois do envio (3 a 40 s,
+ * medido em 23/10/2026). Então: a 1ª busca é a conferência do Brevo (grava `pixelAt`, não é abertura) e a seguinte,
+ * `gapMs` ou mais depois, é a pessoa abrindo. Se a 1ª busca chega `lateMs` depois do envio, o Brevo não conferiu e ela
+ * já é a abertura. (Em 22/10 o pixel contava a 1ª busca e todo e-mail aparecia como aberto no envio.)
+ * Medido em 23/10/2026 no Gmail, com o e-mail em Promoções: conferência 6 s depois do envio, nada sozinho em 2 min,
+ * e a busca seguinte no segundo em que a pessoa abriu. Também conta como aberto: o Mail do iPhone (carrega sozinho na
+ * entrega) e alguém do JogaGol abrindo a pré-visualização desse e-mail no painel do Brevo.
+ */
+export const PIXEL = { gapMs: 5_000, lateMs: 10 * 60_000 };
+export async function abriuPixel(hash, now = new Date()) {
+  if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) return null;
+  const row = await prisma.emailSend.findUnique({ where: { tokenHash: hash }, select: { id: true, campaign: true, sentAt: true, pixelAt: true, openedAt: true, user: { select: { nick: true } } } });
+  if (!row || row.openedAt) return null;
+  if (!row.pixelAt) {
+    const won = await prisma.emailSend.updateMany({ where: { id: row.id, pixelAt: null }, data: { pixelAt: now } });
+    if (!won.count) return null; // duas buscas no mesmo instante: a outra é a conferência
+    if (!row.sentAt || now - row.sentAt < PIXEL.lateMs) return 'conferencia';
+  } else if (!row.sentAt || now - row.pixelAt < PIXEL.gapMs) return null;
+  return marcarAberto(row, now);
+}
+
+/** Marca a 1ª abertura (uma vez só, venha de onde vier) e avisa no Telegram. */
+async function marcarAberto(row, at) {
   const won = await prisma.emailSend.updateMany({ where: { id: row.id, openedAt: null }, data: { openedAt: at } });
-  if (!won.count) return null; // "opened" e "unique_opened" da mesma abertura chegam juntos
+  if (!won.count) return null;
   const [opened, sent] = await Promise.all([
     prisma.emailSend.count({ where: { campaign: row.campaign, openedAt: { not: null } } }),
     prisma.emailSend.count({ where: { campaign: row.campaign, sentAt: { not: null } } }),
   ]);
-  tg.info(`👀 ${teste}<b>${tg.esc(row.user.nick)}</b> abriu o e-mail de volta (${tempo(at - row.sentAt)} depois do envio).\nAbriram ${opened} de ${sent} e-mails enviados`);
+  tg.info(`👀 ${isTeste(row.campaign) ? '<i>(teste)</i> ' : ''}<b>${tg.esc(row.user.nick)}</b> abriu o e-mail de volta (${tempo(at - row.sentAt)} depois do envio).\nAbriram ${opened} de ${sent} e-mails enviados`);
   return 'aberto';
 }
 

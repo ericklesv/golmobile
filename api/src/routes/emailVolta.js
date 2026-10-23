@@ -6,16 +6,30 @@
  *                               `List-Unsubscribe=One-Click`, o token vem no endereço).
  * POST /api/email/brevo/<BREVO_WEBHOOK_SECRET> — aviso do Brevo (webhook dos e-mails transacionais): quem ABRIU o
  *                               e-mail e quem marcou como spam (services/emailVolta.js → eventoBrevo).
- * Nada aqui responde a GET: robô que abre link de e-mail para conferir (antivírus, Outlook) não resgata nem tira
- * ninguém da lista.
+ * GET /api/email/aberto/<hash>.gif — a imagem de 1 pixel do rodapé: a 2ª busca = ABRIU (services/emailVolta.js →
+ *                               abriuPixel). O endereço leva o hash do código, que não resgata nada.
+ * Fora a imagem, nada aqui responde a GET: robô que abre link de e-mail para conferir (antivírus, Outlook) não resgata
+ * nem tira ninguém da lista.
  */
 import { timingSafeEqual } from 'crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { handle } from '../lib/errors.js';
-import { eventoBrevo, resgatar, sairDaLista } from '../services/emailVolta.js';
+import { abriuPixel, eventoBrevo, resgatar, sairDaLista } from '../services/emailVolta.js';
 
 export const emailVolta = Router();
+
+// GIF transparente de 1x1
+const PIXEL_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+
+// Antes do limite por IP de propósito: as buscas de todos os e-mails vêm dos mesmos servidores do Brevo. Responde a
+// imagem sempre, mesmo com código ruim, e sem guardar em cache (cada exibição tem de chegar aqui).
+emailVolta.get('/aberto/:arq', (req, res) => {
+  res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate, private' }).end(PIXEL_GIF);
+  abriuPixel(String(req.params.arq).replace(/\.gif$/, ''))
+    .then((r) => { if (r) console.log(`[email] imagem: ${r} · ${String(req.get('user-agent') ?? '').slice(0, 60)}`); })
+    .catch((e) => console.error('[email] abertura pela imagem:', e?.message || e));
+});
 
 const segredoOk = (s) => {
   const a = Buffer.from(String(s ?? '')), b = Buffer.from(process.env.BREVO_WEBHOOK_SECRET || '');

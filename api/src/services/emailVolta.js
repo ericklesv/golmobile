@@ -34,8 +34,11 @@ export const VOLTA = {
   expiresAt: new Date('2026-11-06T23:59:59-03:00'), // o e-mail diz "vale até 6 de novembro"
 };
 
-// domínios de teste/varredura que estão no banco e não recebem nada (os descartáveis vêm da lista do cadastro)
-const NAO_MANDA = /@(test\.com|teste\.brgol|local\.test|example\.(com|org)|bots\.jogagol\.com\.br|jobscai\.com|meonvr\.com|minitts\.net|gmailsmkd\.com)$/i;
+// domínios de teste/varredura que estão no banco e não recebem nada (os descartáveis vêm da lista do cadastro) +
+// os que voltariam como erro e queimam a reputação do Brevo (conferidos pelo MX em 23/10/2026): domínio que não
+// existe ou sem MX (haj.ckm, hormail.com, cartolafc.com.br, jogagol.com.br), caixa inventada em empresa (aa.com,
+// evs.com, xi.com), e-mail temporário (duidir.com, findize.com) e domínio de piada (tuamaeaquelaursa.com)
+const NAO_MANDA = /@(test\.com|teste\.brgol|local\.test|example\.(com|org)|bots\.jogagol\.com\.br|jobscai\.com|meonvr\.com|minitts\.net|gmailsmkd\.com|haj\.ckm|hormail\.com|cartolafc\.com\.br|jogagol\.com\.br|aa\.com|evs\.com|xi\.com|duidir\.com|findize\.com|tuamaeaquelaursa\.com)$/i;
 
 export const hashToken = (t) => createHash('sha256').update(t).digest('hex');
 export const isTeste = (campaign) => campaign.endsWith('-teste');

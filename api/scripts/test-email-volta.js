@@ -49,11 +49,13 @@ try {
   const bot = await mk({ isBot: true });
   const descartavel = await mk({ email: `ev${Date.now() % 1e6}${seq++}@mailinator.com` });
   const teste = await mk({ email: `ev${Date.now() % 1e6}${seq++}@test.com` });
+  const semMx = await mk({ email: `ev${Date.now() % 1e6}${seq++}@Hormail.com` });
   const ids = new Set((await V.publico(now)).map((u) => u.id));
   check(ids.has(sumido.id), 'sem entrar há 20 dias: recebe');
   check(!ids.has(ativo.id), 'entrou há 2 dias: não recebe');
   check(!ids.has(banido.id), "banido: não recebe"); check(!ids.has(saiu.id), "quem saiu da lista: não recebe"); check(!ids.has(bot.id), "bot: não recebe");
   check(!ids.has(descartavel.id) && !ids.has(teste.id), 'e-mail descartável (mailinator) e de teste (test.com): não recebem');
+  check(!ids.has(semMx.id), 'domínio que voltaria como erro (Hormail.com, maiúscula incluída): não recebe');
 
   // ── e-mail ──
   const ctx = await V.contexto(now);

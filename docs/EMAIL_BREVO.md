@@ -100,7 +100,12 @@ como aberto no envio). Quem mede a abertura é a imagem do próprio Brevo, e ele
 1. Na VPS, `BREVO_WEBHOOK_SECRET` no `api/.env` (um texto aleatório longo) e reiniciar a API.
 2. Brevo → **Transacional** → **Configurações** → **Webhooks** (ou ⚙ → Webhooks) → **Adicionar webhook**:
    - URL: `https://jogagol.com.br/api/email/brevo/<BREVO_WEBHOOK_SECRET>`
-   - Eventos: **Aberto** (Opened), **Primeira abertura** (Unique opened) e **Spam** (Complaint).
+   - Eventos: **Aberto**, **Primeira abertura**, **Abertura única**, **Carregado por proxy** e **Reclamação**
+     (spam). Opcional: **Hard bounce**, **Bloqueado** e **Invalid** — a API só escreve no log do pm2 (quem não
+     recebeu).
+   - **O "Carregado por proxy" é obrigatório**: o Gmail (a maioria dos jogadores) avisa a abertura assim
+     (`proxy_open`), não como "Aberto". Até 23/10/2026 ele estava desligado e nenhuma abertura no Gmail chegava.
+     Ligar os quatro de abertura não duplica nada: a API conta só a primeira de cada pessoa.
 3. Cada abertura vira "👀 fulano abriu o e-mail de volta" no Telegram; spam tira a pessoa da lista.
 
 ## 5. Conferir
